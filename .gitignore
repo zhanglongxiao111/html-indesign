@@ -1,8 +1,8 @@
 # Node
 node_modules/
 
-# Test outputs (regeneratable)
-test/output_*/
+# Test workspace (temporary files)
+test/workspace/
 
 # OS files
 .DS_Store

@@ -1,8 +1,68 @@
 <!DOCTYPE html>
+
+<!--
+==========================================================
+  AI AGENT 内容编写约束规范
+==========================================================
+  母版名称: D-左说明图右现状照片群组
+  页面尺寸: 528mm × 297mm
+
+  【槽位列表】
+    - 要点说明 (TEXT)
+    - 左下大图图1 (IMAGE)
+    - 图4 (IMAGE)
+    - 图5 (IMAGE)
+    - 图3 (IMAGE)
+    - 图2 (IMAGE)
+    - 分页标题 (TEXT)
+
+  【可用段落样式】(data-paragraph-style 属性值必须完全匹配)
+    - Front Page Text
+    - 段落样式2
+    - Small header EN
+    - 封面项目标题
+    - 内容标题（30点左对齐）
+    - 右上角标题（24点右对齐）
+    - 小节标题（36点左对齐）
+    - 标题页标题（45点左对齐）
+    - 小节标题（24点右对齐）
+    - 目录段落
+    - 要点罗列段落（18号左对齐）
+    - 标准正文（14点左对齐）
+    - 段间距较大文本（24点左对齐）
+    - 标准正文（18点左对齐）
+    - 封面页英文段落
+
+  【可用对象样式】(data-object-style 属性值必须完全匹配)
+    - [无]
+    - [基本图形框架]
+    - [基本文本框架]
+    - [基本网格]
+    - 次要箭头
+    - 辅助箭头
+    - 主要箭头
+    - 分区·景观
+    - 分区·办公
+    - 分区·核心
+    - 分区·商业
+    - 改造前标注
+    - 改造后标注
+    - 重点圈注
+    - 装饰线·细
+    - 装饰线
+    - 色块·浅底
+    - 装饰线·主色
+    - 淡显背景图框架
+
+  ⚠️ 警告: 样式名称必须完全匹配，包括括号、空格和标点符号！
+  📖 详细规范请参考: AGENT_SPEC.md
+==========================================================
+-->
+
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>G-对标案例图文页</title>
+    <title>D-左说明图右现状照片群组</title>
     <style>
     /* Reset & Base */
     body { margin: 0; padding: 20px; background: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; }
@@ -90,15 +150,17 @@
 </head>
 <body>
     <div style="position:fixed;top:10px;left:10px;background:#333;color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;z-index:9999;">按 H 键切换槽位边框</div>
-    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="G-对标案例图文页">
+    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="D-左说明图右现状照片群组">
         <div class="id-item layer-static ostyle-基本图形框架 id-line" style="left: 15mm; top: 18.0881944444444mm; width: 498mm; height: 0mm; z-index: 3; background-color:#8ca064; height:0.5pt; height: 1px"></div>
         <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-基本段落" style="left: 364.362632717407mm; top: -46.6666666666666mm; width: 151.736110123448mm; height: 11.4519862902681mm; z-index: 1; font-family:'微软雅黑',sans-serif; font-size:24pt; font-weight:bold; line-height:30pt; text-align:right; color:#333333">项目现状 /Project status</div>
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 279.75mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页用于放置对标案例，文字位于左上象限，首行自动加粗标题，次行起放置说明正文。其余为案例图片。</span></div>
-        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：图4 类型：图像 说明：4比5图，4乘5 网格" title="名称：图4 类型：图像 说明：4比5图，4乘5 网格" style="left: 390mm; top: 139.555555555555mm; width: 123mm; height: 147.444444444445mm; z-index: 1008">📷 IMAGE</div>
-        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：右上图1 类型：图像 说明：16比9图，8乘4.5 网格" title="名称：右上图1 类型：图像 说明：16比9图，8乘4.5 网格" style="left: 265mm; top: 20mm; width: 248mm; height: 117.555555555556mm; z-index: 1007">📷 IMAGE</div>
-        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：左下图2 类型：图像 说明：16比9图，8乘4.5 网格" title="名称：左下图2 类型：图像 说明：16比9图，8乘4.5 网格" style="left: 15mm; top: 139.555555555556mm; width: 248mm; height: 147.444444444445mm; z-index: 1006">📷 IMAGE</div>
-        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：图3 类型：图像 说明：4比5图，4乘5 网格" title="名称：图3 类型：图像 说明：4比5图，4乘5 网格" style="left: 265mm; top: 139.555555555556mm; width: 123mm; height: 147.444444444445mm; z-index: 1005">📷 IMAGE</div>
-        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" data-slot="名称：正文描述 类型：文本 说明：首行为标题，自动加大加粗，回车换行后为小字正文" title="名称：正文描述 类型：文本 说明：首行为标题，自动加大加粗，回车换行后为小字正文" style="left: 15mm; top: 20.0881944444442mm; width: 248mm; height: 117.555555555556mm; z-index: 1004"><span class="grep-first-line" style="font-weight:bold; font-size:24pt; color:#666666">案例介绍标题</span><br>此项目位于上海宁国路码头附近的烟草仓库，设计团队通过削减体量、引入公共通道与屋顶绿化，将原本封闭的厂房转化为开放的城市公共空间。建筑以层层退台的方式与滨江绿地自然衔接，形成如丘陵般的景观形态，使城市与自然在此相互渗透。</div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.49999999999998mm; width: 67.625mm; height: 183.944392278965mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页用于进行说明，页面划分四象限（上小下大），左上角象限为分段罗列要点的文字。其余象限为图片框架，图片编号顺序为从上至下，从左到右。</span></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-要点罗列段落-18号左对齐- has-bullet-list" data-slot="名称：要点说明 类型：文本 说明：项目符号为自动，无需输入，仅输入文字即可。不同要点之间用回车分段，对齐文本左边距" title="名称：要点说明 类型：文本 说明：项目符号为自动，无需输入，仅输入文字即可。不同要点之间用回车分段，对齐文本左边距" style="left: 14.9559027777777mm; top: 19.9999999999981mm; width: 216.794097222222mm; height: 87.6666666666692mm; z-index: 1013; color:#333333"><p class="list-item has-bullet">轨交资源：南邻苏州站，驾车仅15分钟可达，北临苏州北站，驾车25分钟可达。距离四号线活力岛站约350米。</p>
+<p class="list-item has-bullet">公交资源：毗邻城市干道，一公里内交通站点30余个。</p></div>
+        <div class="id-item layer-slot ostyle-无 id-image" data-slot="名称：左下大图图1 类型：图像 说明：4比3说明图，对齐文本边距左下角，8乘6网格" title="名称：左下大图图1 类型：图像 说明：4比3说明图，对齐文本边距左下角，8乘6网格" style="left: 14.9559027777777mm; top: 109.666666666666mm; width: 216.794097222222mm; height: 176.416666666666mm; z-index: 1012; display: block; overflow: hidden"><img src="C:\Users\Administrator\WPSDrive\458411131\WPS云盘\DAGA\苏州活力大厦\251023\参考图\554decba5478f8cba9c342326bfa65f9.jpg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Image" onerror="this.onerror=null; this.style.display='none'; var p=document.createElement('div'); p.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:12px;'; p.textContent='📷 Image not found'; this.parentElement.appendChild(p);"></div>
+        <div class="id-item layer-slot ostyle-无 id-image" data-slot="名称：图4 类型：图像 说明：2比3说明图，4乘6网格" title="名称：图4 类型：图像 说明：2比3说明图，4乘6网格" style="left: 265mm; top: 109.666666666667mm; width: 123mm; height: 177.333333333333mm; z-index: 1010; display: block; overflow: hidden"><img src="C:\Users\Administrator\WPSDrive\458411131\WPS云盘\DAGA\苏州活力大厦\251023\参考图\c459d31d27ad01132cc3ff21706cd4c4.jpg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Image" onerror="this.onerror=null; this.style.display='none'; var p=document.createElement('div'); p.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:12px;'; p.textContent='📷 Image not found'; this.parentElement.appendChild(p);"></div>
+        <div class="id-item layer-slot ostyle-无 id-image" data-slot="名称：图5 类型：图像 说明：2比3说明图，4乘6网格" title="名称：图5 类型：图像 说明：2比3说明图，4乘6网格" style="left: 390mm; top: 109.666666666667mm; width: 123mm; height: 177.333333333333mm; z-index: 1008; display: block; overflow: hidden"><img src="C:\Users\Administrator\WPSDrive\458411131\WPS云盘\DAGA\苏州活力大厦\251023\参考图\b434c90376333a6cc523e2714a2a62c4.jpg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Image" onerror="this.onerror=null; this.style.display='none'; var p=document.createElement('div'); p.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:12px;'; p.textContent='📷 Image not found'; this.parentElement.appendChild(p);"></div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：图3 类型：图像 说明：4比3说明图，4乘3网格" title="名称：图3 类型：图像 说明：4比3说明图，4乘3网格" style="left: 390mm; top: 19.9999999999981mm; width: 124mm; height: 87.6666666666692mm; z-index: 1006">📷 IMAGE</div>
+        <div class="id-item layer-slot ostyle-无 id-image" data-slot="名称：图2 类型：图像 说明：4比3说明图，4乘3网格" title="名称：图2 类型：图像 说明：4比3说明图，4乘3网格" style="left: 265mm; top: 19.9999999999981mm; width: 123mm; height: 87.6666666666692mm; z-index: 1005; display: block; overflow: hidden"><img src="C:\Users\Administrator\WPSDrive\458411131\WPS云盘\DAGA\苏州活力大厦\251023\参考图\d82d7584984d12682912d44dff8a173c.jpg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Image" onerror="this.onerror=null; this.style.display='none'; var p=document.createElement('div'); p.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:12px;'; p.textContent='📷 Image not found'; this.parentElement.appendChild(p);"></div>
         <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" title="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" style="left: 15mm; top: 7.00000000000001mm; width: 498mm; height: 9mm; z-index: 1002">中文本页标题<span class="en-text">/ English Page Title</span></div>
 </section>
     <script>

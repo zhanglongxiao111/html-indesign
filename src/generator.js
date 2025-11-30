@@ -1,11 +1,102 @@
 /**
  * Reference HTML Generator
  * Converts Blueprint JSON -> Visual HTML Template
- * V3: Enhanced style support with inlineCSS
+ * V4: Enhanced with AI Agent constraint comments
  */
 
 const fs = require('fs');
 const path = require('path');
+
+/**
+ * 解析槽位标签中的简短名称
+ */
+function parseSlotShortName(label) {
+  if (!label) return label;
+  const segments = label.split(/[;；\n\r]/);
+  for (const seg of segments) {
+    const trimmed = seg.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split(/[:=：]/);
+    if (parts.length < 2) continue;
+    const key = parts.shift().trim();
+    const val = parts.join('=').trim();
+    if (['名称', '名字', '槽位', 'slot', 'name'].includes(key.toLowerCase())) {
+      return val;
+    }
+  }
+  return label;
+}
+
+/**
+ * 解析槽位标签中的类型
+ */
+function parseSlotType(label) {
+  if (!label) return 'TEXT';
+  const segments = label.split(/[;；\n\r]/);
+  for (const seg of segments) {
+    const trimmed = seg.trim();
+    const parts = trimmed.split(/[:=：]/);
+    if (parts.length < 2) continue;
+    const key = parts.shift().trim();
+    const val = parts.join('=').trim().toUpperCase();
+    if (['类型', 'type'].includes(key.toLowerCase())) {
+      if (val.includes('图') || val.includes('IMAGE')) return 'IMAGE';
+      return 'TEXT';
+    }
+  }
+  return 'TEXT';
+}
+
+/**
+ * 生成 AI Agent 约束注释块
+ */
+function generateConstraintComment(masterName, master, paragraphStyles, objectStyles) {
+  const lines = [];
+  lines.push('');
+  lines.push('<!--');
+  lines.push('==========================================================');
+  lines.push('  AI AGENT 内容编写约束规范');
+  lines.push('==========================================================');
+  lines.push(`  母版名称: ${masterName}`);
+  lines.push(`  页面尺寸: ${master.width}mm × ${master.height}mm`);
+  lines.push('');
+
+  // 槽位信息
+  const slots = master.slots || {};
+  const slotEntries = Object.entries(slots);
+  if (slotEntries.length > 0) {
+    lines.push('  【槽位列表】');
+    for (const [label, slot] of slotEntries) {
+      const shortName = parseSlotShortName(label);
+      const type = parseSlotType(label) || slot.type || 'TEXT';
+      lines.push(`    - ${shortName} (${type})`);
+    }
+    lines.push('');
+  }
+
+  // 可用段落样式
+  lines.push('  【可用段落样式】(data-paragraph-style 属性值必须完全匹配)');
+  for (const [name, style] of Object.entries(paragraphStyles)) {
+    if (name.startsWith('[')) continue;
+    lines.push(`    - ${name}`);
+  }
+  lines.push('');
+
+  // 可用对象样式
+  lines.push('  【可用对象样式】(data-object-style 属性值必须完全匹配)');
+  for (const [name, style] of Object.entries(objectStyles)) {
+    lines.push(`    - ${name}`);
+  }
+  lines.push('');
+
+  lines.push('  ⚠️ 警告: 样式名称必须完全匹配，包括括号、空格和标点符号！');
+  lines.push('  📖 详细规范请参考: AGENT_SPEC.md');
+  lines.push('==========================================================');
+  lines.push('-->');
+  lines.push('');
+
+  return lines.join('\n');
+}
 
 // Helper: Convert mm to CSS value
 const u = (val) => `${val}mm`;
@@ -278,7 +369,11 @@ document.addEventListener('keydown', function(e) {
 });
 </script>`;
 
+        // Generate AI Agent constraint comment
+        const constraintComment = generateConstraintComment(masterName, master, paragraphStyles, objectStyles);
+
         const fullHtml = `<!DOCTYPE html>
+${constraintComment}
 <html>
 <head>
     <meta charset="UTF-8">

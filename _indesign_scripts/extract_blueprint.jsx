@@ -319,6 +319,6 @@ if(ty==="IMAGE"&&it.allGraphics&&it.allGraphics.length>0){var gr=it.allGraphics[
     var now=new Date();var exportedAt=now.getFullYear()+'-'+('0'+(now.getMonth()+1)).slice(-2)+'-'+('0'+now.getDate()).slice(-2)+'T'+('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2)+':'+('0'+now.getSeconds()).slice(-2)+'Z';
     var json='{ "metadata":{ "documentName":'+q(doc.name)+', "exportedAt":'+q(exportedAt)+' }, "compositeFonts":{ '+cfp.join(', ')+' }, "characterStyles":{ '+csp.join(', ')+' }, "paragraphStyles":{ '+psp.join(', ')+' }, "objectStyles":{ '+osp.join(', ')+' }, "masters":{ '+mp.join(', ')+' } }';
     doc.viewPreferences.horizontalMeasurementUnits=oH;doc.viewPreferences.verticalMeasurementUnits=oV;
-    var f=new File("D:/AI/html-indesign/test/artifacts/real_blueprint_v7.json");f.open("w");f.encoding="UTF-8";f.write(json);f.close();return"Success: "+f.fsName;
+    var f=new File("D:/AI/html-indesign/test/artifacts/blueprint.json");f.open("w");f.encoding="UTF-8";f.write(json);f.close();return"Success: "+f.fsName;
 })();
 

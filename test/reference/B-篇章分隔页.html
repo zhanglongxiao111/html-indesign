@@ -1,8 +1,62 @@
 <!DOCTYPE html>
+
+<!--
+==========================================================
+  AI AGENT 内容编写约束规范
+==========================================================
+  母版名称: B-篇章分隔页
+  页面尺寸: 528mm × 297mm
+
+  【槽位列表】
+    - 篇章标题 (TEXT)
+
+  【可用段落样式】(data-paragraph-style 属性值必须完全匹配)
+    - Front Page Text
+    - 段落样式2
+    - Small header EN
+    - 封面项目标题
+    - 内容标题（30点左对齐）
+    - 右上角标题（24点右对齐）
+    - 小节标题（36点左对齐）
+    - 标题页标题（45点左对齐）
+    - 小节标题（24点右对齐）
+    - 目录段落
+    - 要点罗列段落（18号左对齐）
+    - 标准正文（14点左对齐）
+    - 段间距较大文本（24点左对齐）
+    - 标准正文（18点左对齐）
+    - 封面页英文段落
+
+  【可用对象样式】(data-object-style 属性值必须完全匹配)
+    - [无]
+    - [基本图形框架]
+    - [基本文本框架]
+    - [基本网格]
+    - 次要箭头
+    - 辅助箭头
+    - 主要箭头
+    - 分区·景观
+    - 分区·办公
+    - 分区·核心
+    - 分区·商业
+    - 改造前标注
+    - 改造后标注
+    - 重点圈注
+    - 装饰线·细
+    - 装饰线
+    - 色块·浅底
+    - 装饰线·主色
+    - 淡显背景图框架
+
+  ⚠️ 警告: 样式名称必须完全匹配，包括括号、空格和标点符号！
+  📖 详细规范请参考: AGENT_SPEC.md
+==========================================================
+-->
+
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>F-自由页</title>
+    <title>B-篇章分隔页</title>
     <style>
     /* Reset & Base */
     body { margin: 0; padding: 20px; background: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; }
@@ -90,11 +144,9 @@
 </head>
 <body>
     <div style="position:fixed;top:10px;left:10px;background:#333;color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;z-index:9999;">按 H 键切换槽位边框</div>
-    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="F-自由页">
-        <div class="id-item layer-static ostyle-基本图形框架 id-line" style="left: 15mm; top: 18.0881944444444mm; width: 498mm; height: 0mm; z-index: 3; background-color:#8ca064; height:0.5pt; height: 1px"></div>
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-基本段落" style="left: 364.362632717407mm; top: -46.6666666666666mm; width: 151.736110123448mm; height: 11.4519862902681mm; z-index: 1; font-family:'微软雅黑',sans-serif; font-size:24pt; font-weight:bold; line-height:30pt; text-align:right; color:#333333">项目现状 /Project status</div>
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 279.75mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页用于无法套用标准模板的自由页，仅有标题文字，边距内为空白页，自由布置，但是需符合参考线网格对齐规则</span></div>
-        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" title="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" style="left: 15mm; top: 7.00000000000001mm; width: 498mm; height: 9mm; z-index: 1002">中文本页标题<span class="en-text">/ English Page Title</span></div>
+    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="B-篇章分隔页">
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 289.5mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">篇章标题页，用于区分篇章与篇章，每个篇章的起始页采用此模板，无图</span></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-标题页标题-45点左对齐- has-dropcap" data-slot="名称：篇章标题 类型：文本 说明：使用01、02...数字表示篇章序号，中文标题后加/,使用shift+回车换行后输入英文标题" title="名称：篇章标题 类型：文本 说明：使用01、02...数字表示篇章序号，中文标题后加/,使用shift+回车换行后输入英文标题" style="left: 233.75mm; top: 20mm; width: 279.25mm; height: 267mm; z-index: 1001"><span class="dropcap-chars">01</span><span class="dropcap-rest"><span class="dropcap-line">中文篇章标题<span class="en-text">/</span></span><span class="dropcap-line"><span class="en-text">English Chapter Title</span></span></span></div>
 </section>
     <script>
 document.addEventListener('keydown', function(e) {

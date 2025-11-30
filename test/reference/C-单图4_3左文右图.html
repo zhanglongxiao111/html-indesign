@@ -1,8 +1,64 @@
 <!DOCTYPE html>
+
+<!--
+==========================================================
+  AI AGENT 内容编写约束规范
+==========================================================
+  母版名称: C-单图4:3左文右图
+  页面尺寸: 528mm × 297mm
+
+  【槽位列表】
+    - 要点说明 (TEXT)
+    - 分页标题 (TEXT)
+    - 右侧图片 (IMAGE)
+
+  【可用段落样式】(data-paragraph-style 属性值必须完全匹配)
+    - Front Page Text
+    - 段落样式2
+    - Small header EN
+    - 封面项目标题
+    - 内容标题（30点左对齐）
+    - 右上角标题（24点右对齐）
+    - 小节标题（36点左对齐）
+    - 标题页标题（45点左对齐）
+    - 小节标题（24点右对齐）
+    - 目录段落
+    - 要点罗列段落（18号左对齐）
+    - 标准正文（14点左对齐）
+    - 段间距较大文本（24点左对齐）
+    - 标准正文（18点左对齐）
+    - 封面页英文段落
+
+  【可用对象样式】(data-object-style 属性值必须完全匹配)
+    - [无]
+    - [基本图形框架]
+    - [基本文本框架]
+    - [基本网格]
+    - 次要箭头
+    - 辅助箭头
+    - 主要箭头
+    - 分区·景观
+    - 分区·办公
+    - 分区·核心
+    - 分区·商业
+    - 改造前标注
+    - 改造后标注
+    - 重点圈注
+    - 装饰线·细
+    - 装饰线
+    - 色块·浅底
+    - 装饰线·主色
+    - 淡显背景图框架
+
+  ⚠️ 警告: 样式名称必须完全匹配，包括括号、空格和标点符号！
+  📖 详细规范请参考: AGENT_SPEC.md
+==========================================================
+-->
+
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>A-目录</title>
+    <title>C-单图4:3左文右图</title>
     <style>
     /* Reset & Base */
     body { margin: 0; padding: 20px; background: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; }
@@ -90,13 +146,13 @@
 </head>
 <body>
     <div style="position:fixed;top:10px;left:10px;background:#333;color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;z-index:9999;">按 H 键切换槽位边框</div>
-    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="A-目录">
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.49999999999998mm; width: 67.625mm; height: 183.944392278965mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">目录页，根据实际篇章填写目录，中英双语，序号为自动生成，无需填写序号</span></div>
-        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-基本段落" data-slot="名称：目录页标题 类型：文本 说明：一般情况无需改动" title="名称：目录页标题 类型：文本 说明：一般情况无需改动" style="left: 108.75mm; top: 20mm; width: 123mm; height: 267mm; z-index: 1002; font-family:'微软雅黑',sans-serif; font-size:45pt; font-weight:bold; line-height:60pt; color:#333333; display:flex; flex-direction:column; justify-content:center">目录/Contents</div>
-        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-目录段落 has-numbered-list" data-slot="名称：目录正文 类型：文本 说明：目录序号为自动，仅输入篇章中英文名称即可，中英文之间使用/分隔" title="名称：目录正文 类型：文本 说明：目录序号为自动，仅输入篇章中英文名称即可，中英文之间使用/分隔" style="left: 265mm; top: 20mm; width: 248mm; height: 267mm; z-index: 1001; display:grid; align-content:center"><p class="list-item has-number" data-number="1" data-circle="①">项目背景<span class="en-text">/Project Background</span></p>
-<p class="list-item has-number" data-number="2" data-circle="②">项目定位策略<span class="en-text">/ Project Positioning Strategy</span></p>
-<p class="list-item has-number" data-number="3" data-circle="③">项目规划策略<span class="en-text">/ Project Planning Strategy</span></p>
-<p class="list-item has-number" data-number="4" data-circle="④">项目愿景<span class="en-text">/ Project vision</span></p></div>
+    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="C-单图4:3左文右图">
+        <div class="id-item layer-static ostyle-基本图形框架 id-line" style="left: 15mm; top: 18.0881944444444mm; width: 498mm; height: 0mm; z-index: 4; background-color:#8ca064; height:0.5pt; height: 1px"></div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 279.5mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页用于进行说明，右侧为4:3说明图。左侧文本为分段说明，每段自动带有项目符号，每段一个说明要点。</span></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-要点罗列段落-18号左对齐- has-bullet-list" data-slot="名称：要点说明 类型：文本 说明：项目符号为自动，无需输入，仅输入文字即可。不同要点之间用回车分段，对齐文本左边距" title="名称：要点说明 类型：文本 说明：项目符号为自动，无需输入，仅输入文字即可。不同要点之间用回车分段，对齐文本左边距" style="left: 15mm; top: 19.9999999999999mm; width: 117.5mm; height: 267mm; z-index: 1005; display:grid; align-content:center"><p class="list-item has-bullet">轨交资源：南邻苏州站，驾车仅15分钟可达，北临苏州北站，驾车25分钟可达。距离四号线活力岛站约350米。</p>
+<p class="list-item has-bullet">公交资源：毗邻城市干道，一公里内交通站点30余个。</p></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" title="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" style="left: 15mm; top: 7.00000000000001mm; width: 498mm; height: 9mm; z-index: 1003">中文本页标题<span class="en-text">/ English Page Title</span></div>
+        <div class="id-item layer-slot ostyle-无 id-image" data-slot="名称：右侧图片 类型：图像 说明：4比3说明图，对齐文本右边距，12乘9网格" title="名称：右侧图片 类型：图像 说明：4比3说明图，对齐文本右边距，12乘9网格" style="left: 140mm; top: 20mm; width: 373mm; height: 267mm; z-index: 1002; display: block; overflow: hidden"><img src="\\daga-nas5\daga-2025-project\D0469_苏州活力大厦\08-Diagram\卫星线稿图放大.png" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Image" onerror="this.onerror=null; this.style.display='none'; var p=document.createElement('div'); p.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:12px;'; p.textContent='📷 Image not found'; this.parentElement.appendChild(p);"></div>
 </section>
     <script>
 document.addEventListener('keydown', function(e) {

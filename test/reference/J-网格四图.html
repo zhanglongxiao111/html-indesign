@@ -1,8 +1,66 @@
 <!DOCTYPE html>
+
+<!--
+==========================================================
+  AI AGENT 内容编写约束规范
+==========================================================
+  母版名称: J-网格四图
+  页面尺寸: 528mm × 297mm
+
+  【槽位列表】
+    - 分页标题 (TEXT)
+    - 右上图2 (IMAGE)
+    - 左上图1 (IMAGE)
+    - 右下图4 (IMAGE)
+    - 左下图3 (IMAGE)
+
+  【可用段落样式】(data-paragraph-style 属性值必须完全匹配)
+    - Front Page Text
+    - 段落样式2
+    - Small header EN
+    - 封面项目标题
+    - 内容标题（30点左对齐）
+    - 右上角标题（24点右对齐）
+    - 小节标题（36点左对齐）
+    - 标题页标题（45点左对齐）
+    - 小节标题（24点右对齐）
+    - 目录段落
+    - 要点罗列段落（18号左对齐）
+    - 标准正文（14点左对齐）
+    - 段间距较大文本（24点左对齐）
+    - 标准正文（18点左对齐）
+    - 封面页英文段落
+
+  【可用对象样式】(data-object-style 属性值必须完全匹配)
+    - [无]
+    - [基本图形框架]
+    - [基本文本框架]
+    - [基本网格]
+    - 次要箭头
+    - 辅助箭头
+    - 主要箭头
+    - 分区·景观
+    - 分区·办公
+    - 分区·核心
+    - 分区·商业
+    - 改造前标注
+    - 改造后标注
+    - 重点圈注
+    - 装饰线·细
+    - 装饰线
+    - 色块·浅底
+    - 装饰线·主色
+    - 淡显背景图框架
+
+  ⚠️ 警告: 样式名称必须完全匹配，包括括号、空格和标点符号！
+  📖 详细规范请参考: AGENT_SPEC.md
+==========================================================
+-->
+
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>L-3：4单图居中</title>
+    <title>J-网格四图</title>
     <style>
     /* Reset & Base */
     body { margin: 0; padding: 20px; background: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; }
@@ -90,12 +148,15 @@
 </head>
 <body>
     <div style="position:fixed;top:10px;left:10px;background:#333;color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;z-index:9999;">按 H 键切换槽位边框</div>
-    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="L-3：4单图居中">
-        <div class="id-item layer-static ostyle-基本图形框架 id-line" style="left: 15mm; top: 18.0881944444444mm; width: 498mm; height: 0mm; z-index: 4; background-color:#8ca064; height:0.5pt; height: 1px"></div>
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-基本段落" style="left: 364.362632717407mm; top: -46.6666666666666mm; width: 151.736110123448mm; height: 11.4519862902681mm; z-index: 2; font-family:'微软雅黑',sans-serif; font-size:24pt; font-weight:bold; line-height:30pt; text-align:right; color:#333333">项目现状 /Project status</div>
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 279.75mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页一般用于放效果图，效果图3：4居中放置</span></div>
-        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" title="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" style="left: 15mm; top: 7.00000000000001mm; width: 498mm; height: 9mm; z-index: 1003">中文本页标题<span class="en-text">/ English Page Title</span></div>
-        <div class="id-item layer-slot ostyle-基本图形框架 id-image empty-slot" data-slot="名称：左下大图图1 类型：图像 说明：3比4图，居中页面" title="名称：左下大图图1 类型：图像 说明：3比4图，居中页面" style="left: 155.625mm; top: 20mm; width: 216.75mm; height: 267mm; z-index: 1001">📷 IMAGE</div>
+    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="J-网格四图">
+        <div class="id-item layer-static ostyle-基本图形框架 id-line" style="left: 15mm; top: 18.0881944444444mm; width: 498mm; height: 0mm; z-index: 7; background-color:#8ca064; height:0.5pt; height: 1px"></div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-基本段落" style="left: 364.362632717407mm; top: -46.6666666666666mm; width: 151.736110123448mm; height: 11.4519862902681mm; z-index: 5; font-family:'微软雅黑',sans-serif; font-size:24pt; font-weight:bold; line-height:30pt; text-align:right; color:#333333">项目现状 /Project status</div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 279.75mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页一般用于放置参考意向图，四张16:9图片按照四象限等分放置，序号从上倒下，从左到右</span></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" title="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" style="left: 15mm; top: 7.00000000000001mm; width: 498mm; height: 9mm; z-index: 1006">中文本页标题<span class="en-text">/ English Page Title</span></div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：右上图2 类型：图像 说明：16比9图，8乘4.5 网格" title="名称：右上图2 类型：图像 说明：16比9图，8乘4.5 网格" style="left: 265mm; top: 20mm; width: 248mm; height: 133.5mm; z-index: 1004">📷 IMAGE</div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：左上图1 类型：图像 说明：16比9图，8乘4.5 网格" title="名称：左上图1 类型：图像 说明：16比9图，8乘4.5 网格" style="left: 15mm; top: 20mm; width: 248mm; height: 133.5mm; z-index: 1003">📷 IMAGE</div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：右下图4 类型：图像 说明：16比9图，8乘4.5 网格" title="名称：右下图4 类型：图像 说明：16比9图，8乘4.5 网格" style="left: 265mm; top: 153.5mm; width: 248mm; height: 133.5mm; z-index: 1002">📷 IMAGE</div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：左下图3 类型：图像 说明：16比9图，8乘4.5 网格" title="名称：左下图3 类型：图像 说明：16比9图，8乘4.5 网格" style="left: 15mm; top: 153.5mm; width: 248mm; height: 133.5mm; z-index: 1001">📷 IMAGE</div>
 </section>
     <script>
 document.addEventListener('keydown', function(e) {

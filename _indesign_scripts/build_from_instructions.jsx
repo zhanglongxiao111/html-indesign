@@ -12,7 +12,7 @@
     if(app.documents.length===0){ log("No document."); return; }
     var doc=app.activeDocument;
 
-    var jsonPath="D:/AI/html-indesign/test/output_run/instructions_deck.json";
+    var jsonPath="D:/AI/html-indesign/test/workspace/test_instructions.json";
     try{ if(typeof defaultJsonPath!=="undefined" && defaultJsonPath) jsonPath=defaultJsonPath; }catch(_){}
     try{ var lbl=doc.extractLabel("build_json_path"); if(lbl) jsonPath=lbl; }catch(_){}
     var file=File(jsonPath);

@@ -1,8 +1,67 @@
 <!DOCTYPE html>
+
+<!--
+==========================================================
+  AI AGENT 内容编写约束规范
+==========================================================
+  母版名称: A-封面
+  页面尺寸: 528mm × 297mm
+
+  【槽位列表】
+    - 项目英文名 (TEXT)
+    - 日期 (TEXT)
+    - 项目中文名 (TEXT)
+    - 公司中文名 (TEXT)
+    - 公司英文名 (TEXT)
+    - 背景图片 (IMAGE)
+
+  【可用段落样式】(data-paragraph-style 属性值必须完全匹配)
+    - Front Page Text
+    - 段落样式2
+    - Small header EN
+    - 封面项目标题
+    - 内容标题（30点左对齐）
+    - 右上角标题（24点右对齐）
+    - 小节标题（36点左对齐）
+    - 标题页标题（45点左对齐）
+    - 小节标题（24点右对齐）
+    - 目录段落
+    - 要点罗列段落（18号左对齐）
+    - 标准正文（14点左对齐）
+    - 段间距较大文本（24点左对齐）
+    - 标准正文（18点左对齐）
+    - 封面页英文段落
+
+  【可用对象样式】(data-object-style 属性值必须完全匹配)
+    - [无]
+    - [基本图形框架]
+    - [基本文本框架]
+    - [基本网格]
+    - 次要箭头
+    - 辅助箭头
+    - 主要箭头
+    - 分区·景观
+    - 分区·办公
+    - 分区·核心
+    - 分区·商业
+    - 改造前标注
+    - 改造后标注
+    - 重点圈注
+    - 装饰线·细
+    - 装饰线
+    - 色块·浅底
+    - 装饰线·主色
+    - 淡显背景图框架
+
+  ⚠️ 警告: 样式名称必须完全匹配，包括括号、空格和标点符号！
+  📖 详细规范请参考: AGENT_SPEC.md
+==========================================================
+-->
+
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Z-结尾感谢页</title>
+    <title>A-封面</title>
     <style>
     /* Reset & Base */
     body { margin: 0; padding: 20px; background: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; }
@@ -90,9 +149,17 @@
 </head>
 <body>
     <div style="position:fixed;top:10px;left:10px;background:#333;color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;z-index:9999;">按 H 键切换槽位边框</div>
-    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="Z-结尾感谢页">
-        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.49999999999998mm; width: 67.6250000000001mm; height: 279.75mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页用于末尾结束感谢页面，一般不需要修改</span></div>
-        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-封面项目标题" data-slot="名称：致谢 类型：文本 说明：如无必要无需修改" title="名称：致谢 类型：文本 说明：如无必要无需修改" style="left: 15mm; top: 20mm; width: 498mm; height: 267mm; z-index: 1001; text-align:center; display:flex; flex-direction:column; justify-content:center">THANKS</div>
+    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="A-封面">
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-封面页英文段落" style="left: 427.624213657369mm; top: 231.644963472103mm; width: 46.4791170115036mm; height: 32.2655242803913mm; z-index: 9; display:flex; flex-direction:column; justify-content:space-between">Architecture DesignInterior DesignLandscape DesignUrban Plan</div>
+        <div class="id-item layer-static ostyle-装饰线 id-rect" style="left: 46.0500000000001mm; top: 229.210297731589mm; width: 435.65mm; height: 38.330072268411mm; z-index: 2; border:0.5pt solid #8ca064"></div>
+        <div class="id-item layer-static ostyle-装饰线 id-line" style="left: 420.074268617021mm; top: 229.100667731589mm; width: 0mm; height: 38.5493322684109mm; z-index: 1; background-color:#8ca064; height:0.5pt; width: 1px"></div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.49999999999998mm; width: 67.625mm; height: 183.944392278965mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">封面页，仅修改填充项目中英文名称和背景图片即可</span></div>
+        <div class="id-item layer-slot ostyle-无 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：项目英文名 类型：文本 说明：根据项目中文名翻译为英文" title="名称：项目英文名 类型：文本 说明：根据项目中文名翻译为英文" style="left: 15mm; top: 139.555555555556mm; width: 466.75mm; height: 27.8888888888889mm; z-index: 1010; font-family:'微软雅黑',sans-serif; font-size:18pt"><span class="en-text">Project English Name</span></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：日期 类型：文本 说明：为自动填写，一般不修要修改" title="名称：日期 类型：文本 说明：为自动填写，一般不修要修改" style="left: 232.75mm; top: 169.444444444444mm; width: 249mm; height: 27.8888888888889mm; z-index: 1008"></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-封面项目标题" data-slot="名称：项目中文名 类型：文本 说明：根据实际项目名称填写" title="名称：项目中文名 类型：文本 说明：根据实际项目名称填写" style="left: 15mm; top: 109.666666666667mm; width: 466.75mm; height: 27.8888888888889mm; z-index: 1007">项目中文名称</div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：公司中文名 类型：文本 说明：一般情况下不需要修改" title="名称：公司中文名 类型：文本 说明：一般情况下不需要修改" style="left: 357.374999999999mm; top: 49.8888888888889mm; width: 124.5mm; height: 27.8888888888889mm; z-index: 1006">申江海建筑设计事务所</div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-封面项目标题" data-slot="名称：公司英文名 类型：文本 说明：一般情况下不需要修改" title="名称：公司英文名 类型：文本 说明：一般情况下不需要修改" style="left: 326.25mm; top: 20mm; width: 155.625mm; height: 27.8888888888889mm; z-index: 1005">SA Architects</div>
+        <div class="id-item layer-slot ostyle-淡显背景图框架 id-image" data-slot="名称：背景图片 类型：图像 说明：使用图片或者矢量图填充，支持indesign支持的所有格式" title="名称：背景图片 类型：图像 说明：使用图片或者矢量图填充，支持indesign支持的所有格式" style="left: 0.99999999999997mm; top: 0mm; width: 528mm; height: 297mm; z-index: 1004; display: block; overflow: hidden"><img src="C:\Users\Administrator\WPSDrive\458411131\WPS云盘\DAGA\250124祥云小镇效果图\场景 27_1.jpg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" alt="Image" onerror="this.onerror=null; this.style.display='none'; var p=document.createElement('div'); p.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:12px;'; p.textContent='📷 Image not found'; this.parentElement.appendChild(p);"></div>
 </section>
     <script>
 document.addEventListener('keydown', function(e) {
