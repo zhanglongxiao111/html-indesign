@@ -1,0 +1,1 @@
+var doc=app.activeDocument; var out=[]; for(var p=0;p<doc.pages.length;p++){ var page=doc.pages[p]; for(var i=0;i<page.pageItems.length;i++){ var it=page.pageItems[i]; if(it.label && it.label.indexOf('?????')>=0){ var txt=''; try{txt=it.texts&&it.texts.length?it.texts[0].contents:'';}catch(_){txt='err';} out.push('p'+p+' '+page.name+' -> '+txt); } } } out.join('\\n');

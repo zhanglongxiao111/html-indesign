@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+<!-- Test case 1: Missing bounds in free page -->
+<section data-template="free" data-master="F-自由页">
+  <div data-type="TEXT">Missing bounds test</div>
+</section>
+
+<!-- Test case 2: Slot name with substring match -->
+<section data-master="A-封面">
+  <div data-slot="项目英文名">Should match exact</div>
+  <div data-slot="名称：项目英文名
+类型：文本
+说明：根据项目中文名翻译为英文">Full label test</div>
+</section>
+
+<!-- Test case 3: Empty image slot -->
+<section data-master="E-16:9单图">
+  <div data-slot="名称：主图
+类型：图像
+说明：16比9图，页面边距内满铺"></div>
+</section>
+</body>
+</html>

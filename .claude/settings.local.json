@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(node -e:*)",
+      "Bash(node:*)",
+      "Bash(1 cat test/test_edge_output.json)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

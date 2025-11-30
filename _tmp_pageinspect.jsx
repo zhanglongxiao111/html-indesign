@@ -1,0 +1,1 @@
+var doc=app.activeDocument; var idx=Math.max(0, doc.pages.length-3); var page=doc.pages[idx]; var out=[]; out.push('page '+page.name+' idx '+idx); for(var i=0;i<page.pageItems.length;i++){ var it=page.pageItems[i]; out.push(i+': label=['+it.label+'] type='+(it.constructor?it.constructor.name:'') ); } out.join('\\n');

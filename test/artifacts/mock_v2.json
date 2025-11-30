@@ -1,0 +1,19 @@
+{
+  "metadata": { "exportedAt": "2025-01-01", "documentName": "Test.indd" },
+  "styles": {
+    "Heading-1": { "name": "Heading-1", "css": "font-size: 24pt; color: #ff0000; font-family: Arial;" },
+    "Body-Text": { "name": "Body-Text", "css": "font-size: 12pt; color: #000000;" }
+  },
+  "masters": {
+    "A-Cover": {
+      "name": "A-Cover", "width": 210, "height": 297,
+      "slots": {
+        "Title": { "id": "1", "label": "Title", "type": "TEXT", "appliedStyle": "Heading-1", "bounds": {"x":10,"y":10,"width":190,"height":20} },
+        "Hero": { "id": "2", "label": "Hero", "type": "IMAGE", "bounds": {"x":10,"y":50,"width":190,"height":100} }
+      },
+      "staticItems": [
+        { "id": "3", "type": "RECT", "bounds": {"x":0,"y":0,"width":210,"height":297}, "visuals": {"fillColor": "#eeeeee"} }
+      ]
+    }
+  }
+}

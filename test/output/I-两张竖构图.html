@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>I-两张竖构图</title>
+    <style>
+    /* Reset & Base */
+    body { margin: 0; padding: 20px; background: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; }
+    .page-container { 
+        background: white; 
+        position: relative; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+        overflow: hidden;
+    }
+    
+    /* InDesign Item Types */
+    .id-item { position: absolute; box-sizing: border-box; overflow: hidden; }
+    .id-rect { }
+    .id-image { display: flex; align-items: center; justify-content: center; color: #999; font-size: 14px; }
+    .id-image.empty-slot { background: #f0f0f0; border: 1px dashed #ccc; }
+    .id-text { white-space: pre-wrap; overflow: hidden; } 
+    .id-line { /* Lines get their color from inlineCSS */ }
+    
+    /* Z-Index Layering */
+    .layer-static { z-index: 1; }
+    .layer-slot { z-index: 100; border: 2px dashed #007bff; background-color: rgba(0, 123, 255, 0.03); }
+    
+    /* Toggle slot visibility - add .hide-slots to body to hide slot frames */
+    /* Use transparent border instead of none to avoid layout shift */
+    body.hide-slots .layer-slot { border-color: transparent; background-color: transparent; }
+    body.hide-slots .id-image { border-color: transparent; background: transparent; color: transparent; }
+
+    /* Generated Paragraph Styles */
+    .pstyle-无段落样式 { font-family:'Adobe 宋体 Std',sans-serif; font-size:12pt; text-align:justify; color:#000000 }
+    .pstyle-基本段落 { font-family:'Adobe 宋体 Std',sans-serif; font-size:12pt; text-align:justify; color:#000000 }
+    .pstyle-Front-Page-Text { font-size:58pt; text-align:left; color:#000000 }
+    .pstyle-段落样式2 { font-family:'微软雅黑',sans-serif; font-weight:bold; font-size:28pt; text-align:left; color:#000000 }
+    .pstyle-Small-header-EN { font-size:28pt; text-align:left; color:#000000 }
+    .pstyle-封面项目标题 { font-family:'微软雅黑',sans-serif; font-weight:bold; font-size:45pt; line-height:72pt; text-align:right; color:#0d0d0d }
+    .pstyle-内容标题-30点左对齐- { font-family:'微软雅黑',sans-serif; font-size:18pt; line-height:24pt; text-align:left; color:#000000 }
+    .pstyle-右上角标题-24点右对齐- { font-family:'右上角标题',sans-serif; font-size:24pt; line-height:24pt; text-align:right; color:#666666 }
+    .pstyle-右上角标题-24点右对齐- { font-weight: bold; }
+    .pstyle-右上角标题-24点右对齐- .en-text { font-size: 0.8em; font-weight: 300; }
+    .pstyle-小节标题-36点左对齐- { font-family:'微软雅黑',sans-serif; font-weight:bold; font-size:30pt; line-height:24pt; text-align:left; color:#0d0d0d }
+    .pstyle-标题页标题-45点左对齐- { font-family:'中文大字英文小字',sans-serif; font-size:45pt; line-height:36pt; letter-spacing:0.05em; text-align:left; color:#666666 }
+    .pstyle-标题页标题-45点左对齐-.has-dropcap { display: grid; grid-template-columns: auto 1fr; gap: 0 0.5em; align-content: center; }
+    .pstyle-标题页标题-45点左对齐-.has-dropcap .dropcap-chars { font-size: 5em; line-height: 0.8; grid-row: span 2; align-self: start; color:#333333; }
+    .pstyle-标题页标题-45点左对齐-.has-dropcap .dropcap-rest { display: flex; flex-direction: column; justify-content: flex-start; align-self: center; }
+    .pstyle-标题页标题-45点左对齐- { font-weight: bold; }
+    .pstyle-标题页标题-45点左对齐- .en-text { font-size: 0.6em; font-weight: 300; }
+    .pstyle-小节标题-24点右对齐- { font-family:'微软雅黑',sans-serif; font-weight:bold; font-size:24pt; line-height:24pt; text-align:right; color:#0d0d0d }
+    .pstyle-目录段落 { font-family:'右上角标题',sans-serif; font-size:24pt; line-height:56pt; text-align:justify; color:#333333 }
+    .pstyle-目录段落 .list-item.has-number::before { content: attr(data-circle); margin-right: 0.3em;  }
+    .pstyle-目录段落 { font-weight: bold; }
+    .pstyle-目录段落 .en-text { font-size: 0.8em; font-weight: 300; }
+    .pstyle-要点罗列段落-18号左对齐- { font-family:'微软雅黑',sans-serif; font-weight:bold; font-size:18pt; line-height:24pt; text-align:left; color:#666666; margin-bottom:15pt }
+    .pstyle-要点罗列段落-18号左对齐- .list-item.has-bullet::before { content: "●"; margin-right: 0.5em; display: inline-block; font-size:18pt; color:#c85014 }
+    .pstyle-要点罗列段落-18号左对齐- .list-item { margin-bottom: 15pt; }
+    .pstyle-标准正文-14点左对齐- { font-family:'微软雅黑',sans-serif; font-size:18pt; line-height:24pt; text-align:left; color:#333333; margin-top:10pt; margin-bottom:100pt }
+    .pstyle-段间距较大文本-24点左对齐- { font-family:'微软雅黑',sans-serif; font-weight:bold; font-size:24pt; line-height:56pt; text-align:justify; color:#333333 }
+    .pstyle-标准正文-18点左对齐- { font-family:'微软雅黑',sans-serif; font-size:18pt; line-height:30pt; text-align:left; color:#333333; margin-bottom:10pt }
+    .pstyle-封面页英文段落 { font-family:'微软雅黑',sans-serif; font-weight:300; font-size:12pt; text-align:right; color:#000000 }
+    
+    .list-item { display: block; padding: 0; }
+    /* Drop cap grid layout helper classes */
+    .dropcap-rest { display: contents; }
+    .dropcap-line { display: block; }
+    
+    /* Generated Object Styles */
+    .ostyle-无 {  }
+    .ostyle-基本图形框架 {  }
+    .ostyle-基本文本框架 {  }
+    .ostyle-基本网格 {  }
+    .ostyle-次要箭头 { border:3pt solid #f5c850 }
+    .ostyle-辅助箭头 { border:2pt solid #999999 }
+    .ostyle-主要箭头 { border:5pt solid #ff7832 }
+    .ostyle-分区-景观 { background-color:#8ca064; border:1pt solid #8ca064; opacity:0.5 }
+    .ostyle-分区-办公 { background-color:#78645a; border:1pt solid #78645a; opacity:0.5 }
+    .ostyle-分区-核心 { background-color:#ff7832; border:1.5pt solid #ff7832; opacity:0.3 }
+    .ostyle-分区-商业 { background-color:#f5c850; border:1pt solid #f5c850; opacity:0.4 }
+    .ostyle-改造前标注 { border:2pt solid #b4825a }
+    .ostyle-改造后标注 { border:2pt solid #648c96 }
+    .ostyle-重点圈注 { border:2pt solid #ff7832 }
+    .ostyle-装饰线-细 { border:0.5pt solid #999999 }
+    .ostyle-装饰线 { border:0.5pt solid #8ca064 }
+    .ostyle-色块-浅底 { background-color:#e6e6e6 }
+    .ostyle-装饰线-主色 { border:1pt solid #ff7832 }
+    .ostyle-淡显背景图框架 { opacity:0.3 }
+    </style>
+</head>
+<body>
+    <div style="position:fixed;top:10px;left:10px;background:#333;color:#fff;padding:5px 10px;border-radius:4px;font-size:12px;z-index:9999;">按 H 键切换槽位边框</div>
+    <section class="page-container" style="width: 528mm; height: 297mm;" data-master="I-两张竖构图">
+        <div class="id-item layer-static ostyle-基本图形框架 id-line" style="left: 15mm; top: 18.0881944444444mm; width: 498mm; height: 0mm; z-index: 5; background-color:#8ca064; height:0.5pt; height: 1px"></div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-基本段落" style="left: 364.362632717407mm; top: -46.6666666666666mm; width: 151.736110123448mm; height: 11.4519862902681mm; z-index: 3; font-family:'微软雅黑',sans-serif; font-size:24pt; font-weight:bold; line-height:30pt; text-align:right; color:#333333">项目现状 /Project status</div>
+        <div class="id-item layer-static ostyle-基本文本框架 id-text pstyle-标准正文-18点左对齐-" style="left: 542mm; top: 7.5mm; width: 67.625mm; height: 279.75mm; z-index: 0"><span class="grep-first-line" style="font-size:24pt; color:#666666">本页一般用于放置参考意向图，两张接近1:1构图从左到右放置，序号从左到右</span></div>
+        <div class="id-item layer-slot ostyle-基本文本框架 id-text pstyle-右上角标题-24点右对齐-" data-slot="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" title="名称：分页标题 类型：文本 说明：该页中英文标题，使用/分割" style="left: 15mm; top: 7.00000000000001mm; width: 498mm; height: 9mm; z-index: 1004">中文本页标题<span class="en-text">/ English Page Title</span></div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：右图2 类型：图像 说明：8比9图，8乘9网格" title="名称：右图2 类型：图像 说明：8比9图，8乘9网格" style="left: 265mm; top: 20mm; width: 248mm; height: 267mm; z-index: 1002">📷 IMAGE</div>
+        <div class="id-item layer-slot ostyle-无 id-image empty-slot" data-slot="名称：左图1 类型：图像 说明：8比9图，8乘9网格" title="名称：左图1 类型：图像 说明：8比9图，8乘9网格" style="left: 15mm; top: 20mm; width: 248mm; height: 267mm; z-index: 1001">📷 IMAGE</div>
+</section>
+    <script>
+document.addEventListener('keydown', function(e) {
+    // Press 'H' or 'h' to toggle slot visibility
+    if (e.key === 'h' || e.key === 'H') {
+        document.body.classList.toggle('hide-slots');
+    }
+});
+</script>
+</body>
+</html>
