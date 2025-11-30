@@ -120,8 +120,8 @@ project-root/
 │   │   ├── A-封面.html          # 各母版独立预览（按母版名命名）
 │   │   └── AGENT_SPEC.md       # AI Agent 约束规范文档
 │   └── workspace/               # 临时工作区（在 .gitignore 中）
-│       ├── content_*.html      # AI 生成的内容 HTML
-│       └── instructions_*.json # builder 生成的构建指令
+│       ├── content.html        # AI 生成的内容 HTML（约定名称）
+│       └── instructions.json   # builder 生成的构建指令（约定名称）
 │
 ├── docs/                         # 项目文档
 └── openspec/                     # OpenSpec 规范管理
@@ -135,8 +135,8 @@ project-root/
 | 参考 HTML（单模板） | `{母版名}.html` | `A-封面.html`, `F-自由页.html` |
 | 参考 HTML（全部） | `all-templates.html` | - |
 | AI 约束规范 | `AGENT_SPEC.md` | `test/reference/AGENT_SPEC.md` |
-| AI 生成内容 | `content_{描述}.html` | `content_chapter1.html` |
-| 构建指令 | `instructions_{描述}.json` | `instructions_chapter1.json` |
+| AI 生成内容 | `content.html` | 约定的固定名称 |
+| 构建指令 | `instructions.json` | 约定的固定名称（InDesign 自动读取） |
 
 ### 7.3 测试工作流
 
@@ -151,10 +151,10 @@ node src/generator.js test/artifacts/blueprint.json test/reference
 #    输出: test/workspace/content_xxx.html
 
 # 4. 校验 HTML
-node src/validator.js test/workspace/content_xxx.html test/artifacts/blueprint.json
+node src/validator.js test/workspace/content.html test/artifacts/blueprint.json
 
-# 5. 生成构建指令
-node src/builder.js test/workspace/content_xxx.html test/artifacts/blueprint.json test/workspace/instructions_xxx.json
+# 5. 生成构建指令（输出到约定路径，InDesign 会自动读取）
+node src/builder.js test/workspace/content.html test/artifacts/blueprint.json test/workspace/instructions.json
 
-# 6. 在 InDesign 中执行构建（运行 build_from_instructions.jsx）
+# 6. 在 InDesign 中执行构建（运行 build_from_instructions.jsx，自动读取 instructions.json）
 ```

@@ -12,13 +12,27 @@
     if(app.documents.length===0){ log("No document."); return; }
     var doc=app.activeDocument;
 
-    var jsonPath="D:/AI/html-indesign/test/workspace/test_instructions.json";
+    // 约定的指令文件路径（与 builder.js 输出路径保持一致）
+    var jsonPath="D:/AI/html-indesign/test/workspace/instructions.json";
+    // 优先级1: 外部变量覆盖
     try{ if(typeof defaultJsonPath!=="undefined" && defaultJsonPath) jsonPath=defaultJsonPath; }catch(_){}
+    // 优先级2: 文档标签覆盖
     try{ var lbl=doc.extractLabel("build_json_path"); if(lbl) jsonPath=lbl; }catch(_){}
+
     var file=File(jsonPath);
-    if(!file.exists){ file=File.openDialog("Select build instructions JSON","*.json"); }
-    if(!file){ log("No file selected."); return; }
-    if(!file.open("r")){ log("Cannot open "+file.fsName); return; }
+    if(!file.exists){
+        alert("指令文件不存在！\n\n" +
+              "期望路径: " + jsonPath + "\n\n" +
+              "请先运行以下命令生成指令文件:\n" +
+              "node src/builder.js <content.html> test/artifacts/blueprint.json test/workspace/instructions.json\n\n" +
+              "或者在文档标签 build_json_path 中指定自定义路径。",
+              "Build Instructions Not Found",
+              true);
+        log("JSON file not found: " + jsonPath);
+        app.scriptPreferences.userInteractionLevel=uiOld;
+        return;
+    }
+    if(!file.open("r")){ log("Cannot open "+file.fsName); app.scriptPreferences.userInteractionLevel=uiOld; return; }
     var raw=file.read(); file.close();
     var data; try{ data=(typeof JSON!=="undefined"&&JSON.parse)?JSON.parse(raw):eval("("+raw+")"); }catch(e){ log("JSON parse error:"+e); return; }
 
