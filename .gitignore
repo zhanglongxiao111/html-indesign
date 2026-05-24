@@ -1,5 +1,6 @@
 # Node
 node_modules/
+.worktrees/
 
 # Test workspace (temporary files)
 test/workspace/
