@@ -1,13 +1,97 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 HI.buildInstructionItems = function (doc, page, pageInstruction, context, report) {
-    return [];
+    var items = (pageInstruction.items || []).slice(0).sort(function (a, b) {
+        return Number(a.zIndex || 0) - Number(b.zIndex || 0);
+    });
+    var created = [];
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var pageItem = null;
+        if (item.type === "TEXT") pageItem = HI.createTextFrame(doc, page, item, context, report);
+        else if (item.type === "GRAPHIC") pageItem = HI.createGraphicFrame(doc, page, item, context, report);
+        else if (item.type === "SHAPE") pageItem = HI.createShapeFrame(doc, page, item, context, report);
+        if (pageItem) {
+            created.push({ item: pageItem, zIndex: Number(item.zIndex || 0) });
+        }
+    }
+    HI.applyZIndex(created);
+    return created;
 };
 
 HI.createTextFrame = function (doc, page, item, context, report) {
-    return null;
+    var frame = page.textFrames.add();
+    frame.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+    HI.assignLayer(frame, context, item.layer);
+    var text = HI.textFromRuns(item);
+    frame.contents = text;
+    HI.applyParagraphStyle(doc, frame, item.paragraphStyle, report);
+    HI.applyRuns(doc, frame, item.runs || [], report);
+    try { frame.label = HI.itemLabel(item); } catch (_) {}
+    if (frame.overflows) {
+        report.counts.oversetTextFrames += 1;
+        HI.addMessage(report, "warning", "TEXT_OVERSET", "Text frame is overset", { itemId: item.id });
+    }
+    report.counts.textFrames += 1;
+    return frame;
+};
+
+HI.textFromRuns = function (item) {
+    var runs = item.runs || [];
+    if (!runs.length) return item.text || "";
+    var text = "";
+    for (var i = 0; i < runs.length; i++) text += runs[i].text || "";
+    return text;
+};
+
+HI.applyRuns = function (doc, frame, runs, report) {
+    var index = 0;
+    for (var i = 0; i < runs.length; i++) {
+        var text = runs[i].text || "";
+        HI.applyCharacterStyleToRange(doc, frame, index, text.length, runs[i].characterStyle, report);
+        index += text.length;
+    }
 };
 
 HI.createGraphicFrame = function (doc, page, item, context, report) {
-    return null;
+    var rect = page.rectangles.add();
+    rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+    HI.assignLayer(rect, context, item.layer);
+    HI.applyObjectStyle(doc, rect, item.objectStyle, report);
+    try { rect.label = HI.itemLabel(item); } catch (_) {}
+
+    var placed = item.placed || {};
+    var asset = HI.findAssetById(context.assets || [], placed.assetId);
+    if (!asset) {
+        HI.addMessage(report, "error", "ASSET_NOT_FOUND", "Instruction asset reference was not found", { itemId: item.id, assetId: placed.assetId });
+    } else {
+        HI.placeAssetInFrame(doc, rect, asset, placed, context.baseFolder, report);
+    }
+    report.counts.graphicFrames += 1;
+    return rect;
+};
+
+HI.createShapeFrame = function (doc, page, item, context, report) {
+    var rect = page.rectangles.add();
+    rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+    HI.assignLayer(rect, context, item.layer);
+    HI.applyObjectStyle(doc, rect, item.objectStyle, report);
+    try { rect.label = HI.itemLabel(item); } catch (_) {}
+    report.counts.shapes += 1;
+    return rect;
+};
+
+HI.assignLayer = function (pageItem, context, layerName) {
+    if (!layerName || !context.layers || !context.layers[layerName]) return;
+    try { pageItem.itemLayer = context.layers[layerName]; } catch (_) {}
+};
+
+HI.applyZIndex = function (created) {
+    created.sort(function (a, b) { return a.zIndex - b.zIndex; });
+    for (var i = 0; i < created.length; i++) {
+        try { created[i].item.sendToBack(); } catch (_) {}
+    }
+    for (var j = 0; j < created.length; j++) {
+        try { created[j].item.bringToFront(); } catch (_) {}
+    }
 };

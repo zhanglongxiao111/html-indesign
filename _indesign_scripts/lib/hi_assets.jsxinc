@@ -1,11 +1,78 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 HI.resolveAssetFile = function (asset, baseFolder) {
-    return File(asset.resolvedPath || asset.src);
+    var raw = asset.resolvedPath || asset.src || "";
+    if (/^[a-zA-Z]:[\\\/]/.test(raw) || raw.indexOf("\\\\") === 0 || raw.charAt(0) === "/") {
+        return File(raw);
+    }
+    return File(baseFolder.fsName + "/" + raw);
+};
+
+HI.findAssetById = function (assets, assetId) {
+    for (var i = 0; i < assets.length; i++) {
+        if (assets[i].id === assetId) return assets[i];
+    }
+    return null;
 };
 
 HI.placeAssetInFrame = function (doc, frame, asset, placed, baseFolder, report) {
-    return false;
+    var file = HI.resolveAssetFile(asset, baseFolder);
+    if (!file.exists) {
+        report.counts.missingAssets += 1;
+        HI.addMessage(report, "error", "ASSET_FILE_MISSING", "Asset file is missing", { assetId: asset.id, path: file.fsName });
+        return false;
+    }
+
+    HI.configurePlacePreferences(asset, placed || asset.placement || {}, report);
+    try {
+        frame.place(file);
+        report.counts.placedAssets += 1;
+        HI.applyFitting(frame, (placed && placed.fit) || (asset.placement && asset.placement.fit), (placed && placed.position) || (asset.placement && asset.placement.position));
+        return true;
+    } catch (error) {
+        HI.addMessage(report, "error", "ASSET_PLACE_FAILED", String(error), { assetId: asset.id, path: file.fsName });
+        return false;
+    }
 };
 
-HI.applyFitting = function (frame, fit, position) {};
+HI.configurePlacePreferences = function (asset, placed, report) {
+    var kind = String(asset.kind || "").toLowerCase();
+    if (kind === "pdf" || kind === "ai") {
+        try {
+            if (placed.pageNumber) app.pdfPlacePreferences.pageNumber = Number(placed.pageNumber);
+        } catch (_) {}
+        try {
+            var crop = HI.pdfCropFor(placed.crop);
+            if (crop !== null) app.pdfPlacePreferences.pdfCrop = crop;
+        } catch (error) {
+            HI.addMessage(report, "warning", "PDF_CROP_APPLY_FAILED", String(error), { crop: placed.crop });
+        }
+    }
+};
+
+HI.pdfCropFor = function (value) {
+    var key = String(value || "").toLowerCase();
+    var constantName = "CROP_CONTENT";
+    if (key === "media") constantName = "CROP_MEDIA";
+    if (key === "bleed") constantName = "CROP_BLEED";
+    if (key === "trim") constantName = "CROP_TRIM";
+    if (key === "art") constantName = "CROP_ART";
+    try {
+        if (PDFCrop[constantName] !== undefined) return PDFCrop[constantName];
+    } catch (_) {}
+    return null;
+};
+
+HI.applyFitting = function (frame, fit, position) {
+    var key = String(fit || "fill").toLowerCase();
+    try {
+        if (key === "contain") frame.fit(FitOptions.PROPORTIONALLY);
+        else if (key === "cover") frame.fit(FitOptions.FILL_PROPORTIONALLY);
+        else if (key === "fill") frame.fit(FitOptions.CONTENT_TO_FRAME);
+    } catch (_) {}
+    try {
+        if (String(position || "").toLowerCase() === "50% 50%" || String(position || "").toLowerCase() === "center") {
+            frame.fit(FitOptions.CENTER_CONTENT);
+        }
+    } catch (_) {}
+};

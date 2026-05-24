@@ -76,3 +76,35 @@ test('styles helper creates swatches and InDesign text/object style resources', 
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
+
+test('asset helper resolves placed files and applies fitting preferences', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
+  for (const token of [
+    'HI.findAssetById',
+    'frame.place(file)',
+    'app.pdfPlacePreferences.pageNumber',
+    'HI.pdfCropFor',
+    'FitOptions.PROPORTIONALLY',
+    'ASSET_FILE_MISSING',
+    'ASSET_PLACE_FAILED',
+  ]) {
+    assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('item helper creates text graphic shape items and applies z order', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  for (const token of [
+    'HI.createShapeFrame',
+    'page.textFrames.add',
+    'HI.applyRuns',
+    'frame.overflows',
+    'page.rectangles.add',
+    'HI.placeAssetInFrame',
+    'HI.applyZIndex',
+    'sendToBack',
+    'bringToFront',
+  ]) {
+    assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
