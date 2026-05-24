@@ -97,9 +97,15 @@ function contentForItem(item) {
 
 function compileTextRuns(item, styles, styleRefs, report, options) {
   const runs = item.runs && item.runs.length > 0
-    ? item.runs
+    ? expandTextRunsWithPlainSegments(item)
     : [{ text: item.text || '', attributes: {}, classList: [], computedStyle: item.computedStyle, tagName: item.tagName }];
   return runs.map((run) => {
+    if (run.plain) {
+      return {
+        text: run.text,
+        characterStyle: null,
+      };
+    }
     const characterStyle = ensureCharacterStyle(styles, run, report, options);
     if (characterStyle && !styleRefs.characterStyles.includes(characterStyle)) {
       styleRefs.characterStyles.push(characterStyle);
@@ -109,6 +115,28 @@ function compileTextRuns(item, styles, styleRefs, report, options) {
       characterStyle,
     };
   });
+}
+
+function expandTextRunsWithPlainSegments(item) {
+  const fullText = item.text || '';
+  const inlineRuns = (item.runs || []).filter((run) => run.text);
+  if (!fullText || inlineRuns.length === 0) return inlineRuns;
+
+  const out = [];
+  let cursor = 0;
+  for (const run of inlineRuns) {
+    const index = fullText.indexOf(run.text, cursor);
+    if (index === -1) return inlineRuns;
+    if (index > cursor) {
+      out.push({ text: fullText.slice(cursor, index), plain: true });
+    }
+    out.push(run);
+    cursor = index + run.text.length;
+  }
+  if (cursor < fullText.length) {
+    out.push({ text: fullText.slice(cursor), plain: true });
+  }
+  return out.filter((run) => run.text);
 }
 
 function ensureParagraphStyle(styles, item, report, options) {

@@ -123,3 +123,9 @@ test('executor reports structured counts for CLI result_json consumers', () => {
     assert.match(source, new RegExp(token));
   }
 });
+
+test('core JSON reader opens instruction files as UTF-8', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
+  assert.match(source, /file\.encoding\s*=\s*["']UTF-8["']/);
+  assert.ok(source.indexOf('file.encoding') < source.indexOf('file.open("r")'));
+});

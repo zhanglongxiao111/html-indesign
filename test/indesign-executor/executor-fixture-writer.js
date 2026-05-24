@@ -216,4 +216,6 @@ function escapePdfText(value) {
 module.exports = {
   writeExecutorSmokeWorkspace,
   createSmokeInstructions,
+  createTinyPdf,
+  createTinySvg,
 };

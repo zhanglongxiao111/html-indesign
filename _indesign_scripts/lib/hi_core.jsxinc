@@ -19,6 +19,7 @@ HI.readJsonFile = function (jsonPath) {
     if (!file.exists) {
         throw new Error("Instructions file not found: " + jsonPath);
     }
+    file.encoding = "UTF-8";
     if (!file.open("r")) {
         throw new Error("Cannot open instructions file: " + file.fsName);
     }
