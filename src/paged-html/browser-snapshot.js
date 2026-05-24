@@ -24,30 +24,60 @@ async function renderSnapshot(options) {
     });
 
     const raw = await page.evaluate((selector) => {
+      const snapshotStyleProps = [
+        'position',
+        'display',
+        'left',
+        'top',
+        'width',
+        'height',
+        'zIndex',
+        'fontFamily',
+        'fontSize',
+        'fontWeight',
+        'fontStyle',
+        'lineHeight',
+        'letterSpacing',
+        'color',
+        'textAlign',
+        'textDecorationLine',
+        'textTransform',
+        'verticalAlign',
+        'marginTop',
+        'marginRight',
+        'marginBottom',
+        'marginLeft',
+        'paddingTop',
+        'paddingRight',
+        'paddingBottom',
+        'paddingLeft',
+        'backgroundColor',
+        'borderTopColor',
+        'borderTopWidth',
+        'borderTopStyle',
+        'borderRightColor',
+        'borderRightWidth',
+        'borderRightStyle',
+        'borderBottomColor',
+        'borderBottomWidth',
+        'borderBottomStyle',
+        'borderLeftColor',
+        'borderLeftWidth',
+        'borderLeftStyle',
+        'borderRadius',
+        'opacity',
+        'objectFit',
+        'objectPosition',
+        'overflow',
+        'transform',
+      ];
       function styleObject(el) {
         const style = getComputedStyle(el);
-        return {
-          position: style.position,
-          display: style.display,
-          zIndex: style.zIndex,
-          fontFamily: style.fontFamily,
-          fontSize: style.fontSize,
-          fontWeight: style.fontWeight,
-          fontStyle: style.fontStyle,
-          lineHeight: style.lineHeight,
-          letterSpacing: style.letterSpacing,
-          color: style.color,
-          backgroundColor: style.backgroundColor,
-          borderTopColor: style.borderTopColor,
-          borderTopWidth: style.borderTopWidth,
-          borderTopStyle: style.borderTopStyle,
-          borderRadius: style.borderRadius,
-          opacity: style.opacity,
-          objectFit: style.objectFit,
-          objectPosition: style.objectPosition,
-          overflow: style.overflow,
-          transform: style.transform,
-        };
+        const out = {};
+        for (const prop of snapshotStyleProps) {
+          out[prop] = style[prop];
+        }
+        return out;
       }
       function rectObject(rect) {
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
@@ -56,6 +86,34 @@ async function renderSnapshot(options) {
         const out = {};
         for (const attr of Array.from(el.attributes || [])) out[attr.name] = attr.value;
         return out;
+      }
+      function classList(el) {
+        return Array.from(el.classList || []);
+      }
+      function isTextTag(tagName) {
+        return ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'figcaption'].includes(tagName);
+      }
+      function textRunsFor(el) {
+        const tagName = el.tagName.toLowerCase();
+        if (!isTextTag(tagName)) return [];
+        const inlineSelector = 'span,strong,b,em,i,mark,sup,sub,[data-id-character-style]';
+        const inlineEls = Array.from(el.querySelectorAll(inlineSelector));
+        if (inlineEls.length === 0) {
+          return [{
+            text: (el.innerText || el.textContent || '').trim(),
+            tagName,
+            classList: classList(el),
+            attributes: attrs(el),
+            computedStyle: styleObject(el),
+          }].filter((run) => run.text);
+        }
+        return inlineEls.map((runEl) => ({
+          text: (runEl.innerText || runEl.textContent || '').trim(),
+          tagName: runEl.tagName.toLowerCase(),
+          classList: classList(runEl),
+          attributes: attrs(runEl),
+          computedStyle: styleObject(runEl),
+        })).filter((run) => run.text);
       }
       const pageEls = Array.from(document.querySelectorAll(selector));
       return pageEls.map((pageEl, pageIndex) => {
@@ -71,11 +129,12 @@ async function renderSnapshot(options) {
           items: candidates.map((el, itemIndex) => ({
             id: el.id || el.getAttribute('data-id') || `p${pageIndex + 1}-el${itemIndex + 1}`,
             tagName: el.tagName.toLowerCase(),
-            classList: Array.from(el.classList || []),
+            classList: classList(el),
             attributes: attrs(el),
             rectPx: rectObject(el.getBoundingClientRect()),
             text: el.innerText || el.textContent || '',
             computedStyle: styleObject(el),
+            runs: textRunsFor(el),
           })),
         };
       });
@@ -111,6 +170,7 @@ async function renderSnapshot(options) {
             }), 2),
             zIndex: parseZIndex(item.computedStyle.zIndex),
             computedStyle: item.computedStyle,
+            runs: item.runs,
           })),
       };
     });

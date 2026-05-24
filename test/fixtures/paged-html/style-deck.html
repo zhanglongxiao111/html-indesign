@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    .page {
+      width: 528mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .title {
+      position: absolute;
+      left: 15mm;
+      top: 18mm;
+      width: 260mm;
+      height: 30mm;
+      margin: 0 0 6mm 0;
+      font-family: Arial, sans-serif;
+      font-size: 30pt;
+      line-height: 34pt;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.5pt;
+      color: #123456;
+      z-index: 30;
+    }
+    .accent {
+      color: #c8102e;
+      font-weight: 700;
+      font-style: italic;
+      letter-spacing: 1pt;
+    }
+    .caption {
+      position: absolute;
+      left: 15mm;
+      top: 55mm;
+      width: 180mm;
+      height: 18mm;
+      margin: 0;
+      font-size: 10pt;
+      line-height: 13pt;
+      color: #666666;
+      z-index: 31;
+    }
+    .metric-card {
+      position: absolute;
+      left: 300mm;
+      top: 24mm;
+      width: 160mm;
+      height: 80mm;
+      padding: 6mm 8mm;
+      background: #f2f2f2;
+      border: 2pt solid #333333;
+      border-radius: 2mm;
+      opacity: 0.85;
+      z-index: 20;
+    }
+    .hero-render {
+      position: absolute;
+      left: 15mm;
+      top: 90mm;
+      width: 240mm;
+      height: 150mm;
+      object-fit: cover;
+      object-position: left top;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <section class="page" data-page id="style-page">
+    <h1 class="title" data-id-paragraph-style="report-title">
+      城市更新 <span class="accent" data-id-character-style="accent">重点</span>
+    </h1>
+    <p class="caption">建筑设计汇报图注</p>
+    <div class="metric-card" data-id-object data-id-object-style="metric-card">
+      <p>指标卡片</p>
+    </div>
+    <img class="hero-render"
+         src="./assets/render.jpg"
+         data-id-object
+         data-id-frame-style="hero-image-frame"
+         alt="render">
+  </section>
+</body>
+</html>
