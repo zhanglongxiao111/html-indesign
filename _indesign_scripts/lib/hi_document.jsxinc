@@ -2,13 +2,68 @@ if (typeof HI === "undefined") { HI = {}; }
 
 HI.prepareDocument = function (appRef, instructions, report) {
     var doc = appRef.documents.length > 0 ? appRef.activeDocument : appRef.documents.add();
-    return { doc: doc, pages: [], layers: {} };
+    var oldH = doc.viewPreferences.horizontalMeasurementUnits;
+    var oldV = doc.viewPreferences.verticalMeasurementUnits;
+    var oldOrigin = doc.viewPreferences.rulerOrigin;
+
+    doc.viewPreferences.horizontalMeasurementUnits = MeasurementUnits.MILLIMETERS;
+    doc.viewPreferences.verticalMeasurementUnits = MeasurementUnits.MILLIMETERS;
+    doc.viewPreferences.rulerOrigin = RulerOrigin.PAGE_ORIGIN;
+
+    var firstPage = instructions.document && instructions.document.pages && instructions.document.pages[0];
+    if (firstPage) {
+        try {
+            doc.documentPreferences.pageWidth = String(firstPage.width) + "mm";
+            doc.documentPreferences.pageHeight = String(firstPage.height) + "mm";
+            doc.documentPreferences.facingPages = false;
+        } catch (error) {
+            HI.addMessage(report, "warning", "DOCUMENT_SIZE_SET_FAILED", String(error), {});
+        }
+    }
+
+    var layers = HI.ensureLayers(doc, instructions.layers || [], report);
+    return {
+        doc: doc,
+        layers: layers,
+        oldUnits: { h: oldH, v: oldV, origin: oldOrigin }
+    };
+};
+
+HI.restoreDocumentPreferences = function (doc, context) {
+    try {
+        doc.viewPreferences.horizontalMeasurementUnits = context.oldUnits.h;
+        doc.viewPreferences.verticalMeasurementUnits = context.oldUnits.v;
+        doc.viewPreferences.rulerOrigin = context.oldUnits.origin;
+    } catch (_) {}
 };
 
 HI.ensureLayers = function (doc, layers, report) {
-    return {};
+    var out = {};
+    var ordered = layers.slice(0).sort(function (a, b) {
+        return Number(a.order || 0) - Number(b.order || 0);
+    });
+    for (var i = 0; i < ordered.length; i++) {
+        var name = ordered[i].name || "content";
+        var layer = doc.layers.itemByName(name);
+        try {
+            layer.name;
+        } catch (_) {
+            layer = doc.layers.add({ name: name });
+            report.counts.layers += 1;
+        }
+        out[name] = layer;
+    }
+    return out;
 };
 
 HI.getPageForInstruction = function (doc, pageInstruction, index, report) {
-    return doc.pages[index] || doc.pages.add(LocationOptions.AT_END);
+    while (doc.pages.length <= index) {
+        doc.pages.add(LocationOptions.AT_END);
+    }
+    var page = doc.pages[index];
+    try {
+        page.name = String(index + 1);
+    } catch (_) {}
+    report.counts.pages = Math.max(report.counts.pages, index + 1);
+    return page;
 };

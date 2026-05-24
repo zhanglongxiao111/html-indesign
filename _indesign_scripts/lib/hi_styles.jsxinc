@@ -1,9 +1,156 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 HI.ensureStyles = function (doc, styles, report) {
-    return { swatches: {}, paragraphStyles: {}, characterStyles: {}, objectStyles: {} };
+    styles = styles || {};
+    return {
+        swatches: HI.ensureSwatches(doc, styles.swatches || {}, report),
+        paragraphStyles: HI.ensureParagraphStyles(doc, styles.paragraphStyles || {}, report),
+        characterStyles: HI.ensureCharacterStyles(doc, styles.characterStyles || {}, report),
+        objectStyles: HI.ensureObjectStyles(doc, styles.objectStyles || {}, report)
+    };
 };
 
-HI.applyParagraphStyle = function (doc, textFrame, styleName, report) {};
+HI.ensureSwatches = function (doc, swatches, report) {
+    var out = {};
+    for (var name in swatches) {
+        if (!swatches.hasOwnProperty(name)) continue;
+        var def = swatches[name];
+        var color = doc.colors.itemByName(def.name || name);
+        try {
+            color.name;
+        } catch (_) {
+            color = doc.colors.add({ name: def.name || name });
+            report.counts.swatches += 1;
+        }
+        var rgb = HI.hexToRgb(def.value);
+        if (rgb) {
+            try {
+                color.model = ColorModel.PROCESS;
+                color.space = ColorSpace.RGB;
+                color.colorValue = rgb;
+            } catch (error) {
+                HI.addMessage(report, "warning", "SWATCH_SET_FAILED", String(error), { name: name });
+            }
+        }
+        out[name] = color;
+    }
+    return out;
+};
 
-HI.applyObjectStyle = function (doc, pageItem, styleName, report) {};
+HI.hexToRgb = function (value) {
+    var match = String(value || "").match(/^#?([0-9a-fA-F]{6})$/);
+    if (!match) return null;
+    var hex = match[1];
+    return [
+        parseInt(hex.substr(0, 2), 16),
+        parseInt(hex.substr(2, 2), 16),
+        parseInt(hex.substr(4, 2), 16)
+    ];
+};
+
+HI.ensureParagraphStyles = function (doc, paragraphStyles, report) {
+    var out = {};
+    for (var name in paragraphStyles) {
+        if (!paragraphStyles.hasOwnProperty(name)) continue;
+        var def = paragraphStyles[name];
+        var style = doc.paragraphStyles.itemByName(def.name || name);
+        try {
+            style.name;
+        } catch (_) {
+            style = doc.paragraphStyles.add({ name: def.name || name });
+            report.counts.paragraphStyles += 1;
+        }
+        HI.assignTextStyleProperties(doc, style, def, report);
+        out[name] = style;
+    }
+    return out;
+};
+
+HI.ensureCharacterStyles = function (doc, characterStyles, report) {
+    var out = {};
+    for (var name in characterStyles) {
+        if (!characterStyles.hasOwnProperty(name)) continue;
+        var def = characterStyles[name];
+        var style = doc.characterStyles.itemByName(def.name || name);
+        try {
+            style.name;
+        } catch (_) {
+            style = doc.characterStyles.add({ name: def.name || name });
+            report.counts.characterStyles += 1;
+        }
+        HI.assignTextStyleProperties(doc, style, def, report);
+        out[name] = style;
+    }
+    return out;
+};
+
+HI.assignTextStyleProperties = function (doc, style, def, report) {
+    try { if (def.pointSize !== null && typeof def.pointSize !== "undefined") style.pointSize = Number(def.pointSize); } catch (_) {}
+    try { if (def.leading !== null && typeof def.leading !== "undefined") style.leading = Number(def.leading); } catch (_) {}
+    try { if (def.tracking !== null && typeof def.tracking !== "undefined") style.tracking = Number(def.tracking); } catch (_) {}
+    try { if (def.fillColor) style.fillColor = doc.swatches.itemByName(def.fillColor); } catch (_) {}
+    try { if (def.justification) style.justification = HI.justificationFor(def.justification); } catch (_) {}
+    try {
+        if (def.appliedFont) {
+            style.appliedFont = app.fonts.itemByName(def.appliedFont);
+        }
+    } catch (error) {
+        HI.addMessage(report, "warning", "FONT_APPLY_FAILED", String(error), { font: def.appliedFont });
+    }
+};
+
+HI.justificationFor = function (value) {
+    var key = String(value || "").toLowerCase();
+    if (key === "center") return Justification.CENTER_ALIGN;
+    if (key === "right" || key === "end") return Justification.RIGHT_ALIGN;
+    if (key === "justify") return Justification.FULLY_JUSTIFIED;
+    return Justification.LEFT_ALIGN;
+};
+
+HI.ensureObjectStyles = function (doc, objectStyles, report) {
+    var out = {};
+    for (var name in objectStyles) {
+        if (!objectStyles.hasOwnProperty(name)) continue;
+        var def = objectStyles[name];
+        var style = doc.objectStyles.itemByName(def.name || name);
+        try {
+            style.name;
+        } catch (_) {
+            style = doc.objectStyles.add({ name: def.name || name });
+            report.counts.objectStyles += 1;
+        }
+        try { if (def.fillColor) style.fillColor = doc.swatches.itemByName(def.fillColor); } catch (_) {}
+        try { if (def.strokeColor) style.strokeColor = doc.swatches.itemByName(def.strokeColor); } catch (_) {}
+        try { if (def.strokeWeight !== null && typeof def.strokeWeight !== "undefined") style.strokeWeight = Number(def.strokeWeight); } catch (_) {}
+        out[name] = style;
+    }
+    return out;
+};
+
+HI.applyParagraphStyle = function (doc, textFrame, styleName, report) {
+    if (!styleName) return;
+    try {
+        textFrame.parentStory.paragraphs.everyItem().appliedParagraphStyle = doc.paragraphStyles.itemByName(styleName);
+    } catch (error) {
+        HI.addMessage(report, "warning", "PARAGRAPH_STYLE_APPLY_FAILED", String(error), { styleName: styleName });
+    }
+};
+
+HI.applyCharacterStyleToRange = function (doc, textFrame, startIndex, length, styleName, report) {
+    if (!styleName || length <= 0) return;
+    try {
+        var range = textFrame.parentStory.characters.itemByRange(startIndex, startIndex + length - 1);
+        range.appliedCharacterStyle = doc.characterStyles.itemByName(styleName);
+    } catch (error) {
+        HI.addMessage(report, "warning", "CHARACTER_STYLE_APPLY_FAILED", String(error), { styleName: styleName });
+    }
+};
+
+HI.applyObjectStyle = function (doc, pageItem, styleName, report) {
+    if (!styleName) return;
+    try {
+        pageItem.appliedObjectStyle = doc.objectStyles.itemByName(styleName);
+    } catch (error) {
+        HI.addMessage(report, "warning", "OBJECT_STYLE_APPLY_FAILED", String(error), { styleName: styleName });
+    }
+};

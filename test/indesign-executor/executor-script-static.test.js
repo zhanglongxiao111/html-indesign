@@ -43,3 +43,36 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     assert.ok(source.split(/\r?\n/).length <= 260, `${fileName} should stay small`);
   }
 });
+
+test('document helper configures page geometry layers and unit restoration', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_document.jsxinc'), 'utf8');
+  for (const token of [
+    'HI.restoreDocumentPreferences',
+    'MeasurementUnits.MILLIMETERS',
+    'RulerOrigin.PAGE_ORIGIN',
+    'documentPreferences.pageWidth',
+    'documentPreferences.pageHeight',
+    'documentPreferences.facingPages = false',
+    'report.counts.layers',
+  ]) {
+    assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('styles helper creates swatches and InDesign text/object style resources', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  for (const token of [
+    'HI.ensureSwatches',
+    'doc.colors.add',
+    'ColorSpace.RGB',
+    'HI.ensureParagraphStyles',
+    'doc.paragraphStyles.add',
+    'HI.ensureCharacterStyles',
+    'doc.characterStyles.add',
+    'HI.ensureObjectStyles',
+    'doc.objectStyles.add',
+    'HI.applyCharacterStyleToRange',
+  ]) {
+    assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
