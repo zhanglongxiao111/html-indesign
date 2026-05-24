@@ -1,0 +1,36 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.resolveFont = function (def, report) {
+    var family = String(def.appliedFont || "");
+    if (!family) return null;
+    var styleName = def.fontStyleName || HI.fontStyleNameFor(def);
+    var font = null;
+    if (styleName) font = HI.fontByName(family + "\t" + styleName);
+    if (!font && styleName !== "Regular") font = HI.fontByName(family + "\tRegular");
+    if (!font) font = HI.fontByName(family);
+    if (!font && report) {
+        HI.addMessage(report, "warning", "FONT_APPLY_FAILED", "Font was not found", { font: family, fontStyleName: styleName });
+    }
+    return font;
+};
+
+HI.fontByName = function (name) {
+    try {
+        var font = app.fonts.itemByName(name);
+        font.name;
+        return font;
+    } catch (_) {}
+    return null;
+};
+
+HI.fontStyleNameFor = function (def) {
+    var explicit = String(def.fontStyleName || "");
+    if (explicit) return explicit;
+    var weight = Number(def.fontWeight || 400);
+    var italic = /italic|oblique/i.test(String(def.fontStyle || ""));
+    var bold = isFinite(weight) ? weight >= 600 : /bold/i.test(String(def.fontWeight || ""));
+    if (bold && italic) return "Bold Italic";
+    if (bold) return "Bold";
+    if (italic) return "Italic";
+    return "Regular";
+};

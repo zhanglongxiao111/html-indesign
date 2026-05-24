@@ -11,6 +11,8 @@ HI.buildInstructionItems = function (doc, page, pageInstruction, context, report
         if (item.type === "TEXT") pageItem = HI.createTextFrame(doc, page, item, context, report);
         else if (item.type === "GRAPHIC") pageItem = HI.createGraphicFrame(doc, page, item, context, report);
         else if (item.type === "SHAPE") pageItem = HI.createShapeFrame(doc, page, item, context, report);
+        else if (item.type === "LINE") pageItem = HI.createLineFrame(doc, page, item, context, report);
+        else if (item.type === "TABLE") pageItem = HI.createTableFrame(doc, page, item, context, report);
         if (pageItem) {
             created.push({ item: pageItem, zIndex: Number(item.zIndex || 0) });
         }
@@ -58,6 +60,9 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
     rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
     HI.assignLayer(rect, context, item.layer);
     HI.applyObjectStyle(doc, rect, item.objectStyle, report);
+    HI.applyFrameStyle(doc, rect, item.frameStyle, report);
+    HI.applyStyleOverride(doc, rect, item.styleOverride, report);
+    HI.applyItemEffects(rect, item.effects, item.bounds, report);
     try { rect.label = HI.itemLabel(item); } catch (_) {}
 
     var placed = item.placed || {};
@@ -72,13 +77,194 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
 };
 
 HI.createShapeFrame = function (doc, page, item, context, report) {
-    var rect = page.rectangles.add();
+    var rect = String(item.shapeKind || "").toLowerCase() === "oval" ? page.ovals.add() : page.rectangles.add();
     rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
     HI.assignLayer(rect, context, item.layer);
     HI.applyObjectStyle(doc, rect, item.objectStyle, report);
+    HI.applyFrameStyle(doc, rect, item.frameStyle, report);
+    HI.applyStyleOverride(doc, rect, item.styleOverride, report);
+    HI.applyItemEffects(rect, item.effects, item.bounds, report);
     try { rect.label = HI.itemLabel(item); } catch (_) {}
     report.counts.shapes += 1;
     return rect;
+};
+
+HI.createLineFrame = function (doc, page, item, context, report) {
+    var line = page.graphicLines.add();
+    var points = HI.lineEndPoints(item);
+    try {
+        line.paths[0].entirePath = [[points.x1, points.y1], [points.x2, points.y2]];
+    } catch (_) {
+        line.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+        try { line.rotationAngle = Number(item.rotationAngle || 0); } catch (_) {}
+    }
+    HI.assignLayer(line, context, item.layer);
+    HI.applyObjectStyle(doc, line, item.objectStyle, report);
+    try { if (item.strokeColor) line.strokeColor = doc.swatches.itemByName(item.strokeColor); } catch (_) {}
+    try { if (item.strokeWeight !== null && typeof item.strokeWeight !== "undefined") line.strokeWeight = Number(item.strokeWeight); } catch (_) {}
+    try { line.label = HI.itemLabel(item); } catch (_) {}
+    report.counts.shapes += 1;
+    return line;
+};
+
+HI.lineEndPoints = function (item) {
+    var b = item.bounds || {};
+    var angle = Number(item.rotationAngle || 0) * Math.PI / 180;
+    var width = Number(b.width || 0);
+    var x = Number(b.x || 0);
+    var y = Number(b.y || 0);
+    return { x1: x, y1: y, x2: x + Math.cos(angle) * width, y2: y + Math.sin(angle) * width };
+};
+
+HI.createTableFrame = function (doc, page, item, context, report) {
+    var frame = page.textFrames.add();
+    frame.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+    HI.assignLayer(frame, context, item.layer);
+    frame.contents = HI.tableTextFromRows(item.rows || [], item.text || "");
+    try { frame.label = HI.itemLabel(item); } catch (_) {}
+
+    var table = null;
+    try {
+        table = frame.parentStory.texts[0].convertToTable("\t", "\r");
+    } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_CONVERT_FAILED", String(error), { itemId: item.id });
+    }
+
+    if (table) {
+        HI.applyTableStyle(doc, table, item.tableStyle, report);
+        HI.fitTableToFrame(table, item, report);
+        HI.applyTableSpans(table, item.rows || [], report);
+        HI.applyTableCells(doc, table, item.rows || [], report);
+        report.counts.tables += 1;
+    } else {
+        report.counts.textFrames += 1;
+    }
+
+    if (frame.overflows) {
+        report.counts.oversetTextFrames += 1;
+        HI.addMessage(report, "warning", "TABLE_FRAME_OVERSET", "Table frame is overset", { itemId: item.id });
+    }
+    return frame;
+};
+
+HI.tableTextFromRows = function (rows, fallbackText) {
+    if (!rows || !rows.length) return fallbackText || "";
+    var lines = [];
+    for (var r = 0; r < rows.length; r++) {
+        var cells = rows[r].cells || [];
+        var parts = [];
+        for (var c = 0; c < cells.length; c++) {
+            parts.push(HI.cleanTableCellText(cells[c].text || ""));
+        }
+        lines.push(parts.join("\t"));
+    }
+    return lines.join("\r");
+};
+
+HI.cleanTableCellText = function (value) {
+    return String(value || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ");
+};
+
+HI.applyTableStyle = function (doc, table, styleName, report) {
+    if (!styleName) return;
+    try {
+        table.appliedTableStyle = doc.tableStyles.itemByName(styleName);
+    } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_STYLE_APPLY_FAILED", String(error), { styleName: styleName });
+    }
+};
+
+HI.fitTableToFrame = function (table, item, report) {
+    var columnCount = Number(item.columnCount || 0);
+    if (!columnCount && table.columns) {
+        try { columnCount = table.columns.length; } catch (_) {}
+    }
+    if (!columnCount) return;
+    try {
+        if (item.columnWidths && item.columnWidths.length) {
+            for (var c = 0; c < item.columnWidths.length; c++) table.columns[c].width = String(Number(item.columnWidths[c])) + "mm";
+        } else {
+            table.columns.everyItem().width = String(Number(item.bounds.width) / columnCount) + "mm";
+        }
+        if (item.rowHeights && item.rowHeights.length) {
+            for (var r = 0; r < item.rowHeights.length; r++) table.rows[r].height = String(Number(item.rowHeights[r])) + "mm";
+        }
+    } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_WIDTH_APPLY_FAILED", String(error), { itemId: item.id });
+    }
+};
+
+HI.applyTableSpans = function (table, rows, report) {
+    for (var r = 0; r < rows.length; r++) {
+        var column = 0;
+        var cells = rows[r].cells || [];
+        for (var c = 0; c < cells.length; c++) {
+            var def = cells[c];
+            var rowSpan = Math.max(1, Number(def.rowSpan || 1));
+            var colSpan = Math.max(1, Number(def.colSpan || 1));
+            if (rowSpan > 1 || colSpan > 1) {
+                try { table.rows[r].cells[column].merge(table.rows[r + rowSpan - 1].cells[column + colSpan - 1]); } catch (error) {
+                    HI.addMessage(report, "warning", "TABLE_CELL_MERGE_FAILED", String(error), { row: r, column: column });
+                }
+            }
+            column += colSpan;
+        }
+    }
+};
+
+HI.applyTableCells = function (doc, table, rows, report) {
+    for (var r = 0; r < rows.length; r++) {
+        var rowDef = rows[r];
+        for (var c = 0; c < (rowDef.cells || []).length; c++) {
+            try {
+                var cell = table.rows[r].cells[c];
+                HI.applyTableCell(doc, cell, rowDef.cells[c], report);
+            } catch (error) {
+                HI.addMessage(report, "warning", "TABLE_CELL_APPLY_FAILED", String(error), { row: r, column: c });
+            }
+        }
+    }
+};
+
+HI.applyTableCell = function (doc, cell, cellDef, report) {
+    if (!cell || !cellDef) return;
+    try { if (cellDef.fillColor) cell.fillColor = doc.swatches.itemByName(cellDef.fillColor); } catch (_) {}
+    try { if (cellDef.textColor) cell.texts[0].fillColor = doc.swatches.itemByName(cellDef.textColor); } catch (_) {}
+    try { if (cellDef.pointSize !== null && typeof cellDef.pointSize !== "undefined") cell.texts[0].pointSize = HI.ptValue(cellDef.pointSize); } catch (_) {}
+    try { if (cellDef.leading !== null && typeof cellDef.leading !== "undefined") cell.texts[0].leading = HI.ptValue(cellDef.leading); } catch (_) {}
+    try { if (cellDef.textAlign) cell.texts[0].justification = HI.justificationFor(cellDef.textAlign); } catch (_) {}
+    try {
+        if (cellDef.paragraphStyle) {
+            cell.texts[0].appliedParagraphStyle = doc.paragraphStyles.itemByName(cellDef.paragraphStyle);
+        }
+    } catch (_) {}
+    HI.applyCellStroke(doc, cell, cellDef.borderColor, cellDef.borderWeight);
+    HI.applyCellPadding(cell, cellDef.padding || {});
+};
+
+HI.applyCellStroke = function (doc, cell, colorName, weight) {
+    if (!colorName && (weight === null || typeof weight === "undefined")) return;
+    var swatch = null;
+    try { if (colorName) swatch = doc.swatches.itemByName(colorName); } catch (_) {}
+    try { if (swatch) cell.topEdgeStrokeColor = swatch; } catch (_) {}
+    try { if (swatch) cell.rightEdgeStrokeColor = swatch; } catch (_) {}
+    try { if (swatch) cell.bottomEdgeStrokeColor = swatch; } catch (_) {}
+    try { if (swatch) cell.leftEdgeStrokeColor = swatch; } catch (_) {}
+    try {
+        if (weight !== null && typeof weight !== "undefined") {
+            cell.topEdgeStrokeWeight = Number(weight);
+            cell.rightEdgeStrokeWeight = Number(weight);
+            cell.bottomEdgeStrokeWeight = Number(weight);
+            cell.leftEdgeStrokeWeight = Number(weight);
+        }
+    } catch (_) {}
+};
+
+HI.applyCellPadding = function (cell, padding) {
+    try { if (padding.top !== null && typeof padding.top !== "undefined") cell.topInset = String(Number(padding.top)) + "mm"; } catch (_) {}
+    try { if (padding.right !== null && typeof padding.right !== "undefined") cell.rightInset = String(Number(padding.right)) + "mm"; } catch (_) {}
+    try { if (padding.bottom !== null && typeof padding.bottom !== "undefined") cell.bottomInset = String(Number(padding.bottom)) + "mm"; } catch (_) {}
+    try { if (padding.left !== null && typeof padding.left !== "undefined") cell.leftInset = String(Number(padding.left)) + "mm"; } catch (_) {}
 };
 
 HI.assignLayer = function (pageItem, context, layerName) {

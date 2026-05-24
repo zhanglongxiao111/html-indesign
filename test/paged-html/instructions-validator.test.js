@@ -47,3 +47,34 @@ test('validateInstructions rejects missing page and style references', () => {
   assert.equal(result.errors.some((error) => error.code === 'DOCUMENT_PAGE_MISSING'), true);
   assert.equal(result.errors.some((error) => error.code === 'PARAGRAPH_STYLE_NOT_FOUND'), true);
 });
+
+test('validateInstructions rejects missing table cell paragraph styles', () => {
+  const result = validateInstructions({
+    metadata: {},
+    document: { pages: [{ id: 'page-1', width: 100, height: 100 }] },
+    styles: {
+      paragraphStyles: {},
+      characterStyles: {},
+      objectStyles: {},
+      frameStyles: {},
+      tableStyles: { area: { name: 'area' } },
+    },
+    assets: [],
+    layers: [],
+    pages: [{
+      id: 'page-1',
+      items: [{
+        id: 'area-table',
+        type: 'TABLE',
+        bounds: { x: 0, y: 0, width: 80, height: 40 },
+        tableStyle: 'area',
+        rows: [{
+          cells: [{ text: 'Space', paragraphStyle: 'missing-table-heading' }],
+        }],
+      }],
+    }],
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((error) => error.code === 'TABLE_CELL_PARAGRAPH_STYLE_NOT_FOUND'), true);
+});

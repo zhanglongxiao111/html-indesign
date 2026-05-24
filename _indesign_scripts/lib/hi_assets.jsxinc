@@ -75,4 +75,33 @@ HI.applyFitting = function (frame, fit, position) {
             frame.fit(FitOptions.CENTER_CONTENT);
         }
     } catch (_) {}
+    HI.alignPlacedContent(frame, position);
+};
+
+HI.alignPlacedContent = function (frame, position) {
+    var pos = HI.parseObjectPosition(position);
+    if (!pos) return;
+    try {
+        var graphic = frame.allGraphics && frame.allGraphics.length ? frame.allGraphics[0] : null;
+        if (!graphic) return;
+        var fb = frame.geometricBounds;
+        var gb = graphic.geometricBounds;
+        var fw = Number(fb[3]) - Number(fb[1]);
+        var fh = Number(fb[2]) - Number(fb[0]);
+        var gw = Number(gb[3]) - Number(gb[1]);
+        var gh = Number(gb[2]) - Number(gb[0]);
+        var left = Number(fb[1]) - Math.max(0, gw - fw) * pos.x / 100;
+        var top = Number(fb[0]) - Math.max(0, gh - fh) * pos.y / 100;
+        graphic.geometricBounds = [top, left, top + gh, left + gw];
+    } catch (_) {}
+};
+
+HI.parseObjectPosition = function (position) {
+    var text = String(position || "50% 50%").toLowerCase().replace(/left/g, "0%").replace(/top/g, "0%").replace(/center/g, "50%").replace(/right/g, "100%").replace(/bottom/g, "100%");
+    var parts = text.split(/\s+/);
+    if (parts.length < 2) parts = [parts[0], "50%"];
+    var x = parseFloat(parts[0]);
+    var y = parseFloat(parts[1]);
+    if (!isFinite(x) || !isFinite(y)) return null;
+    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
 };

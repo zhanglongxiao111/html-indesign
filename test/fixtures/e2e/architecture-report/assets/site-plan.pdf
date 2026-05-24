@@ -1,0 +1,41 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 640 420] /TrimBox [0 0 640 420] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 363 >>
+stream
+0.94 0.94 0.90 rg 0 0 640 420 re f
+0.08 0.20 0.32 RG 2 w
+80 80 220 0 0 145 80 80 re S
+340 70 210 0 0 120 340 70 re S
+110 260 390 0 0 80 110 260 re S
+0.78 0.06 0.18 RG 4 w
+70 230 m 150 190 l 260 210 l 360 170 l 520 190 l S
+0.08 0.20 0.32 rg
+BT /F1 24 Tf 80 365 Td (PDF SITE PLAN - TRIM CROP) Tj ET
+BT /F1 14 Tf 85 55 Td (Linked PDF drawing placeholder) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000273 00000 n 
+0000000687 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+757
+%%EOF

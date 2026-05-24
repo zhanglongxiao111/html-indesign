@@ -12,7 +12,7 @@
 
 ## 范围确认
 
-本计划实现 `docs/HTML_INDESIGN_LIBRARY_SPEC.md` 中 HTML -> InDesign 第一阶段的第二个实施包：
+本计划实现 `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 中 HTML -> InDesign 第一阶段的第二个实施包：
 
 - 扩展 browser snapshot 的 computed style 与文本 run 捕获。
 - 编译 swatches、fonts、paragraph styles、character styles、object styles、frame styles。

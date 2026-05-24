@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   normalizeCssColor,
+  parseCssLinearGradient,
   cssLengthToPt,
   sanitizeStyleName,
   stableAutoName,
@@ -13,6 +14,15 @@ test('normalizeCssColor converts browser rgb colors to hex swatches', () => {
   assert.deepEqual(normalizeCssColor('rgba(200, 16, 46, 1)'), { hex: '#c8102e', name: 'color-c8102e' });
   assert.equal(normalizeCssColor('rgba(0, 0, 0, 0)'), null);
   assert.equal(normalizeCssColor('transparent'), null);
+});
+
+test('parseCssLinearGradient preserves color alpha stops', () => {
+  const gradient = parseCssLinearGradient('linear-gradient(90deg, rgba(251, 250, 247, 0.94), rgba(251, 250, 247, 0.55) 45%, rgba(251, 250, 247, 0.08))');
+
+  assert.equal(gradient.angle, 90);
+  assert.deepEqual(gradient.stops.map((stop) => stop.location), [0, 45, 100]);
+  assert.deepEqual(gradient.stops.map((stop) => stop.color.name), ['color-fbfaf7', 'color-fbfaf7', 'color-fbfaf7']);
+  assert.deepEqual(gradient.stops.map((stop) => stop.opacity), [94, 55, 8]);
 });
 
 test('cssLengthToPt converts px pt and mm to InDesign points', () => {

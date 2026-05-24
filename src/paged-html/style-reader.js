@@ -26,6 +26,7 @@ const SNAPSHOT_STYLE_PROPS = [
   'paddingBottom',
   'paddingLeft',
   'backgroundColor',
+  'backgroundImage',
   'borderTopColor',
   'borderTopWidth',
   'borderTopStyle',

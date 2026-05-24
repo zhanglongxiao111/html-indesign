@@ -21,6 +21,14 @@
       object-position: center center;
       z-index: 20;
     }
+    .ignored-preview {
+      position: absolute;
+      left: 250mm;
+      top: 20mm;
+      width: 250mm;
+      height: 180mm;
+      z-index: 20;
+    }
     .drawing {
       position: absolute;
       left: 250mm;
@@ -28,6 +36,7 @@
       width: 250mm;
       height: 180mm;
       z-index: 21;
+      opacity: 0;
     }
     .psd {
       position: absolute;
@@ -51,6 +60,7 @@
 <body>
   <section class="page" data-page id="asset-page">
     <img class="render" src="./assets/render.jpg" data-id-object alt="render">
+    <img class="ignored-preview" src="./assets/browser-preview.png" data-id-ignore alt="browser preview only">
     <object class="drawing"
             data="./assets/site-plan.pdf"
             type="application/pdf"

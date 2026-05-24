@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="840" viewBox="0 0 1200 840">
+  <rect width="1200" height="840" fill="#f4f1ea"/>
+  <g fill="none" stroke="#d2cec4" stroke-width="16">
+    <path d="M-40 660 C180 580 310 620 485 520 C675 412 852 460 1240 280"/>
+    <path d="M80 -30 C205 185 210 342 160 510 C130 612 132 710 210 875"/>
+    <path d="M-30 200 C150 250 310 210 470 250 C700 306 825 330 1230 285"/>
+    <path d="M620 -20 C575 210 610 365 720 480 C825 590 890 690 910 875"/>
+  </g>
+  <g fill="#d7dccf">
+    <rect x="92" y="92" width="250" height="145"/>
+    <rect x="388" y="82" width="168" height="155"/>
+    <rect x="765" y="76" width="245" height="170"/>
+    <rect x="840" y="520" width="210" height="142"/>
+    <rect x="118" y="548" width="260" height="170"/>
+  </g>
+  <g fill="#c2c9bd">
+    <rect x="620" y="120" width="86" height="232"/>
+    <rect x="470" y="585" width="185" height="92"/>
+    <rect x="688" y="620" width="102" height="92"/>
+  </g>
+  <path d="M480 330 L720 278 L845 430 L626 580 L424 512 Z" fill="#123456" opacity=".9"/>
+  <path d="M520 365 L700 330 L790 430 L624 535 L470 490 Z" fill="#f2f2f2"/>
+  <g stroke="#c8102e" stroke-width="5" fill="none">
+    <circle cx="620" cy="430" r="170"/>
+    <path d="M620 260 L620 600"/>
+    <path d="M450 430 L790 430"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="34" fill="#123456">
+    <text x="55" y="805">1:5000 Site Context / Transit + Water + Public Green</text>
+  </g>
+</svg>

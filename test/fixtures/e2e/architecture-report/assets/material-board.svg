@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620">
+  <rect width="1000" height="620" fill="#fbfaf7"/>
+  <g>
+    <rect x="80" y="95" width="230" height="180" fill="#d7d0c2"/>
+    <rect x="350" y="95" width="230" height="180" fill="#8fb0bd"/>
+    <rect x="620" y="95" width="230" height="180" fill="#aab4aa"/>
+    <rect x="80" y="330" width="230" height="180" fill="#123456"/>
+    <rect x="350" y="330" width="230" height="180" fill="#c8102e"/>
+    <rect x="620" y="330" width="230" height="180" fill="#f2f2f2" stroke="#c9c9c9" stroke-width="4"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="28" fill="#123456">
+    <text x="80" y="65">Material palette and environmental tone</text>
+    <text x="80" y="305">Warm concrete</text>
+    <text x="350" y="305">Low iron glass</text>
+    <text x="620" y="305">Planted roof</text>
+    <text x="80" y="540" fill="#ffffff">Deep metal</text>
+    <text x="350" y="540" fill="#ffffff">Wayfinding red</text>
+    <text x="620" y="540">Acoustic panel</text>
+  </g>
+</svg>

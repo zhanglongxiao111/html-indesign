@@ -102,7 +102,7 @@ function validateStyleRefs(item, styles, errors) {
       });
     }
   }
-  if ((item.type === 'GRAPHIC' || item.type === 'SHAPE') && item.objectStyle && !(styles.objectStyles || {})[item.objectStyle]) {
+  if ((item.type === 'GRAPHIC' || item.type === 'SHAPE' || item.type === 'LINE') && item.objectStyle && !(styles.objectStyles || {})[item.objectStyle]) {
     errors.push({
       code: 'OBJECT_STYLE_NOT_FOUND',
       message: `Object style '${item.objectStyle}' was not found.`,
@@ -117,6 +117,24 @@ function validateStyleRefs(item, styles, errors) {
       itemId: item.id,
       styleName: item.frameStyle,
     });
+  }
+  if (item.type === 'TABLE') {
+    validateTableCellStyleRefs(item, styles, errors);
+  }
+}
+
+function validateTableCellStyleRefs(item, styles, errors) {
+  for (const row of item.rows || []) {
+    for (const cell of row.cells || []) {
+      if (cell.paragraphStyle && !(styles.paragraphStyles || {})[cell.paragraphStyle]) {
+        errors.push({
+          code: 'TABLE_CELL_PARAGRAPH_STYLE_NOT_FOUND',
+          message: `Table cell paragraph style '${cell.paragraphStyle}' was not found.`,
+          itemId: item.id,
+          styleName: cell.paragraphStyle,
+        });
+      }
+    }
   }
 }
 

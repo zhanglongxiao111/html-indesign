@@ -12,7 +12,7 @@
 
 ## 范围确认
 
-本计划只实现 `docs/HTML_INDESIGN_LIBRARY_SPEC.md` 中的第一个子项目：
+本计划只实现 `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 中的第一个子项目：
 
 - 架构目录与模块边界。
 - 共享的 geometry、label、asset 和 report 工具。
@@ -1512,7 +1512,7 @@ git commit -m "feat: add structured report utilities"
 **文件：**
 - 新建：`D:\AI\html-indesign\index.js`
 - 修改：`D:\AI\html-indesign\package.json`
-- 修改：`D:\AI\html-indesign\docs\HTML_INDESIGN_LIBRARY_SPEC.md`
+- 修改：`D:\AI\html-indesign\docs\规范\HTML_INDESIGN_LIBRARY_SPEC.md`
 - 测试：`D:\AI\html-indesign\test\public-api.test.js`
 
 - [ ] **步骤 1：编写 public API 测试**
@@ -1565,7 +1565,7 @@ module.exports = {
 
 - [ ] **步骤 5：向 spec 增加架构进展说明**
 
-在 `docs/HTML_INDESIGN_LIBRARY_SPEC.md` 的 `## 14. 与现有代码的关系` 下，于当前迁移表之后加入这一段：
+在 `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 的 `## 14. 与现有代码的关系` 下，于当前迁移表之后加入这一段：
 
 ```md
 第一阶段实现保留现有 legacy template 文件的位置，并通过 `src/legacy-template/*` wrappers 对外暴露。新的浏览器驱动转换代码放在 `src/paged-html/*` 下，可复用工具放在 `src/shared/*` 下。这样既保留当前模板驱动工作流，又把 paged HTML 工作流作为独立路径引入。
@@ -1585,7 +1585,7 @@ npm test
 - [ ] **步骤 7：提交**
 
 ```bash
-git add index.js package.json docs/HTML_INDESIGN_LIBRARY_SPEC.md test/public-api.test.js
+git add index.js package.json docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md test/public-api.test.js
 git commit -m "feat: expose html-indesign public api"
 ```
 

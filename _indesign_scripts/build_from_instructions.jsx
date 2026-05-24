@@ -18,6 +18,7 @@
 
         includeLib("hi_core.jsxinc");
         includeLib("hi_document.jsxinc");
+        includeLib("hi_fonts.jsxinc");
         includeLib("hi_styles.jsxinc");
         includeLib("hi_assets.jsxinc");
         includeLib("hi_items.jsxinc");

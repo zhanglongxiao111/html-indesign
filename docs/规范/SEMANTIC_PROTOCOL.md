@@ -2,7 +2,7 @@
 
 本文档收敛旧 `openspec/` 中仍然有效的协议内容。当前代码仍是最终依据；本文只记录长期语义、数据结构和边界。
 
-库级目标、浏览器快照、样式映射和执行架构以 `docs/HTML_INDESIGN_LIBRARY_SPEC.md` 为准。
+库级目标、浏览器快照、样式映射和执行架构以 `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 为准。
 
 ## 1. 目标
 

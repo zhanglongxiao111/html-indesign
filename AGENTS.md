@@ -1,132 +1,136 @@
 # AGENTS 主入口
 
-## 0. 项目定位
+## 1. 项目定位
 
-- 本项目目标是实现 HTML 与 InDesign 的双向转换。
-- 第一阶段先实现 HTML 到 InDesign：定义可校验、可测试、可编译的固定语义 HTML，并编译为 InDesign 构建指令。
-- InDesign 到 HTML 是后续阶段能力，当前只保留 blueprint 提取和参考 HTML 生成作为语义来源，不扩展完整反向转换。
-- `D:\AI\mcp-indesign\indesign-mcp-server` 是 InDesign 执行后端和 CLI 来源。
-- `cli-anything-indesign` 是本项目调用真实 InDesign 的默认入口。
-- 不在本项目复制 COM、MCP server、JSX 传输层或 InDesign 工具目录。
+本项目是固定语义 HTML 到 InDesign 的翻译库。
 
-## 1. 真相顺序
+当前主线：
+
+- 让 Agent 写自然、可预览、可校验的 HTML。
+- 把 HTML 语义、样式和资源编译成 InDesign 构建指令。
+- 在 InDesign 端生成符合排版习惯的页面、样式、图框、表格和对象。
+- 真实 InDesign 执行复用外部 CLI，不在本项目重建 COM、MCP 或脚本传输层。
+
+当前不做：
+
+- 不支持任意网页完整还原。
+- 不把复杂 HTML 解析、语义推理塞进 ExtendScript。
+- 不为了方便转换，要求 Agent 写不自然的 HTML。
+- 不在 InDesign 里堆叠临时补丁来掩盖翻译层缺陷。
+
+## 2. 设计原则（硬规则）
+
+- **浏览器预览不能牺牲。** HTML 必须像正常网页一样自然、清楚、可维护；严禁为了方便 InDesign 转换，让 Agent 写反常结构或视觉补丁。
+- **InDesign 输出不能凑合。** InDesign 端必须生成符合 ID 习惯的原生对象；能用段落样式、字符样式、对象样式、表格、图框和置入资源解决的，严禁改用叠遮罩、白块、重复图片等补丁。
+- **翻译层必须承担复杂度。** CSS 与 InDesign 能力不一致时，只能在快照、编译、执行层解决；严禁把复杂度推给 HTML 作者、人类用户或后续手工修图。
+- **视觉偏差就是缺陷。** 浏览器 HTML 与 InDesign 输出不一致时，先定位丢失的语义、样式或执行能力；不得把“能跑通”当作完成。
+- **优先完整收口。** 如果根因在共享翻译链路，必须修链路；严禁在单个 fixture、单页模板或 JSX 末端堆局部补丁。
+- **兜底默认有害。** 兜底只能用于明确的兼容边界，必须可见、可测、可解释；严禁吞掉错误后输出看似成功的结果。
+- **样式映射必须原样负责。** `border` 应映射为描边，`background` 应映射为填充，`border-radius` 应映射为圆角，`table` 应映射为表格语义，PDF/图片外框必须保留为真实图框能力。
+- **失败要早于假成功。** 不支持的语义或样式应显式报错、警告或记录审核项；严禁静默丢弃。
+- **可验证才算完成。** 翻译规则必须能通过快照、构建指令、静态测试或真实 InDesign 输出验证。
+
+## 3. 真相顺序
 
 | 优先级 | 依据 | 用法 |
 | ------ | ---- | ---- |
 | 1 | 当前用户指令 | 本轮任务最高优先级 |
-| 2 | `AGENTS.md` | 项目级协作入口和边界 |
-| 3 | 当前代码 | 校正文档和行为判断的最终依据 |
-| 4 | `docs/HTML_INDESIGN_LIBRARY_SPEC.md` | html-indesign 库级目标、架构和转换规范 |
-| 5 | `docs/SEMANTIC_PROTOCOL.md` | 当前固定语义 HTML 协议说明 |
-| 6 | `test/reference/AGENT_SPEC.md` 与参考 HTML | 旧模板语义和槽位参考 |
-| 7 | Git 历史 | 需要恢复旧内容时才查看 |
+| 2 | 当前代码与测试结果 | 判断真实行为 |
+| 3 | 本文件 | 项目边界、硬规则、入口导航 |
+| 4 | `docs/README.md` 指向的当前文档 | 规范、协议、审核、计划 |
+| 5 | 历史资料和旧样例 | 只追溯，不直接当规范 |
 
 冲突处理：
 
 | 冲突类型 | 处理方式 |
 | -------- | -------- |
-| 文档与代码不一致 | 以代码为准，顺手修正文档 |
-| 旧流程资料与当前目标不一致 | 以当前目标为准 |
-| 语义协议与具体 InDesign 母版名冲突 | 优先稳定语义，通过映射层兼容母版和槽位 |
-| 编译逻辑与执行逻辑混在一起 | 把 HTML 解析、校验和语义推理留在宿主侧库，JSX 只执行已验证指令 |
+| 文档与代码不一致 | 以代码和可复现实测为准，顺手修正文档 |
+| 浏览器效果与 InDesign 输出不一致 | 视为翻译层问题，先定位丢失的语义或样式 |
+| HTML 为转换绕路、ID 输出靠补丁凑 | 回到翻译层收口，不接受绕路方案 |
+| 旧模板槽位与新语义冲突 | 优先稳定语义，通过映射层兼容槽位 |
+| 快速补丁与长期边界冲突 | 优先收口长期边界 |
 
-## 2. 强制规则
+## 4. 仓库地图
 
-### 2.1 沟通与文档
-
-- 与用户沟通使用中文，短句，直接说结论。
-- 文件名、命令、API 名保留原文，并用代码样式标出。
-- 新增长期文档前先判断是否真的需要；当前阶段优先保持代码和测试清晰。
-- 过程性、临时性材料不要堆到根目录。
-
-### 2.2 代码边界
-
-- `src/generator.js` 负责从 blueprint 生成参考 HTML。
-- `src/spec-generator.js` 负责生成 Agent 可读的写作规范。
-- `src/validator.js` 负责校验 HTML 是否符合 blueprint 或语义约束。
-- `src/builder.js` 负责把 HTML 转成 InDesign build instructions。
-- `src/types/` 放语义、blueprint、tag 等类型定义。
-- `_indesign_scripts/` 只放 InDesign 端执行脚本和必要调试脚本。
-- `test/reference/` 放参考 HTML 和旧模板语义样本。
-- `test/artifacts/` 放可追溯的样本 blueprint。
-- `test/workspace/` 放本地真实测试输出；该目录已进入 `.gitignore`。
-
-不要在根目录新增一次性脚本、备份文件或临时测试文件。
-
-### 2.3 固定语义 HTML
-
-第一版目标是确定建筑设计汇报可用的固定语义。
-
-设计原则：
-
-- HTML 是受约束的语义输入，不是任意网页源码。
-- 语义层应表达 `deck`、`section`、`page`、`title`、`body`、`image`、`caption`、`metric`、`table`、`case-study`、`image-grid` 等对象。
-- CSS 主要作为样式 token 和受限布局表达，最终映射到 InDesign 段落样式、字符样式、对象样式和页面对象属性。
-- 不支持完整浏览器 CSS；浏览器布局转换后续单独设计。
-- 旧 `data-master`、`data-slot`、`data-template` 可以作为兼容层，但不应成为新语义协议的唯一表达。
-
-推荐链路：
-
-```text
-固定语义 HTML
--> 语义校验
--> 样式和资源解析
--> InDesign 构建指令 JSON
--> cli-anything-indesign 执行 JSX
--> InDesign 内容页、样式和资源
-```
-
-### 2.4 InDesign CLI 使用
-
-本项目使用已安装的 `cli-anything-indesign` 连接真实 InDesign。
-
-常用命令：
-
-| 动作 | 命令 |
+| 路径 | 作用 |
 | ---- | ---- |
-| 健康检查 | `cli-anything-indesign server health` |
-| JSON 输出 | `cli-anything-indesign --json --pretty server health` |
-| 查看工具域 | `cli-anything-indesign tool domains` |
-| 查看工具列表 | `cli-anything-indesign tool list --domain <domain>` |
-| 查看工具 Schema | `cli-anything-indesign tool schema <tool_id>` |
-| 调用工具 | `cli-anything-indesign tool call <tool_id> --args test\workspace\args.json` |
-| 执行 JSX | `cli-anything-indesign script run <file.jsx>` |
-| 执行构建脚本 | `cli-anything-indesign script run _indesign_scripts\build_from_instructions.jsx` |
-| 验证导出产物 | `cli-anything-indesign export verify <path>` |
+| `src/paged-html/` | 浏览器快照、样式读取、语义到构建指令的编译层 |
+| `src/` 根层旧模块 | blueprint、规范生成、校验、早期 builder |
+| `_indesign_scripts/` | InDesign 端执行脚本和共享 JSX 库 |
+| `test/fixtures/` | HTML、资源和语义样例 |
+| `test/workspace/` | 本地真实测试输出，已忽略 |
+| `test/` | Node 测试和执行器静态检查 |
+| `docs/` | 当前规范、方案、审核和缺陷记录 |
 
-真实测试原则：
+新增文件应靠近对应职责，不在根目录堆临时脚本、备份文件或一次性测试产物。
 
-- 大型或多步实验放在 `test/workspace/<日期时间>/`。
-- 生成 `instructions.json` 时，默认放到 `test/workspace/instructions.json`，以兼容现有构建脚本。
-- 测试后清理临时 InDesign 文档、PDF、IDML 和中间资源。
-- 不记录客户文档内容、客户名称或私有资产完整路径。
+## 5. 文档入口
 
-## 3. 执行基线
+先看 `docs/README.md`。
+
+长期规则写入当前规范文档；过程材料进入对应子目录。`AGENTS.md` 只保留项目边界和硬规则，不重复工具手册、执行流程和长篇协议。
+
+## 6. 文档索引
+
+| 路径 | 层级 | 用途 |
+| ---- | ---- | ---- |
+| `docs/README.md` | 固定文档 | 文档目录总入口，解释 `docs/` 下各目录职责 |
+| `docs/规范/` | 固定目录 | 当前长期规范、协议和架构说明 |
+| `docs/规范/README.md` | 固定文档 | 规范目录入口 |
+| `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` | 固定文档 | 库级目标、架构边界、转换链路和执行器职责 |
+| `docs/规范/SEMANTIC_PROTOCOL.md` | 固定文档 | 固定语义 HTML 协议 |
+| `docs/规范/FONT_POLICY.md` | 固定文档 | 项目公共字体库、字体 token、字体映射和预检规范 |
+| `docs/AI协作/` | 固定目录 | 本地 Agent、外部咨询、用户反馈等协作过程材料 |
+| `docs/AI协作/README.md` | 固定文档 | AI 协作目录结构、分类和生命周期 |
+| `docs/AI协作/协作规范.md` | 固定文档 | 协作文档命名、流转和禁用事项 |
+| `docs/AI协作/本地Agent/` | 过程目录 | 本地 Agent 任务和报告，分 `进行中/` 与 `归档/` |
+| `docs/AI协作/外部咨询/` | 过程目录 | 外部 AI、专家或搜索工具的问答材料 |
+| `docs/AI协作/用户反馈/` | 过程目录 | 用户反馈，分 `缺陷/`、`改进/`、`计划/` |
+| `docs/review/` | 过程目录 | 审核、对照检查、翻译准确性评估；具体报告按日期和主题增长 |
+| `docs/bugfix/` | 过程目录 | 复杂缺陷根因、修复过程和回归记录 |
+| `docs/superpowers/specs/` | 过程目录 | 方案设计和边界分析，不自动等同长期规范 |
+| `docs/superpowers/plans/` | 过程目录 | 实施计划、阶段拆分和验证清单 |
+| `docs/legacy/` | 追溯目录 | 历史资料，只追溯，不作为当前规范 |
+
+规则：
+
+- 固定文档改名或移动后，必须同步更新本索引和 `docs/README.md`。
+- 过程目录新增报告时，不需要逐条写进 `AGENTS.md`；需要在对应目录入口保持命名规则清楚。
+- 过程材料形成长期规则后，必须沉淀到 `docs/规范/` 或本文件。
+
+## 7. Agent 协作
+
+默认不启用多 Agent。只有用户明确要求、任务可以独立并行、或需要二次审核时才启用。
+
+| 角色 | 模型 / 工具 | 用途 |
+| ---- | ---- | ---- |
+| 执行者 | `gpt-5.5` + `xhigh` | 实现、重构、复杂修复、批量验证 |
+| 审核者 | `gpt-5.4` + `xhigh` | 方案审核、代码审查、翻译准确性对照、覆盖性检查 |
+| 外审补充 | `OpenCode` | 长上下文复核、第三视角审查、主审之外的补充意见 |
+
+硬规则：
+
+- 执行者负责改代码或落地文档，必须写清文件范围、验证命令和不得回退他人改动。
+- 审核者优先输出结论、证据、风险和修复建议；除非明确要求，不直接改实现代码。
+- `OpenCode` 只作为外审补充，不替代本项目的主判断和可复现实测。
+- 本地 Agent 任务和报告放 `docs/AI协作/本地Agent/`。
+- `OpenCode` 外审材料优先放 `docs/AI协作/外部咨询/`。
+- 审核形成的当前有效结论放 `docs/review/`；长期规则再沉淀到 `docs/规范/` 或本文件。
+
+## 8. 执行基线
 
 | 动作 | 命令 |
 | ---- | ---- |
 | 安装依赖 | `npm install` |
-| 当前 npm 测试 | 暂无有效 `npm test` |
-| CLI 安装来源 | `python -m pip install -e D:\AI\mcp-indesign\indesign-mcp-server\agent-harness` |
-| CLI 健康检查 | `cli-anything-indesign server health` |
-| 执行真实 JSX | `cli-anything-indesign script run <file.jsx>` |
-| 验证导出文件 | `cli-anything-indesign export verify <path>` |
+| 单元测试 | `npm test` |
 
-环境要求：
+真实 InDesign 验证只在触及执行输出、样式映射、资源置入、导出或用户明确要求时运行。临时产物放 `test/workspace/`，不要记录客户文档内容、客户名称或私有资产完整路径。
 
-- Windows。
-- Node.js 18 及以上。
-- Python 3.10 及以上。
-- Adobe InDesign 已安装，并与 CLI 运行在同一用户会话。
-- `D:\AI\mcp-indesign\indesign-mcp-server\agent-harness` 已以 editable 方式安装。
+## 9. 当前关注点
 
-## 4. 当前注意事项
-
-| 事项 | 当前状态 | 处理原则 |
-| ---- | -------- | -------- |
-| 旧 blueprint / reference | 有价值，可作为语义种子 | 抽象成稳定语义，不原样绑定旧母版名 |
-| `_indesign_scripts/build_from_instructions.jsx` | 可执行现有 build instructions | 作为执行后端参考，复杂校验留在 JS/Node 侧 |
-| `docs/HTML_INDESIGN_LIBRARY_SPEC.md` | 当前库级设计规范 | 新功能和架构调整优先对齐该规范 |
-| `docs/SEMANTIC_PROTOCOL.md` | 已收敛旧 `openspec/` 中仍有效的协议内容 | 作为长期语义说明，行为仍以当前代码为准 |
-| `.gemini/settings.json` | 当前工作区已有未提交改动 | 不要回退或覆盖 |
-| `test/workspace/` | 本地测试目录，已忽略 | 放真实测试临时产物 |
+| 事项 | 处理原则 |
+| ---- | -------- |
+| 固定语义协议 | 以 `docs/规范/SEMANTIC_PROTOCOL.md` 为当前说明，行为仍以代码和测试为准 |
+| 库级架构 | 以 `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 为当前说明，触及时同步修正 |
+| HTML 与 InDesign 视觉差异 | 进入 `docs/review/` 或缺陷记录，按可验证问题修 |
+| 真实测试输出 | 统一放 `test/workspace/`，不进版本库 |

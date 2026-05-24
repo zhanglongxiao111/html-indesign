@@ -12,10 +12,122 @@ function normalizeCssColor(value) {
   const g = clampColor(Number(rgba[2]));
   const b = clampColor(Number(rgba[3]));
   const hex = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-  return {
+  const out = {
     hex,
     name: `color-${hex.slice(1)}`,
   };
+  if (alpha !== 1) out.alpha = alpha;
+  return out;
+}
+
+function normalizeCssColorFromBackgroundImage(value) {
+  const gradient = parseCssLinearGradient(value);
+  if (gradient && gradient.stops.length) return gradient.stops[0].color;
+  return null;
+}
+
+function parseCssLinearGradient(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^linear-gradient\((.*)\)$/i);
+  if (!match) return null;
+  const parts = splitCssArgs(match[1]);
+  if (parts.length < 2) return null;
+
+  let angle = 180;
+  let stopStart = 0;
+  const angleMatch = parts[0].match(/^([+-]?(?:\d+|\d*\.\d+))deg$/i);
+  if (angleMatch) {
+    angle = Number(angleMatch[1]);
+    stopStart = 1;
+  }
+
+  const stops = parts.slice(stopStart)
+    .map(parseGradientStop)
+    .filter(Boolean);
+  if (stops.length < 2) return null;
+  assignStopLocations(stops);
+  return {
+    type: 'linear',
+    angle,
+    stops,
+  };
+}
+
+function splitCssArgs(value) {
+  const out = [];
+  let current = '';
+  let depth = 0;
+  for (const char of String(value || '')) {
+    if (char === '(') depth += 1;
+    if (char === ')') depth -= 1;
+    if (char === ',' && depth === 0) {
+      out.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) out.push(current.trim());
+  return out;
+}
+
+function parseGradientStop(value) {
+  const colorMatch = String(value || '').trim().match(/^(rgba?\([^)]+\))(.*)$/i);
+  if (!colorMatch) return null;
+  const color = normalizeCssColorForGradientStop(colorMatch[1]);
+  if (!color) return null;
+  const alpha = color.alpha == null ? 1 : color.alpha;
+  const cleanColor = {
+    hex: color.hex,
+    name: color.name,
+  };
+  const locationMatch = colorMatch[2].match(/([+-]?(?:\d+|\d*\.\d+))%/);
+  return {
+    color: cleanColor,
+    opacity: Math.round(alpha * 10000) / 100,
+    location: locationMatch ? Number(locationMatch[1]) : null,
+  };
+}
+
+function normalizeCssColorForGradientStop(value) {
+  const text = String(value || '').trim().toLowerCase();
+  const rgba = text.match(/^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*(\d?(?:\.\d+)?|1(?:\.0+)?|0(?:\.0+)?))?\s*\)$/);
+  if (!rgba) return null;
+  const alpha = rgba[4] == null ? 1 : Number(rgba[4]);
+  const r = clampColor(Number(rgba[1]));
+  const g = clampColor(Number(rgba[2]));
+  const b = clampColor(Number(rgba[3]));
+  const hex = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  return {
+    hex,
+    name: `color-${hex.slice(1)}`,
+    alpha,
+  };
+}
+
+function assignStopLocations(stops) {
+  if (stops[0].location == null) stops[0].location = 0;
+  if (stops[stops.length - 1].location == null) stops[stops.length - 1].location = 100;
+
+  let previousKnown = 0;
+  for (let index = 1; index < stops.length; index += 1) {
+    if (stops[index].location == null) continue;
+    distributeMissingLocations(stops, previousKnown, index);
+    previousKnown = index;
+  }
+  distributeMissingLocations(stops, previousKnown, stops.length - 1);
+}
+
+function distributeMissingLocations(stops, startIndex, endIndex) {
+  const start = stops[startIndex].location;
+  const end = stops[endIndex].location;
+  const gap = endIndex - startIndex;
+  if (gap <= 1) return;
+  for (let index = startIndex + 1; index < endIndex; index += 1) {
+    if (stops[index].location != null) continue;
+    const ratio = (index - startIndex) / gap;
+    stops[index].location = Math.round((start + (end - start) * ratio) * 100) / 100;
+  }
 }
 
 function clampColor(value) {
@@ -78,6 +190,8 @@ function explicitName(attributes, names) {
 
 module.exports = {
   normalizeCssColor,
+  normalizeCssColorFromBackgroundImage,
+  parseCssLinearGradient,
   cssLengthToPt,
   sanitizeStyleName,
   stableAutoName,

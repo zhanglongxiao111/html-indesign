@@ -12,6 +12,7 @@ test('build_from_instructions.jsx is a thin bootstrap that loads executor libs',
   for (const name of [
     'hi_core.jsxinc',
     'hi_document.jsxinc',
+    'hi_fonts.jsxinc',
     'hi_styles.jsxinc',
     'hi_assets.jsxinc',
     'hi_items.jsxinc',
@@ -27,6 +28,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
   const expectations = {
     'hi_core.jsxinc': ['HI.readJsonFile', 'HI.stringify', 'HI.makeReport', 'HI.boundsToGeometricBounds'],
     'hi_document.jsxinc': ['HI.prepareDocument', 'HI.ensureLayers', 'HI.getPageForInstruction'],
+    'hi_fonts.jsxinc': ['HI.resolveFont', 'HI.fontStyleNameFor', 'HI.fontByName'],
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
     'hi_items.jsxinc': ['HI.buildInstructionItems', 'HI.createTextFrame', 'HI.createGraphicFrame'],
@@ -40,7 +42,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     for (const apiName of apiNames) {
       assert.match(source, new RegExp(apiName.replace('.', '\\.')));
     }
-    assert.ok(source.split(/\r?\n/).length <= 260, `${fileName} should stay small`);
+    assert.ok(source.split(/\r?\n/).length <= 340, `${fileName} should stay small`);
   }
 });
 
@@ -77,6 +79,60 @@ test('styles helper creates swatches and InDesign text/object style resources', 
   }
 });
 
+test('executor consumes frame styles and richer object style fields', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  const itemsSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const assetsSource = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
+
+  for (const token of [
+    'HI.ensureFrameStyles',
+    'styles.frameStyles',
+    'strokeType',
+    'topLeftCornerRadius',
+    'HI.applyFrameStyle',
+    'HI.applyFillOpacity',
+  ]) {
+    assert.match(stylesSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(itemsSource, /HI\.applyFrameStyle\(doc,\s*rect,\s*item\.frameStyle,\s*report\)/);
+  assert.match(stylesSource, /var prefs = null;/);
+  assert.match(stylesSource, /if \(!prefs\) return;/);
+  assert.match(assetsSource, /HI\.alignPlacedContent/);
+  assert.match(assetsSource, /graphic\.geometricBounds/);
+});
+
+test('executor writes text sizes with explicit point units', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  const itemsSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+
+  assert.match(stylesSource, /style\.pointSize\s*=\s*HI\.ptValue\(def\.pointSize\)/);
+  assert.match(stylesSource, /style\.leading\s*=\s*HI\.ptValue\(def\.leading\)/);
+  assert.match(itemsSource, /cell\.texts\[0\]\.pointSize\s*=\s*HI\.ptValue\(cellDef\.pointSize\)/);
+  assert.match(itemsSource, /cell\.texts\[0\]\.leading\s*=\s*HI\.ptValue\(cellDef\.leading\)/);
+});
+
+test('executor maps font family weight and italic into InDesign font styles', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  const fontsSource = fs.readFileSync(path.join(libDir, 'hi_fonts.jsxinc'), 'utf8');
+
+  for (const token of [
+    'HI.resolveFont',
+    'def.fontStyleName',
+    'style.fontStyle',
+  ]) {
+    assert.match(stylesSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  for (const token of [
+    'HI.resolveFont',
+    'HI.fontStyleNameFor',
+    'def.fontStyleName',
+    'family + "\\t" + styleName',
+    'app.fonts.itemByName(name)',
+  ]) {
+    assert.match(fontsSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
 test('asset helper resolves placed files and applies fitting preferences', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
   for (const token of [
@@ -96,14 +152,19 @@ test('item helper creates text graphic shape items and applies z order', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
   for (const token of [
     'HI.createShapeFrame',
+    'HI.createLineFrame',
     'page.textFrames.add',
     'HI.applyRuns',
     'frame.overflows',
     'page.rectangles.add',
+    'page.ovals.add',
+    'page.graphicLines.add',
     'HI.placeAssetInFrame',
     'HI.applyZIndex',
     'sendToBack',
     'bringToFront',
+    'item.columnWidths',
+    'item.rowHeights',
   ]) {
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }

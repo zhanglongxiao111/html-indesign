@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    .page {
+      position: relative;
+      width: 160mm;
+      height: 100mm;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .image-back {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 160mm;
+      height: 100mm;
+      background: #dddddd;
+      z-index: 5;
+    }
+    .wash {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 160mm;
+      height: 100mm;
+      background: linear-gradient(90deg, rgba(255, 255, 255, .90), rgba(255, 255, 255, .40) 50%, rgba(255, 255, 255, 0));
+      z-index: 6;
+    }
+    .card {
+      position: absolute;
+      left: 16mm;
+      top: 14mm;
+      width: 58mm;
+      height: 32mm;
+      padding: 5mm;
+      background: #ffffff;
+      border: 1pt solid #cccccc;
+      border-left: 3mm solid #c8102e;
+      z-index: 20;
+    }
+    .card-body {
+      margin: 0;
+      font-size: 10pt;
+      line-height: 13pt;
+      color: #123456;
+    }
+    .native-table {
+      position: absolute;
+      left: 86mm;
+      top: 14mm;
+      width: 58mm;
+      border-collapse: collapse;
+      background: #ffffff;
+      font-size: 8pt;
+      line-height: 11pt;
+      z-index: 15;
+    }
+    .native-table th,
+    .native-table td {
+      border: 1pt solid #cccccc;
+      padding: 2mm;
+      text-align: left;
+    }
+    .native-table th {
+      background: #123456;
+      color: #ffffff;
+    }
+    .title {
+      position: absolute;
+      left: 16mm;
+      top: 58mm;
+      width: 110mm;
+      margin: 0;
+      font-size: 14pt;
+      line-height: 18pt;
+      color: #123456;
+      z-index: 30;
+    }
+    .annotation {
+      position: absolute;
+      left: 86mm;
+      top: 58mm;
+      width: 36mm;
+      height: 10mm;
+      padding: 2mm 3mm;
+      border: 1pt solid #c8102e;
+      color: #c8102e;
+      font-size: 7pt;
+      line-height: 9pt;
+      z-index: 35;
+    }
+  </style>
+</head>
+<body>
+  <section class="page" data-page id="semantic-page">
+    <div class="image-back" data-id-object data-id-layer="image"></div>
+    <div class="wash" data-id-object data-id-layer="overlay"></div>
+    <div id="semantic-card" class="card" data-id-object data-id-object-style="semantic-card">
+      <p class="card-body" data-id-paragraph-style="card-body">Card body must stay above its parent background.</p>
+    </div>
+    <table id="semantic-table" class="native-table" data-id-table-style="native-table">
+      <thead>
+        <tr>
+          <th>Space</th>
+          <th>Area</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Ice rink</td>
+          <td>7600 sqm</td>
+        </tr>
+      </tbody>
+    </table>
+    <h1 class="title" data-id-paragraph-style="title">Semantic conversion layer</h1>
+    <div id="semantic-annotation" class="annotation" data-id-object data-id-role="annotation">Native label</div>
+  </section>
+</body>
+</html>

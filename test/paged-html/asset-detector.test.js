@@ -9,6 +9,8 @@ test('renderSnapshot detects raster pdf psd and ai placed assets', async () => {
   const kinds = snapshot.assets.map((asset) => asset.kind).sort();
 
   assert.deepEqual(kinds, ['ai', 'pdf', 'psd', 'raster']);
+  assert.equal(snapshot.assets.some((asset) => asset.src.includes('browser-preview')), false);
+  assert.equal(snapshot.pages[0].items.some((item) => item.sourceSelector === 'img.ignored-preview'), false);
 
   const pdf = snapshot.assets.find((asset) => asset.kind === 'pdf');
   assert.equal(pdf.id, 'asset-site-plan-pdf');

@@ -1580,7 +1580,7 @@ git commit -m "test: verify indesign executor smoke build"
 
 规格覆盖：
 
-- `docs/HTML_INDESIGN_LIBRARY_SPEC.md` 第 11 节执行器职责：本计划覆盖 document、page、layer、swatches、paragraph/character/object styles、text/graphic/shape、linked assets、overset report。
+- `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 第 11 节执行器职责：本计划覆盖 document、page、layer、swatches、paragraph/character/object styles、text/graphic/shape、linked assets、overset report。
 - 建筑汇报资产：本计划覆盖 PDF 和 SVG 的真实 smoke；PSD/AI 使用同一个 `placeAssetInFrame` 通道，字段保留 `artboard`、`layerComp`、`preserveVector`，真实专项样例单独加测试。
 - CLI：所有真实执行通过 `cli-anything-indesign`，不复制 COM/MCP/JSX transport。
 - 边界：HTML/CSS 解析仍在 Node/browser 侧，ExtendScript 只消费 JSON。

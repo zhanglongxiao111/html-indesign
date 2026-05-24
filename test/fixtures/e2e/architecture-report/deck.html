@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Ice Rink Layout E2E Fixture</title>
+  <style>
+    :root {
+      --ink: #123456;
+      --muted: #5e6b70;
+      --line: #cfd6d2;
+      --paper: #fbfaf7;
+      --panel: #f2f2f2;
+      --accent: #c8102e;
+      --green: #8da18f;
+      --blue: #8fb0bd;
+      --sand: #d7d0c2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 18mm 0;
+      background: #dfe3e1;
+      color: var(--ink);
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+    }
+
+    .deck {
+      display: grid;
+      gap: 18mm;
+      justify-items: center;
+    }
+
+    .page {
+      position: relative;
+      width: 420mm;
+      height: 236.25mm;
+      overflow: hidden;
+      background: var(--paper);
+      box-shadow: 0 10px 28px rgba(18, 52, 86, .18);
+    }
+
+    .page-number {
+      position: absolute;
+      right: 16mm;
+      bottom: 10mm;
+      font-size: 8pt;
+      color: #7c8588;
+      z-index: 90;
+    }
+
+    .eyebrow {
+      position: absolute;
+      left: 18mm;
+      top: 14mm;
+      width: 82mm;
+      height: 8mm;
+      margin: 0;
+      font-size: 8pt;
+      line-height: 11pt;
+      text-transform: uppercase;
+      color: var(--accent);
+      z-index: 40;
+    }
+
+    .page-title {
+      position: absolute;
+      left: 18mm;
+      top: 22mm;
+      width: 148mm;
+      margin: 0;
+      font-size: 22pt;
+      line-height: 26pt;
+      font-weight: 700;
+      color: var(--ink);
+      z-index: 40;
+    }
+
+    .body-copy {
+      position: absolute;
+      margin: 0;
+      font-size: 10pt;
+      line-height: 15pt;
+      color: #31454b;
+      z-index: 40;
+    }
+
+    .caption {
+      position: absolute;
+      margin: 0;
+      font-size: 7.5pt;
+      line-height: 10pt;
+      color: var(--muted);
+      z-index: 45;
+    }
+
+    .accent {
+      color: var(--accent);
+      font-style: italic;
+      font-weight: 700;
+    }
+
+    .hero-media,
+    .large-media,
+    .grid-media,
+    .diagram-media,
+    .material-media {
+      position: absolute;
+      object-fit: cover;
+      object-position: center center;
+      z-index: 10;
+    }
+
+    .cover .hero-media {
+      inset: 0;
+      width: 420mm;
+      height: 236.25mm;
+    }
+
+    .veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(251, 250, 247, .94), rgba(251, 250, 247, .55) 45%, rgba(251, 250, 247, .08));
+      z-index: 20;
+    }
+
+    .cover-title {
+      position: absolute;
+      left: 24mm;
+      top: 52mm;
+      width: 170mm;
+      margin: 0;
+      font-size: 34pt;
+      line-height: 39pt;
+      font-weight: 700;
+      color: var(--ink);
+      z-index: 30;
+    }
+
+    .cover-subtitle {
+      position: absolute;
+      left: 24mm;
+      top: 136mm;
+      width: 130mm;
+      margin: 0;
+      font-size: 11pt;
+      line-height: 16pt;
+      color: #263b42;
+      z-index: 30;
+    }
+
+    .metric-card {
+      position: absolute;
+      padding: 6mm;
+      background: rgba(251, 250, 247, .92);
+      border: 1pt solid var(--line);
+      border-radius: 4px;
+      z-index: 35;
+    }
+
+    .metric-value {
+      margin: 0;
+      font-size: 24pt;
+      line-height: 28pt;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .metric-label {
+      margin: 2mm 0 0;
+      font-size: 7.5pt;
+      line-height: 10pt;
+      color: var(--muted);
+    }
+
+    .panel {
+      position: absolute;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-radius: 6px;
+      z-index: 20;
+    }
+
+    .chapter {
+      position: absolute;
+      padding: 7mm;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-left: 3mm solid var(--accent);
+      border-radius: 4px;
+      z-index: 25;
+    }
+
+    .chapter h3,
+    .strategy-card h3 {
+      margin: 0;
+      font-size: 13pt;
+      line-height: 16pt;
+      color: var(--ink);
+    }
+
+    .chapter p,
+    .strategy-card p {
+      margin: 3mm 0 0;
+      font-size: 8.5pt;
+      line-height: 12pt;
+      color: var(--muted);
+    }
+
+    .map-frame {
+      position: absolute;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-radius: 5px;
+      overflow: hidden;
+      z-index: 12;
+    }
+
+    .annotation {
+      position: absolute;
+      padding: 2mm 3mm;
+      min-width: 34mm;
+      background: #ffffff;
+      border: 1pt solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent);
+      font-size: 7pt;
+      line-height: 9pt;
+      z-index: 55;
+    }
+
+    .dot {
+      position: absolute;
+      width: 5mm;
+      height: 5mm;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 1mm solid #ffffff;
+      z-index: 54;
+    }
+
+    .line {
+      position: absolute;
+      height: 0;
+      border-top: 1pt solid var(--accent);
+      transform-origin: left center;
+      z-index: 53;
+    }
+
+    .strategy-card {
+      position: absolute;
+      padding: 7mm;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-radius: 5px;
+      z-index: 25;
+    }
+
+    .drawing-frame {
+      position: absolute;
+      background: #ffffff;
+      border: 1pt solid #aeb8b8;
+      border-radius: 4px;
+      overflow: hidden;
+      z-index: 12;
+    }
+
+    .drawing-frame object {
+      width: 100%;
+      height: 100%;
+    }
+
+    .pdf-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      z-index: 1;
+    }
+
+    .pdf-source {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      z-index: 2;
+    }
+
+    .legend {
+      position: absolute;
+      display: grid;
+      gap: 3mm;
+      z-index: 40;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 6mm 1fr;
+      gap: 3mm;
+      align-items: center;
+      font-size: 8pt;
+      color: var(--muted);
+    }
+
+    .swatch {
+      width: 6mm;
+      height: 6mm;
+      border-radius: 2px;
+      border: 1pt solid rgba(0, 0, 0, .12);
+    }
+
+    .data-table {
+      position: absolute;
+      border-collapse: collapse;
+      background: #ffffff;
+      font-size: 8.5pt;
+      line-height: 12pt;
+      z-index: 22;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1pt solid var(--line);
+      padding: 4mm;
+      text-align: left;
+    }
+
+    .data-table th {
+      background: var(--ink);
+      color: #ffffff;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="page cover" data-page="cover" id="cover-page">
+      <img class="hero-media" src="../smoke-assets/photos/industrial-site.jpg" alt="ice rink renovation context" data-id-object data-id-layer="image" data-id-asset-kind="raster" data-id-object-style="hero-image" data-id-frame-style="hero-frame">
+      <div class="veil" data-id-object data-id-layer="overlay" data-id-object-style="cover-veil"></div>
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Sports Venue Layout / 2026</p>
+      <h1 class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报</span></h1>
+      <p class="cover-subtitle" data-id-paragraph-style="cover-subtitle">基于真实场馆平面 PDF 抽象的固定分页 HTML 样例，覆盖轴网、功能分区、图纸置入、标注、表格和真实资产路径。</p>
+      <div class="metric-card" style="left:24mm;top:176mm;width:48mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">243.75m</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">grid length</p>
+      </div>
+      <div class="metric-card" style="left:80mm;top:176mm;width:42mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">28</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">axis bays</p>
+      </div>
+      <div class="metric-card" style="left:130mm;top:176mm;width:42mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">1:150</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">plan scale</p>
+      </div>
+      <span class="page-number" data-id-paragraph-style="folio">00</span>
+    </section>
+
+    <section class="page" data-page="agenda" id="agenda-page">
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Contents</p>
+      <h2 class="page-title" data-id-paragraph-style="page-title">汇报结构</h2>
+      <p class="body-copy" style="left:18mm;top:58mm;width:118mm" data-id-paragraph-style="body-copy">本页把真实首层平面拆成 Agent 容易理解的汇报语义：轴网、核心冰场、服务配套、流线和 <span class="accent" data-id-character-style="term-accent">PDF 置入</span> 校核。</p>
+      <div class="chapter" style="left:165mm;top:35mm;width:95mm;height:48mm" data-id-object data-id-layer="content" data-id-object-style="chapter-card">
+        <h3 data-id-paragraph-style="chapter-title">01 轴网与场馆骨架</h3>
+        <p data-id-paragraph-style="chapter-body">Grid, long-span hall, existing structure.</p>
+      </div>
+      <div class="chapter" style="left:275mm;top:35mm;width:95mm;height:48mm" data-id-object data-id-layer="content" data-id-object-style="chapter-card">
+        <h3 data-id-paragraph-style="chapter-title">02 冰场核心与观众区</h3>
+        <p data-id-paragraph-style="chapter-body">Rink, stand edge, public circulation.</p>
+      </div>
+      <div class="chapter" style="left:165mm;top:98mm;width:95mm;height:48mm" data-id-object data-id-layer="content" data-id-object-style="chapter-card">
+        <h3 data-id-paragraph-style="chapter-title">03 租赁与运营配套</h3>
+        <p data-id-paragraph-style="chapter-body">Skate rental, service desk, BOH rooms.</p>
+      </div>
+      <div class="chapter" style="left:275mm;top:98mm;width:95mm;height:48mm" data-id-object data-id-layer="content" data-id-object-style="chapter-card">
+        <h3 data-id-paragraph-style="chapter-title">04 图纸置入与指标表</h3>
+        <p data-id-paragraph-style="chapter-body">Linked PDF, crop, page scale, area table.</p>
+      </div>
+      <div class="line" style="left:158mm;top:170mm;width:225mm;transform:rotate(0deg)" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="timeline-line"></div>
+      <span class="dot" style="left:165mm;top:167mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-dot"></span>
+      <span class="dot" style="left:235mm;top:167mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-dot"></span>
+      <span class="dot" style="left:305mm;top:167mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-dot"></span>
+      <p class="caption" style="left:165mm;top:181mm;width:210mm" data-id-paragraph-style="caption">Semantic sections / PDF reference / asset path stress test</p>
+      <span class="page-number" data-id-paragraph-style="folio">01</span>
+    </section>
+
+    <section class="page" data-page="site-analysis" id="site-analysis-page">
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Grid + Zoning</p>
+      <h2 class="page-title" data-id-paragraph-style="page-title">轴网与功能分区</h2>
+      <p class="body-copy" style="left:18mm;top:58mm;width:105mm" data-id-paragraph-style="body-copy">把首层平面的高密度 CAD 信息抽象为可读分区：使用空间、设备机房、水平交通和未利用区域。标注对象显式声明为 <span class="accent" data-id-character-style="layer-accent">annotation layer</span>。</p>
+      <img class="map-frame" style="left:145mm;top:22mm;width:238mm;height:158mm" src="../smoke-assets/svg/masterplan.svg" alt="rink zoning masterplan" data-id-object data-id-layer="drawing" data-id-asset-kind="svg" data-id-object-style="map-frame" data-id-frame-style="context-map-frame">
+      <span class="dot" style="left:266mm;top:100mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-dot"></span>
+      <div class="line" style="left:269mm;top:102mm;width:46mm;transform:rotate(-22deg)" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-line"></div>
+      <div class="annotation" style="left:315mm;top:78mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-label">Public entry band</div>
+      <span class="dot" style="left:220mm;top:128mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-dot"></span>
+      <div class="line" style="left:223mm;top:130mm;width:43mm;transform:rotate(28deg)" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-line"></div>
+      <div class="annotation" style="left:268mm;top:142mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-label">Rink core zone</div>
+      <div class="legend" style="left:18mm;top:132mm;width:110mm" data-id-object data-id-layer="text" data-id-object-style="legend-block">
+        <div class="legend-item"><span class="swatch" style="background:var(--accent)"></span><span data-id-paragraph-style="legend-label">Ice rink and spectator edge</span></div>
+        <div class="legend-item"><span class="swatch" style="background:var(--green)"></span><span data-id-paragraph-style="legend-label">Service and equipment rooms</span></div>
+        <div class="legend-item"><span class="swatch" style="background:var(--blue)"></span><span data-id-paragraph-style="legend-label">Horizontal circulation space</span></div>
+      </div>
+      <span class="page-number" data-id-paragraph-style="folio">02</span>
+    </section>
+
+    <section class="page" data-page="design-strategy" id="design-strategy-page">
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Flow Strategy</p>
+      <h2 class="page-title" data-id-paragraph-style="page-title">观众、运动员与运营流线</h2>
+      <img class="large-media" style="left:18mm;top:65mm;width:128mm;height:86mm" src="../smoke-assets/photos/architecture-facade.jpg" alt="venue public frontage" data-id-object data-id-layer="image" data-id-asset-kind="raster" data-id-object-style="image-frame" data-id-frame-style="render-frame-cover">
+      <img class="large-media" style="left:160mm;top:32mm;width:104mm;height:70mm" src="../smoke-assets/svg/section.svg" alt="section diagram" data-id-object data-id-layer="drawing" data-id-asset-kind="svg" data-id-object-style="diagram-frame-object" data-id-frame-style="section-frame">
+      <img class="large-media" style="left:276mm;top:32mm;width:104mm;height:70mm" src="../smoke-assets/svg/circulation.svg" alt="circulation" data-id-object data-id-layer="drawing" data-id-asset-kind="svg" data-id-object-style="diagram-frame-object" data-id-frame-style="diagram-frame">
+      <div class="strategy-card" style="left:160mm;top:118mm;width:68mm;height:50mm" data-id-object data-id-layer="content" data-id-object-style="strategy-card">
+        <h3 data-id-paragraph-style="strategy-title">Audience</h3>
+        <p data-id-paragraph-style="strategy-body">Public arrival and viewing edge stay clear of service traffic.</p>
+      </div>
+      <div class="strategy-card" style="left:236mm;top:118mm;width:68mm;height:50mm" data-id-object data-id-layer="content" data-id-object-style="strategy-card">
+        <h3 data-id-paragraph-style="strategy-title">Athlete</h3>
+        <p data-id-paragraph-style="strategy-body">Locker, ice entry and warm-up rooms form a short controlled loop.</p>
+      </div>
+      <div class="strategy-card" style="left:312mm;top:118mm;width:68mm;height:50mm" data-id-object data-id-layer="content" data-id-object-style="strategy-card">
+        <h3 data-id-paragraph-style="strategy-title">Operation</h3>
+        <p data-id-paragraph-style="strategy-body">Rental counter, storage and equipment rooms support peak turnover.</p>
+      </div>
+      <p class="caption" style="left:18mm;top:155mm;width:126mm" data-id-paragraph-style="caption">Image grid test: raster photo, section SVG, circulation SVG and repeated strategy cards.</p>
+      <span class="page-number" data-id-paragraph-style="folio">03</span>
+    </section>
+
+    <section class="page" data-page="drawing-sheet" id="drawing-sheet-page">
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Drawing Sheet</p>
+      <h2 class="page-title" data-id-paragraph-style="page-title">真实图纸 PDF 置入与裁切</h2>
+      <p class="body-copy" style="left:18mm;top:58mm;width:105mm" data-id-paragraph-style="body-copy">真实首层平面 PDF 作为 <span class="accent" data-id-character-style="asset-accent">linked placed asset</span>，PNG 只用于浏览器预览。这里显式测试 data-id-page、data-id-crop、data-id-fit 和 drawing layer。</p>
+      <div class="drawing-frame" style="left:145mm;top:22mm;width:238mm;height:168mm" data-id-ignore>
+        <img class="pdf-preview" src="../reference-pdfs/ice-rink-layout-reference-page1.png" alt="ice rink layout preview" data-id-ignore>
+        <object class="pdf-source" data="../reference-pdfs/ice-rink-layout-reference.pdf" type="application/pdf" data-id-object data-id-layer="drawing" data-id-asset-kind="pdf" data-id-page="1" data-id-crop="media" data-id-fit="contain" data-id-object-style="drawing-frame-object" data-id-frame-style="drawing-frame"></object>
+      </div>
+      <div class="annotation" style="left:156mm;top:36mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-label">Media crop</div>
+      <div class="annotation" style="left:300mm;top:174mm" data-id-object data-id-role="annotation" data-id-layer="annotation" data-id-object-style="annotation-label">Linked PDF</div>
+      <div class="metric-card" style="left:18mm;top:132mm;width:42mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">1:150</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">Plan scale</p>
+      </div>
+      <div class="metric-card" style="left:66mm;top:132mm;width:42mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">P1</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">PDF page</p>
+      </div>
+      <span class="page-number" data-id-paragraph-style="folio">04</span>
+    </section>
+
+    <section class="page" data-page="material-system" id="material-system-page">
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Support Program</p>
+      <h2 class="page-title" data-id-paragraph-style="page-title">配套空间与资产路径</h2>
+      <img class="material-media" style="left:18mm;top:62mm;width:116mm;height:78mm" src="../smoke-assets/svg/material-icons.svg" alt="support program icons" data-id-object data-id-layer="image" data-id-asset-kind="svg" data-id-object-style="material-frame-object" data-id-frame-style="material-frame">
+      <img class="material-media" style="left:150mm;top:30mm;width:108mm;height:70mm" src="../smoke-assets/svg/floor-01.svg" alt="floor zoning diagram" data-id-object data-id-layer="drawing" data-id-asset-kind="svg" data-id-object-style="facade-frame-object" data-id-frame-style="facade-frame">
+      <img class="material-media" style="left:272mm;top:30mm;width:108mm;height:70mm" src="../smoke-assets/路径 测试/滨水 图片.jpg" alt="unicode path photo" data-id-object data-id-layer="image" data-id-asset-kind="raster" data-id-object-style="image-frame" data-id-frame-style="grid-frame">
+      <div class="panel" style="left:150mm;top:118mm;width:230mm;height:55mm" data-id-object data-id-layer="content" data-id-object-style="material-note-panel"></div>
+      <p class="body-copy" style="left:160mm;top:130mm;width:200mm" data-id-paragraph-style="body-copy">这一页用于检查多图网格、对象样式复用，以及中文和空格路径资产。后续 PSD / AI 可替换这些测试资产，但 HTML 语义入口保持一致。</p>
+      <span class="page-number" data-id-paragraph-style="folio">05</span>
+    </section>
+
+    <section class="page" data-page="metrics-table" id="metrics-table-page">
+      <p class="eyebrow" data-id-paragraph-style="deck-eyebrow">Metrics</p>
+      <h2 class="page-title" data-id-paragraph-style="page-title">场馆功能指标与面积表</h2>
+      <p class="body-copy" style="left:18mm;top:58mm;width:105mm" data-id-paragraph-style="body-copy">表格页测试 table / cell style 语义、行列边框、指标数字、图例和正文混排，并覆盖 CSV/XML 数据资产存在性。</p>
+      <table class="data-table" style="left:145mm;top:34mm;width:238mm" data-id-table-style="area-table" data-id-object-style="table-frame" data-id-source-csv="../smoke-assets/data/metrics.csv" data-id-source-xml="../smoke-assets/路径 测试/site data 中文.xml">
+        <thead>
+          <tr>
+            <th data-id-paragraph-style="table-heading">Space</th>
+            <th data-id-paragraph-style="table-heading">Area</th>
+            <th data-id-paragraph-style="table-heading">Ratio</th>
+            <th data-id-paragraph-style="table-heading">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-id-paragraph-style="table-body">Ice rink + spectator edge</td>
+            <td data-id-paragraph-style="table-body">7,600 sqm</td>
+            <td data-id-paragraph-style="table-body">32%</td>
+            <td data-id-paragraph-style="table-body">Core activity zone</td>
+          </tr>
+          <tr>
+            <td data-id-paragraph-style="table-body">Skate rental + service</td>
+            <td data-id-paragraph-style="table-body">2,400 sqm</td>
+            <td data-id-paragraph-style="table-body">10%</td>
+            <td data-id-paragraph-style="table-body">Peak turnover support</td>
+          </tr>
+          <tr>
+            <td data-id-paragraph-style="table-body">Locker + athlete rooms</td>
+            <td data-id-paragraph-style="table-body">3,100 sqm</td>
+            <td data-id-paragraph-style="table-body">13%</td>
+            <td data-id-paragraph-style="table-body">Controlled circulation</td>
+          </tr>
+          <tr>
+            <td data-id-paragraph-style="table-body">Temporary operation</td>
+            <td data-id-paragraph-style="table-body">4,800 sqm</td>
+            <td data-id-paragraph-style="table-body">20%</td>
+            <td data-id-paragraph-style="table-body">Event and retail zone</td>
+          </tr>
+          <tr>
+            <td data-id-paragraph-style="table-body">Equipment + BOH</td>
+            <td data-id-paragraph-style="table-body">5,900 sqm</td>
+            <td data-id-paragraph-style="table-body">25%</td>
+            <td data-id-paragraph-style="table-body">Plant, storage, service</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="metric-card" style="left:18mm;top:132mm;width:45mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">23,800</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">Program sqm</p>
+      </div>
+      <div class="metric-card" style="left:70mm;top:132mm;width:45mm;height:38mm" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+        <p class="metric-value" data-id-paragraph-style="metric-value">4</p>
+        <p class="metric-label" data-id-paragraph-style="metric-label">Plan zones</p>
+      </div>
+      <span class="page-number" data-id-paragraph-style="folio">06</span>
+    </section>
+  </main>
+</body>
+</html>
