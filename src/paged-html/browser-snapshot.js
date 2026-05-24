@@ -1,12 +1,15 @@
 const path = require('path');
 const { chromium } = require('playwright');
 const { rectPxToMm, round } = require('../shared/geometry');
+const { createReport, addMessage } = require('../shared/report');
 const { detectAssetsFromItems } = require('./asset-detector');
 const { defaultPageSelector } = require('./page-detector');
 
 async function renderSnapshot(options) {
   const htmlPath = path.resolve(options.htmlPath);
   const pageSelector = options.pageSelector || defaultPageSelector();
+  const report = createReport();
+  addMessage(report, 'info', 'SNAPSHOT_START', 'Browser snapshot started', { htmlPath });
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 2200, height: 1400 }, deviceScaleFactor: 1 });
@@ -123,6 +126,7 @@ async function renderSnapshot(options) {
       pages,
       assets,
       warnings: [],
+      report,
     };
   } finally {
     await browser.close();
