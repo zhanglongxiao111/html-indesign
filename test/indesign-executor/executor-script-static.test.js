@@ -108,3 +108,18 @@ test('item helper creates text graphic shape items and applies z order', () => {
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
+
+test('executor reports structured counts for CLI result_json consumers', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_executor.jsxinc'), 'utf8');
+  for (const token of [
+    'pagesRequested',
+    'pageCount',
+    'textFrames',
+    'graphicFrames',
+    'placedAssets',
+    'missingAssets',
+    'build_last_result',
+  ]) {
+    assert.match(source, new RegExp(token));
+  }
+});

@@ -2,7 +2,7 @@ if (typeof HI === "undefined") { HI = {}; }
 
 HI.runBuildFromInstructions = function (appRef, jsonPath) {
     var input = HI.readJsonFile(jsonPath);
-    if (input.data && input.data.document && input.data.styles) {
+    if (input.data && input.data.document && input.data.styles && input.data.pages) {
         return HI.runPagedHtmlBuildInstructions(appRef, input.data, input.baseFolder);
     }
     return HI.runLegacyBuildInstructions(appRef, input.data, input.baseFolder);
@@ -10,12 +10,42 @@ HI.runBuildFromInstructions = function (appRef, jsonPath) {
 
 HI.runPagedHtmlBuildInstructions = function (appRef, instructions, baseFolder) {
     var report = HI.makeReport();
-    HI.addMessage(report, "info", "PAGED_EXECUTOR_READY", "Paged HTML executor bootstrap loaded", {});
+    var context = null;
+    try {
+        context = HI.prepareDocument(appRef, instructions, report);
+        context.baseFolder = baseFolder;
+        context.assets = instructions.assets || [];
+        context.styleContext = HI.ensureStyles(context.doc, instructions.styles || {}, report);
+
+        var pages = instructions.pages || [];
+        for (var i = 0; i < pages.length; i++) {
+            var page = HI.getPageForInstruction(context.doc, pages[i], i, report);
+            HI.buildInstructionItems(context.doc, page, pages[i], context, report);
+        }
+
+        report.pagesRequested = pages.length;
+        report.pageCount = context.doc.pages.length;
+        HI.addMessage(report, "info", "BUILD_DONE", "Build instructions executed", {
+            pagesRequested: report.pagesRequested,
+            pageCount: report.pageCount,
+            textFrames: report.counts.textFrames,
+            graphicFrames: report.counts.graphicFrames,
+            placedAssets: report.counts.placedAssets,
+            missingAssets: report.counts.missingAssets
+        });
+        HI.insertJsonLabel(context.doc, "build_last_result", report);
+    } catch (error) {
+        HI.addMessage(report, "error", "EXECUTOR_ERROR", String(error), {});
+    } finally {
+        if (context && context.doc) {
+            HI.restoreDocumentPreferences(context.doc, context);
+        }
+    }
     return report;
 };
 
 HI.runLegacyBuildInstructions = function (appRef, instructions, baseFolder) {
     var report = HI.makeReport();
-    HI.addMessage(report, "error", "LEGACY_EXECUTOR_MOVED", "Legacy instruction execution must be restored through compatibility code before use.", {});
+    HI.addMessage(report, "error", "LEGACY_SCHEMA_UNSUPPORTED_IN_MODULAR_EXECUTOR", "Current executor received legacy template instructions. Regenerate instructions through pagedHtml.compileInstructions or restore the legacy script from git history for old template runs.", {});
     return report;
 };
