@@ -962,6 +962,8 @@ html-indesign build test/workspace/instructions.json
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
+第一阶段实现保留现有 legacy template 文件的位置，并通过 `src/legacy-template/*` wrappers 对外暴露。新的浏览器驱动转换代码放在 `src/paged-html/*` 下，可复用工具放在 `src/shared/*` 下。这样既保留当前模板驱动工作流，又把 paged HTML 工作流作为独立路径引入。
+
 新模块建议：
 
 ```text
