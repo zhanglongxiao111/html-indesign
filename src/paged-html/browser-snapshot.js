@@ -1,6 +1,7 @@
 const path = require('path');
 const { chromium } = require('playwright');
 const { rectPxToMm, round } = require('../shared/geometry');
+const { detectAssetsFromItems } = require('./asset-detector');
 const { defaultPageSelector } = require('./page-detector');
 
 async function renderSnapshot(options) {
@@ -111,13 +112,16 @@ async function renderSnapshot(options) {
       };
     });
 
+    const allItems = pages.flatMap((pageInfo) => pageInfo.items);
+    const assets = detectAssetsFromItems(allItems, htmlPath);
+
     return {
       metadata: {
         source: htmlPath,
         capturedAt: new Date().toISOString(),
       },
       pages,
-      assets: [],
+      assets,
       warnings: [],
     };
   } finally {
