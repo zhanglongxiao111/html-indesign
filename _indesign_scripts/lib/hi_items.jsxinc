@@ -1,0 +1,13 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.buildInstructionItems = function (doc, page, pageInstruction, context, report) {
+    return [];
+};
+
+HI.createTextFrame = function (doc, page, item, context, report) {
+    return null;
+};
+
+HI.createGraphicFrame = function (doc, page, item, context, report) {
+    return null;
+};

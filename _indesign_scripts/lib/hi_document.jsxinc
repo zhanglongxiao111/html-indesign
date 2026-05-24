@@ -1,0 +1,14 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.prepareDocument = function (appRef, instructions, report) {
+    var doc = appRef.documents.length > 0 ? appRef.activeDocument : appRef.documents.add();
+    return { doc: doc, pages: [], layers: {} };
+};
+
+HI.ensureLayers = function (doc, layers, report) {
+    return {};
+};
+
+HI.getPageForInstruction = function (doc, pageInstruction, index, report) {
+    return doc.pages[index] || doc.pages.add(LocationOptions.AT_END);
+};

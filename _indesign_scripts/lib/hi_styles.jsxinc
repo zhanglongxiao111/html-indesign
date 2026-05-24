@@ -1,0 +1,9 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.ensureStyles = function (doc, styles, report) {
+    return { swatches: {}, paragraphStyles: {}, characterStyles: {}, objectStyles: {} };
+};
+
+HI.applyParagraphStyle = function (doc, textFrame, styleName, report) {};
+
+HI.applyObjectStyle = function (doc, pageItem, styleName, report) {};

@@ -1,0 +1,11 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.resolveAssetFile = function (asset, baseFolder) {
+    return File(asset.resolvedPath || asset.src);
+};
+
+HI.placeAssetInFrame = function (doc, frame, asset, placed, baseFolder, report) {
+    return false;
+};
+
+HI.applyFitting = function (frame, fit, position) {};

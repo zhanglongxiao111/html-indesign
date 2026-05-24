@@ -1,0 +1,82 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.stringify = function (value) {
+    if (typeof JSON !== "undefined" && JSON.stringify) {
+        return JSON.stringify(value);
+    }
+    return String(value);
+};
+
+HI.parseJson = function (raw) {
+    if (typeof JSON !== "undefined" && JSON.parse) {
+        return JSON.parse(raw);
+    }
+    return eval("(" + raw + ")");
+};
+
+HI.readJsonFile = function (jsonPath) {
+    var file = File(jsonPath);
+    if (!file.exists) {
+        throw new Error("Instructions file not found: " + jsonPath);
+    }
+    if (!file.open("r")) {
+        throw new Error("Cannot open instructions file: " + file.fsName);
+    }
+    var raw = file.read();
+    file.close();
+    return {
+        file: file,
+        baseFolder: file.parent,
+        data: HI.parseJson(raw)
+    };
+};
+
+HI.makeReport = function () {
+    return {
+        ok: true,
+        messages: [],
+        errors: [],
+        warnings: [],
+        counts: {
+            pages: 0,
+            layers: 0,
+            swatches: 0,
+            paragraphStyles: 0,
+            characterStyles: 0,
+            objectStyles: 0,
+            textFrames: 0,
+            graphicFrames: 0,
+            shapes: 0,
+            placedAssets: 0,
+            missingAssets: 0,
+            oversetTextFrames: 0
+        }
+    };
+};
+
+HI.addMessage = function (report, level, code, message, details) {
+    var entry = { level: level, code: code, message: message, details: details || {} };
+    report.messages.push(entry);
+    if (level === "error") {
+        report.ok = false;
+        report.errors.push(entry);
+    }
+    if (level === "warning") {
+        report.warnings.push(entry);
+    }
+    return entry;
+};
+
+HI.boundsToGeometricBounds = function (bounds) {
+    return [Number(bounds.y), Number(bounds.x), Number(bounds.y) + Number(bounds.height), Number(bounds.x) + Number(bounds.width)];
+};
+
+HI.insertJsonLabel = function (target, key, value) {
+    try {
+        target.insertLabel(key, HI.stringify(value));
+    } catch (_) {}
+};
+
+HI.itemLabel = function (item) {
+    return "html-indesign:id=" + item.id + ";role=" + (item.role || "") + ";type=" + (item.type || "");
+};
