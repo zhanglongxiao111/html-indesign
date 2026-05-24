@@ -1,4 +1,7 @@
-function validateInstructions(instructions) {
+const fs = require('fs');
+const path = require('path');
+
+function validateInstructions(instructions, options = {}) {
   const errors = [];
   const styles = instructions.styles || {};
   const documentPages = instructions.document && Array.isArray(instructions.document.pages)
@@ -12,6 +15,10 @@ function validateInstructions(instructions) {
       code: 'DOCUMENT_PAGE_MISSING',
       message: 'instructions.document.pages must contain at least one page.',
     });
+  }
+
+  if (options.checkAssetFiles) {
+    validateAssetFiles(instructions.assets || [], options, errors);
   }
 
   for (const page of instructions.pages || []) {
@@ -33,6 +40,29 @@ function validateInstructions(instructions) {
     valid: errors.length === 0,
     errors,
   };
+}
+
+function validateAssetFiles(assets, options, errors) {
+  const baseDir = options.baseDir || process.cwd();
+  for (const asset of assets) {
+    const candidate = resolveInstructionAssetPath(asset, baseDir);
+    if (!candidate || !fs.existsSync(candidate)) {
+      errors.push({
+        code: 'ASSET_FILE_NOT_FOUND',
+        message: `Asset '${asset.id}' file was not found.`,
+        assetId: asset.id,
+        path: candidate || asset.resolvedPath || asset.src,
+      });
+    }
+  }
+}
+
+function resolveInstructionAssetPath(asset, baseDir) {
+  const raw = asset && (asset.resolvedPath || asset.src);
+  if (!raw) return null;
+  if (/^[a-z]+:\/\//i.test(raw)) return raw;
+  if (path.isAbsolute(raw)) return raw;
+  return path.resolve(baseDir, raw);
 }
 
 function validateBounds(item, errors) {
@@ -104,4 +134,5 @@ function validatePlacedAsset(item, assetIds, errors) {
 
 module.exports = {
   validateInstructions,
+  resolveInstructionAssetPath,
 };
