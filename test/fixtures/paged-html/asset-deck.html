@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; }
+    .page {
+      width: 528mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      background: white;
+    }
+    .render {
+      position: absolute;
+      left: 15mm;
+      top: 20mm;
+      width: 220mm;
+      height: 140mm;
+      object-fit: cover;
+      object-position: center center;
+      z-index: 20;
+    }
+    .drawing {
+      position: absolute;
+      left: 250mm;
+      top: 20mm;
+      width: 250mm;
+      height: 180mm;
+      z-index: 21;
+    }
+    .psd {
+      position: absolute;
+      left: 15mm;
+      top: 180mm;
+      width: 100mm;
+      height: 70mm;
+      object-fit: contain;
+      z-index: 22;
+    }
+    .ai {
+      position: absolute;
+      left: 130mm;
+      top: 180mm;
+      width: 100mm;
+      height: 70mm;
+      z-index: 23;
+    }
+  </style>
+</head>
+<body>
+  <section class="page" data-page id="asset-page">
+    <img class="render" src="./assets/render.jpg" data-id-object alt="render">
+    <object class="drawing"
+            data="./assets/site-plan.pdf"
+            type="application/pdf"
+            data-id-object
+            data-id-asset-kind="pdf"
+            data-id-page="3"
+            data-id-crop="trim"
+            data-id-fit="contain"></object>
+    <img class="psd"
+         src="./assets/lobby.psd"
+         data-id-object
+         data-id-asset-kind="psd"
+         data-id-layer-comp="presentation"
+         alt="psd">
+    <img class="ai"
+         src="./assets/axon.ai"
+         data-id-object
+         data-id-asset-kind="ai"
+         data-id-artboard="2"
+         alt="ai">
+  </section>
+</body>
+</html>

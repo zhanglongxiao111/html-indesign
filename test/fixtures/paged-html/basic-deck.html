@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { size: 528mm 297mm; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; }
+    .page {
+      width: 528mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .title {
+      position: absolute;
+      left: 15mm;
+      top: 20mm;
+      width: 220mm;
+      height: 24mm;
+      font-size: 30pt;
+      line-height: 34pt;
+      color: #333333;
+      z-index: 10;
+    }
+    .body {
+      position: absolute;
+      left: 15mm;
+      top: 52mm;
+      width: 220mm;
+      height: 80mm;
+      font-size: 14pt;
+      line-height: 21pt;
+      color: #666666;
+      z-index: 11;
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="page" data-page id="page-1">
+      <h1 class="title">项目标题</h1>
+      <p class="body">这是一个分页 HTML 测试页面。</p>
+    </section>
+    <section class="page" data-page id="page-2">
+      <h1 class="title">第二页</h1>
+      <p class="body">第二页正文。</p>
+    </section>
+  </main>
+</body>
+</html>
