@@ -3,6 +3,7 @@ node_modules/
 
 # Test workspace (temporary files)
 test/workspace/
+.indesign-cli/
 
 # OS files
 .DS_Store
@@ -17,4 +18,3 @@ Thumbs.db
 
 # InDesign temp files
 *.idlk
-

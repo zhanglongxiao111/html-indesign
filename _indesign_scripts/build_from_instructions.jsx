@@ -92,7 +92,7 @@
     for(var pi=0; pi<pages.length; pi++){
         var info=pages[pi];
         var page;
-        if(info.master){
+        if(info.master && !(info.template && String(info.template).toLowerCase()==="free")){
             page=doc.pages.add(LocationOptions.AT_END);
             try{ page.appliedMaster=doc.masterSpreads.itemByName(info.master); }catch(e){ log("Master not found:"+info.master); continue; }
             // override all master pageItems and collect labeled on page
@@ -292,6 +292,14 @@
     doc.viewPreferences.horizontalMeasurementUnits=oldH;
     doc.viewPreferences.verticalMeasurementUnits=oldV;
     doc.viewPreferences.rulerOrigin=oldOrigin;
-    try{ doc.insertLabel("build_last_result", "Build done. Messages: "+messages.join(" | ")); }catch(_){}
+    var buildResult = {
+        ok: true,
+        pagesRequested: pages.length,
+        pageCount: doc.pages.length,
+        messages: messages
+    };
+    var buildResultText = (typeof JSON!=="undefined" && JSON.stringify) ? JSON.stringify(buildResult) : ("Build done. Messages: "+messages.join(" | "));
+    try{ doc.insertLabel("build_last_result", buildResultText); }catch(_){}
     app.scriptPreferences.userInteractionLevel=uiOld;
+    return buildResultText;
 })();
