@@ -1497,10 +1497,10 @@ npm test
 运行：
 
 ```bash
-node -e "const fs=require('fs');const path=require('path');const {writeExecutorSmokeWorkspace}=require('./test/indesign-executor/executor-fixture-writer');const out=writeExecutorSmokeWorkspace(path.resolve('test/workspace/indesign-executor-smoke'));fs.copyFileSync(out.instructionsPath,path.resolve('test/workspace/instructions.json'));console.log(JSON.stringify({instructionsPath:path.resolve('test/workspace/instructions.json'),items:out.instructions.pages[0].items.length,assets:out.instructions.assets.length},null,2));"
+node -e "const path=require('path');const {writeExecutorSmokeWorkspace}=require('./test/indesign-executor/executor-fixture-writer');const out=writeExecutorSmokeWorkspace(path.resolve('test/workspace'));console.log(JSON.stringify({instructionsPath:out.instructionsPath,items:out.instructions.pages[0].items.length,assets:out.instructions.assets.length},null,2));"
 ```
 
-预期：打印 `items: 4`、`assets: 2`，并写入 `test/workspace/instructions.json`。
+预期：打印 `items: 4`、`assets: 2`，并写入 `test/workspace/instructions.json` 和 `test/workspace/executor-assets/`。
 
 - [ ] **步骤 3：检查 InDesign CLI 健康状态**
 
@@ -1570,7 +1570,7 @@ git commit -m "test: verify indesign executor smoke build"
 ## 最终验证
 
 - [ ] `npm test`
-- [ ] `node -e "const path=require('path');const {writeExecutorSmokeWorkspace}=require('./test/indesign-executor/executor-fixture-writer');const {validateInstructions}=require('./src/paged-html');const out=writeExecutorSmokeWorkspace(path.resolve('test/workspace/indesign-executor-smoke'));const result=validateInstructions(out.instructions,{checkAssetFiles:true,baseDir:out.workspaceDir});if(!result.valid){console.error(JSON.stringify(result,null,2));process.exit(1);}console.log(JSON.stringify({valid:true,assets:out.instructions.assets.length,items:out.instructions.pages[0].items.length},null,2));"`
+- [ ] `node -e "const path=require('path');const {writeExecutorSmokeWorkspace}=require('./test/indesign-executor/executor-fixture-writer');const {validateInstructions}=require('./src/paged-html');const out=writeExecutorSmokeWorkspace(path.resolve('test/workspace'));const result=validateInstructions(out.instructions,{checkAssetFiles:true,baseDir:out.workspaceDir});if(!result.valid){console.error(JSON.stringify(result,null,2));process.exit(1);}console.log(JSON.stringify({valid:true,assets:out.instructions.assets.length,items:out.instructions.pages[0].items.length},null,2));"`
 - [ ] `cli-anything-indesign --json --pretty server health`
 - [ ] `cli-anything-indesign --json --pretty script run _indesign_scripts\build_from_instructions.jsx`
 - [ ] 解析 CLI `data.result_json`，确认 `ok: true`、`placedAssets >= 2`、`missingAssets === 0`。

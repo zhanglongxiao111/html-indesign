@@ -12,6 +12,10 @@ test('writeExecutorSmokeWorkspace writes valid instructions and local placeable 
   assert.equal(fs.existsSync(result.instructionsPath), true);
   assert.equal(fs.existsSync(path.join(workspaceDir, 'executor-assets/site-plan.pdf')), true);
   assert.equal(fs.existsSync(path.join(workspaceDir, 'executor-assets/diagram.svg')), true);
+  assert.match(
+    fs.readFileSync(path.join(workspaceDir, 'executor-assets/site-plan.pdf'), 'ascii'),
+    /\/TrimBox \[0 0 200 120\]/,
+  );
   assert.equal(result.instructions.pages[0].items.length, 4);
 
   const validation = validateInstructions(result.instructions, {
