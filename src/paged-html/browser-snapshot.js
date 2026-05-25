@@ -280,6 +280,15 @@ async function renderSnapshot(options) {
         for (const attr of Array.from(el.attributes || [])) out[attr.name] = attr.value;
         return out;
       }
+      function cssVarsFor(el) {
+        const style = getComputedStyle(el);
+        const out = {};
+        for (const name of ['--grid-col', '--grid-span', '--grid-row', '--grid-row-span']) {
+          const value = style.getPropertyValue(name);
+          if (value && value.trim()) out[name] = value.trim();
+        }
+        return out;
+      }
       function mergeFrameAttributes(itemAttrs, frameAttrs) {
         if (!frameAttrs || frameAttrs === itemAttrs) return itemAttrs;
         const out = Object.assign({}, frameAttrs, itemAttrs);
@@ -426,7 +435,15 @@ async function renderSnapshot(options) {
       }
       const pageEls = Array.from(document.querySelectorAll(selector));
       const styleRules = collectStyleRules();
-      return pageEls.map((pageEl, pageIndex) => {
+      const deckEl = document.querySelector('main.deck') || document.body;
+      const styleFiles = Array.from(document.querySelectorAll('style[data-source-file]'))
+        .map((el) => el.getAttribute('data-source-file'))
+        .filter(Boolean);
+      const pageFiles = pageEls.map((pageEl) => ({
+        id: pageEl.getAttribute('data-page') || pageEl.id || '',
+        file: pageEl.getAttribute('data-id-source-file') || '',
+      })).filter((page) => page.id && page.file);
+      const pages = pageEls.map((pageEl, pageIndex) => {
         const pageRect = rectObject(pageEl.getBoundingClientRect());
         const pageStyle = getComputedStyle(pageEl);
         const candidates = Array.from(pageEl.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,figcaption,img,object,embed,svg,canvas,table,div,span,[data-id-object],[data-id-paragraph-style]'))
@@ -438,6 +455,13 @@ async function renderSnapshot(options) {
           index: pageIndex,
           classList: classList(pageEl),
           attributes: attrs(pageEl),
+          sourceFile: pageEl.getAttribute('data-id-source-file') || null,
+          sourceNode: {
+            tagName: pageEl.tagName.toLowerCase(),
+            id: pageEl.id || null,
+            classList: classList(pageEl),
+            attributes: attrs(pageEl),
+          },
           rectPx: pageRect,
           widthCss: pageStyle.width,
           heightCss: pageStyle.height,
@@ -456,6 +480,13 @@ async function renderSnapshot(options) {
               tagName: el.tagName.toLowerCase(),
               classList: mergeClassList(classList(el), classList(frameEl)),
               attributes: mergeFrameAttributes(itemAttrs, frameAttrs),
+              sourceNode: {
+                tagName: el.tagName.toLowerCase(),
+                id: itemIdFor(el, frameEl, pageIndex, itemIndex),
+                classList: mergeClassList(classList(el), classList(frameEl)),
+                attributes: mergeFrameAttributes(itemAttrs, frameAttrs),
+              },
+              cssVars: cssVarsFor(el),
               rectPx: rectObject(frameEl.getBoundingClientRect()),
               text: el.innerText || el.textContent || '',
               computedStyle: mergeVisualFrameStyle(itemStyle, frameStyle),
@@ -469,9 +500,20 @@ async function renderSnapshot(options) {
           }),
         };
       });
+      return {
+        sourcePackageInput: {
+          attributes: attrs(deckEl),
+          styleFiles,
+          pageFiles,
+          assetRoot: 'assets',
+        },
+        pages,
+      };
     }, pageSelector);
 
-    const pages = raw.map((pageInfo) => {
+    const rawPages = Array.isArray(raw) ? raw : raw.pages || [];
+    const sourcePackageInput = Array.isArray(raw) ? null : raw.sourcePackageInput || null;
+    const pages = rawPages.map((pageInfo) => {
       const widthMm = cssPixelsToMm(pageInfo.rectPx.width);
       const heightMm = cssPixelsToMm(pageInfo.rectPx.height);
       const items = pageInfo.items
@@ -483,6 +525,8 @@ async function renderSnapshot(options) {
           tagName: item.tagName,
           classList: item.classList,
           attributes: item.attributes,
+          sourceNode: item.sourceNode || null,
+          cssVars: item.cssVars || {},
           text: item.text.trim(),
           rectPx: item.rectPx,
           boundsMm: roundBounds(rectPxToMm({
@@ -507,6 +551,8 @@ async function renderSnapshot(options) {
         index: pageInfo.index,
         classList: pageInfo.classList || [],
         attributes: pageInfo.attributes || {},
+        sourceFile: pageInfo.sourceFile || null,
+        sourceNode: pageInfo.sourceNode || null,
         widthMm: round(widthMm, 2),
         heightMm: round(heightMm, 2),
         rectPx: pageInfo.rectPx,
@@ -528,6 +574,7 @@ async function renderSnapshot(options) {
         source: htmlPath,
         capturedAt: new Date().toISOString(),
       },
+      sourcePackageInput,
       pages,
       assets,
       warnings,

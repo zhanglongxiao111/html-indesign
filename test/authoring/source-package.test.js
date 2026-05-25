@@ -39,6 +39,16 @@ test('assembleAuthorPackage creates a complete generated deck without mutating s
   assert.match(result.html, /<section class="page" data-page="agenda"/);
 });
 
+test('assembleAuthorPackage writes source package metadata on main', () => {
+  const root = makePackageFixture();
+  const { html } = assembleAuthorPackage(path.join(root, 'deck.config.json'));
+
+  assert.match(html, /<main class="deck"[^>]+data-id-source-package-config="deck\.config\.json"/);
+  assert.match(html, /data-id-source-package-schema="1"/);
+  assert.match(html, /<style data-source-file="styles\/tokens\.css">/);
+  assert.match(html, /<section[^>]+data-id-source-file="pages\/00-cover\.html"/);
+});
+
 test('writeAuthorPackageEntry and checkAuthorPackageEntry detect generated entry drift', () => {
   const root = makePackageFixture();
   const configPath = path.join(root, 'deck.config.json');

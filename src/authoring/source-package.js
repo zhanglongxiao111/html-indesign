@@ -65,7 +65,12 @@ function assembleAuthorPackage(configPath) {
     .join('\n\n');
 
   const title = sourcePackage.config.title || sourcePackage.config.id;
-  const profileAttr = sourcePackage.config.profile ? ` data-id-profile="${attr(sourcePackage.config.profile)}"` : '';
+  const packageAttrs = [
+    `data-id-document="${attr(sourcePackage.config.id)}"`,
+    sourcePackage.config.profile ? `data-id-profile="${attr(sourcePackage.config.profile)}"` : null,
+    `data-id-source-package-config="${attr(path.relative(sourcePackage.rootDir, sourcePackage.configPath).replace(/\\/g, '/'))}"`,
+    `data-id-source-package-schema="${attr(sourcePackage.config.schemaVersion)}"`,
+  ].filter(Boolean).join(' ');
   const html = [
     '<!doctype html>',
     '<html lang="zh-CN">',
@@ -76,7 +81,7 @@ function assembleAuthorPackage(configPath) {
     styles,
     '</head>',
     '<body>',
-    `  <main class="deck" data-id-document="${attr(sourcePackage.config.id)}"${profileAttr}>`,
+    `  <main class="deck" ${packageAttrs}>`,
     indent(pages, 4),
     '  </main>',
     '</body>',

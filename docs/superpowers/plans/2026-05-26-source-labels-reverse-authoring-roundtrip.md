@@ -151,7 +151,7 @@
 - Create: `src/paged-html/source-metadata.js`
 - Create: `test/paged-html/source-metadata.test.js`
 
-- [ ] **Step 1: Write failing tests for generated deck source package attributes**
+- [x] **Step 1: Write failing tests for generated deck source package attributes**
 
 Append to `test/authoring/source-package.test.js`:
 
@@ -173,7 +173,7 @@ Expected failure:
 AssertionError: input did not match data-id-source-package-config
 ```
 
-- [ ] **Step 2: Add source package attributes in the assembler**
+- [x] **Step 2: Add source package attributes in the assembler**
 
 Modify `assembleAuthorPackage` in `src/authoring/source-package.js` so the `<main>` line is built from:
 
@@ -188,7 +188,7 @@ const packageAttrs = [
 `  <main class="deck" ${packageAttrs}>`;
 ```
 
-- [ ] **Step 3: Write failing unit tests for source metadata extraction**
+- [x] **Step 3: Write failing unit tests for source metadata extraction**
 
 Create `test/paged-html/source-metadata.test.js`:
 
@@ -274,7 +274,7 @@ Expected failure:
 Cannot find module '../../src/paged-html/source-metadata'
 ```
 
-- [ ] **Step 4: Implement source metadata helpers**
+- [x] **Step 4: Implement source metadata helpers**
 
 Create `src/paged-html/source-metadata.js`:
 
@@ -347,7 +347,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 5: Capture source metadata in browser snapshot**
+- [x] **Step 5: Capture source metadata in browser snapshot**
 
 Modify the browser-side `page.evaluate` in `src/paged-html/browser-snapshot.js`:
 
@@ -491,7 +491,7 @@ cssVars: item.cssVars || {},
 sourceNode: item.sourceNode || null,
 ```
 
-- [ ] **Step 6: Run focused metadata tests**
+- [x] **Step 6: Run focused metadata tests**
 
 Run:
 
@@ -505,7 +505,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src/authoring/source-package.js src/paged-html/browser-snapshot.js src/paged-html/source-metadata.js test/authoring/source-package.test.js test/paged-html/source-metadata.test.js
