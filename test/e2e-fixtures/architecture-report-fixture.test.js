@@ -68,6 +68,26 @@ test('architecture report fixture uses coarse grid-first page modules', () => {
   }
 });
 
+test('architecture report fixture declares stable parent page and layout tokens', () => {
+  const html = fs.readFileSync(deckPath, 'utf8');
+  const $ = cheerio.load(html);
+  const pages = $('[data-page]');
+  const expectedLayouts = [
+    'cover-hero-metrics',
+    'contents-grid',
+    'analysis-map-annotations',
+    'strategy-media-cards',
+    'drawing-reference-sheet',
+    'asset-grid-notes',
+    'metrics-table-summary',
+  ];
+
+  assert.equal(pages.length, expectedLayouts.length);
+  assert.equal(pages.filter('[data-id-parent-page="report-parent"]').length, pages.length);
+  assert.equal(pages.filter('[data-id-parent-page-name="汇报母版"]').length, pages.length);
+  assert.deepEqual(pages.toArray().map((element) => $(element).attr('data-id-layout')), expectedLayouts);
+});
+
 test('agenda timeline annotation stays clear of lower chapter cards', () => {
   const html = fs.readFileSync(deckPath, 'utf8');
   const $ = cheerio.load(html);

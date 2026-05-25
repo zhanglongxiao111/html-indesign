@@ -364,6 +364,39 @@ function assertPanelNameAuditOk(result) {
   }
 }
 
+function auditReverseHtmlSemantics(html) {
+  const text = String(html || '');
+  const counts = {
+    dataPage: attributeCount(text, 'data-page'),
+    parentPage: attributeCount(text, 'data-id-parent-page'),
+    layout: attributeCount(text, 'data-id-layout'),
+    semantic: attributeCount(text, 'data-id-semantic'),
+  };
+  const missing = [];
+  if (counts.dataPage === 0) missing.push('data-page');
+  if (counts.parentPage === 0) missing.push('data-id-parent-page');
+  if (counts.layout === 0) missing.push('data-id-layout');
+  if (counts.semantic === 0) missing.push('data-id-semantic');
+  return {
+    ok: missing.length === 0,
+    counts,
+    missing,
+  };
+}
+
+function assertReverseHtmlSemantics(html, source = 'reverse HTML') {
+  const audit = auditReverseHtmlSemantics(html);
+  if (!audit.ok) {
+    throw new Error(`${source} is missing required bidirectional semantic tags: ${audit.missing.join(', ')}`);
+  }
+  return audit;
+}
+
+function attributeCount(html, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (String(html || '').match(new RegExp(`\\b${escaped}\\s*=`, 'g')) || []).length;
+}
+
 function isAllowedBuiltInPanelName(kind, name) {
   return kind === 'swatches' && ['None', 'Registration', 'Paper', 'Black'].includes(String(name));
 }
@@ -571,10 +604,15 @@ async function runReverseRoundtrip(context) {
     outDir: context.reverseOutDir,
     mode: 'structured',
   });
+  const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
+  const htmlAudit = assertReverseHtmlSemantics(fs.readFileSync(reverseHtmlPath, 'utf8'), reverseHtmlPath);
 
   return {
     snapshot: reverseResult,
-    html: htmlResult,
+    html: {
+      ...htmlResult,
+      audit: htmlAudit,
+    },
   };
 }
 
@@ -707,6 +745,8 @@ module.exports = {
   architectureStyleNameMap,
   parseCliResultJson,
   resolveIndesignCliCommand,
+  auditReverseHtmlSemantics,
+  assertReverseHtmlSemantics,
   parseArgs,
   parseTargetSize,
   assertPanelNameAuditOk,

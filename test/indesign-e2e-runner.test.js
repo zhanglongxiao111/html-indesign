@@ -10,6 +10,8 @@ const {
   buildReverseSnapshotJsx,
   architectureStyleNameMap,
   assertPanelNameAuditOk,
+  assertReverseHtmlSemantics,
+  auditReverseHtmlSemantics,
   isAllowedBuiltInPanelName,
   parseArgs,
   parseCliResultJson,
@@ -156,6 +158,29 @@ test('resolveIndesignCliCommand defaults to new command and accepts explicit env
   assert.equal(resolveIndesignCliCommand({
     INDESIGN_CLI_BIN: 'D:/AI/mcp-indesign/.indesign-cli/package-test-venv-root/Scripts/indesign-cli.exe',
   }), 'D:/AI/mcp-indesign/.indesign-cli/package-test-venv-root/Scripts/indesign-cli.exe');
+});
+
+test('auditReverseHtmlSemantics reports required bidirectional tags', () => {
+  const audit = auditReverseHtmlSemantics(`
+    <section class="page" data-page="agenda" data-id-parent-page="report-parent" data-id-layout="contents-grid">
+      <h2 data-id-semantic="page-title">汇报结构</h2>
+    </section>
+  `);
+
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.counts, {
+    dataPage: 1,
+    parentPage: 1,
+    layout: 1,
+    semantic: 1,
+  });
+});
+
+test('assertReverseHtmlSemantics rejects false-positive reverse roundtrips', () => {
+  const html = '<section class="page" data-page="agenda"><h2 data-id-semantic="page-title">汇报结构</h2></section>';
+
+  assert.throws(() => assertReverseHtmlSemantics(html, 'reverse-html/deck.html'), /data-id-parent-page/);
+  assert.deepEqual(auditReverseHtmlSemantics(html).missing, ['data-id-parent-page', 'data-id-layout']);
 });
 
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {

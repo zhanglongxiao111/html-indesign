@@ -6,7 +6,15 @@
 
 **Architecture:** 浏览器快照和 InDesign 快照都先进入同一个 Semantic Model；正向构建指令和反向 HTML 都从 Semantic Model 派生。Build Instructions 只作为 InDesign executor 的执行命令，`html_indesign` 脚本标签作为 InDesign 端持久化协议，legacy blueprint 只保留兼容入口。
 
-**Tech Stack:** Node CommonJS、node:test、Playwright browser snapshot、Adobe ExtendScript JSX、`cli-anything-indesign` 真实 InDesign E2E。
+**Tech Stack:** Node CommonJS、node:test、Playwright browser snapshot、Adobe ExtendScript JSX、`indesign-cli` 真实 InDesign E2E。
+
+## 执行进度
+
+| 任务 | 状态 | 备注 |
+| ---- | ---- | ---- |
+| Task 1-13 | 已完成 | 已提交到当前分支 |
+| Task 14 | 已完成 | `npm test`、严格作者规则检查、真实 InDesign E2E + 回读已通过；E2E 已硬性审计回写 HTML 双向标签 |
+| Task 15 | 待执行 | Task 14 提交后跑最终回归 |
 
 ---
 
@@ -61,7 +69,7 @@
   反向导出诊断报告，包括标签缺失、未知对象、资源缺失和降级信息。
 
 - `scripts/indesign-reverse-export.js`  
-  CLI 薄封装：生成临时 JSX、调用 `cli-anything-indesign`、读取 snapshot、写 `deck.html` / `reverse-model.json` / `report.json`。
+  CLI 薄封装：生成临时 JSX、调用 `indesign-cli`、读取 snapshot、写 `deck.html` / `reverse-model.json` / `report.json`。
 
 - `_indesign_scripts/export_to_html_snapshot.jsx`  
   真实 InDesign 反向快照脚本入口。
@@ -2670,7 +2678,7 @@ git commit -m "feat: add optional indesign reverse roundtrip verification"
 - Modify: `docs/README.md`
 - Modify: `AGENTS.md`
 
-- [ ] **Step 1: Run unit test suite**
+- [x] **Step 1: Run unit test suite**
 
 Run:
 
@@ -2680,7 +2688,9 @@ npm test
 
 Expected: PASS with all `node:test` tests passing.
 
-- [ ] **Step 2: Run authoring lint on architecture fixture**
+Actual 2026-05-25: PASS, 159 tests.
+
+- [x] **Step 2: Run authoring lint on architecture fixture**
 
 Run:
 
@@ -2690,7 +2700,9 @@ npm run lint:authoring -- -- --html test/fixtures/e2e/architecture-report/deck.h
 
 Expected: PASS. If this fails because current fixture intentionally violates a rule, fix the fixture or lower the failing rule only with a clear report entry and a test.
 
-- [ ] **Step 3: Run real InDesign E2E with reverse roundtrip**
+Actual 2026-05-25: PASS, 0 errors, 0 warnings.
+
+- [x] **Step 3: Run real InDesign E2E with reverse roundtrip**
 
 Run:
 
@@ -2707,7 +2719,9 @@ Expected:
 - `runDir/reverse-html/reverse-model.json` exists.
 - `result.reverse.html.ok` is `true`.
 
-- [ ] **Step 4: Update docs with exact commands**
+Actual 2026-05-25: PASS with `INDESIGN_CLI_BIN` pointing to local `indesign-cli.exe`; run dir `test/workspace/indesign-e2e-20260525-220653`. E2E runner now fails if reverse HTML misses required bidirectional tags; verified counts are 7 `data-id-parent-page`, 7 `data-id-layout`, and 136 `data-id-semantic` attributes.
+
+- [x] **Step 4: Update docs with exact commands**
 
 Update `AGENTS.md` execution baseline:
 
@@ -2717,12 +2731,16 @@ Update `AGENTS.md` execution baseline:
 
 Update `docs/README.md` or `docs/规范/README.md` only if a new permanent command or document path was added.
 
-- [ ] **Step 5: Commit**
+Actual 2026-05-25: `AGENTS.md` and command references were updated in commit `686b91e`.
+
+- [x] **Step 5: Commit**
 
 ```powershell
 git add scripts/indesign-e2e.js AGENTS.md docs/README.md docs/规范/README.md
 git commit -m "test: verify bidirectional indesign roundtrip"
 ```
+
+Actual 2026-05-25: committed after the verified fixture, E2E runner audit, and plan progress updates were staged.
 
 ---
 
