@@ -128,6 +128,7 @@ function baseCss(model) {
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; }`,
     '    .id-object { position: absolute; margin: 0; overflow: hidden; }',
+    '    .id-object[data-id-role="text"] { overflow: visible; }',
     '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; }',
     '    .list-item { display: block; padding: 0; }',
     '    .list-item.has-bullet::before { content: "•"; margin-right: 0.5em; }',

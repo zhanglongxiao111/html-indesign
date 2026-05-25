@@ -3,15 +3,61 @@ if (typeof HI === "undefined") { HI = {}; }
 HI.exportReverseSnapshot = function (appRef, outputPath) {
     var report = HI.makeReport();
     var doc = appRef.activeDocument;
-    var snapshot = { metadata: { sourceDocument: HI.documentPath(doc), exportedAt: String(new Date()), mode: "structured" }, report: report };
-    snapshot.document = HI.reverseDocument(doc);
-    snapshot.parentPages = HI.reverseParentPages(doc);
-    snapshot.pages = HI.reversePages(doc);
-    snapshot.styles = HI.reverseStyles(doc);
-    snapshot.layers = HI.reverseLayers(doc);
-    snapshot.assets = HI.reverseAssets(doc);
-    HI.writeJsonFile(outputPath, snapshot);
-    return { ok: report.ok !== false, outputPath: outputPath, counts: HI.reverseCounts(snapshot), errors: report.errors, warnings: report.warnings };
+    var coordinateUnit = HI.reverseCoordinateUnit(doc);
+    var oldUnits = HI.applyReverseMeasurementUnits(appRef, doc, coordinateUnit);
+    var snapshot = null;
+    try {
+        snapshot = { metadata: { sourceDocument: HI.documentPath(doc), exportedAt: String(new Date()), mode: "structured", coordinateUnit: coordinateUnit }, report: report };
+        snapshot.document = HI.reverseDocument(doc);
+        snapshot.parentPages = HI.reverseParentPages(doc);
+        snapshot.pages = HI.reversePages(doc);
+        snapshot.styles = HI.reverseStyles(doc);
+        snapshot.layers = HI.reverseLayers(doc);
+        snapshot.assets = HI.reverseAssets(doc);
+        HI.writeJsonFile(outputPath, snapshot);
+        return { ok: report.ok !== false, outputPath: outputPath, counts: HI.reverseCounts(snapshot), errors: report.errors, warnings: report.warnings };
+    } finally {
+        HI.restoreReverseMeasurementUnits(appRef, doc, oldUnits);
+    }
+};
+
+HI.reverseCoordinateUnit = function (doc) {
+    var label = HI.readProtocolLabel(doc);
+    if (label && label.coordinateUnit) return HI.measurementUnitName(label.coordinateUnit);
+    if (label && String(label.unitMode || "").toLowerCase() === "print") return "mm";
+    return "pt";
+};
+
+HI.applyReverseMeasurementUnits = function (appRef, doc, coordinateUnit) {
+    var oldUnits = {};
+    var measurementUnits = HI.measurementUnitsFor(coordinateUnit);
+    try {
+        oldUnits.h = doc.viewPreferences.horizontalMeasurementUnits;
+        oldUnits.v = doc.viewPreferences.verticalMeasurementUnits;
+        oldUnits.origin = doc.viewPreferences.rulerOrigin;
+        doc.viewPreferences.horizontalMeasurementUnits = measurementUnits;
+        doc.viewPreferences.verticalMeasurementUnits = measurementUnits;
+        doc.viewPreferences.rulerOrigin = RulerOrigin.PAGE_ORIGIN;
+    } catch (_) {}
+    try {
+        oldUnits.script = appRef.scriptPreferences.measurementUnit;
+        oldUnits.hasScript = true;
+        appRef.scriptPreferences.measurementUnit = measurementUnits;
+    } catch (_) {}
+    oldUnits.coordinateUnit = HI.measurementUnitName(coordinateUnit);
+    return oldUnits;
+};
+
+HI.restoreReverseMeasurementUnits = function (appRef, doc, oldUnits) {
+    if (!oldUnits) return;
+    try {
+        if (typeof oldUnits.h !== "undefined") doc.viewPreferences.horizontalMeasurementUnits = oldUnits.h;
+        if (typeof oldUnits.v !== "undefined") doc.viewPreferences.verticalMeasurementUnits = oldUnits.v;
+        if (typeof oldUnits.origin !== "undefined") doc.viewPreferences.rulerOrigin = oldUnits.origin;
+    } catch (_) {}
+    try {
+        if (oldUnits.hasScript) appRef.scriptPreferences.measurementUnit = oldUnits.script;
+    } catch (_) {}
 };
 
 HI.documentPath = function (doc) {

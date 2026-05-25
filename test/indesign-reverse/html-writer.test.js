@@ -121,6 +121,7 @@ test('semanticModelToHtml renders observed text style', () => {
     ],
   });
 
+  assert.match(html, /\.id-object\[data-id-role="text"\] \{ overflow: visible; \}/);
   assert.match(html, /id="title"[^>]+font-family:&quot;Microsoft YaHei&quot;, Arial, sans-serif/);
   assert.match(html, /id="title"[^>]+font-weight:700/);
   assert.match(html, /id="title"[^>]+font-size:32px/);

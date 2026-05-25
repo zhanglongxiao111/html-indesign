@@ -301,6 +301,26 @@ test('reverse snapshot derives HTML z order from InDesign layer order', () => {
   assert.match(source, /zIndex:\s*HI\.reverseItemZIndex\(item,\s*index,\s*total,\s*layerOrder\)/);
 });
 
+test('reverse snapshot reads bounds in document coordinate units and restores preferences', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  for (const token of [
+    'HI.reverseCoordinateUnit',
+    'HI.applyReverseMeasurementUnits',
+    'HI.restoreReverseMeasurementUnits',
+    'HI.measurementUnitsFor',
+    'HI.measurementUnitName',
+    'scriptPreferences.measurementUnit',
+    'RulerOrigin.PAGE_ORIGIN',
+    'finally',
+  ]) {
+    assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+
+  assert.match(source, /HI\.applyReverseMeasurementUnits\(appRef,\s*doc,\s*coordinateUnit\)/);
+  assert.match(source, /HI\.restoreReverseMeasurementUnits\(appRef,\s*doc,\s*oldUnits\)/);
+});
+
 test('core JSON reader opens instruction files as UTF-8', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
   assert.match(source, /file\.encoding\s*=\s*["']UTF-8["']/);
