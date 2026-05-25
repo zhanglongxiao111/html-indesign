@@ -389,7 +389,7 @@ git commit -m "feat: assemble authoring source packages"
 - Create: `test/authoring/assemble-authoring-cli.test.js`
 - Modify: `package.json`
 
-- [ ] **Step 1: Write failing CLI tests**
+- [x] **Step 1: Write failing CLI tests**
 
 Create `test/authoring/assemble-authoring-cli.test.js`:
 
@@ -445,7 +445,7 @@ function makePackageFixture() {
 }
 ```
 
-- [ ] **Step 2: Run the CLI test to verify it fails**
+- [x] **Step 2: Run the CLI test to verify it fails**
 
 Run:
 
@@ -459,7 +459,7 @@ Expected:
 not ok ... Cannot find module ... scripts/assemble-authoring.js
 ```
 
-- [ ] **Step 3: Implement CLI**
+- [x] **Step 3: Implement CLI**
 
 Create `scripts/assemble-authoring.js`:
 
@@ -541,7 +541,7 @@ Modify `package.json` scripts:
 }
 ```
 
-- [ ] **Step 4: Run CLI tests**
+- [x] **Step 4: Run CLI tests**
 
 Run:
 
@@ -555,7 +555,7 @@ Expected:
 pass 1
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add package.json scripts/assemble-authoring.js test/authoring/assemble-authoring-cli.test.js
