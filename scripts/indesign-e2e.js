@@ -27,6 +27,9 @@ function createRunContext(options = {}) {
     resultPath: path.join(runDir, 'e2e-result.json'),
     buildScriptPath: path.join(runDir, 'build-latest.jsx'),
     exportScriptPath: path.join(runDir, 'export-latest.jsx'),
+    reverseScriptPath: path.join(runDir, 'reverse-snapshot.jsx'),
+    reverseSnapshotPath: path.join(runDir, 'reverse-snapshot.json'),
+    reverseOutDir: path.join(runDir, 'reverse-html'),
     previewDir: path.join(runDir, 'preview'),
   };
 }
@@ -70,6 +73,8 @@ function parseArgs(argv, repoRoot) {
       options.unitMode = arg.slice('--unit-mode='.length);
     } else if (arg === '--skip-preview') {
       options.skipPreview = true;
+    } else if (arg === '--reverse-roundtrip') {
+      options.reverseRoundtrip = true;
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else {
@@ -81,8 +86,8 @@ function parseArgs(argv, repoRoot) {
 
 function usage() {
   return [
-    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview]',
-    'npm: npm run e2e:indesign -- -- --target-size qhd',
+    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip]',
+    'npm: npm run e2e:indesign -- -- --target-size qhd --reverse-roundtrip',
     '',
     'Default HTML: test/fixtures/e2e/architecture-report/deck.html',
     'Default unit mode: presentation',
@@ -113,6 +118,7 @@ async function runIndesignE2E(options = {}) {
 
   fs.writeFileSync(context.exportScriptPath, buildExportJsx({
     runDir: context.runDir,
+    closeDocument: !options.reverseRoundtrip,
   }), 'utf8');
 
   const exportCli = runCli(['--json', '--pretty', 'script', 'run', context.exportScriptPath], context.repoRoot);
@@ -129,6 +135,10 @@ async function runIndesignE2E(options = {}) {
     throw new Error(`PDF verification failed: ${verifyCli.stdout}`);
   }
 
+  const reverse = options.reverseRoundtrip
+    ? await runReverseRoundtrip(context)
+    : null;
+
   const preview = options.skipPreview
     ? { skipped: true }
     : await renderPdfPreview(context, pdfPath);
@@ -142,6 +152,7 @@ async function runIndesignE2E(options = {}) {
     build: buildResult,
     export: exportResult,
     verify: verifyResult.data,
+    reverse,
     preview,
   };
   fs.writeFileSync(context.resultPath, JSON.stringify(result, null, 2), 'utf8');
@@ -389,8 +400,18 @@ function buildBuildJsx({ repoRoot, instructionsPath }) {
 })();`;
 }
 
-function buildExportJsx({ runDir }) {
+function buildExportJsx({ runDir, closeDocument = true }) {
   const outDir = toJsxPath(runDir);
+  const closeBlock = closeDocument ? `
+    try {
+        doc.close(SaveOptions.NO);
+        result.closed = true;
+    } catch (closeError) {
+        add("warning", "DOC_CLOSE_FAILED", String(closeError));
+    }
+` : `
+    result.closed = false;
+`;
   return `(function () {
     var runDir = ${JSON.stringify(outDir)};
     var result = { ok: true, outputs: {}, counts: {}, errors: [], warnings: [] };
@@ -487,15 +508,68 @@ function buildExportJsx({ runDir }) {
 
     auditPanelNames();
 
-    try {
-        doc.close(SaveOptions.NO);
-        result.closed = true;
-    } catch (closeError) {
-        add("warning", "DOC_CLOSE_FAILED", String(closeError));
-    }
+${closeBlock}
 
     return JSON.stringify(result);
 })();`;
+}
+
+function buildReverseSnapshotJsx({ repoRoot, outputPath, closeDocument = true }) {
+  const base = toJsxPath(repoRoot);
+  const output = toJsxPath(outputPath);
+  const closeBlock = closeDocument ? `
+    try {
+        if (app.documents.length > 0) app.activeDocument.close(SaveOptions.NO);
+        result.closed = true;
+    } catch (closeError) {
+        result.warnings.push({ code: "DOC_CLOSE_FAILED", message: String(closeError) });
+        if (result.ok !== false) result.ok = true;
+    }
+` : '';
+  return `(function () {
+    var result = { ok: false, outputPath: ${JSON.stringify(output)}, errors: [], warnings: [] };
+    try {
+        app.insertLabel("html_indesign_reverse_output", ${JSON.stringify(output)});
+        var raw = $.evalFile(File(${JSON.stringify(base + "/_indesign_scripts/export_to_html_snapshot.jsx")}));
+        if (!raw) throw new Error("Reverse snapshot script returned an empty result.");
+        result = JSON.parse(String(raw));
+        if (!result) throw new Error("Reverse snapshot script returned invalid JSON.");
+        if (!result.errors) result.errors = [];
+        if (!result.warnings) result.warnings = [];
+    } catch (error) {
+        if (!result.errors) result.errors = [];
+        if (!result.warnings) result.warnings = [];
+        result.ok = false;
+        result.errors.push({ code: "REVERSE_SNAPSHOT_FAILED", message: String(error) });
+    } finally {
+        app.insertLabel("html_indesign_reverse_output", "");
+    }
+${closeBlock}
+    return JSON.stringify(result);
+})();`;
+}
+
+async function runReverseRoundtrip(context) {
+  fs.writeFileSync(context.reverseScriptPath, buildReverseSnapshotJsx({
+    repoRoot: context.repoRoot,
+    outputPath: context.reverseSnapshotPath,
+  }), 'utf8');
+
+  const reverseCli = runCli(['--json', '--pretty', 'script', 'run', context.reverseScriptPath], context.repoRoot);
+  const reverseResult = parseCliResultJson(reverseCli.stdout);
+  assertCliResultOk(reverseResult, 'InDesign reverse snapshot failed');
+
+  const { compileReverseSnapshotToHtml } = require('./indesign-reverse-export');
+  const htmlResult = compileReverseSnapshotToHtml({
+    snapshotPath: context.reverseSnapshotPath,
+    outDir: context.reverseOutDir,
+    mode: 'structured',
+  });
+
+  return {
+    snapshot: reverseResult,
+    html: htmlResult,
+  };
 }
 
 async function renderPdfPreview(context, pdfPath) {
@@ -623,6 +697,7 @@ module.exports = {
   createRunContext,
   buildBuildJsx,
   buildExportJsx,
+  buildReverseSnapshotJsx,
   architectureStyleNameMap,
   parseCliResultJson,
   parseArgs,

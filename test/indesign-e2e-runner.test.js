@@ -7,6 +7,7 @@ const {
   createRunContext,
   buildBuildJsx,
   buildExportJsx,
+  buildReverseSnapshotJsx,
   architectureStyleNameMap,
   assertPanelNameAuditOk,
   isAllowedBuiltInPanelName,
@@ -130,6 +131,23 @@ test('parseArgs accepts equals-style CLI options', () => {
   assert.equal(options.targetSize, 'qhd');
   assert.equal(options.unitMode, 'presentation');
   assert.equal(options.skipPreview, true);
+});
+
+test('parseArgs accepts reverse roundtrip flag', () => {
+  const options = parseArgs(['--reverse-roundtrip', '--target-size=qhd'], 'D:/AI/html-indesign');
+
+  assert.equal(options.reverseRoundtrip, true);
+  assert.equal(options.targetSize, 'qhd');
+});
+
+test('build reverse snapshot jsx writes target output label and runs reverse script', () => {
+  const jsx = buildReverseSnapshotJsx({
+    repoRoot: 'D:/AI/html-indesign',
+    outputPath: 'D:/AI/html-indesign/test/workspace/reverse-snapshot.json',
+  });
+
+  assert.match(jsx, /html_indesign_reverse_output/);
+  assert.match(jsx, /export_to_html_snapshot\.jsx/);
 });
 
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {
