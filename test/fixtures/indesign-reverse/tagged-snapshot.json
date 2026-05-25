@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "sourceDocument": "architecture-report.indd",
+    "exportedAt": "2026-05-25T00:00:00Z",
+    "mode": "structured"
+  },
+  "document": {
+    "name": "architecture-report.indd",
+    "labels": [
+      {
+        "protocol": "html-indesign",
+        "version": 1,
+        "kind": "document",
+        "id": "architecture-report",
+        "source": "html-to-indesign",
+        "unitMode": "presentation",
+        "coordinateUnit": "pt"
+      }
+    ]
+  },
+  "parentPages": [
+    {
+      "name": "汇报母版",
+      "labels": [
+        {
+          "protocol": "html-indesign",
+          "version": 1,
+          "kind": "parentPage",
+          "id": "report-parent",
+          "source": "html-to-indesign",
+          "name": "汇报母版"
+        }
+      ],
+      "items": []
+    }
+  ],
+  "layers": [
+    {
+      "name": "文字",
+      "labels": [
+        {
+          "protocol": "html-indesign",
+          "version": 1,
+          "kind": "layer",
+          "id": "layer-text",
+          "source": "html-to-indesign",
+          "token": "text",
+          "displayName": "文字"
+        }
+      ]
+    }
+  ],
+  "styles": {
+    "paragraphStyles": [
+      {
+        "name": "页面标题",
+        "labels": [
+          {
+            "protocol": "html-indesign",
+            "version": 1,
+            "kind": "style",
+            "id": "style-page-title",
+            "source": "html-to-indesign",
+            "styleKind": "paragraph",
+            "token": "page-title",
+            "displayName": "页面标题",
+            "htmlClass": "page-title"
+          }
+        ]
+      }
+    ],
+    "characterStyles": [],
+    "objectStyles": [],
+    "frameStyles": [],
+    "tableStyles": [],
+    "cellStyles": []
+  },
+  "assets": [],
+  "pages": [
+    {
+      "id": "1",
+      "index": 0,
+      "labels": [
+        {
+          "protocol": "html-indesign",
+          "version": 1,
+          "kind": "page",
+          "id": "agenda-page",
+          "source": "html-to-indesign",
+          "semantic": "agenda",
+          "parentPage": {
+            "id": "report-parent",
+            "name": "汇报母版"
+          },
+          "layout": "contents-grid",
+          "margins": { "top": 14, "right": 16, "bottom": 10, "left": 18 }
+        }
+      ],
+      "bounds": { "x": 0, "y": 0, "width": 1920, "height": 1080 },
+      "margins": { "top": 14, "right": 16, "bottom": 10, "left": 18 },
+      "guides": [],
+      "items": [
+        {
+          "id": "agenda-title",
+          "type": "TextFrame",
+          "bounds": { "x": 120, "y": 140, "width": 460, "height": 80 },
+          "text": "汇报结构",
+          "layerName": "文字",
+          "paragraphStyleName": "页面标题",
+          "labels": [
+            {
+              "protocol": "html-indesign",
+              "version": 1,
+              "kind": "item",
+              "id": "agenda-title",
+              "source": "html-to-indesign",
+              "role": "text",
+              "semantic": "page-title",
+              "htmlTag": "h2",
+              "className": "page-title"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
