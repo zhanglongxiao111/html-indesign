@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  createProtocolLabel,
+  parseProtocolLabel,
+  normalizeStyleRef,
+  labelDisplayPair,
+  labelCoordinateUnit,
   parseLabeledSegments,
   parseSlotName,
   parseSlotType,
@@ -40,4 +45,54 @@ test('findBySlotName supports exact normalized and short-name lookup', () => {
   assert.deepEqual(findBySlotName(slots, '项目英文名'), { key: '名称：项目英文名\r\n类型：文本', value: { id: 'a' } });
   assert.deepEqual(findBySlotName(slots, ' 主 图 '), { key: '名称：主图\r\n类型：图像', value: { id: 'b' } });
   assert.equal(findBySlotName(slots, '不存在'), null);
+});
+
+test('createProtocolLabel creates stable html_indesign payloads', () => {
+  assert.deepEqual(createProtocolLabel({
+    kind: 'item',
+    id: 'agenda-title',
+    source: 'html-to-indesign',
+    role: 'text',
+    semantic: 'page-title',
+  }), {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'agenda-title',
+    source: 'html-to-indesign',
+    role: 'text',
+    semantic: 'page-title',
+  });
+});
+
+test('parseProtocolLabel rejects invalid json and kind mismatches', () => {
+  assert.equal(parseProtocolLabel('', { expectedKind: 'item' }).valid, false);
+  assert.equal(parseProtocolLabel('{"protocol":"x"}', { expectedKind: 'item' }).valid, false);
+  const parsed = parseProtocolLabel(JSON.stringify(createProtocolLabel({
+    kind: 'page',
+    id: 'page-1',
+    source: 'html-to-indesign',
+  })), { expectedKind: 'item' });
+  assert.equal(parsed.valid, false);
+  assert.equal(parsed.errors[0].code, 'LABEL_KIND_MISMATCH');
+});
+
+test('normalizeStyleRef preserves token and displayName separately', () => {
+  assert.deepEqual(normalizeStyleRef({ token: 'page-title', displayName: '页面标题' }), {
+    token: 'page-title',
+    displayName: '页面标题',
+  });
+  assert.deepEqual(normalizeStyleRef('page-title'), {
+    token: 'page-title',
+    displayName: null,
+  });
+});
+
+test('labelDisplayPair and labelCoordinateUnit provide stable defaults', () => {
+  assert.deepEqual(labelDisplayPair('report-parent', '汇报母版'), {
+    id: 'report-parent',
+    name: '汇报母版',
+  });
+  assert.equal(labelCoordinateUnit({ coordinateUnit: 'pt' }), 'pt');
+  assert.equal(labelCoordinateUnit({ unitMode: 'print' }), 'mm');
 });
