@@ -128,6 +128,7 @@ HI.reversePageItem = function (item, index, total, layerOrder) {
         textStyle: HI.reverseTextStyle(item),
         textFrameStyle: HI.reverseTextFrameStyle(item),
         inlineStyle: HI.reverseInlineStyle(item),
+        textRuns: HI.reverseTextRuns(item),
         firstLineFont: HI.reverseFirstLineFont(item),
         zIndex: HI.reverseItemZIndex(item, index, total, layerOrder),
         placedAsset: HI.reversePlacedAsset(item),

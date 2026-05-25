@@ -259,6 +259,7 @@ test('reverse snapshot script loads reverse and label helpers', () => {
   assert.match(source, /hi_core\.jsxinc/);
   assert.match(source, /hi_labels\.jsxinc/);
   assert.match(source, /hi_reverse_styles\.jsxinc/);
+  assert.match(source, /hi_reverse_text\.jsxinc/);
   assert.match(source, /hi_reverse_effects\.jsxinc/);
   assert.match(source, /hi_reverse\.jsxinc/);
   assert.match(source, /HI\.exportReverseSnapshot/);
@@ -267,12 +268,15 @@ test('reverse snapshot script loads reverse and label helpers', () => {
 test('reverse snapshot helper extracts labels, pages, styles, layers and assets', () => {
   const reverseSource = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
   const stylePath = path.resolve('_indesign_scripts/lib/hi_reverse_styles.jsxinc');
+  const textPath = path.resolve('_indesign_scripts/lib/hi_reverse_text.jsxinc');
   const effectPath = path.resolve('_indesign_scripts/lib/hi_reverse_effects.jsxinc');
   assert.equal(fs.existsSync(stylePath), true, 'hi_reverse_styles.jsxinc should exist');
+  assert.equal(fs.existsSync(textPath), true, 'hi_reverse_text.jsxinc should exist');
   assert.equal(fs.existsSync(effectPath), true, 'hi_reverse_effects.jsxinc should exist');
   const styleSource = fs.readFileSync(stylePath, 'utf8');
+  const textSource = fs.readFileSync(textPath, 'utf8');
   const effectSource = fs.readFileSync(effectPath, 'utf8');
-  const source = `${reverseSource}\n${styleSource}\n${effectSource}`;
+  const source = `${reverseSource}\n${styleSource}\n${textSource}\n${effectSource}`;
   assert.match(source, /HI\.readProtocolLabel/);
   assert.match(source, /snapshot\.pages/);
   assert.match(source, /snapshot\.styles/);
@@ -281,6 +285,9 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /HI\.reverseVisualStyle/);
   assert.match(source, /HI\.reversePlacedAsset/);
   assert.match(source, /HI\.reverseTextStyle/);
+  assert.match(source, /HI\.reverseTextRuns/);
+  assert.match(source, /HI\.reverseCharacterTextStyle/);
+  assert.match(source, /FORCED_LINE_BREAK/);
   assert.match(source, /HI\.reverseEffects/);
   assert.match(source, /fillTransparencySettings/);
   assert.match(source, /gradientFeatherSettings/);
@@ -296,6 +303,7 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /bulletsAndNumberingListType/);
   assert.match(source, /textColumnCount/);
   assert.ok(styleSource.split(/\r?\n/).length <= 340, 'hi_reverse_styles.jsxinc should stay focused');
+  assert.ok(textSource.split(/\r?\n/).length <= 180, 'hi_reverse_text.jsxinc should stay focused');
   assert.ok(effectSource.split(/\r?\n/).length <= 120, 'hi_reverse_effects.jsxinc should stay focused');
 });
 

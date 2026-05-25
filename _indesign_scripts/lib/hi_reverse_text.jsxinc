@@ -1,0 +1,82 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.reverseTextRuns = function (item) {
+    if (!HI.isTextFrame(item)) return [];
+    var out = [], current = null, characters = [];
+    try { characters = HI.collectionElements(item.characters); } catch (_) { characters = []; }
+    for (var i = 0; i < characters.length; i++) {
+        var ch = characters[i], text = HI.reverseCharacterContents(ch);
+        if (text === "") continue;
+        var run = HI.reverseCharacterRun(ch);
+        run.text = text;
+        var signature = HI.reverseCharacterRunSignature(run);
+        if (current && current._signature === signature) {
+            current.text += text;
+        } else {
+            run._signature = signature;
+            out.push(run);
+            current = run;
+        }
+    }
+    for (var j = 0; j < out.length; j++) delete out[j]._signature;
+    return out;
+};
+
+HI.reverseCharacterContents = function (character) {
+    try {
+        var value = String(character.contents || "");
+        if (value === "FORCED_LINE_BREAK" || value === "PARAGRAPH_BREAK") return "\n";
+        return value;
+    } catch (_) {}
+    return "";
+};
+
+HI.reverseCharacterRun = function (character) {
+    var style = HI.reverseCharacterTextStyle(character);
+    return {
+        characterStyle: HI.reverseCharacterStyleName(character),
+        textStyle: style,
+        inlineStyle: HI.textStyleCss(style)
+    };
+};
+
+HI.reverseCharacterTextStyle = function (character) {
+    var font = HI.reverseFontInfo(character.appliedFont);
+    return {
+        appliedFont: font ? font.appliedFont : null,
+        fontFamily: font ? font.fontFamily : null,
+        fontStyleName: font ? font.fontStyleName : null,
+        fontWeight: font ? font.fontWeight : null,
+        fontStyle: font ? font.fontStyle : null,
+        pointSize: HI.numberOrNull(character.pointSize),
+        leading: HI.leadingOrNull(character.leading),
+        fillColor: HI.reverseColor(character.fillColor),
+        tracking: HI.numberOrNull(character.tracking),
+        justification: null
+    };
+};
+
+HI.reverseCharacterStyleName = function (character) {
+    try {
+        var style = character.appliedCharacterStyle;
+        if (!style || !style.isValid) return null;
+        var name = String(style.name || "");
+        if (name.indexOf("[") === 0 || name.indexOf("\uff3b") === 0) return null;
+        return name;
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseCharacterRunSignature = function (run) {
+    var s = run.textStyle || {};
+    return [
+        run.characterStyle || "",
+        s.fontFamily || "",
+        s.fontWeight || "",
+        s.fontStyle || "",
+        s.pointSize || "",
+        s.leading || "",
+        s.fillColor || "",
+        s.tracking || ""
+    ].join("|");
+};

@@ -321,6 +321,7 @@ HI.safeStyleName = function (name) { return String(name || "").replace(/[\[\]]/g
 HI.copyObject = function (target, source) { for (var key in source) if (source.hasOwnProperty(key)) target[key] = source[key]; };
 HI.isTextFrame = function (item) {
     try { if (item instanceof TextFrame) return true; } catch (_) {}
+    try { if (item.paragraphs && typeof item.paragraphs.length === "number" && typeof item.contents !== "undefined") return true; } catch (_) {}
     try { return String(item.constructor && item.constructor.name || "").indexOf("TextFrame") >= 0; } catch (_) {}
     return false;
 };

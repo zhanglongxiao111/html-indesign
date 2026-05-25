@@ -172,6 +172,55 @@ test('reverseSnapshotToSemanticModel preserves observed text style per text item
   assert.equal(title.textStyle.justification, 'center');
 });
 
+test('reverseSnapshotToSemanticModel preserves observed character runs per text item', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'type-runs.indd', mode: 'structured' },
+    document: { name: 'type-runs.indd', labels: [] },
+    styles: {
+      characterStyles: [
+        { name: '封面强调', safeName: '封面强调', css: 'color:#c8102e; font-style:italic' },
+      ],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'cover-title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 500, height: 120 },
+            paragraphStyleName: '封面标题',
+            text: '冰球场首层平面\n排布汇报',
+            textRuns: [
+              {
+                text: '冰球场首层平面\n',
+                characterStyle: null,
+                textStyle: { fillColor: '#123456', fontStyle: null },
+              },
+              {
+                text: '排布汇报',
+                characterStyle: '封面强调',
+                textStyle: { fillColor: '#c8102e', fontStyle: 'italic' },
+              },
+            ],
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const title = model.pages[0].items[0];
+  assert.equal(title.content.text, '冰球场首层平面\n排布汇报');
+  assert.deepEqual(title.content.runs.map((run) => run.text), ['冰球场首层平面\n', '排布汇报']);
+  assert.equal(title.content.runs[1].characterStyle, '封面强调');
+  assert.equal(title.content.runs[1].textStyle.fillColor, '#c8102e');
+  assert.equal(title.content.runs[1].textStyle.fontStyle, 'italic');
+});
+
 test('reverseSnapshotToSemanticModel preserves reverse style resources composite fonts and z order', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'styles.indd', mode: 'structured' },

@@ -55,7 +55,7 @@ function reverseItem(item) {
       objectStyle: item.objectStyleName || null,
       frameStyle: item.frameStyleName || null,
     },
-    content: { text: item.text || '' },
+    content: { text: item.text || '', runs: item.textRuns || item.runs || [] },
     visualStyle: item.visualStyle || null,
     effects: item.effects || null,
     textStyle: item.textStyle || null,

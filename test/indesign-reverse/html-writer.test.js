@@ -220,6 +220,61 @@ test('semanticModelToHtml renders observed text style', () => {
   assert.match(html, /id="title"[^>]+text-align:center/);
 });
 
+test('semanticModelToHtml preserves hard line breaks and character runs in text objects', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'run-reverse',
+    title: 'run-reverse',
+    reverseMode: 'structured',
+    styles: {
+      characterStyles: {
+        封面强调: {
+          name: '封面强调',
+          token: '封面强调',
+          safeName: '封面强调',
+          css: 'color:#c8102e; font-style:italic',
+        },
+      },
+    },
+    pages: [
+      {
+        id: 'run-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'cover-title',
+            role: 'text',
+            semantic: 'cover-title',
+            tagName: 'h1',
+            bounds: { x: 40, y: 50, width: 500, height: 120 },
+            styleRefs: { paragraphStyle: '封面标题' },
+            content: {
+              text: '冰球场首层平面\n排布汇报',
+              runs: [
+                {
+                  text: '冰球场首层平面\n',
+                  textStyle: { fillColor: '#123456' },
+                },
+                {
+                  text: '排布汇报',
+                  characterStyle: '封面强调',
+                  textStyle: { fillColor: '#c8102e', fontStyle: 'italic' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /冰球场首层平面<br><\/span><span[\s\S]+排布汇报<\/span>/);
+  assert.match(html, /class="cstyle-封面强调"/);
+  assert.match(html, /style="[^"]*color:#c8102e/);
+  assert.match(html, /style="[^"]*font-style:italic/);
+});
+
 test('semanticModelToHtml renders reverse style classes composite text features and z order', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',

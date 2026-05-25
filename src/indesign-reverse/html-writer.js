@@ -170,7 +170,7 @@ function itemInlineStyle(item) {
   return [
     visualStyleCss(item.visualStyle),
     effectsCss(item.effects, item.visualStyle),
-    textStyleCss(item.textStyle),
+    item.inlineStyle ? '' : textStyleCss(item.textStyle),
     textFrameStyleCss(item.textFrameStyle),
     cssForHtml(item.inlineStyle),
     zIndexCss(item.zIndex),
@@ -299,6 +299,8 @@ function compositeFontCss(paragraphStyles = {}, compositeFonts = {}) {
 function renderTextContent(item, model) {
   const text = textContent(item);
   if (item.role !== 'text') return escapeHtml(text);
+  const runs = contentRuns(item);
+  if (runs.length) return renderRichTextRuns(runs, model);
   const paragraphStyle = styleByName(model, 'paragraphStyles', item.styleRefs && item.styleRefs.paragraphStyle);
   const legacy = (paragraphStyle && paragraphStyle.legacy) || {};
   const usesComposite = usesCompositeFont(paragraphStyle, model, item.firstLineFont);
@@ -306,7 +308,39 @@ function renderTextContent(item, model) {
   if (legacy.list) return renderListText(text, legacy.list, usesComposite);
   if (legacy.dropCap) return renderDropCapText(text, legacy.dropCap, usesComposite);
   if (legacy.grepStyles && legacy.grepStyles.length) return renderGrepText(text, legacy.grepStyles, usesComposite, item, model);
-  return usesComposite ? wrapEnglishText(escapeHtml(text)) : escapeHtml(text);
+  return renderPlainText(text, usesComposite);
+}
+
+function renderRichTextRuns(runs, model) {
+  return runs.map((run) => {
+    const content = renderTextWithBreaks(run.text);
+    const characterStyle = styleByName(model, 'characterStyles', run.characterStyle);
+    const classes = characterStyle ? [`cstyle-${styleClassToken(characterStyle)}`] : [];
+    const inlineStyle = [
+      run.inlineStyle ? cssForHtml(run.inlineStyle) : textStyleCss(run.textStyle),
+    ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');
+    const attrs = [
+      classes.length ? `class="${attr(classes.join(' '))}"` : null,
+      inlineStyle ? `style="${attr(inlineStyle)}"` : null,
+    ].filter(Boolean);
+    return attrs.length ? `<span ${attrs.join(' ')}>${content}</span>` : content;
+  }).join('');
+}
+
+function contentRuns(item) {
+  const runs = item.content && Array.isArray(item.content.runs) ? item.content.runs : [];
+  return runs.filter((run) => run && run.text != null && String(run.text) !== '');
+}
+
+function renderPlainText(text, usesComposite) {
+  if (usesComposite) {
+    return splitLines(text).map((line) => wrapEnglishText(escapeHtml(line))).join('<br>');
+  }
+  return renderTextWithBreaks(text);
+}
+
+function renderTextWithBreaks(text) {
+  return escapeHtml(text).replace(/\r\n|\r|\n/g, '<br>');
 }
 
 function renderListText(text, list, usesComposite) {
