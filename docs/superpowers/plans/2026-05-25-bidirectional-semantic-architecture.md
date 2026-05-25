@@ -14,7 +14,7 @@
 | ---- | ---- | ---- |
 | Task 1-13 | 已完成 | 已提交到当前分支 |
 | Task 14 | 已完成 | `npm test`、严格作者规则检查、真实 InDesign E2E + 回读已通过；E2E 已硬性审计回写 HTML 双向标签 |
-| Task 15 | 待执行 | Task 14 提交后跑最终回归 |
+| Task 15 | 已完成 | 最终 `npm test`、严格作者规则检查、真实 InDesign E2E + 回读和结果 JSON 核对均通过 |
 
 ---
 
@@ -2749,7 +2749,7 @@ Actual 2026-05-25: committed after the verified fixture, E2E runner audit, and p
 **Files:**
 - Modify only if verification exposes a concrete bug.
 
-- [ ] **Step 1: Run full tests**
+- [x] **Step 1: Run full tests**
 
 Run:
 
@@ -2759,7 +2759,9 @@ npm test
 
 Expected: PASS.
 
-- [ ] **Step 2: Run strict authoring lint**
+Actual 2026-05-25: PASS, 159 tests.
+
+- [x] **Step 2: Run strict authoring lint**
 
 Run:
 
@@ -2769,7 +2771,9 @@ npm run lint:authoring -- -- --html test/fixtures/e2e/architecture-report/deck.h
 
 Expected: PASS.
 
-- [ ] **Step 3: Run real InDesign E2E**
+Actual 2026-05-25: PASS, 0 errors, 0 warnings.
+
+- [x] **Step 3: Run real InDesign E2E**
 
 Run:
 
@@ -2779,7 +2783,9 @@ npm run e2e:indesign -- -- --reverse-roundtrip --target-size qhd
 
 Expected: PASS and produce INDD, PDF, IDML, reverse snapshot, reverse HTML, reverse model, and report under `test/workspace/indesign-e2e-<timestamp>/`.
 
-- [ ] **Step 4: Inspect output report**
+Actual 2026-05-25: PASS with `INDESIGN_CLI_BIN` pointing to local `indesign-cli.exe`; run dir `test/workspace/indesign-e2e-20260525-220945`.
+
+- [x] **Step 4: Inspect output report**
 
 Open `test/workspace/indesign-e2e-<timestamp>/e2e-result.json` and verify:
 
@@ -2800,7 +2806,9 @@ Also verify:
 - `export.audit.panelAsciiNames` is empty except allowed built-in swatches.
 - `reverse-html/deck.html` contains `data-page`, `data-id-parent-page`, `data-id-layout`, and item `data-id-semantic`.
 
-- [ ] **Step 5: Commit final verification docs if changed**
+Actual 2026-05-25: PASS. `e2e-result.json` has `ok: true`, reverse snapshot/html ok, reverse HTML audit counts `{ dataPage: 7, parentPage: 7, layout: 7, semantic: 136 }`, no panel ASCII names, 0 overset text frames, and non-zero paragraph/object/frame style counts.
+
+- [x] **Step 5: Commit final verification docs if changed**
 
 If no files changed, do not create an empty commit. If docs or tests changed:
 
@@ -2808,6 +2816,8 @@ If no files changed, do not create an empty commit. If docs or tests changed:
 git add AGENTS.md docs test scripts src _indesign_scripts package.json index.js
 git commit -m "chore: finalize bidirectional architecture baseline"
 ```
+
+Actual 2026-05-25: committed this final verification record.
 
 ---
 
