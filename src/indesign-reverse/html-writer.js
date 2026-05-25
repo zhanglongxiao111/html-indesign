@@ -1,3 +1,5 @@
+const { pathToFileURL } = require('node:url');
+
 const SAFE_TAGS = new Set([
   'article',
   'aside',
@@ -81,6 +83,7 @@ function itemToHtml(item) {
   const itemId = requiredString(item.id, 'Item is missing id');
   const tag = safeTagName(item.tagName || htmlTagForRole(item.role));
   const classes = uniqueWords(['id-object', item.htmlClass].filter(Boolean).join(' ')).join(' ');
+  const inlineStyle = itemInlineStyle(item);
   const attrs = [
     `class="${attr(classes)}"`,
     `id="${attr(itemId)}"`,
@@ -104,11 +107,11 @@ function itemToHtml(item) {
     item.legacy && item.legacy.confidence != null ? `data-id-confidence="${attr(item.legacy.confidence)}"` : null,
     item.asset && item.asset.path ? `data-id-asset-path="${attr(item.asset.path)}"` : null,
     item.asset && item.asset.cropped ? 'data-id-image-cropped="true"' : null,
-    `style="${attr(boundsStyle(itemId, item.bounds, item.inlineStyle))}"`,
+    `style="${attr(boundsStyle(itemId, item.bounds, inlineStyle))}"`,
   ].filter(Boolean);
 
   if (tag === 'figure') {
-    return `    <figure ${attrs.join(' ')}>${escapeHtml(textContent(item))}</figure>`;
+    return `    <figure ${attrs.join(' ')}>${assetHtml(item)}${escapeHtml(textContent(item))}</figure>`;
   }
 
   return `    <${tag} ${attrs.join(' ')}>${escapeHtml(textContent(item))}</${tag}>`;
@@ -125,6 +128,8 @@ function baseCss(model) {
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; }`,
     '    .id-object { position: absolute; margin: 0; }',
+    '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; object-fit: cover; }',
+    '    .id-asset-placeholder { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border: 1px dashed #8aa0ad; color: #52636f; font-size: 12px; }',
   ].join('\n');
 }
 
@@ -150,6 +155,50 @@ function boundsStyle(itemId, bounds, inlineStyle) {
   ];
   if (inlineStyle) styles.push(String(inlineStyle).trim().replace(/;+$/, ''));
   return styles.join(';');
+}
+
+function itemInlineStyle(item) {
+  return [
+    visualStyleCss(item.visualStyle),
+    item.inlineStyle,
+  ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');
+}
+
+function visualStyleCss(visualStyle) {
+  if (!visualStyle) return '';
+  const styles = [];
+  if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
+  if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
+    styles.push(`border:${formatNumber(visualStyle.strokeWeight)}px solid ${visualStyle.strokeColor}`);
+  }
+  if (Number(visualStyle.cornerRadius) > 0) {
+    styles.push(`border-radius:${formatPx(visualStyle.cornerRadius)}`);
+  }
+  const opacity = Number(visualStyle.opacity);
+  if (Number.isFinite(opacity) && opacity >= 0 && opacity < 100) {
+    styles.push(`opacity:${formatNumber(opacity / 100)}`);
+  }
+  return styles.join(';');
+}
+
+function assetHtml(item) {
+  const asset = item.asset || {};
+  if (!asset.path) return '';
+  const url = assetUrl(asset.path);
+  const label = asset.name || item.semantic || item.id;
+  const extension = String(asset.name || asset.path).toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|svg)$/.test(extension)) {
+    return `<img src="${attr(url)}" alt="${attr(label)}">`;
+  }
+  if (/\.pdf$/.test(extension)) {
+    return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}"></object>`;
+  }
+  return `<span class="id-asset-placeholder">${escapeHtml(label)}</span>`;
+}
+
+function assetUrl(assetPath) {
+  if (/^(https?:|file:)/i.test(assetPath)) return assetPath;
+  return pathToFileURL(assetPath).href;
 }
 
 function marginValue(margins) {

@@ -41,7 +41,7 @@ function reversePage(page) {
 
 function reverseItem(item) {
   const label = firstLabel(item.labels, 'item') || {};
-  const role = label.role || roleFromInDesignType(item.type);
+  const role = label.role || roleFromInDesignType(item.type, item);
   return {
     id: label.id || item.id,
     role,
@@ -56,6 +56,8 @@ function reverseItem(item) {
       frameStyle: item.frameStyleName || null,
     },
     content: { text: item.text || '' },
+    visualStyle: item.visualStyle || null,
+    asset: item.placedAsset || null,
     labels: item.labels || [],
   };
 }
@@ -112,7 +114,8 @@ function firstLabel(labels, kind) {
   return (labels || []).find((label) => label && label.kind === kind) || null;
 }
 
-function roleFromInDesignType(type) {
+function roleFromInDesignType(type, item = {}) {
+  if (item.placedAsset) return 'graphic';
   const raw = String(type || '').toLowerCase();
   if (raw.includes('text')) return 'text';
   if (raw.includes('table')) return 'table';

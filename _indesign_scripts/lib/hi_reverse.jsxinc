@@ -77,6 +77,8 @@ HI.reversePageItem = function (item, index) {
         layerName: HI.itemLayerName(item),
         paragraphStyleName: HI.appliedParagraphStyleName(item),
         objectStyleName: HI.appliedObjectStyleName(item),
+        visualStyle: HI.reverseVisualStyle(item),
+        placedAsset: HI.reversePlacedAsset(item),
         text: HI.itemText(item),
         label: String(item.label || ""),
         labels: HI.reverseLabels(item)
@@ -102,6 +104,95 @@ HI.appliedParagraphStyleName = function (item) {
 
 HI.itemText = function (item) {
     try { return String(item.contents || ""); } catch (_) { return ""; }
+};
+
+HI.reverseVisualStyle = function (item) {
+    return {
+        fillColor: HI.reverseColor(item.fillColor),
+        strokeColor: HI.reverseColor(item.strokeColor),
+        strokeWeight: HI.positiveNumberOrNull(item.strokeWeight),
+        opacity: HI.reverseOpacity(item),
+        cornerRadius: HI.reverseCornerRadius(item)
+    };
+};
+
+HI.reverseColor = function (color) {
+    try {
+        if (!color || !color.isValid) return null;
+        var name = String(color.name || "");
+        if (name === "None" || name === "[None]" || name === "Text Color") return null;
+        if (name === "Paper" || name === "[Paper]") return "#ffffff";
+        if (!color.colorValue) return null;
+        var value = color.colorValue;
+        if (color.space === ColorSpace.RGB) return HI.rgbHex(value[0], value[1], value[2]);
+        if (color.space === ColorSpace.CMYK || color.space === 1129142603) {
+            var k = Number(value[3] || 0) / 100;
+            return HI.rgbHex(
+                255 * (1 - Number(value[0] || 0) / 100) * (1 - k),
+                255 * (1 - Number(value[1] || 0) / 100) * (1 - k),
+                255 * (1 - Number(value[2] || 0) / 100) * (1 - k)
+            );
+        }
+    } catch (_) {}
+    return null;
+};
+
+HI.rgbHex = function (r, g, b) {
+    return "#" + HI.hexByte(r) + HI.hexByte(g) + HI.hexByte(b);
+};
+
+HI.hexByte = function (value) {
+    var number = Math.max(0, Math.min(255, Math.round(Number(value || 0))));
+    var hex = number.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+};
+
+HI.positiveNumberOrNull = function (value) {
+    var number = Number(value || 0);
+    return number > 0 ? number : null;
+};
+
+HI.reverseOpacity = function (item) {
+    try {
+        var opacity = Number(item.transparencySettings.blendingSettings.opacity);
+        return opacity >= 0 && opacity <= 100 ? opacity : null;
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseCornerRadius = function (item) {
+    try {
+        var radius = Number(item.topLeftCornerRadius || 0);
+        var option = item.topLeftCornerOption;
+        if (radius > 0 && option !== 1852796517) return radius;
+    } catch (_) {}
+    return null;
+};
+
+HI.reversePlacedAsset = function (item) {
+    try {
+        if (!item.allGraphics || item.allGraphics.length < 1) return null;
+        var graphic = item.allGraphics[0];
+        var link = graphic.itemLink;
+        return {
+            name: link ? String(link.name || "") : "",
+            path: link && link.filePath ? String(link.filePath) : "",
+            status: link ? String(link.status || "") : "",
+            graphicType: String(graphic.constructor && graphic.constructor.name || ""),
+            bounds: HI.itemBounds(graphic),
+            cropped: HI.isGraphicCropped(item, graphic)
+        };
+    } catch (_) {}
+    return null;
+};
+
+HI.isGraphicCropped = function (frame, graphic) {
+    try {
+        var frameBounds = HI.itemBounds(frame);
+        var graphicBounds = HI.itemBounds(graphic);
+        return graphicBounds.width > frameBounds.width + 0.5 || graphicBounds.height > frameBounds.height + 0.5;
+    } catch (_) {}
+    return false;
 };
 
 HI.reverseGuides = function (page) {

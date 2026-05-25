@@ -269,6 +269,11 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /snapshot\.styles/);
   assert.match(source, /snapshot\.layers/);
   assert.match(source, /snapshot\.assets/);
+  assert.match(source, /HI\.reverseVisualStyle/);
+  assert.match(source, /HI\.reversePlacedAsset/);
+  assert.match(source, /allGraphics/);
+  assert.match(source, /fillColor/);
+  assert.match(source, /strokeColor/);
 });
 
 test('core JSON reader opens instruction files as UTF-8', () => {
