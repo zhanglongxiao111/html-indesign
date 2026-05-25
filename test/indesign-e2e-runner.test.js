@@ -11,6 +11,7 @@ const {
   architectureStyleNameMap,
   assertPanelNameAuditOk,
   assertReverseHtmlSemantics,
+  auditReverseAuthorPackage,
   auditReverseHtmlSemantics,
   isAllowedBuiltInPanelName,
   parseArgs,
@@ -181,6 +182,29 @@ test('assertReverseHtmlSemantics rejects false-positive reverse roundtrips', () 
 
   assert.throws(() => assertReverseHtmlSemantics(html, 'reverse-html/deck.html'), /data-id-parent-page/);
   assert.deepEqual(auditReverseHtmlSemantics(html).missing, ['data-id-parent-page', 'data-id-layout']);
+});
+
+test('auditReverseAuthorPackage reports generated author package health', () => {
+  const outDir = path.resolve('test/workspace/e2e-author-audit-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const { writeReverseAuthorPackage } = require('../src/indesign-reverse');
+
+  const author = writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'audit',
+    title: 'Audit',
+    pages: [{ id: 'page-1', width: 800, height: 450, items: [] }],
+  }, { outDir, mode: 'observation' });
+
+  const audit = auditReverseAuthorPackage({
+    config: author.configPath,
+    entry: author.entryPath,
+    outDir: author.outDir,
+    pages: author.pages,
+  });
+
+  assert.equal(audit.ok, true);
+  assert.equal(audit.pages, 1);
 });
 
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {

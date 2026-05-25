@@ -1470,7 +1470,7 @@ git commit -m "feat: write reverse authoring packages"
 - Modify: `test/indesign-reverse/cli.test.js`
 - Modify: `test/indesign-e2e-runner.test.js`
 
-- [ ] **Step 1: Write failing CLI tests for visual HTML and author package**
+- [x] **Step 1: Write failing CLI tests for visual HTML and author package**
 
 Modify `test/indesign-reverse/cli.test.js`:
 
@@ -1502,7 +1502,7 @@ Expected failure:
 AssertionError: expected false to equal true
 ```
 
-- [ ] **Step 2: Update reverse CLI writer**
+- [x] **Step 2: Update reverse CLI writer**
 
 Modify `scripts/indesign-reverse-export.js` imports:
 
@@ -1551,7 +1551,7 @@ files: {
 
 Keep top-level `deck.html` for backward compatibility, but treat it as visual output. The editable entry is `author/deck.html`.
 
-- [ ] **Step 3: Add E2E author package audit**
+- [x] **Step 3: Add E2E author package audit**
 
 Modify `scripts/indesign-e2e.js`:
 
@@ -1587,7 +1587,7 @@ const author = Object.assign({}, htmlResult.files.author, { audit: authorAudit }
 
 Return the `author` object next to the existing `snapshot` and `html` objects in the reverse roundtrip result.
 
-- [ ] **Step 4: Update E2E runner test**
+- [x] **Step 4: Update E2E runner test**
 
 Append to `test/indesign-e2e-runner.test.js`:
 
@@ -1619,7 +1619,7 @@ test('auditReverseAuthorPackage reports generated author package health', () => 
 
 Export `auditReverseAuthorPackage` from `scripts/indesign-e2e.js`.
 
-- [ ] **Step 5: Run CLI and E2E runner tests**
+- [x] **Step 5: Run CLI and E2E runner tests**
 
 Run:
 
@@ -1633,7 +1633,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add scripts/indesign-reverse-export.js scripts/indesign-e2e.js test/indesign-reverse/cli.test.js test/indesign-e2e-runner.test.js

@@ -39,6 +39,26 @@ test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   assert.equal(fs.existsSync(path.join(outDir, 'report.json')), true);
 });
 
+test('compileReverseSnapshotToHtml writes visual HTML and author package', () => {
+  const outDir = path.resolve('test/workspace/reverse-cli-author-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const result = compileReverseSnapshotToHtml({
+    snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
+    outDir,
+    mode: 'structured',
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(fs.existsSync(path.join(outDir, 'deck.visual.html')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'deck.structured.html')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'author/deck.config.json')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'author/pages/01-agenda.html')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'author/deck.html')), true);
+  assert.equal(result.files.visualHtml, path.join(outDir, 'deck.visual.html'));
+  assert.equal(result.files.author.config, path.join(outDir, 'author/deck.config.json'));
+});
+
 test('compileReverseSnapshotToHtml writes legacy blueprint through reverse pipeline', () => {
   const outDir = path.resolve('test/workspace/reverse-blueprint-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });

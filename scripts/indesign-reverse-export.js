@@ -7,6 +7,7 @@ const {
   reverseSnapshotToSemanticModel,
   semanticModelToHtml,
   legacyBlueprintToSemanticModel,
+  writeReverseAuthorPackage,
 } = require('../src/indesign-reverse');
 
 function parseArgs(argv) {
@@ -58,14 +59,20 @@ function compileReverseSnapshotToHtml(options) {
     ? legacyBlueprintToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
     : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), { mode: options.mode });
   const outDir = path.resolve(options.outDir);
-  const html = semanticModelToHtml(model, { outputDir: outDir });
+  const visualHtml = semanticModelToHtml(model, { outputDir: outDir });
   const report = createReport(model, { ...options, inputFormat });
   const modeHtmlName = `deck.${options.mode}.html`;
   const modeReportName = `${options.mode}-report.json`;
 
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'deck.html'), html, 'utf8');
-  fs.writeFileSync(path.join(outDir, modeHtmlName), html, 'utf8');
+  const authorResult = writeReverseAuthorPackage(model, {
+    outDir: path.join(outDir, 'author'),
+    mode: options.mode,
+  });
+
+  fs.writeFileSync(path.join(outDir, 'deck.visual.html'), visualHtml, 'utf8');
+  fs.writeFileSync(path.join(outDir, modeHtmlName), visualHtml, 'utf8');
+  fs.writeFileSync(path.join(outDir, 'deck.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(report, null, 2), 'utf8');
@@ -75,10 +82,17 @@ function compileReverseSnapshotToHtml(options) {
     outDir,
     files: {
       html: path.join(outDir, 'deck.html'),
+      visualHtml: path.join(outDir, 'deck.visual.html'),
       modeHtml: path.join(outDir, modeHtmlName),
       model: path.join(outDir, 'reverse-model.json'),
       report: path.join(outDir, 'report.json'),
       modeReport: path.join(outDir, modeReportName),
+      author: {
+        config: authorResult.configPath,
+        entry: authorResult.entryPath,
+        outDir: authorResult.outDir,
+        pages: authorResult.pages,
+      },
     },
     report,
   };

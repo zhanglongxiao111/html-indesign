@@ -392,6 +392,33 @@ function assertReverseHtmlSemantics(html, source = 'reverse HTML') {
   return audit;
 }
 
+function auditReverseAuthorPackage(author) {
+  if (!author || !author.config || !fs.existsSync(author.config)) {
+    return { ok: false, missing: ['author/deck.config.json'] };
+  }
+  const { checkAuthorPackageEntry } = require('../src/authoring');
+  let check;
+  try {
+    check = checkAuthorPackageEntry(author.config);
+  } catch (error) {
+    return {
+      ok: false,
+      config: author.config,
+      error: error && error.message ? error.message : String(error),
+    };
+  }
+  const config = JSON.parse(fs.readFileSync(author.config, 'utf8'));
+  const pageFiles = (config.pages || []).map((page) => path.join(path.dirname(author.config), page.file));
+  const missingPages = pageFiles.filter((file) => !fs.existsSync(file));
+  return {
+    ok: check.ok && missingPages.length === 0,
+    config: author.config,
+    entry: check.entryPath,
+    pages: pageFiles.length,
+    missingPages,
+  };
+}
+
 function attributeCount(html, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return (String(html || '').match(new RegExp(`\\b${escaped}\\s*=`, 'g')) || []).length;
@@ -606,6 +633,11 @@ async function runReverseRoundtrip(context) {
   });
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
   const htmlAudit = assertReverseHtmlSemantics(fs.readFileSync(reverseHtmlPath, 'utf8'), reverseHtmlPath);
+  const authorAudit = auditReverseAuthorPackage(htmlResult.files.author);
+  if (!authorAudit.ok) {
+    throw new Error(`Reverse author package audit failed: ${JSON.stringify(authorAudit, null, 2)}`);
+  }
+  const author = Object.assign({}, htmlResult.files.author, { audit: authorAudit });
 
   return {
     snapshot: reverseResult,
@@ -613,6 +645,7 @@ async function runReverseRoundtrip(context) {
       ...htmlResult,
       audit: htmlAudit,
     },
+    author,
   };
 }
 
@@ -745,6 +778,7 @@ module.exports = {
   architectureStyleNameMap,
   parseCliResultJson,
   resolveIndesignCliCommand,
+  auditReverseAuthorPackage,
   auditReverseHtmlSemantics,
   assertReverseHtmlSemantics,
   parseArgs,
