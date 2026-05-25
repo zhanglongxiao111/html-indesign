@@ -8,6 +8,7 @@
 
     includeLib("hi_core.jsxinc");
     includeLib("hi_labels.jsxinc");
+    includeLib("hi_reverse_styles.jsxinc");
     includeLib("hi_reverse.jsxinc");
 
     var outputPath = app.extractLabel("html_indesign_reverse_output");

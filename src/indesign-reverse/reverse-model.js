@@ -57,6 +57,11 @@ function reverseItem(item) {
     },
     content: { text: item.text || '' },
     visualStyle: item.visualStyle || null,
+    textStyle: item.textStyle || null,
+    textFrameStyle: item.textFrameStyle || null,
+    inlineStyle: item.inlineStyle || item.inlineCSS || null,
+    zIndex: numberOrNull(item.zIndex),
+    firstLineFont: item.firstLineFont || null,
     asset: item.placedAsset || null,
     labels: item.labels || [],
   };
@@ -92,6 +97,7 @@ function reverseStyles(styles) {
     frameStyles: reverseStyleCollection(styles.frameStyles || []),
     tableStyles: reverseStyleCollection(styles.tableStyles || []),
     cellStyles: reverseStyleCollection(styles.cellStyles || []),
+    compositeFonts: reverseCompositeFonts(styles.compositeFonts || []),
   };
 }
 
@@ -104,7 +110,35 @@ function reverseStyleCollection(items) {
       name: label.displayName || item.name,
       token,
       displayName: label.displayName || item.name,
+      safeName: item.safeName || label.safeName || null,
+      css: item.css || '',
+      source: item.source || null,
+      legacy: reverseStyleLegacy(item),
       labels: item.labels || [],
+    };
+  }
+  return out;
+}
+
+function reverseStyleLegacy(item) {
+  const legacy = {};
+  for (const key of ['compositeFont', 'dropCap', 'list', 'grepStyles', 'nestedStyles']) {
+    if (item[key] != null) legacy[key] = item[key];
+  }
+  return Object.keys(legacy).length ? legacy : null;
+}
+
+function reverseCompositeFonts(items) {
+  const out = {};
+  for (const item of items || []) {
+    if (!item || !item.name) continue;
+    out[item.name] = {
+      name: item.name,
+      safeName: item.safeName || null,
+      hasBoldCJK: Boolean(item.hasBoldCJK),
+      cjkWeight: item.cjkWeight || null,
+      romanWeight: item.romanWeight || null,
+      entries: item.entries || [],
     };
   }
   return out;
@@ -129,6 +163,11 @@ function htmlTagForRole(role) {
   if (role === 'graphic') return 'figure';
   if (role === 'table') return 'table';
   return 'div';
+}
+
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 module.exports = {

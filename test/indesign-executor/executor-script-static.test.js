@@ -258,12 +258,17 @@ test('reverse snapshot script loads reverse and label helpers', () => {
   const source = fs.readFileSync(path.resolve('_indesign_scripts/export_to_html_snapshot.jsx'), 'utf8');
   assert.match(source, /hi_core\.jsxinc/);
   assert.match(source, /hi_labels\.jsxinc/);
+  assert.match(source, /hi_reverse_styles\.jsxinc/);
   assert.match(source, /hi_reverse\.jsxinc/);
   assert.match(source, /HI\.exportReverseSnapshot/);
 });
 
 test('reverse snapshot helper extracts labels, pages, styles, layers and assets', () => {
-  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+  const reverseSource = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+  const stylePath = path.resolve('_indesign_scripts/lib/hi_reverse_styles.jsxinc');
+  assert.equal(fs.existsSync(stylePath), true, 'hi_reverse_styles.jsxinc should exist');
+  const styleSource = fs.readFileSync(stylePath, 'utf8');
+  const source = `${reverseSource}\n${styleSource}`;
   assert.match(source, /HI\.readProtocolLabel/);
   assert.match(source, /snapshot\.pages/);
   assert.match(source, /snapshot\.styles/);
@@ -271,9 +276,18 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /snapshot\.assets/);
   assert.match(source, /HI\.reverseVisualStyle/);
   assert.match(source, /HI\.reversePlacedAsset/);
+  assert.match(source, /HI\.reverseTextStyle/);
   assert.match(source, /allGraphics/);
   assert.match(source, /fillColor/);
   assert.match(source, /strokeColor/);
+  assert.match(source, /pointSize/);
+  assert.match(source, /appliedFont/);
+  assert.match(source, /HI\.reverseCompositeFonts/);
+  assert.match(source, /dropCapCharacters/);
+  assert.match(source, /nestedGrepStyles/);
+  assert.match(source, /bulletsAndNumberingListType/);
+  assert.match(source, /textColumnCount/);
+  assert.ok(styleSource.split(/\r?\n/).length <= 340, 'hi_reverse_styles.jsxinc should stay focused');
 });
 
 test('core JSON reader opens instruction files as UTF-8', () => {

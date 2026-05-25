@@ -37,7 +37,7 @@ function semanticModelToHtml(model) {
   assertDocumentModel(model);
 
   const title = model.title || model.id;
-  const pages = (model.pages || []).map(pageToHtml).join('\n');
+  const pages = (model.pages || []).map((page) => pageToHtml(page, model)).join('\n');
   const reverseMode = model.reverseMode || 'structured';
 
   return [
@@ -60,7 +60,7 @@ function semanticModelToHtml(model) {
   ].join('\n');
 }
 
-function pageToHtml(page) {
+function pageToHtml(page, model) {
   const pageId = requiredString(page.id, 'Page is missing id');
   const attrs = [
     `class="page"`,
@@ -75,18 +75,18 @@ function pageToHtml(page) {
     `style="${attr(pageStyle(page))}"`,
   ].filter(Boolean);
 
-  const items = (page.items || []).map(itemToHtml).join('\n');
+  const items = (page.items || []).map((item) => itemToHtml(item, model)).join('\n');
   return [`  <section ${attrs.join(' ')}>`, items, '  </section>'].join('\n');
 }
 
-function itemToHtml(item) {
+function itemToHtml(item, model) {
   const itemId = requiredString(item.id, 'Item is missing id');
   const tag = safeTagName(item.tagName || htmlTagForRole(item.role));
-  const classes = uniqueWords(['id-object', item.htmlClass].filter(Boolean).join(' ')).join(' ');
+  const classes = itemClasses(item, model).join(' ');
   const inlineStyle = itemInlineStyle(item);
   const attrs = [
-    `class="${attr(classes)}"`,
     `id="${attr(itemId)}"`,
+    `class="${attr(classes)}"`,
     `data-id-object="${attr(itemId)}"`,
     item.source ? `data-id-source="${attr(item.source)}"` : null,
     item.role ? `data-id-role="${attr(item.role)}"` : null,
@@ -114,7 +114,7 @@ function itemToHtml(item) {
     return `    <figure ${attrs.join(' ')}>${assetHtml(item)}${escapeHtml(textContent(item))}</figure>`;
   }
 
-  return `    <${tag} ${attrs.join(' ')}>${escapeHtml(textContent(item))}</${tag}>`;
+  return `    <${tag} ${attrs.join(' ')}>${renderTextContent(item, model)}</${tag}>`;
 }
 
 function baseCss(model) {
@@ -127,9 +127,16 @@ function baseCss(model) {
     '    body { margin: 0; background: #f3f5f6; color: #14324a; font-family: Arial, "Microsoft YaHei", sans-serif; }',
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; }`,
-    '    .id-object { position: absolute; margin: 0; }',
-    '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; object-fit: cover; }',
+    '    .id-object { position: absolute; margin: 0; overflow: hidden; }',
+    '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; }',
+    '    .list-item { display: block; padding: 0; }',
+    '    .list-item.has-bullet::before { content: "•"; margin-right: 0.5em; }',
+    '    .list-item.has-number::before { content: attr(data-circle); margin-right: 0.5em; }',
+    '    .has-dropcap { display: grid; grid-template-columns: auto 1fr; column-gap: 0.5em; align-content: start; }',
+    '    .dropcap-chars { font-size: 3.2em; line-height: 0.8; align-self: start; }',
+    '    .dropcap-rest { display: inline; }',
     '    .id-asset-placeholder { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border: 1px dashed #8aa0ad; color: #52636f; font-size: 12px; }',
+    styleResourceCss(model),
   ].join('\n');
 }
 
@@ -160,8 +167,25 @@ function boundsStyle(itemId, bounds, inlineStyle) {
 function itemInlineStyle(item) {
   return [
     visualStyleCss(item.visualStyle),
+    textStyleCss(item.textStyle),
+    textFrameStyleCss(item.textFrameStyle),
     item.inlineStyle,
+    zIndexCss(item.zIndex),
   ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');
+}
+
+function itemClasses(item, model) {
+  const classes = uniqueWords(['id-object', item.htmlClass].filter(Boolean).join(' '));
+  const paragraphStyle = styleByName(model, 'paragraphStyles', item.styleRefs && item.styleRefs.paragraphStyle);
+  const objectStyle = styleByName(model, 'objectStyles', item.styleRefs && item.styleRefs.objectStyle);
+  if (paragraphStyle) {
+    classes.push(`pstyle-${styleClassToken(paragraphStyle)}`);
+    if (paragraphStyle.legacy && paragraphStyle.legacy.dropCap) classes.push('has-dropcap');
+    if (paragraphStyle.legacy && paragraphStyle.legacy.list && paragraphStyle.legacy.list.type === 'bullet') classes.push('has-bullet-list');
+    if (paragraphStyle.legacy && paragraphStyle.legacy.list && paragraphStyle.legacy.list.type === 'numbered') classes.push('has-numbered-list');
+  }
+  if (objectStyle) classes.push(`ostyle-${styleClassToken(objectStyle)}`);
+  return uniqueWords(classes.join(' '));
 }
 
 function visualStyleCss(visualStyle) {
@@ -181,19 +205,157 @@ function visualStyleCss(visualStyle) {
   return styles.join(';');
 }
 
+function textStyleCss(textStyle) {
+  if (!textStyle) return '';
+  const styles = [];
+  if (textStyle.fontFamily) styles.push(`font-family:"${textStyle.fontFamily}", Arial, sans-serif`);
+  if (textStyle.fontWeight) styles.push(`font-weight:${textStyle.fontWeight}`);
+  if (textStyle.fontStyle) styles.push(`font-style:${textStyle.fontStyle}`);
+  if (textStyle.pointSize != null) styles.push(`font-size:${formatPx(textStyle.pointSize)}`);
+  if (textStyle.leading != null) styles.push(`line-height:${formatPx(textStyle.leading)}`);
+  if (textStyle.fillColor) styles.push(`color:${textStyle.fillColor}`);
+  if (textStyle.tracking != null && Number(textStyle.tracking) !== 0) {
+    styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);
+  }
+  if (textStyle.justification) styles.push(`text-align:${textStyle.justification}`);
+  return styles.join(';');
+}
+
+function textFrameStyleCss(textFrameStyle) {
+  if (!textFrameStyle) return '';
+  const styles = [];
+  const inset = textFrameStyle.inset || {};
+  if ([inset.top, inset.right, inset.bottom, inset.left].some((value) => Number(value) > 0)) {
+    styles.push(`padding:${formatPx(inset.top || 0)} ${formatPx(inset.right || 0)} ${formatPx(inset.bottom || 0)} ${formatPx(inset.left || 0)}`);
+  }
+  if (Number(textFrameStyle.columnCount) > 1) {
+    styles.push(`column-count:${formatNumber(textFrameStyle.columnCount)}`);
+    if (Number(textFrameStyle.columnGap) > 0) styles.push(`column-gap:${formatPx(textFrameStyle.columnGap)}`);
+  }
+  if (textFrameStyle.verticalJustification && textFrameStyle.verticalJustification !== 'flex-start') {
+    styles.push('display:flex', 'flex-direction:column', `justify-content:${textFrameStyle.verticalJustification}`);
+  }
+  return styles.join(';');
+}
+
+function zIndexCss(zIndex) {
+  return Number.isFinite(Number(zIndex)) ? `z-index:${formatNumber(zIndex)}` : '';
+}
+
 function assetHtml(item) {
   const asset = item.asset || {};
   if (!asset.path) return '';
   const url = assetUrl(asset.path);
   const label = asset.name || item.semantic || item.id;
   const extension = String(asset.name || asset.path).toLowerCase();
+  const fit = asset.cropped ? 'cover' : 'contain';
   if (/\.(png|jpe?g|gif|webp|svg)$/.test(extension)) {
-    return `<img src="${attr(url)}" alt="${attr(label)}">`;
+    return `<img src="${attr(url)}" alt="${attr(label)}" style="object-fit:${fit}">`;
   }
   if (/\.pdf$/.test(extension)) {
-    return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}"></object>`;
+    return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}" style="object-fit:${fit}"></object>`;
   }
   return `<span class="id-asset-placeholder">${escapeHtml(label)}</span>`;
+}
+
+function styleResourceCss(model) {
+  const styles = model.styles || {};
+  return [
+    styleCollectionCss(styles.paragraphStyles, 'pstyle'),
+    styleCollectionCss(styles.characterStyles, 'cstyle'),
+    styleCollectionCss(styles.objectStyles, 'ostyle'),
+    compositeFontCss(styles.paragraphStyles, styles.compositeFonts),
+  ].filter(Boolean).join('\n');
+}
+
+function styleCollectionCss(collection, prefix) {
+  return Object.values(collection || {})
+    .filter((style) => style && style.css)
+    .map((style) => `    .${prefix}-${styleClassToken(style)} { ${trimCss(style.css)} }`)
+    .join('\n');
+}
+
+function compositeFontCss(paragraphStyles = {}, compositeFonts = {}) {
+  const lines = [];
+  for (const style of Object.values(paragraphStyles || {})) {
+    if (!style || !style.css) continue;
+    const compositeName = style.legacy && style.legacy.compositeFont
+      ? style.legacy.compositeFont
+      : fontFamilyFromCss(style.css);
+    const composite = compositeName && compositeFonts ? compositeFonts[compositeName] : null;
+    if (!composite) continue;
+    const roman = (composite.entries || []).find((entry) => entry.name === '罗马字') || {};
+    const css = [];
+    if (roman.size) css.push(`font-size:${formatNumber(Number(roman.size) / 100)}em`);
+    if (roman.weight || composite.romanWeight) css.push(`font-weight:${roman.weight || composite.romanWeight}`);
+    if (css.length) lines.push(`    .pstyle-${styleClassToken(style)} .en-text { ${css.join('; ')} }`);
+  }
+  return lines.join('\n');
+}
+
+function renderTextContent(item, model) {
+  const text = textContent(item);
+  if (item.role !== 'text') return escapeHtml(text);
+  const paragraphStyle = styleByName(model, 'paragraphStyles', item.styleRefs && item.styleRefs.paragraphStyle);
+  const legacy = (paragraphStyle && paragraphStyle.legacy) || {};
+  const usesComposite = usesCompositeFont(paragraphStyle, model, item.firstLineFont);
+
+  if (legacy.list) return renderListText(text, legacy.list, usesComposite);
+  if (legacy.dropCap) return renderDropCapText(text, legacy.dropCap, usesComposite);
+  if (legacy.grepStyles && legacy.grepStyles.length) return renderGrepText(text, legacy.grepStyles, usesComposite, item, model);
+  return usesComposite ? wrapEnglishText(escapeHtml(text)) : escapeHtml(text);
+}
+
+function renderListText(text, list, usesComposite) {
+  const circleNumbers = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳'];
+  let counter = 1;
+  return splitLines(text).map((line) => {
+    if (!line.trim()) return '';
+    const content = usesComposite ? wrapEnglishText(escapeHtml(line)) : escapeHtml(line);
+    if (list.type === 'bullet') return `<span class="list-item has-bullet">${content}</span>`;
+    const number = counter++;
+    const circle = list.isCircle ? ` data-circle="${circleNumbers[number - 1] || `(${number})`}"` : '';
+    return `<span class="list-item has-number" data-number="${number}"${circle}>${content}</span>`;
+  }).filter(Boolean).join('\n');
+}
+
+function renderDropCapText(text, dropCap, usesComposite) {
+  const chars = Math.max(1, Number(dropCap.chars || 1));
+  const escaped = escapeHtml(text);
+  const head = escaped.slice(0, chars);
+  const rest = escaped.slice(chars);
+  const restContent = usesComposite ? wrapEnglishText(rest) : rest;
+  return `<span class="dropcap-chars">${head}</span><span class="dropcap-rest">${restContent}</span>`;
+}
+
+function renderGrepText(text, grepStyles, usesComposite, item, model) {
+  const lines = splitLines(text).map((line) => escapeHtml(line));
+  for (const grepStyle of grepStyles) {
+    if (grepStyle.pattern && grepStyle.pattern.includes('^.+?(?=\\n|\\r)') && lines.length > 0) {
+      const firstUsesComposite = usesCompositeFont(null, model, item.firstLineFont) || usesComposite;
+      const first = firstUsesComposite ? wrapEnglishText(lines[0]) : lines[0];
+      const firstLineStyle = firstLineStyleCss(grepStyle, item, model);
+      lines[0] = firstLineStyle
+        ? `<span class="grep-first-line" style="${attr(firstLineStyle)}">${first}</span>`
+        : `<span class="grep-first-line">${first}</span>`;
+    }
+  }
+  return lines.map((line, index) => (index === 0 || !usesComposite ? line : wrapEnglishText(line))).join('<br>');
+}
+
+function firstLineStyleCss(grepStyle, item, model) {
+  const styles = [];
+  if (item.firstLineFont) {
+    const compositeFonts = (model.styles && model.styles.compositeFonts) || {};
+    const composite = compositeFonts[item.firstLineFont];
+    if (composite && (composite.hasBoldCJK || String(composite.cjkWeight) === '700')) {
+      styles.push('font-weight:bold');
+    } else if (!composite) {
+      styles.push(`font-family:'${item.firstLineFont}',sans-serif`);
+    }
+  }
+  if (grepStyle.charStyleCSS) styles.push(trimCss(grepStyle.charStyleCSS));
+  return styles.join('; ');
 }
 
 function assetUrl(assetPath) {
@@ -222,6 +384,50 @@ function safeTagName(tagName) {
 
 function textContent(item) {
   return (item.content && item.content.text) || '';
+}
+
+function styleByName(model, collectionName, name) {
+  if (!name || !model || !model.styles) return null;
+  const collection = model.styles[collectionName] || {};
+  return collection[name] || Object.values(collection).find((style) => style && (style.name === name || style.token === name)) || null;
+}
+
+function styleClassToken(style) {
+  return safeClassToken(style.safeName || style.token || style.name || 'style');
+}
+
+function safeClassToken(value) {
+  return String(value || 'style')
+    .replace(/[\[\]]/g, '')
+    .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-')
+    .replace(/^-+|-+$/g, '') || 'style';
+}
+
+function trimCss(value) {
+  return String(value || '').trim().replace(/;+$/, '').trim();
+}
+
+function fontFamilyFromCss(css) {
+  const match = String(css || '').match(/font-family:\s*['"]?([^,'";]+)['"]?/);
+  return match ? match[1] : null;
+}
+
+function usesCompositeFont(paragraphStyle, model, firstLineFont) {
+  const compositeFonts = (model.styles && model.styles.compositeFonts) || {};
+  if (firstLineFont && compositeFonts[firstLineFont]) return true;
+  if (!paragraphStyle) return false;
+  const compositeName = paragraphStyle.legacy && paragraphStyle.legacy.compositeFont
+    ? paragraphStyle.legacy.compositeFont
+    : fontFamilyFromCss(paragraphStyle.css);
+  return Boolean(compositeName && compositeFonts[compositeName]);
+}
+
+function wrapEnglishText(value) {
+  return String(value).replace(/([A-Za-z][A-Za-z0-9 .,:;()\/&+-]*[A-Za-z0-9)])/g, '<span class="en-text">$1</span>');
+}
+
+function splitLines(value) {
+  return String(value || '').split(/\r\n|\r|\n/);
 }
 
 function assertDocumentModel(model) {

@@ -1,0 +1,330 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.reverseVisualStyle = function (item) {
+    return {
+        fillColor: HI.reverseColor(item.fillColor),
+        strokeColor: HI.reverseColor(item.strokeColor),
+        strokeWeight: HI.positiveNumberOrNull(item.strokeWeight),
+        opacity: HI.reverseOpacity(item),
+        cornerRadius: HI.reverseCornerRadius(item)
+    };
+};
+
+HI.reverseTextStyle = function (item) {
+    try {
+        if (!HI.isTextFrame(item)) return null;
+        if (!item.paragraphs || item.paragraphs.length < 1) return null;
+        var p = item.paragraphs[0], font = HI.reverseFontInfo(p.appliedFont);
+        var style = {
+            appliedFont: font ? font.appliedFont : null,
+            fontFamily: font ? font.fontFamily : null,
+            fontStyleName: font ? font.fontStyleName : null,
+            fontWeight: font ? font.fontWeight : null,
+            fontStyle: font ? font.fontStyle : null,
+            pointSize: HI.numberOrNull(p.pointSize),
+            leading: HI.leadingOrNull(p.leading),
+            fillColor: HI.reverseColor(p.fillColor),
+            tracking: HI.numberOrNull(p.tracking),
+            justification: HI.reverseJustification(p.justification)
+        };
+        style.css = HI.textStyleCss(style);
+        return style;
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseTextFrameStyle = function (item) {
+    try {
+        if (!HI.isTextFrame(item) && !HI.hasTextFrameGeneralOptions(item)) return null;
+        if (!item.textFramePreferences) return null;
+        var prefs = item.textFramePreferences, inset = HI.insetArray(prefs.insetSpacing);
+        var style = {
+            inset: { top: inset[0], right: inset[1], bottom: inset[2], left: inset[3] },
+            columnCount: HI.numberOrNull(prefs.textColumnCount),
+            columnGap: HI.numberOrNull(prefs.textColumnGutter),
+            verticalJustification: HI.reverseVerticalJustification(prefs.verticalJustification)
+        };
+        style.css = HI.textFrameStyleCss(style);
+        return style;
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseFirstLineFont = function (item) {
+    try {
+        if (!HI.isTextFrame(item)) return null;
+        if (!item.paragraphs || item.paragraphs.length < 1) return null;
+        var p = item.paragraphs[0], ps = p.appliedParagraphStyle;
+        if (!ps || !ps.isValid) return null;
+        var hasRules = (ps.nestedStyles && ps.nestedStyles.length > 0) || (ps.nestedGrepStyles && ps.nestedGrepStyles.length > 0);
+        if (!hasRules) return null;
+        var pFont = HI.reverseFontInfo(p.appliedFont), sFont = HI.reverseFontInfo(ps.appliedFont);
+        if (pFont && (!sFont || pFont.fontFamily !== sFont.fontFamily)) return pFont.fontFamily;
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseInlineStyle = function (item) {
+    var styles = [];
+    var text = HI.reverseTextStyle(item);
+    var frame = HI.reverseTextFrameStyle(item);
+    if (text && text.css) styles.push(text.css);
+    if (frame && frame.css) styles.push(frame.css);
+    return styles.length ? styles.join("; ") : null;
+};
+
+HI.reverseStyleResource = function (style, kind) {
+    if (kind === "paragraph") return HI.reverseParagraphStyle(style);
+    if (kind === "character") return HI.reverseCharacterStyle(style);
+    if (kind === "object") return HI.reverseObjectStyle(style);
+    return { name: String(style.name || ""), safeName: HI.safeStyleName(style.name), labels: HI.reverseLabels(style), css: "" };
+};
+
+HI.reverseParagraphStyle = function (style) {
+    var out = { name: String(style.name || ""), safeName: HI.safeStyleName(style.name), labels: HI.reverseLabels(style), css: HI.paragraphStyleCss(style) };
+    HI.copyObject(out, HI.reverseParagraphExtras(style));
+    return out;
+};
+
+HI.reverseCharacterStyle = function (style) {
+    return { name: String(style.name || ""), safeName: HI.safeStyleName(style.name), labels: HI.reverseLabels(style), css: HI.characterStyleCss(style) };
+};
+
+HI.reverseObjectStyle = function (style) {
+    return { name: String(style.name || ""), safeName: HI.safeStyleName(style.name), labels: HI.reverseLabels(style), css: HI.objectStyleCss(style) };
+};
+
+HI.reverseParagraphExtras = function (style) {
+    var out = {};
+    try {
+        var font = HI.reverseFontInfo(style.appliedFont);
+        if (font && font.isComposite) out.compositeFont = font.compositeName;
+        if (Number(style.dropCapCharacters || 0) > 0) {
+            out.dropCap = { chars: Number(style.dropCapCharacters), lines: Number(style.dropCapLines || 0) };
+            if (style.dropCapStyle && style.dropCapStyle.isValid && String(style.dropCapStyle.name).indexOf("[") !== 0) {
+                out.dropCap.style = String(style.dropCapStyle.name);
+                out.dropCap.styleCSS = HI.characterStyleCss(style.dropCapStyle);
+            }
+        }
+        var list = HI.reverseList(style);
+        if (list) out.list = list;
+        var greps = HI.reverseGrepStyles(style);
+        if (greps.length) out.grepStyles = greps;
+        var nested = HI.reverseNestedStyles(style);
+        if (nested.length) out.nestedStyles = nested;
+    } catch (_) {}
+    return out;
+};
+
+HI.reverseList = function (style) {
+    var type = HI.reverseListType(style.bulletsAndNumberingListType);
+    if (type === "none") return null;
+    var out = { type: type };
+    try {
+        if (type === "bullet") {
+            out.charCode = style.bulletChar ? Number(style.bulletChar.characterValue || 0) : null;
+            if (style.bulletsCharacterStyle && style.bulletsCharacterStyle.isValid) {
+                out.charStyle = String(style.bulletsCharacterStyle.name || "");
+                out.charStyleCSS = HI.characterStyleCss(style.bulletsCharacterStyle);
+            }
+        } else {
+            out.format = String(style.numberingFormat || "");
+            if (out.format === "Circle Numbering") out.isCircle = true;
+            if (style.numberingCharacterStyle && style.numberingCharacterStyle.isValid) {
+                out.charStyle = String(style.numberingCharacterStyle.name || "");
+                out.charStyleCSS = HI.characterStyleCss(style.numberingCharacterStyle);
+            }
+        }
+    } catch (_) {}
+    return out;
+};
+
+HI.reverseGrepStyles = function (style) {
+    var out = [];
+    try {
+        var items = style.nestedGrepStyles || [];
+        for (var i = 0; i < items.length; i++) {
+            var gs = items[i], one = { pattern: String(gs.grepExpression || "") };
+            if (gs.appliedCharacterStyle && gs.appliedCharacterStyle.isValid) {
+                one.charStyle = String(gs.appliedCharacterStyle.name || "");
+                one.charStyleCSS = HI.characterStyleCss(gs.appliedCharacterStyle);
+            }
+            out.push(one);
+        }
+    } catch (_) {}
+    return out;
+};
+
+HI.reverseNestedStyles = function (style) {
+    var out = [];
+    try {
+        var items = style.nestedStyles || [];
+        for (var i = 0; i < items.length; i++) {
+            var ns = items[i], one = { repetition: Number(ns.repetition || 1), delimiter: Number(ns.delimiter || 0) };
+            if (ns.appliedCharacterStyle && ns.appliedCharacterStyle.isValid) {
+                one.charStyle = String(ns.appliedCharacterStyle.name || "");
+                one.charStyleCSS = HI.characterStyleCss(ns.appliedCharacterStyle);
+            }
+            out.push(one);
+        }
+    } catch (_) {}
+    return out;
+};
+
+HI.reverseCompositeFonts = function (doc) {
+    var out = [];
+    try {
+        for (var i = 0; i < doc.compositeFonts.length; i++) {
+            var cf = doc.compositeFonts[i];
+            if (String(cf.name || "").indexOf("[") === 0) continue;
+            var record = { name: String(cf.name || ""), safeName: HI.safeStyleName(cf.name), hasBoldCJK: false, cjkWeight: "400", romanWeight: "400", entries: [] };
+            for (var j = 0; j < cf.compositeFontEntries.length; j++) {
+                var e = cf.compositeFontEntries[j], weight = HI.fontWeightFor(e.fontStyle) || "400";
+                var name = String(e.name || "");
+                if (name === "\u6c49\u5b57") { record.cjkWeight = weight; record.hasBoldCJK = Number(weight) >= 700; }
+                if (name === "\u7f57\u9a6c\u5b57") record.romanWeight = weight;
+                record.entries.push({ name: name, fontStyle: String(e.fontStyle || ""), size: Number(e.relativeSize || 100), weight: weight });
+            }
+            out.push(record);
+        }
+    } catch (_) {}
+    return out;
+};
+
+HI.paragraphStyleCss = function (style) {
+    var css = [], font = HI.reverseFontInfo(style.appliedFont);
+    if (font && font.fontFamily) css.push("font-family:'" + font.fontFamily + "',sans-serif");
+    if (font && font.fontWeight) css.push("font-weight:" + font.fontWeight);
+    if (font && font.fontStyle) css.push("font-style:" + font.fontStyle);
+    HI.pushCssNumber(css, "font-size", style.pointSize, "pt");
+    HI.pushCssNumber(css, "line-height", HI.leadingOrNull(style.leading), "pt");
+    if (HI.numberOrNull(style.tracking)) css.push("letter-spacing:" + (Number(style.tracking) / 1000) + "em");
+    css.push("text-align:" + HI.reverseJustification(style.justification));
+    var color = HI.reverseColor(style.fillColor);
+    if (color) css.push("color:" + color);
+    HI.pushCssNumber(css, "margin-top", style.spaceBefore, "pt");
+    HI.pushCssNumber(css, "margin-bottom", style.spaceAfter, "pt");
+    HI.pushCssNumber(css, "text-indent", style.firstLineIndent, "pt");
+    HI.pushCssNumber(css, "padding-left", style.leftIndent, "pt");
+    HI.pushCssNumber(css, "padding-right", style.rightIndent, "pt");
+    return css.join("; ");
+};
+
+HI.characterStyleCss = function (style) {
+    var css = [], font = HI.reverseFontInfo(style.appliedFont);
+    if (font && font.fontFamily) css.push("font-family:'" + font.fontFamily + "',sans-serif");
+    if (font && font.fontWeight) css.push("font-weight:" + font.fontWeight);
+    if (font && font.fontStyle) css.push("font-style:" + font.fontStyle);
+    HI.pushCssNumber(css, "font-size", style.pointSize, "pt");
+    var color = HI.reverseColor(style.fillColor);
+    if (color) css.push("color:" + color);
+    return css.join("; ");
+};
+
+HI.objectStyleCss = function (style) {
+    var css = [];
+    try {
+        if (style.enableFill) { var fill = HI.reverseColor(style.fillColor); if (fill) css.push("background-color:" + fill); }
+        if (style.enableStroke && Number(style.strokeWeight || 0) > 0) {
+            var stroke = HI.reverseColor(style.strokeColor);
+            if (stroke) css.push("border:" + Number(style.strokeWeight) + "pt solid " + stroke);
+        }
+        var radius = HI.reverseCornerRadius(style);
+        if (radius) css.push("border-radius:" + radius + "pt");
+        var opacity = HI.reverseOpacity(style);
+        if (opacity !== null && opacity < 100) css.push("opacity:" + (opacity / 100));
+        if (HI.hasTextFrameGeneralOptions(style)) {
+            var tf = HI.reverseTextFrameStyle(style);
+            if (tf && tf.css) css.push(tf.css);
+        }
+    } catch (_) {}
+    return css.join("; ");
+};
+
+HI.textStyleCss = function (style) {
+    var css = [];
+    if (style.fontFamily) css.push('font-family:"' + style.fontFamily + '", Arial, sans-serif');
+    if (style.fontWeight) css.push("font-weight:" + style.fontWeight);
+    if (style.fontStyle) css.push("font-style:" + style.fontStyle);
+    if (style.pointSize !== null) css.push("font-size:" + style.pointSize + "px");
+    if (style.leading !== null) css.push("line-height:" + style.leading + "px");
+    if (style.fillColor) css.push("color:" + style.fillColor);
+    if (style.tracking !== null && Number(style.tracking) !== 0) css.push("letter-spacing:" + (Number(style.tracking) / 1000) + "em");
+    if (style.justification) css.push("text-align:" + style.justification);
+    return css.join("; ");
+};
+
+HI.textFrameStyleCss = function (style) {
+    var css = [], i = style.inset || {};
+    if (Number(i.top || 0) || Number(i.right || 0) || Number(i.bottom || 0) || Number(i.left || 0)) css.push("padding:" + i.top + "px " + i.right + "px " + i.bottom + "px " + i.left + "px");
+    if (Number(style.columnCount || 0) > 1) {
+        css.push("column-count:" + Number(style.columnCount));
+        if (Number(style.columnGap || 0) > 0) css.push("column-gap:" + Number(style.columnGap) + "px");
+    }
+    if (style.verticalJustification && style.verticalJustification !== "flex-start") {
+        css.push("display:flex"); css.push("flex-direction:column"); css.push("justify-content:" + style.verticalJustification);
+    }
+    return css.join("; ");
+};
+
+HI.reverseFontInfo = function (font) {
+    try {
+        if (!font || !font.isValid) return null;
+        var full = String(font.name || ""), parts = full.split("\t"), style = parts[1] || "Regular";
+        return { appliedFont: full, fontFamily: parts[0], fontStyleName: style, fontWeight: HI.fontWeightFor(style), fontStyle: HI.fontStyleFor(style), isComposite: font.constructor && String(font.constructor.name) === "CompositeFont", compositeName: parts[0] };
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseColor = function (color) {
+    try {
+        if (!color || !color.isValid) return null;
+        var name = String(color.name || "");
+        if (name === "None" || name === "[None]" || name === "Text Color") return null;
+        if (name === "Paper" || name === "[Paper]") return "#ffffff";
+        if (!color.colorValue) return null;
+        var v = color.colorValue;
+        if (color.space === ColorSpace.RGB) return HI.rgbHex(v[0], v[1], v[2]);
+        if (color.space === ColorSpace.CMYK || color.space === 1129142603) {
+            var k = Number(v[3] || 0) / 100;
+            return HI.rgbHex(255 * (1 - Number(v[0] || 0) / 100) * (1 - k), 255 * (1 - Number(v[1] || 0) / 100) * (1 - k), 255 * (1 - Number(v[2] || 0) / 100) * (1 - k));
+        }
+    } catch (_) {}
+    return null;
+};
+
+HI.fontWeightFor = function (styleName) {
+    var s = String(styleName || "").toLowerCase();
+    if (s.indexOf("black") >= 0) return "900";
+    if (s.indexOf("bold") >= 0 || s.indexOf("heavy") >= 0) return "700";
+    if (s.indexOf("semibold") >= 0 || s.indexOf("demi") >= 0) return "600";
+    if (s.indexOf("medium") >= 0) return "500";
+    if (s.indexOf("light") >= 0) return "300";
+    if (s.indexOf("thin") >= 0) return "100";
+    return null;
+};
+
+HI.fontStyleFor = function (styleName) { var s = String(styleName || "").toLowerCase(); return s.indexOf("italic") >= 0 || s.indexOf("oblique") >= 0 ? "italic" : null; };
+HI.reverseJustification = function (j) { if (j === Justification.CENTER_ALIGN) return "center"; if (j === Justification.RIGHT_ALIGN) return "right"; if (j === Justification.LEFT_ALIGN) return "left"; return "justify"; };
+HI.reverseVerticalJustification = function (v) { if (v === VerticalJustification.CENTER_ALIGN) return "center"; if (v === VerticalJustification.BOTTOM_ALIGN) return "flex-end"; if (v === VerticalJustification.TOP_ALIGN) return "flex-start"; return "space-between"; };
+HI.reverseListType = function (t) { if (t === 1280598644) return "bullet"; if (t === 1280601709) return "numbered"; return "none"; };
+HI.numberOrNull = function (value) { var n = Number(value); return Number(n) === n && Math.abs(n) < 1000000 ? n : null; };
+HI.leadingOrNull = function (value) { var n = HI.numberOrNull(value); return n === 1635019116 ? null : n; };
+HI.positiveNumberOrNull = function (value) { var n = Number(value || 0); return n > 0 ? n : null; };
+HI.reverseOpacity = function (item) { try { var o = Number(item.transparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; };
+HI.reverseCornerRadius = function (item) { try { var r = Number(item.topLeftCornerRadius || 0); return r > 0 && item.topLeftCornerOption !== 1852796517 ? r : null; } catch (_) {} return null; };
+HI.rgbHex = function (r, g, b) { return "#" + HI.hexByte(r) + HI.hexByte(g) + HI.hexByte(b); };
+HI.hexByte = function (value) { var n = Math.max(0, Math.min(255, Math.round(Number(value || 0)))); var h = n.toString(16); return h.length === 1 ? "0" + h : h; };
+HI.insetArray = function (value) { try { if (value && value.length === 4) return [Number(value[0] || 0), Number(value[1] || 0), Number(value[2] || 0), Number(value[3] || 0)]; } catch (_) {} var n = Number(value || 0); return [n, n, n, n]; };
+HI.pushCssNumber = function (css, name, value, unit) { var n = HI.numberOrNull(value); if (n !== null && n !== 0) css.push(name + ":" + n + unit); };
+HI.safeStyleName = function (name) { return String(name || "").replace(/[\[\]]/g, "").replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, "-"); };
+HI.copyObject = function (target, source) { for (var key in source) if (source.hasOwnProperty(key)) target[key] = source[key]; };
+HI.isTextFrame = function (item) {
+    try { if (item instanceof TextFrame) return true; } catch (_) {}
+    try { return String(item.constructor && item.constructor.name || "").indexOf("TextFrame") >= 0; } catch (_) {}
+    return false;
+};
+HI.hasTextFrameGeneralOptions = function (item) {
+    try { return item.enableTextFrameGeneralOptions === true; } catch (_) {}
+    return false;
+};

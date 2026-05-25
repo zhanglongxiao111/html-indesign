@@ -65,11 +65,11 @@ HI.reversePageMargins = function (page) {
 
 HI.reversePageItems = function (page) {
     var out = [], items = HI.collectionElements(page.pageItems);
-    for (var i = 0; i < items.length; i++) out.push(HI.reversePageItem(items[i], i));
+    for (var i = 0; i < items.length; i++) out.push(HI.reversePageItem(items[i], i, items.length));
     return out;
 };
 
-HI.reversePageItem = function (item, index) {
+HI.reversePageItem = function (item, index, total) {
     return {
         id: String(item.id || ("item-" + (index + 1))),
         type: String(item.constructor && item.constructor.name || item.constructor || ""),
@@ -78,6 +78,11 @@ HI.reversePageItem = function (item, index) {
         paragraphStyleName: HI.appliedParagraphStyleName(item),
         objectStyleName: HI.appliedObjectStyleName(item),
         visualStyle: HI.reverseVisualStyle(item),
+        textStyle: HI.reverseTextStyle(item),
+        textFrameStyle: HI.reverseTextFrameStyle(item),
+        inlineStyle: HI.reverseInlineStyle(item),
+        firstLineFont: HI.reverseFirstLineFont(item),
+        zIndex: Number(total - 1 - index),
         placedAsset: HI.reversePlacedAsset(item),
         text: HI.itemText(item),
         label: String(item.label || ""),
@@ -104,69 +109,6 @@ HI.appliedParagraphStyleName = function (item) {
 
 HI.itemText = function (item) {
     try { return String(item.contents || ""); } catch (_) { return ""; }
-};
-
-HI.reverseVisualStyle = function (item) {
-    return {
-        fillColor: HI.reverseColor(item.fillColor),
-        strokeColor: HI.reverseColor(item.strokeColor),
-        strokeWeight: HI.positiveNumberOrNull(item.strokeWeight),
-        opacity: HI.reverseOpacity(item),
-        cornerRadius: HI.reverseCornerRadius(item)
-    };
-};
-
-HI.reverseColor = function (color) {
-    try {
-        if (!color || !color.isValid) return null;
-        var name = String(color.name || "");
-        if (name === "None" || name === "[None]" || name === "Text Color") return null;
-        if (name === "Paper" || name === "[Paper]") return "#ffffff";
-        if (!color.colorValue) return null;
-        var value = color.colorValue;
-        if (color.space === ColorSpace.RGB) return HI.rgbHex(value[0], value[1], value[2]);
-        if (color.space === ColorSpace.CMYK || color.space === 1129142603) {
-            var k = Number(value[3] || 0) / 100;
-            return HI.rgbHex(
-                255 * (1 - Number(value[0] || 0) / 100) * (1 - k),
-                255 * (1 - Number(value[1] || 0) / 100) * (1 - k),
-                255 * (1 - Number(value[2] || 0) / 100) * (1 - k)
-            );
-        }
-    } catch (_) {}
-    return null;
-};
-
-HI.rgbHex = function (r, g, b) {
-    return "#" + HI.hexByte(r) + HI.hexByte(g) + HI.hexByte(b);
-};
-
-HI.hexByte = function (value) {
-    var number = Math.max(0, Math.min(255, Math.round(Number(value || 0))));
-    var hex = number.toString(16);
-    return hex.length === 1 ? "0" + hex : hex;
-};
-
-HI.positiveNumberOrNull = function (value) {
-    var number = Number(value || 0);
-    return number > 0 ? number : null;
-};
-
-HI.reverseOpacity = function (item) {
-    try {
-        var opacity = Number(item.transparencySettings.blendingSettings.opacity);
-        return opacity >= 0 && opacity <= 100 ? opacity : null;
-    } catch (_) {}
-    return null;
-};
-
-HI.reverseCornerRadius = function (item) {
-    try {
-        var radius = Number(item.topLeftCornerRadius || 0);
-        var option = item.topLeftCornerOption;
-        if (radius > 0 && option !== 1852796517) return radius;
-    } catch (_) {}
-    return null;
 };
 
 HI.reversePlacedAsset = function (item) {
@@ -221,17 +163,18 @@ HI.reverseAssets = function (doc) {
 
 HI.reverseStyles = function (doc) {
     return {
-        paragraphStyles: HI.reverseStyleCollection(doc.paragraphStyles),
-        characterStyles: HI.reverseStyleCollection(doc.characterStyles),
-        objectStyles: HI.reverseStyleCollection(doc.objectStyles),
-        tableStyles: HI.reverseStyleCollection(doc.tableStyles),
-        cellStyles: HI.reverseStyleCollection(doc.cellStyles)
+        paragraphStyles: HI.reverseStyleCollection(doc.allParagraphStyles || doc.paragraphStyles, "paragraph"),
+        characterStyles: HI.reverseStyleCollection(doc.allCharacterStyles || doc.characterStyles, "character"),
+        objectStyles: HI.reverseStyleCollection(doc.allObjectStyles || doc.objectStyles, "object"),
+        tableStyles: HI.reverseStyleCollection(doc.tableStyles, "table"),
+        cellStyles: HI.reverseStyleCollection(doc.cellStyles, "cell"),
+        compositeFonts: HI.reverseCompositeFonts(doc)
     };
 };
 
-HI.reverseStyleCollection = function (collection) {
+HI.reverseStyleCollection = function (collection, kind) {
     var out = [], items = HI.collectionElements(collection);
-    for (var i = 0; i < items.length; i++) out.push({ name: String(items[i].name || ""), labels: HI.reverseLabels(items[i]) });
+    for (var i = 0; i < items.length; i++) out.push(HI.reverseStyleResource(items[i], kind));
     return out;
 };
 
@@ -241,6 +184,13 @@ HI.reverseLabels = function (target) {
 };
 
 HI.collectionElements = function (collection) {
+    try {
+        if (collection && typeof collection.length === "number") {
+            var out = [];
+            for (var i = 0; i < collection.length; i++) out.push(collection[i]);
+            return out;
+        }
+    } catch (_) {}
     try { return collection.everyItem().getElements(); } catch (_) { return []; }
 };
 
