@@ -36,6 +36,7 @@ function semanticModelToHtml(model) {
 
   const title = model.title || model.id;
   const pages = (model.pages || []).map(pageToHtml).join('\n');
+  const reverseMode = model.reverseMode || 'structured';
 
   return [
     '<!doctype html>',
@@ -48,7 +49,7 @@ function semanticModelToHtml(model) {
     '  </style>',
     '</head>',
     '<body>',
-    `<main class="deck" data-id-document="${attr(model.id)}" data-id-profile="${attr(model.profile || '')}">`,
+    `<main class="deck" data-id-document="${attr(model.id)}" data-id-profile="${attr(model.profile || '')}" data-id-reverse-mode="${attr(reverseMode)}">`,
     pages,
     '</main>',
     '</body>',
@@ -68,6 +69,7 @@ function pageToHtml(page) {
     page.parentPageName ? `data-id-parent-page-name="${attr(page.parentPageName)}"` : null,
     page.layout ? `data-id-layout="${attr(page.layout)}"` : null,
     page.margins ? `data-id-margins="${attr(marginValue(page.margins))}"` : null,
+    page.source ? `data-id-source="${attr(page.source)}"` : null,
     `style="${attr(pageStyle(page))}"`,
   ].filter(Boolean);
 
@@ -78,11 +80,12 @@ function pageToHtml(page) {
 function itemToHtml(item) {
   const itemId = requiredString(item.id, 'Item is missing id');
   const tag = safeTagName(item.tagName || htmlTagForRole(item.role));
-  const classes = ['id-object', item.htmlClass].filter(Boolean).join(' ');
+  const classes = uniqueWords(['id-object', item.htmlClass].filter(Boolean).join(' ')).join(' ');
   const attrs = [
     `class="${attr(classes)}"`,
     `id="${attr(itemId)}"`,
     `data-id-object="${attr(itemId)}"`,
+    item.source ? `data-id-source="${attr(item.source)}"` : null,
     item.role ? `data-id-role="${attr(item.role)}"` : null,
     item.semantic ? `data-id-semantic="${attr(item.semantic)}"` : null,
     item.layerName ? `data-id-layer="${attr(item.layerName)}"` : null,
@@ -95,7 +98,13 @@ function itemToHtml(item) {
     item.styleRefs && item.styleRefs.frameStyle
       ? `data-id-frame-style="${attr(item.styleRefs.frameStyle)}"`
       : null,
-    `style="${attr(boundsStyle(itemId, item.bounds))}"`,
+    item.legacy && item.legacy.isSlot ? 'data-id-legacy-slot="true"' : null,
+    item.legacy && item.legacy.slotName ? `data-id-slot-name="${attr(item.legacy.slotName)}"` : null,
+    item.legacy && item.legacy.slotType ? `data-id-slot-type="${attr(item.legacy.slotType)}"` : null,
+    item.legacy && item.legacy.confidence != null ? `data-id-confidence="${attr(item.legacy.confidence)}"` : null,
+    item.asset && item.asset.path ? `data-id-asset-path="${attr(item.asset.path)}"` : null,
+    item.asset && item.asset.cropped ? 'data-id-image-cropped="true"' : null,
+    `style="${attr(boundsStyle(itemId, item.bounds, item.inlineStyle))}"`,
   ].filter(Boolean);
 
   if (tag === 'figure') {
@@ -129,16 +138,18 @@ function pageStyle(page) {
   ].join(';');
 }
 
-function boundsStyle(itemId, bounds) {
+function boundsStyle(itemId, bounds, inlineStyle) {
   if (!bounds) {
     throw new Error(`Item ${itemId} is missing bounds`);
   }
-  return [
+  const styles = [
     `left:${formatPx(requiredNumber(bounds.x, `Item ${itemId} bounds is missing x`))}`,
     `top:${formatPx(requiredNumber(bounds.y, `Item ${itemId} bounds is missing y`))}`,
     `width:${formatPx(requiredNumber(bounds.width, `Item ${itemId} bounds is missing width`))}`,
     `height:${formatPx(requiredNumber(bounds.height, `Item ${itemId} bounds is missing height`))}`,
-  ].join(';');
+  ];
+  if (inlineStyle) styles.push(String(inlineStyle).trim().replace(/;+$/, ''));
+  return styles.join(';');
 }
 
 function marginValue(margins) {
@@ -210,6 +221,10 @@ function escapeHtml(value) {
 
 function attr(value) {
   return escapeHtml(value).replace(/"/g, '&quot;');
+}
+
+function uniqueWords(value) {
+  return Array.from(new Set(String(value || '').split(/\s+/).filter(Boolean)));
 }
 
 module.exports = {

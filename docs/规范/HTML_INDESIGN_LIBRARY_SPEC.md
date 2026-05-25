@@ -1032,13 +1032,13 @@ target.insertLabel("html_indesign", JSON.stringify({
 
 标签写入失败不得静默吞掉。文档、页面、母版、核心页面对象、样式 token 和图层 token 的标签写入失败是 error；旧兼容标签或非核心诊断标签写入失败至少写入 warning 和执行报告。
 
-反向导出有三种模式：
+反向导出有四种模式：
 
 | 模式 | 用途 |
 | ---- | ---- |
 | `structured` | 读取本项目生成或人工按协议打标签的 InDesign |
+| `inferred` | 读取弱标签 InDesign 或旧 blueprint，并输出带置信度与证据的推断 HTML |
 | `observation` | 导出未标注 InDesign 为低语义观察 HTML，供 Agent 补标签 |
-| `blueprint-legacy` | 保留旧 blueprint 模板查看和迁移能力 |
 
 ## 13. API 设计
 
@@ -1086,6 +1086,7 @@ html-indesign model deck.html --out test/workspace/model.json
 html-indesign compile deck.html --out test/workspace/instructions.json
 html-indesign build test/workspace/instructions.json
 html-indesign reverse --mode structured --out test/workspace/reverse-export
+html-indesign reverse --mode inferred --blueprint test/artifacts/blueprint.json --out test/workspace/reverse-blueprint
 html-indesign reverse --mode observation --out test/workspace/reverse-observed
 ```
 
@@ -1183,7 +1184,7 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | `src/validator.js` | legacy template validator，保留兼容 |
 | `src/builder.js` | legacy template builder，保留兼容 |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
-| `_indesign_scripts/extract_blueprint.jsx` | legacy blueprint 抽取，不作为新反向主线 |
+| `_indesign_scripts/extract_blueprint.jsx` | legacy blueprint 抽取；其输出通过 `src/indesign-reverse/legacy-blueprint.js` 归一化为 reverse model |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
@@ -1209,6 +1210,7 @@ src/
     snapshot-reader.js
     label-protocol.js
     reverse-model.js
+    legacy-blueprint.js
     html-writer.js
     asset-exporter.js
     report.js

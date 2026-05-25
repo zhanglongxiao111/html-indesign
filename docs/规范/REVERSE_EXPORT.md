@@ -15,7 +15,7 @@
 -> 带标签 InDesign
 ```
 
-反向导出以 `docs/规范/LABEL_PROTOCOL.md` 为语义来源。
+反向导出的最高质量语义来源是 `docs/规范/LABEL_PROTOCOL.md`。无标签或弱标签输入不能恢复原始 authoring HTML，但仍必须能通过 InDesign 原生信息、旧 blueprint 和样式/几何事实生成可观察 HTML 与补标线索。
 
 ## 2. 导出模式
 
@@ -74,26 +74,30 @@
 </section>
 ```
 
-### 2.3 `blueprint-legacy`
+### 2.3 `inferred`
 
-兼容模式。
+推断模式。
 
-继续使用旧链路：
+要求：
 
-```text
-extract_blueprint.jsx -> blueprint.json -> generator.js -> template preview HTML
-```
+- 不要求完整 `html_indesign` 标签。
+- 可以读取旧 blueprint、旧槽位标签、母版、图层、参考线、样式、分组和几何关系。
+- 每个推断出的槽位、语义、class 或容器关系必须有置信度和证据。
+- 不得把推断结果冒充原始 authoring HTML。
 
 用途：
 
-- 查看旧模板。
 - 迁移旧模板槽位。
-- 兼容历史测试资产。
+- 把弱标签 InDesign 或旧 blueprint 接入新的 reverse model。
+- 生成比 observation 更利于 Agent 补标的 HTML。
 
-限制：
+输出：
 
-- 不作为新的双向转换主线。
-- 不保证生成当前 `paged-html` 协议。
+- `deck.html`
+- `deck.inferred.html`
+- `reverse-model.json`
+- `report.json`
+- `inferred-report.json`
 
 ## 3. 来源等级
 
@@ -103,7 +107,7 @@ extract_blueprint.jsx -> blueprint.json -> generator.js -> template preview HTML
 | 人工 InDesign，按协议打标签 | 有规范脚本标签 | 高 | 正式支持 |
 | 人工 InDesign，只使用模板但无标签 | 有母版和样式，语义不完整 | 中 | 输出观察 HTML 和模板线索 |
 | 普通未标注 InDesign | 只有视觉对象 | 低 | 输出观察 HTML，等待 Agent 语义化 |
-| 旧 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 兼容 | 保留 legacy-template 路径 |
+| 旧 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `legacyBlueprintToSemanticModel` 进入 `indesign-reverse`，输出 inferred/observation HTML |
 
 ## 4. 产物目录
 
@@ -112,8 +116,10 @@ extract_blueprint.jsx -> blueprint.json -> generator.js -> template preview HTML
 ```text
 reverse-export-<timestamp>/
   deck.html
+  deck.<mode>.html
   reverse-model.json
   report.json
+  <mode>-report.json
   assets/
     ...
 ```
@@ -157,6 +163,8 @@ reverse-export-<timestamp>/
 
 `reverse-model.json` 必须是统一语义模型的序列化结果，而不是独立的第三套结构。反向导出可以在语义模型外附加 snapshot、诊断和 unresolved 信息，但 `document`、`parentPages`、`pages`、`styles`、`layers`、`assets`、`items` 的字段含义必须和 `HTML_INDESIGN_LIBRARY_SPEC.md` 中的 Canonical Mapping Model 保持一致。
 
+旧 blueprint 输入也必须先转换成 `reverse-model.json`，不得直接绕过模型调用旧 `generator.js` 生成最终 HTML。
+
 用途：
 
 - 保留 HTML 不方便表达的 InDesign 信息。
@@ -170,7 +178,7 @@ reverse-export-<timestamp>/
   "metadata": {
     "sourceDocument": "report.indd",
     "exportedAt": "2026-05-25T00:00:00Z",
-    "mode": "structured",
+    "mode": "structured|inferred|observation",
     "semanticModelVersion": 1
   },
   "document": {
@@ -203,6 +211,7 @@ reverse-export-<timestamp>/
 - 样式无法映射。
 - 模板信息只能部分恢复。
 - observation 模式中的 unknown 对象数量。
+- inferred 模式中的推断来源、置信度和证据。
 
 ### 4.4 structured 标签矩阵
 
@@ -253,6 +262,7 @@ src/indesign-reverse/
   snapshot-reader.js
   label-protocol.js
   reverse-model.js
+  legacy-blueprint.js
   html-writer.js
   asset-exporter.js
   report.js
@@ -280,6 +290,7 @@ scripts/indesign-reverse-export.js
 ```powershell
 node scripts/indesign-reverse-export.js --mode structured --out test/workspace/reverse-export
 node scripts/indesign-reverse-export.js --mode observation --out test/workspace/reverse-observed
+node scripts/indesign-reverse-export.js --blueprint test/artifacts/blueprint.json --mode inferred --out test/workspace/reverse-blueprint
 ```
 
 内部流程：
@@ -288,6 +299,15 @@ node scripts/indesign-reverse-export.js --mode observation --out test/workspace/
 indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 -> read reverse-snapshot.json
 -> compile to deck.html / reverse-model.json / report.json
+```
+
+旧 blueprint 输入流程：
+
+```text
+read blueprint.json
+-> legacyBlueprintToSemanticModel
+-> semanticModelToHtml
+-> write deck.html / deck.inferred.html / reverse-model.json / report.json / inferred-report.json
 ```
 
 ## 6. 模板和母版
@@ -322,6 +342,8 @@ indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 6. 新 InDesign 写入脚本标签。
 7. 以后走 structured 模式双向维护。
 ```
+
+如果输入是旧 blueprint，可先使用 `inferred` 模式获得槽位名、样式和资源线索，再进入补标流程。
 
 Agent 不应直接修改 InDesign 标签。Agent 应修改 HTML，因为 HTML 更适合审阅、diff、测试和版本管理。
 

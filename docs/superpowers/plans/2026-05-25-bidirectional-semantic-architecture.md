@@ -15,6 +15,7 @@
 | Task 1-13 | 已完成 | 已提交到当前分支 |
 | Task 14 | 已完成 | `npm test`、严格作者规则检查、真实 InDesign E2E + 回读已通过；E2E 已硬性审计回写 HTML 双向标签 |
 | Task 15 | 已完成 | 最终 `npm test`、严格作者规则检查、真实 InDesign E2E + 回读和结果 JSON 核对均通过 |
+| Task 16 | 已完成 | 旧 blueprint/template 反向能力已归并到 `indesign-reverse`：支持 `legacyBlueprintToSemanticModel` 和 CLI `--blueprint` 输入，输出 `inferred`/`observation` HTML |
 
 ---
 
@@ -26,7 +27,7 @@
 - 正向生成完整 `html_indesign` 标签。
 - 反向读取本项目生成或人工按协议打标签的 InDesign。
 - 页面母版信息和页面结构模板信息互导：`data-id-parent-page` / `data-id-parent-page-name` 对应 InDesign 母版页，`data-id-layout` 只作为页面结构模板标签。
-- 旧 `blueprint` 保留为 `legacyTemplate`，不进入新主线。
+- 旧 `blueprint` 的模板构建器仍保留在 `legacyTemplate`；旧 blueprint 输入能力归并为 `indesign-reverse` 的 `legacy-blueprint` 适配入口，不再绕过新反向模型单独生成 HTML。
 
 本计划不覆盖：
 
@@ -2821,6 +2822,67 @@ Actual 2026-05-25: committed this final verification record.
 
 ---
 
+## Task 16: Merge Legacy Blueprint Reverse Input
+
+**Files:**
+- Add: `src/indesign-reverse/legacy-blueprint.js`
+- Modify: `src/indesign-reverse/index.js`
+- Modify: `src/indesign-reverse/html-writer.js`
+- Modify: `scripts/indesign-reverse-export.js`
+- Test: `test/indesign-reverse/legacy-blueprint.test.js`
+- Test: `test/indesign-reverse/cli.test.js`
+
+- [x] **Step 1: Write failing tests for legacy blueprint reverse input**
+
+Added tests requiring:
+
+- `legacyBlueprintToSemanticModel(blueprint, { mode: 'inferred' })`.
+- Legacy slot labels parsed into `slotName`, `slotType`, confidence and evidence.
+- Legacy paragraph/object CSS merged into the HTML writer output.
+- Placed image/PDF paths and crop state preserved as item asset metadata.
+- CLI `--blueprint <blueprint.json>` support.
+
+Actual 2026-05-25: RED confirmed. Tests failed because the function/export and CLI flag did not exist.
+
+- [x] **Step 2: Implement `legacy-blueprint` adapter inside `indesign-reverse`**
+
+Implemented a new adapter that maps old blueprint masters into `DocumentModel.pages`, preserves legacy styles, emits assets, and marks all items with `source: "legacy-blueprint"`.
+
+The adapter rejects `authoring` mode because old blueprint lacks source DOM structure labels. It supports `observation` and `inferred` as open-system reverse modes.
+
+- [x] **Step 3: Extend reverse HTML writer for inferred/observation metadata**
+
+Added writer support for:
+
+- `data-id-reverse-mode`.
+- `data-id-source="legacy-blueprint"`.
+- `data-id-legacy-slot`, `data-id-slot-name`, `data-id-slot-type`.
+- `data-id-confidence`.
+- `data-id-asset-path` and `data-id-image-cropped`.
+- Legacy inline visual CSS appended after geometry styles.
+
+- [x] **Step 4: Add CLI blueprint input**
+
+Added:
+
+```powershell
+node scripts/indesign-reverse-export.js --blueprint test/artifacts/blueprint.json --mode inferred --out test/workspace/reverse-blueprint-cli-test
+```
+
+CLI now writes `deck.html`, `deck.<mode>.html`, `reverse-model.json`, `report.json`, and `<mode>-report.json`.
+
+- [x] **Step 5: Verify**
+
+Run:
+
+```powershell
+npm test -- test/indesign-reverse/legacy-blueprint.test.js test/indesign-reverse/cli.test.js
+```
+
+Actual 2026-05-25: PASS. Because the npm script currently includes `test/**/*.test.js`, this command executed the full suite; 163 tests passed.
+
+---
+
 ## Self-Review
 
 ### Spec Coverage
@@ -2830,7 +2892,7 @@ Actual 2026-05-25: committed this final verification record.
 - 完整 `html_indesign` 标签：Tasks 1, 6, 7。
 - InDesign -> HTML structured 回读：Tasks 9-13。
 - 母版和页面结构模板互导：Task 8 and Task 11。
-- legacy blueprint 隔离：File structure and Scope keep `legacyTemplate` separate; no task routes new pipeline through `src/builder.js` or `src/generator.js`.
+- legacy blueprint 归并：Task 16 moves blueprint input into `indesign-reverse` through a dedicated adapter, while old builder/generator behavior remains isolated under `legacyTemplate`.
 - 真实验证：Tasks 14-15。
 
 ### Placeholder Scan
@@ -2846,6 +2908,7 @@ The plan consistently uses:
 - `validateSemanticModel(model)`
 - `readReverseSnapshot(filePath)`
 - `reverseSnapshotToSemanticModel(snapshot, options)`
+- `legacyBlueprintToSemanticModel(blueprint, options)`
 - `semanticModelToHtml(model, options)`
 - `createProtocolLabel(input)`
 - `parseProtocolLabel(raw, options)`

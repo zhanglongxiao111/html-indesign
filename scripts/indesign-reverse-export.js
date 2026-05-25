@@ -6,12 +6,14 @@ const {
   readReverseSnapshot,
   reverseSnapshotToSemanticModel,
   semanticModelToHtml,
+  legacyBlueprintToSemanticModel,
 } = require('../src/indesign-reverse');
 
 function parseArgs(argv) {
   const out = {
     mode: 'structured',
     snapshotPath: null,
+    blueprintPath: null,
     outDir: null,
     help: false,
   };
@@ -30,6 +32,11 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg.startsWith('--snapshot=')) {
       out.snapshotPath = arg.slice('--snapshot='.length);
+    } else if (arg === '--blueprint') {
+      out.blueprintPath = readValue(argv, index, arg);
+      index += 1;
+    } else if (arg.startsWith('--blueprint=')) {
+      out.blueprintPath = arg.slice('--blueprint='.length);
     } else if (arg === '--out') {
       out.outDir = readValue(argv, index, arg);
       index += 1;
@@ -46,24 +53,32 @@ function parseArgs(argv) {
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
 
-  const snapshot = readReverseSnapshot(options.snapshotPath);
-  const model = reverseSnapshotToSemanticModel(snapshot, { mode: options.mode });
+  const inputFormat = options.blueprintPath ? 'legacy-blueprint' : 'reverse-snapshot';
+  const model = options.blueprintPath
+    ? legacyBlueprintToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
+    : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), { mode: options.mode });
   const html = semanticModelToHtml(model);
   const outDir = path.resolve(options.outDir);
-  const report = createReport(model, options);
+  const report = createReport(model, { ...options, inputFormat });
+  const modeHtmlName = `deck.${options.mode}.html`;
+  const modeReportName = `${options.mode}-report.json`;
 
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'deck.html'), html, 'utf8');
+  fs.writeFileSync(path.join(outDir, modeHtmlName), html, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2), 'utf8');
+  fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(report, null, 2), 'utf8');
 
   return {
     ok: true,
     outDir,
     files: {
       html: path.join(outDir, 'deck.html'),
+      modeHtml: path.join(outDir, modeHtmlName),
       model: path.join(outDir, 'reverse-model.json'),
       report: path.join(outDir, 'report.json'),
+      modeReport: path.join(outDir, modeReportName),
     },
     report,
   };
@@ -75,7 +90,7 @@ async function main() {
     console.log(usage());
     process.exit(0);
   }
-  if (!options.snapshotPath || !options.outDir) {
+  if ((!options.snapshotPath && !options.blueprintPath) || !options.outDir) {
     console.error(usage());
     process.exit(1);
   }
@@ -88,9 +103,12 @@ function createReport(model, options) {
   return {
     ok: true,
     mode: options.mode,
+    inputFormat: options.inputFormat,
     pages: model.pages.length,
     parentPages: model.parentPages.length,
     items: model.pages.reduce((sum, page) => sum + page.items.length, 0),
+    assets: (model.assets || []).length,
+    inference: model.report && model.report.inference ? model.report.inference : null,
     unresolved: [],
   };
 }
@@ -99,8 +117,11 @@ function assertCompileOptions(options) {
   if (!options || typeof options !== 'object') {
     throw new Error('compileReverseSnapshotToHtml requires options');
   }
-  if (!options.snapshotPath) {
-    throw new Error('compileReverseSnapshotToHtml requires snapshotPath');
+  if (!options.snapshotPath && !options.blueprintPath) {
+    throw new Error('compileReverseSnapshotToHtml requires snapshotPath or blueprintPath');
+  }
+  if (options.snapshotPath && options.blueprintPath) {
+    throw new Error('compileReverseSnapshotToHtml accepts only one of snapshotPath or blueprintPath');
   }
   if (!options.outDir) {
     throw new Error('compileReverseSnapshotToHtml requires outDir');
@@ -108,6 +129,10 @@ function assertCompileOptions(options) {
   if (!options.mode) {
     throw new Error('compileReverseSnapshotToHtml requires mode');
   }
+}
+
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8'));
 }
 
 function readValue(argv, index, flag) {
@@ -119,7 +144,7 @@ function readValue(argv, index, flag) {
 }
 
 function usage() {
-  return 'Usage: node scripts/indesign-reverse-export.js --snapshot <reverse-snapshot.json> --out <dir> [--mode structured]';
+  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <legacy-blueprint.json>) --out <dir> [--mode structured|inferred|observation]';
 }
 
 if (require.main === module) {

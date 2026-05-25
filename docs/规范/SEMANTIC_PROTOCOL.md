@@ -12,7 +12,7 @@
 
 下一阶段进入双向主线：HTML 的 `data-id-*` 语义必须能写入 InDesign 的 `html_indesign` 脚本标签；InDesign 反向导出时优先读取这些标签恢复固定语义 HTML。
 
-当前的 blueprint 提取、参考 HTML 生成和 `AGENT_SPEC.md` 属于 legacy template 兼容层，主要用于追溯和迁移旧 InDesign 模板，不再作为新双向协议主线。
+当前的 blueprint 提取、参考 HTML 生成和 `AGENT_SPEC.md` 属于 legacy template 兼容层，主要用于追溯和迁移旧 InDesign 模板。旧 blueprint 不作为新 authoring 协议的事实源，但可以作为 `indesign-reverse` 的 legacy input，被转换为统一语义模型后输出 observation/inferred HTML。
 
 推荐链路：
 
@@ -37,7 +37,7 @@
 
 ## 2. Legacy 页面模式
 
-本节到第 5 节记录旧模板兼容协议，用于理解和迁移 `data-master` / `data-slot` / `blueprint` / legacy build instructions。它们不是当前双向主线的事实源。当前主线事实源是 `HTML_INDESIGN_LIBRARY_SPEC.md` 中定义的统一语义模型，InDesign 端持久化边界是 `LABEL_PROTOCOL.md` 中定义的 `html_indesign` 标签。
+本节到第 5 节记录旧模板兼容协议，用于理解和迁移 `data-master` / `data-slot` / `blueprint` / legacy build instructions。它们不是当前 authoring 协议的事实源。当前主线事实源是 `HTML_INDESIGN_LIBRARY_SPEC.md` 中定义的统一语义模型，InDesign 端持久化边界是 `LABEL_PROTOCOL.md` 中定义的 `html_indesign` 标签。旧 blueprint 输入必须先归一化进统一语义模型，再写出反向 HTML。
 
 ### 固定模板页
 
@@ -100,7 +100,7 @@
 
 ## 3. Legacy Blueprint 结构
 
-Blueprint 是 legacy template 兼容层的事实来源，只服务旧模板查看、旧槽位迁移和历史测试资产。新双向主线不得把 blueprint 当作长期事实源，也不得要求新 HTML 先退化成 `master/slot` 结构。
+Blueprint 是 legacy template 兼容层的事实来源，只服务旧模板查看、旧槽位迁移和历史测试资产。新 authoring 主线不得把 blueprint 当作长期事实源，也不得要求新 HTML 先退化成 `master/slot` 结构。反向迁移时，blueprint 可通过 `legacyBlueprintToSemanticModel` 进入 `indesign-reverse`，输出带置信度的 inferred/observation HTML。
 
 当前 legacy blueprint 有效结构包含：
 
@@ -283,8 +283,8 @@ HTML 示例：
 | 模式 | 输入 | 输出 |
 | ---- | ---- | ---- |
 | `structured` | 本项目生成或人工按协议打标签的 InDesign | 固定语义 HTML |
+| `inferred` | 弱标签 InDesign 或旧模板蓝图 | 带置信度和补标线索的推断 HTML |
 | `observation` | 未标注或部分标注 InDesign | 低语义观察 HTML |
-| `blueprint-legacy` | 旧模板蓝图 | 模板预览 HTML |
 
 未标注 InDesign 的推荐迁移流程：
 
