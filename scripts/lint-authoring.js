@@ -2,6 +2,7 @@
 
 const path = require('path');
 const { renderSnapshot, validateAuthoringRules } = require('../src/paged-html');
+const { checkAuthorPackageEntry } = require('../src/authoring');
 
 main().catch((error) => {
   console.error(error && error.stack ? error.stack : String(error));
@@ -10,12 +11,33 @@ main().catch((error) => {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  if (options.help || !options.html) {
-    printUsage(options.html ? 0 : 1);
+  if (options.help || (!options.html && !options.packagePath)) {
+    printUsage(options.html || options.packagePath ? 0 : 1);
     return;
   }
 
-  const htmlPath = path.resolve(options.html);
+  let htmlPath;
+  if (options.packagePath) {
+    const packageCheck = checkAuthorPackageEntry(path.resolve(options.packagePath));
+    if (!packageCheck.ok) {
+      const message = `AUTHOR_GENERATED_ENTRY_DIRTY: ${packageCheck.message}: ${packageCheck.entryPath}`;
+      if (options.json) {
+        console.log(JSON.stringify({
+          ok: false,
+          errors: [{ code: 'AUTHOR_GENERATED_ENTRY_DIRTY', message, entryPath: packageCheck.entryPath }],
+          warnings: [],
+          messages: [{ level: 'error', code: 'AUTHOR_GENERATED_ENTRY_DIRTY', message, entryPath: packageCheck.entryPath }],
+        }, null, 2));
+      } else {
+        console.error(message);
+      }
+      process.exit(1);
+    }
+    htmlPath = packageCheck.entryPath;
+  } else {
+    htmlPath = path.resolve(options.html);
+  }
+
   const snapshot = await renderSnapshot({ htmlPath });
   const result = validateAuthoringRules(snapshot, {
     strict: options.strict,
@@ -38,6 +60,7 @@ async function main() {
 function parseArgs(args) {
   const out = {
     html: null,
+    packagePath: null,
     strict: false,
     json: false,
     help: false,
@@ -49,6 +72,8 @@ function parseArgs(args) {
     if (arg === '--help' || arg === '-h') out.help = true;
     else if (arg === '--strict') out.strict = true;
     else if (arg === '--json') out.json = true;
+    else if (arg === '--package') out.packagePath = args[index += 1];
+    else if (arg.startsWith('--package=')) out.packagePath = arg.slice('--package='.length);
     else if (arg === '--html') out.html = args[index += 1];
     else if (arg.startsWith('--html=')) out.html = arg.slice('--html='.length);
     else if (arg === '--grid-tolerance') out.gridTolerance = Number(args[index += 1]);
@@ -63,9 +88,11 @@ function printUsage(exitCode) {
   const usage = [
     'Usage: npm run lint:authoring -- <file> [--strict] [--json] [--grid-tolerance <mm>]',
     '       npm run lint:authoring -- -- --html <file> [--strict] [--json]',
+    '       npm run lint:authoring -- -- --package <deck.config.json> [--strict] [--json]',
     '',
     'Options:',
     '  --html <file>            HTML file to snapshot and validate.',
+    '  --package <file>         Authoring source package config; generated deck.html must be current.',
     '  --strict                 Treat authoring warnings as errors.',
     '  --json                   Print machine-readable validation output.',
     '  --grid-tolerance <mm>    Edge alignment tolerance in millimeters. Defaults to 1.',

@@ -569,7 +569,7 @@ git commit -m "feat: add authoring package assembly cli"
 - Modify: `scripts/lint-authoring.js`
 - Create: `test/authoring/lint-authoring-package-cli.test.js`
 
-- [ ] **Step 1: Write failing tests for `lint:authoring --package`**
+- [x] **Step 1: Write failing tests for `lint:authoring --package`**
 
 Create `test/authoring/lint-authoring-package-cli.test.js`:
 
@@ -648,7 +648,7 @@ function makePackageFixture() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -662,7 +662,7 @@ Expected:
 not ok ... Unknown argument: --package
 ```
 
-- [ ] **Step 3: Extend `scripts/lint-authoring.js`**
+- [x] **Step 3: Extend `scripts/lint-authoring.js`**
 
 Modify imports:
 
@@ -729,7 +729,7 @@ Update usage text:
 '       npm run lint:authoring -- -- --package <deck.config.json> [--strict] [--json]',
 ```
 
-- [ ] **Step 4: Run package lint tests**
+- [x] **Step 4: Run package lint tests**
 
 Run:
 
@@ -743,7 +743,7 @@ Expected:
 pass 2
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add scripts/lint-authoring.js test/authoring/lint-authoring-package-cli.test.js
