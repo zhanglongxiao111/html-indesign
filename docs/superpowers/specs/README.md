@@ -10,3 +10,4 @@
 | ---- | ---- |
 | `2026-05-25-indesign-reverse-export-label-protocol-design.md` | InDesign 反向导出和标签协议骨架设计 |
 | `2026-05-25-html-source-structure-preservation-design.md` | HTML 源结构保真和 authoring HTML 回读设计 |
+| `2026-05-26-authoring-source-package-design.md` | 作者源码包、组装入口和反向多文件源码导出设计 |
