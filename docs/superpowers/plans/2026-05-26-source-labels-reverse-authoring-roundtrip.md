@@ -976,7 +976,7 @@ git commit -m "feat: restore source labels in reverse model"
 - Modify: `src/indesign-reverse/index.js`
 - Create: `test/indesign-reverse/author-package-writer.test.js`
 
-- [ ] **Step 1: Write failing author package writer tests**
+- [x] **Step 1: Write failing author package writer tests**
 
 Create `test/indesign-reverse/author-package-writer.test.js`:
 
@@ -1135,7 +1135,7 @@ Expected failure:
 TypeError: writeReverseAuthorPackage is not a function
 ```
 
-- [ ] **Step 2: Implement CSS writer**
+- [x] **Step 2: Implement CSS writer**
 
 Create `src/indesign-reverse/author-css-writer.js`:
 
@@ -1227,7 +1227,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 3: Implement author package writer**
+- [x] **Step 3: Implement author package writer**
 
 Create `src/indesign-reverse/author-package-writer.js`:
 
@@ -1423,7 +1423,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 4: Export writer API**
+- [x] **Step 4: Export writer API**
 
 Modify `src/indesign-reverse/index.js`:
 
@@ -1440,7 +1440,7 @@ module.exports = Object.assign(
 );
 ```
 
-- [ ] **Step 5: Run author package writer tests**
+- [x] **Step 5: Run author package writer tests**
 
 Run:
 
@@ -1454,7 +1454,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/indesign-reverse/author-css-writer.js src/indesign-reverse/author-package-writer.js src/indesign-reverse/index.js test/indesign-reverse/author-package-writer.test.js
