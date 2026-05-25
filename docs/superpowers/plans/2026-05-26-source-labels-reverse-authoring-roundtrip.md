@@ -818,7 +818,7 @@ git commit -m "feat: preserve source metadata in instructions"
 - Modify: `test/indesign-reverse/reverse-model.test.js`
 - Modify: `test/indesign-executor/executor-script-static.test.js`
 
-- [ ] **Step 1: Extend tagged reverse fixture with source labels**
+- [x] **Step 1: Extend tagged reverse fixture with source labels**
 
 In `test/fixtures/indesign-reverse/tagged-snapshot.json`, add to document label:
 
@@ -874,7 +874,7 @@ Add to item label:
 }
 ```
 
-- [ ] **Step 2: Write failing reverse model assertions**
+- [x] **Step 2: Write failing reverse model assertions**
 
 Append to the first test in `test/indesign-reverse/reverse-model.test.js`:
 
@@ -895,7 +895,7 @@ Expected failure:
 TypeError: Cannot read properties of undefined (reading 'config')
 ```
 
-- [ ] **Step 3: Restore source labels in reverse model**
+- [x] **Step 3: Restore source labels in reverse model**
 
 Modify `src/indesign-reverse/reverse-model.js`:
 
@@ -920,7 +920,7 @@ structure: label.structure || null,
 layout: label.layout || null,
 ```
 
-- [ ] **Step 4: Add static test that executor/reverse scripts can carry labels**
+- [x] **Step 4: Add static test that executor/reverse scripts can carry labels**
 
 Append to `test/indesign-executor/executor-script-static.test.js`:
 
@@ -946,7 +946,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 5: Run reverse model and static tests**
+- [x] **Step 5: Run reverse model and static tests**
 
 Run:
 
@@ -960,7 +960,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/indesign-reverse/reverse-model.js test/fixtures/indesign-reverse/tagged-snapshot.json test/indesign-reverse/reverse-model.test.js test/indesign-executor/executor-script-static.test.js

@@ -14,7 +14,15 @@
         "id": "architecture-report",
         "source": "html-to-indesign",
         "unitMode": "presentation",
-        "coordinateUnit": "pt"
+        "coordinateUnit": "pt",
+        "sourcePackage": {
+          "schemaVersion": 1,
+          "config": "deck.config.json",
+          "entry": "deck.html",
+          "styleFiles": ["styles/tokens.css", "styles/layout.css", "styles/components.css", "styles/pages.css"],
+          "pageFiles": [{ "id": "agenda", "file": "pages/01-agenda.html" }],
+          "assetRoot": "assets"
+        }
       }
     ]
   },
@@ -93,7 +101,18 @@
             "name": "汇报母版"
           },
           "layout": "contents-grid",
-          "margins": { "top": 14, "right": 16, "bottom": 10, "left": 18 }
+          "margins": { "top": 14, "right": 16, "bottom": 10, "left": 18 },
+          "sourceFile": "pages/01-agenda.html",
+          "sourceNode": {
+            "tagName": "section",
+            "id": "agenda-page",
+            "classList": ["page"],
+            "attributes": {
+              "data-page": "agenda",
+              "data-id-layout": "contents-grid"
+            }
+          },
+          "grid": { "columns": 12, "rows": 6, "columnGutter": 6, "rowGutter": 8, "baseline": 4 }
         }
       ],
       "bounds": { "x": 0, "y": 0, "width": 1920, "height": 1080 },
@@ -117,7 +136,27 @@
               "role": "text",
               "semantic": "page-title",
               "htmlTag": "h2",
-              "className": "page-title"
+              "className": "page-title",
+              "sourceFile": "pages/01-agenda.html",
+              "sourceNode": {
+                "tagName": "h2",
+                "id": "agenda-title",
+                "classList": ["page-title", "grid-item"],
+                "attributes": {
+                  "data-id-object": "",
+                  "data-id-paragraph-style": "page-title"
+                }
+              },
+              "structure": { "parentId": "agenda-page", "order": 1, "containerPolicy": "group" },
+              "layout": {
+                "grid": { "col": 1, "span": 4, "row": 1, "rowSpan": 1 },
+                "cssVars": {
+                  "--grid-col": "1",
+                  "--grid-span": "4",
+                  "--grid-row": "1",
+                  "--grid-row-span": "1"
+                }
+              }
             }
           ]
         }

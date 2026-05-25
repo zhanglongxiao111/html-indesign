@@ -16,6 +16,14 @@ test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel',
   assert.equal(model.pages[0].parentPageId, 'report-parent');
   assert.equal(model.pages[0].layout, 'contents-grid');
   assert.equal(model.pages[0].items[0].semantic, 'page-title');
+  assert.equal(model.sourcePackage.config, 'deck.config.json');
+  assert.equal(model.pages[0].sourceFile, 'pages/01-agenda.html');
+  assert.equal(model.pages[0].sourceNode.tagName, 'section');
+  assert.equal(model.pages[0].grid.columns, 12);
+  assert.equal(model.pages[0].items[0].sourceFile, 'pages/01-agenda.html');
+  assert.equal(model.pages[0].items[0].sourceNode.tagName, 'h2');
+  assert.deepEqual(model.pages[0].items[0].layout.grid, { col: 1, span: 4, row: 1, rowSpan: 1 });
+  assert.equal(model.pages[0].items[0].structure.parentId, 'agenda-page');
 });
 
 test('reverseSnapshotToSemanticModel preserves observed visual style and placed asset per item', () => {

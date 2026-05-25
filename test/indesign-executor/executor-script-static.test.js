@@ -352,6 +352,20 @@ test('reverse snapshot reads bounds in document coordinate units and restores pr
   assert.match(source, /HI\.restoreReverseMeasurementUnits\(appRef,\s*doc,\s*oldUnits\)/);
 });
 
+test('executor and reverse scripts use html_indesign protocol labels for source metadata', () => {
+  const labels = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_labels.jsxinc'), 'utf8');
+  const document = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_document.jsxinc'), 'utf8');
+  const items = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_items.jsxinc'), 'utf8');
+  const reverse = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(labels, /insertLabel\("html_indesign"/);
+  assert.match(document, /HI\.writeProtocolLabels\(doc/);
+  assert.match(document, /HI\.writeProtocolLabels\(page/);
+  assert.match(items, /HI\.writeProtocolLabels\(frame/);
+  assert.match(items, /HI\.writeProtocolLabels\(rect/);
+  assert.match(reverse, /HI\.readProtocolLabel\(target\)/);
+});
+
 test('core JSON reader opens instruction files as UTF-8', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
   assert.match(source, /file\.encoding\s*=\s*["']UTF-8["']/);
