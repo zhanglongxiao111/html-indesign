@@ -10,7 +10,7 @@ const { createProtocolLabel } = require('../shared/labels');
 
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
-  const styled = snapshot.styles ? snapshot : compileStyles(snapshot, { ...options, layout });
+  const styled = styledSnapshotForLayout(snapshot, options, layout);
   const documentId = documentIdFor(styled, options);
   const pages = (styled.pages || []).map((page) => pageModelFor(page, layout));
   return {
@@ -20,6 +20,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     source: styled.metadata && styled.metadata.source,
     unitMode: layout.unitMode,
     coordinateUnit: layout.targetUnit,
+    layoutInfo: layout,
     pageSize: pages[0] ? { width: pages[0].width, height: pages[0].height, unit: layout.targetUnit } : null,
     labels: [createProtocolLabel({
       kind: 'document',
@@ -57,6 +58,7 @@ function pageModelFor(page, layout) {
   const layoutToken = attrs['data-id-layout'] || null;
   return {
     id: pageId,
+    raw: page,
     index: page.index,
     pageToken: attrs['data-page'] || null,
     semantic,
@@ -104,6 +106,7 @@ function itemModelFor(item, page, layout) {
   const semantic = attrs['data-id-semantic'] || attrs['data-id-object-style'] || attrs['data-id-paragraph-style'] || null;
   return {
     id: item.id,
+    raw: item,
     role: item.role,
     type: item.role,
     tagName: item.tagName || null,
@@ -132,6 +135,23 @@ function contentForItem(item) {
   if (item.content) return item.content;
   if (item.text != null) return { text: item.text, runs: item.runs || [] };
   return null;
+}
+
+function styledSnapshotForLayout(snapshot, options, layout) {
+  if (snapshot.styles && stylesCompatibleWithLayout(snapshot.styleLayout, layout)) return snapshot;
+  return compileStyles(snapshot, { ...options, layout });
+}
+
+function stylesCompatibleWithLayout(styleLayout, layout) {
+  if (!styleLayout) return layout.unitMode !== 'presentation';
+  if (styleLayout.unitMode !== layout.unitMode) return false;
+  if (layout.unitMode !== 'presentation') return true;
+  if ((styleLayout.targetUnit || 'pt') !== (layout.targetUnit || 'pt')) return false;
+  if (Math.abs(Number(styleLayout.scale || 1) - Number(layout.scale || 1)) > 0.0001) return false;
+  const expected = layout.targetSize || {};
+  const actual = styleLayout.targetSize || {};
+  return Math.abs(Number(actual.width || 0) - Number(expected.width || 0)) < 0.01
+    && Math.abs(Number(actual.height || 0) - Number(expected.height || 0)) < 0.01;
 }
 
 module.exports = {
