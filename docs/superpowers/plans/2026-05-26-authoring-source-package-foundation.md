@@ -972,7 +972,7 @@ git commit -m "docs: document authoring source package workflow"
 
 - No source files unless verification exposes a defect.
 
-- [ ] **Step 1: Run focused authoring tests**
+- [x] **Step 1: Run focused authoring tests**
 
 Run:
 
@@ -986,7 +986,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 2: Run authoring package check**
+- [x] **Step 2: Run authoring package check**
 
 Run:
 
@@ -1000,7 +1000,7 @@ Expected:
 Authoring package is up to date: ...\test\fixtures\e2e\architecture-report\deck.html
 ```
 
-- [ ] **Step 3: Run authoring lint through package entry**
+- [x] **Step 3: Run authoring lint through package entry**
 
 Run:
 
@@ -1014,7 +1014,7 @@ Expected:
 Authoring rules: OK
 ```
 
-- [ ] **Step 4: Run full tests**
+- [x] **Step 4: Run full tests**
 
 Run:
 
@@ -1028,7 +1028,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 5: Run real InDesign E2E**
+- [x] **Step 5: Run real InDesign E2E**
 
 Run:
 
@@ -1051,7 +1051,7 @@ $env:INDESIGN_CLI_BIN='D:\AI\mcp-indesign\.indesign-cli\package-test-venv-root\S
 npm run e2e:indesign
 ```
 
-- [ ] **Step 6: Final commit if verification required fixes**
+- [x] **Step 6: Final commit if verification required fixes**
 
 If verification required code changes:
 
