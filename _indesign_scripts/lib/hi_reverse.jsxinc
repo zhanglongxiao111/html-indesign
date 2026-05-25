@@ -1,0 +1,160 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.exportReverseSnapshot = function (appRef, outputPath) {
+    var report = HI.makeReport();
+    var doc = appRef.activeDocument;
+    var snapshot = { metadata: { sourceDocument: HI.documentPath(doc), exportedAt: String(new Date()), mode: "structured" }, report: report };
+    snapshot.document = HI.reverseDocument(doc);
+    snapshot.parentPages = HI.reverseParentPages(doc);
+    snapshot.pages = HI.reversePages(doc);
+    snapshot.styles = HI.reverseStyles(doc);
+    snapshot.layers = HI.reverseLayers(doc);
+    snapshot.assets = HI.reverseAssets(doc);
+    HI.writeJsonFile(outputPath, snapshot);
+    return { ok: report.ok !== false, outputPath: outputPath, counts: HI.reverseCounts(snapshot), errors: report.errors, warnings: report.warnings };
+};
+
+HI.documentPath = function (doc) {
+    try { if (doc.fullName) return doc.fullName.fsName; } catch (_) {}
+    return String(doc.name || "Untitled");
+};
+
+HI.reverseDocument = function (doc) {
+    return { name: String(doc.name || ""), labels: HI.reverseLabels(doc) };
+};
+
+HI.reverseParentPages = function (doc) {
+    var out = [], masters = HI.collectionElements(doc.masterSpreads);
+    for (var i = 0; i < masters.length; i++) out.push({ name: String(masters[i].name || ""), labels: HI.reverseLabels(masters[i]), items: [] });
+    return out;
+};
+
+HI.reversePages = function (doc) {
+    var out = [], pages = HI.collectionElements(doc.pages);
+    for (var i = 0; i < pages.length; i++) out.push(HI.reversePage(pages[i], i));
+    return out;
+};
+
+HI.reversePage = function (page, index) {
+    return {
+        id: String(page.name || ("page-" + (index + 1))),
+        index: index,
+        labels: HI.reverseLabels(page),
+        appliedParentPageName: HI.appliedParentPageName(page),
+        bounds: HI.pageBounds(page),
+        margins: HI.reversePageMargins(page),
+        guides: HI.reverseGuides(page),
+        items: HI.reversePageItems(page)
+    };
+};
+
+HI.appliedParentPageName = function (page) {
+    try { if (page.appliedMaster) return String(page.appliedMaster.name || ""); } catch (_) {}
+    return null;
+};
+
+HI.pageBounds = function (page) {
+    var b = page.bounds;
+    return { x: Number(b[1] || 0), y: Number(b[0] || 0), width: Number(b[3] - b[1]), height: Number(b[2] - b[0]) };
+};
+
+HI.reversePageMargins = function (page) {
+    var prefs = page.marginPreferences;
+    return { top: Number(prefs.top || 0), right: Number(prefs.right || 0), bottom: Number(prefs.bottom || 0), left: Number(prefs.left || 0) };
+};
+
+HI.reversePageItems = function (page) {
+    var out = [], items = HI.collectionElements(page.pageItems);
+    for (var i = 0; i < items.length; i++) out.push(HI.reversePageItem(items[i], i));
+    return out;
+};
+
+HI.reversePageItem = function (item, index) {
+    return {
+        id: String(item.id || ("item-" + (index + 1))),
+        type: String(item.constructor && item.constructor.name || item.constructor || ""),
+        bounds: HI.itemBounds(item),
+        layerName: HI.itemLayerName(item),
+        paragraphStyleName: HI.appliedParagraphStyleName(item),
+        objectStyleName: HI.appliedObjectStyleName(item),
+        text: HI.itemText(item),
+        label: String(item.label || ""),
+        labels: HI.reverseLabels(item)
+    };
+};
+
+HI.itemBounds = function (item) {
+    var b = item.geometricBounds;
+    return { x: Number(b[1] || 0), y: Number(b[0] || 0), width: Number(b[3] - b[1]), height: Number(b[2] - b[0]) };
+};
+
+HI.itemLayerName = function (item) {
+    try { return item.itemLayer ? String(item.itemLayer.name || "") : ""; } catch (_) { return ""; }
+};
+
+HI.appliedObjectStyleName = function (item) {
+    try { return item.appliedObjectStyle ? String(item.appliedObjectStyle.name || "") : ""; } catch (_) { return ""; }
+};
+
+HI.appliedParagraphStyleName = function (item) {
+    try { return String(item.paragraphs[0].appliedParagraphStyle.name || ""); } catch (_) { return ""; }
+};
+
+HI.itemText = function (item) {
+    try { return String(item.contents || ""); } catch (_) { return ""; }
+};
+
+HI.reverseGuides = function (page) {
+    var out = [], guides = HI.collectionElements(page.guides);
+    for (var i = 0; i < guides.length; i++) {
+        out.push({
+            orientation: guides[i].orientation === HorizontalOrVertical.VERTICAL ? "vertical" : "horizontal",
+            position: Number(guides[i].location || 0),
+            labels: HI.reverseLabels(guides[i])
+        });
+    }
+    return out;
+};
+
+HI.reverseLayers = function (doc) {
+    var out = [], layers = HI.collectionElements(doc.layers);
+    for (var i = 0; i < layers.length; i++) out.push({ name: String(layers[i].name || ""), index: i, labels: HI.reverseLabels(layers[i]) });
+    return out;
+};
+
+HI.reverseAssets = function (doc) {
+    var out = [], links = HI.collectionElements(doc.links);
+    for (var i = 0; i < links.length; i++) out.push({ name: String(links[i].name || ""), path: links[i].filePath ? String(links[i].filePath) : "", status: String(links[i].status || "") });
+    return out;
+};
+
+HI.reverseStyles = function (doc) {
+    return {
+        paragraphStyles: HI.reverseStyleCollection(doc.paragraphStyles),
+        characterStyles: HI.reverseStyleCollection(doc.characterStyles),
+        objectStyles: HI.reverseStyleCollection(doc.objectStyles),
+        tableStyles: HI.reverseStyleCollection(doc.tableStyles),
+        cellStyles: HI.reverseStyleCollection(doc.cellStyles)
+    };
+};
+
+HI.reverseStyleCollection = function (collection) {
+    var out = [], items = HI.collectionElements(collection);
+    for (var i = 0; i < items.length; i++) out.push({ name: String(items[i].name || ""), labels: HI.reverseLabels(items[i]) });
+    return out;
+};
+
+HI.reverseLabels = function (target) {
+    var label = HI.readProtocolLabel(target);
+    return label ? [label] : [];
+};
+
+HI.collectionElements = function (collection) {
+    try { return collection.everyItem().getElements(); } catch (_) { return []; }
+};
+
+HI.reverseCounts = function (snapshot) {
+    var itemCount = 0;
+    for (var i = 0; i < (snapshot.pages || []).length; i++) itemCount += (snapshot.pages[i].items || []).length;
+    return { pages: (snapshot.pages || []).length, items: itemCount, assets: (snapshot.assets || []).length };
+};

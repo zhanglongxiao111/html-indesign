@@ -32,6 +32,18 @@ HI.readJsonFile = function (jsonPath) {
     };
 };
 
+HI.writeJsonFile = function (jsonPath, value) {
+    var file = File(jsonPath);
+    file.parent.create();
+    file.encoding = "UTF-8";
+    if (!file.open("w")) {
+        throw new Error("Cannot write JSON file: " + file.fsName);
+    }
+    file.write(HI.stringify(value));
+    file.close();
+    return file.fsName;
+};
+
 HI.makeReport = function () {
     return {
         ok: true,

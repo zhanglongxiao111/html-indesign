@@ -254,6 +254,23 @@ test('executor reports structured counts for CLI result_json consumers', () => {
   }
 });
 
+test('reverse snapshot script loads reverse and label helpers', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/export_to_html_snapshot.jsx'), 'utf8');
+  assert.match(source, /hi_core\.jsxinc/);
+  assert.match(source, /hi_labels\.jsxinc/);
+  assert.match(source, /hi_reverse\.jsxinc/);
+  assert.match(source, /HI\.exportReverseSnapshot/);
+});
+
+test('reverse snapshot helper extracts labels, pages, styles, layers and assets', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+  assert.match(source, /HI\.readProtocolLabel/);
+  assert.match(source, /snapshot\.pages/);
+  assert.match(source, /snapshot\.styles/);
+  assert.match(source, /snapshot\.layers/);
+  assert.match(source, /snapshot\.assets/);
+});
+
 test('core JSON reader opens instruction files as UTF-8', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
   assert.match(source, /file\.encoding\s*=\s*["']UTF-8["']/);
