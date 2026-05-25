@@ -65,7 +65,7 @@
 - Create: `src/authoring/index.js`
 - Create: `test/authoring/source-package.test.js`
 
-- [ ] **Step 1: Write failing tests for config loading, assembly, and dirty detection**
+- [x] **Step 1: Write failing tests for config loading, assembly, and dirty detection**
 
 Create `test/authoring/source-package.test.js`:
 
@@ -177,7 +177,7 @@ function makePackageFixture() {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run:
 
@@ -191,7 +191,7 @@ Expected:
 not ok ... Cannot find module '../../src/authoring'
 ```
 
-- [ ] **Step 3: Implement the source package module**
+- [x] **Step 3: Implement the source package module**
 
 Create `src/authoring/source-package.js`:
 
@@ -360,7 +360,7 @@ Create `src/authoring/index.js`:
 module.exports = require('./source-package');
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run:
 
@@ -374,7 +374,7 @@ Expected:
 pass 4
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src/authoring test/authoring/source-package.test.js
