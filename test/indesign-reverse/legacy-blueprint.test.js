@@ -108,7 +108,8 @@ test('semanticModelToHtml writes inferred legacy metadata, slot names, assets an
   assert.match(html, /data-id-confidence="0\.85"/);
   assert.match(html, /data-id-asset-path="D:\\assets\\cover\.pdf"/);
   assert.match(html, /data-id-image-cropped="true"/);
-  assert.match(html, /border:2pt solid #c8102e/);
-  assert.match(html, /font-size:24pt/);
+  assert.match(html, /border:2px solid #c8102e/);
+  assert.match(html, /font-size:24px/);
+  assert.doesNotMatch(html, /(?:border|font-size):[0-9.]+pt/);
   assert.match(html, /项目中文名称/);
 });

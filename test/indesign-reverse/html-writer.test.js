@@ -222,8 +222,9 @@ test('semanticModelToHtml renders reverse style classes composite text features 
     ],
   });
 
-  assert.match(html, /\.pstyle-body-list \{ font-family:'建筑复合字体',sans-serif; font-size:12pt; color:#123456 \}/);
-  assert.match(html, /\.ostyle-image-frame \{ border:1pt solid #aeb8b8 \}/);
+  assert.match(html, /\.pstyle-body-list \{ font-family:'建筑复合字体',sans-serif; font-size:12px; color:#123456 \}/);
+  assert.match(html, /\.ostyle-image-frame \{ border:1px solid #aeb8b8 \}/);
+  assert.doesNotMatch(html, /font-size:12pt/);
   assert.match(html, /id="numbered"[^>]+class="[^"]*pstyle-body-list/);
   assert.match(html, /id="numbered"[^>]+style="[^"]*z-index:9/);
   assert.match(html, /class="list-item has-number" data-number="1" data-circle="①"/);

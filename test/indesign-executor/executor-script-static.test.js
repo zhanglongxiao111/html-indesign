@@ -290,6 +290,17 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(styleSource.split(/\r?\n/).length <= 340, 'hi_reverse_styles.jsxinc should stay focused');
 });
 
+test('reverse snapshot derives HTML z order from InDesign layer order', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(source, /HI\.reverseLayerIndexMap/);
+  assert.match(source, /HI\.reverseItemZIndex/);
+  assert.match(source, /itemLayer/);
+  assert.match(source, /layerBase/);
+  assert.match(source, /layer\.count\s*-\s*1\s*-\s*layer\.index/);
+  assert.match(source, /zIndex:\s*HI\.reverseItemZIndex\(item,\s*index,\s*total,\s*layerOrder\)/);
+});
+
 test('core JSON reader opens instruction files as UTF-8', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
   assert.match(source, /file\.encoding\s*=\s*["']UTF-8["']/);

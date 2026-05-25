@@ -30,12 +30,12 @@ HI.reverseParentPages = function (doc) {
 };
 
 HI.reversePages = function (doc) {
-    var out = [], pages = HI.collectionElements(doc.pages);
-    for (var i = 0; i < pages.length; i++) out.push(HI.reversePage(pages[i], i));
+    var out = [], pages = HI.collectionElements(doc.pages), layerOrder = HI.reverseLayerIndexMap(doc);
+    for (var i = 0; i < pages.length; i++) out.push(HI.reversePage(pages[i], i, layerOrder));
     return out;
 };
 
-HI.reversePage = function (page, index) {
+HI.reversePage = function (page, index, layerOrder) {
     return {
         id: String(page.name || ("page-" + (index + 1))),
         index: index,
@@ -44,7 +44,7 @@ HI.reversePage = function (page, index) {
         bounds: HI.pageBounds(page),
         margins: HI.reversePageMargins(page),
         guides: HI.reverseGuides(page),
-        items: HI.reversePageItems(page)
+        items: HI.reversePageItems(page, layerOrder)
     };
 };
 
@@ -63,13 +63,13 @@ HI.reversePageMargins = function (page) {
     return { top: Number(prefs.top || 0), right: Number(prefs.right || 0), bottom: Number(prefs.bottom || 0), left: Number(prefs.left || 0) };
 };
 
-HI.reversePageItems = function (page) {
+HI.reversePageItems = function (page, layerOrder) {
     var out = [], items = HI.collectionElements(page.pageItems);
-    for (var i = 0; i < items.length; i++) out.push(HI.reversePageItem(items[i], i, items.length));
+    for (var i = 0; i < items.length; i++) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder));
     return out;
 };
 
-HI.reversePageItem = function (item, index, total) {
+HI.reversePageItem = function (item, index, total, layerOrder) {
     return {
         id: String(item.id || ("item-" + (index + 1))),
         type: String(item.constructor && item.constructor.name || item.constructor || ""),
@@ -82,7 +82,7 @@ HI.reversePageItem = function (item, index, total) {
         textFrameStyle: HI.reverseTextFrameStyle(item),
         inlineStyle: HI.reverseInlineStyle(item),
         firstLineFont: HI.reverseFirstLineFont(item),
-        zIndex: Number(total - 1 - index),
+        zIndex: HI.reverseItemZIndex(item, index, total, layerOrder),
         placedAsset: HI.reversePlacedAsset(item),
         text: HI.itemText(item),
         label: String(item.label || ""),
@@ -97,6 +97,24 @@ HI.itemBounds = function (item) {
 
 HI.itemLayerName = function (item) {
     try { return item.itemLayer ? String(item.itemLayer.name || "") : ""; } catch (_) { return ""; }
+};
+
+HI.reverseLayerIndexMap = function (doc) {
+    var map = {}, layers = HI.collectionElements(doc.layers);
+    for (var i = 0; i < layers.length; i++) {
+        map[String(layers[i].name || "")] = { index: i, count: layers.length };
+    }
+    return map;
+};
+
+HI.reverseItemZIndex = function (item, index, total, layerOrder) {
+    var local = Number(total - 1 - index);
+    var layerName = HI.itemLayerName(item);
+    var layer = layerOrder && layerOrder[layerName];
+    if (!layer) return local;
+    var layerStep = Number(total || 0) + 1;
+    var layerBase = Number(layer.count - 1 - layer.index) * layerStep;
+    return layerBase + local;
 };
 
 HI.appliedObjectStyleName = function (item) {

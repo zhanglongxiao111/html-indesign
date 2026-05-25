@@ -169,7 +169,7 @@ function itemInlineStyle(item) {
     visualStyleCss(item.visualStyle),
     textStyleCss(item.textStyle),
     textFrameStyleCss(item.textFrameStyle),
-    item.inlineStyle,
+    cssForHtml(item.inlineStyle),
     zIndexCss(item.zIndex),
   ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');
 }
@@ -271,7 +271,7 @@ function styleResourceCss(model) {
 function styleCollectionCss(collection, prefix) {
   return Object.values(collection || {})
     .filter((style) => style && style.css)
-    .map((style) => `    .${prefix}-${styleClassToken(style)} { ${trimCss(style.css)} }`)
+    .map((style) => `    .${prefix}-${styleClassToken(style)} { ${cssForHtml(style.css)} }`)
     .join('\n');
 }
 
@@ -354,7 +354,7 @@ function firstLineStyleCss(grepStyle, item, model) {
       styles.push(`font-family:'${item.firstLineFont}',sans-serif`);
     }
   }
-  if (grepStyle.charStyleCSS) styles.push(trimCss(grepStyle.charStyleCSS));
+  if (grepStyle.charStyleCSS) styles.push(cssForHtml(grepStyle.charStyleCSS));
   return styles.join('; ');
 }
 
@@ -405,6 +405,10 @@ function safeClassToken(value) {
 
 function trimCss(value) {
   return String(value || '').trim().replace(/;+$/, '').trim();
+}
+
+function cssForHtml(value) {
+  return trimCss(value).replace(/(-?\d+(?:\.\d+)?)pt\b/g, (_, number) => `${formatNumber(number)}px`);
 }
 
 function fontFamilyFromCss(css) {
