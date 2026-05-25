@@ -11,6 +11,7 @@
     includeLib("hi_reverse_styles.jsxinc");
     includeLib("hi_reverse_text.jsxinc");
     includeLib("hi_reverse_effects.jsxinc");
+    includeLib("hi_reverse_tables.jsxinc");
     includeLib("hi_reverse.jsxinc");
 
     var outputPath = app.extractLabel("html_indesign_reverse_output");

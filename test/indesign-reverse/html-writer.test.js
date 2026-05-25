@@ -275,6 +275,89 @@ test('semanticModelToHtml preserves hard line breaks and character runs in text 
   assert.match(html, /style="[^"]*font-style:italic/);
 });
 
+test('semanticModelToHtml renders native table rows cells and cell styles', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'table-reverse',
+    title: 'table-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'table-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'area-table',
+            role: 'table',
+            semantic: 'metrics-table',
+            tagName: 'table',
+            bounds: { x: 80, y: 100, width: 420, height: 120 },
+            styleRefs: { tableStyle: '面积指标表', objectStyle: '表格框' },
+            content: { text: '\u0016' },
+            table: {
+              tableStyle: '面积指标表',
+              rowCount: 2,
+              columnCount: 2,
+              columnWidths: [260, 160],
+              rowHeights: [32, 28],
+              rows: [
+                {
+                  index: 0,
+                  cells: [
+                    {
+                      index: 0,
+                      text: 'Space',
+                      header: true,
+                      rowSpan: 1,
+                      colSpan: 1,
+                      fillColor: '#123456',
+                      textColor: '#ffffff',
+                      pointSize: 18,
+                      leading: 24,
+                      textAlign: 'center',
+                      paragraphStyle: '表头文字',
+                      padding: { top: 8, right: 10, bottom: 8, left: 10 },
+                      borders: {
+                        top: { color: '#cfd6d2', borderWeight: 1 },
+                        right: { color: '#cfd6d2', borderWeight: 1 },
+                        bottom: { color: '#cfd6d2', borderWeight: 1 },
+                        left: { color: '#cfd6d2', borderWeight: 1 },
+                      },
+                    },
+                    { index: 1, text: 'Area', header: true, rowSpan: 1, colSpan: 1 },
+                  ],
+                },
+                {
+                  index: 1,
+                  cells: [
+                    { index: 0, text: 'Ice rink', rowSpan: 1, colSpan: 1 },
+                    { index: 1, text: '7,600 sqm', rowSpan: 1, colSpan: 1 },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<table[^>]+id="area-table"/);
+  assert.match(html, /data-id-table-style="面积指标表"/);
+  assert.match(html, /<col style="width:260px">/);
+  assert.match(html, /<tr[^>]*>\s*<th[^>]+data-id-paragraph-style="表头文字"[^>]+>Space<\/th>/);
+  assert.match(html, /<td[^>]*>Ice rink<\/td>/);
+  assert.match(html, /background-color:#123456/);
+  assert.match(html, /color:#ffffff/);
+  assert.match(html, /font-size:18px/);
+  assert.match(html, /line-height:24px/);
+  assert.match(html, /text-align:center/);
+  assert.match(html, /padding:8px 10px 8px 10px/);
+  assert.match(html, /border-left:1px solid #cfd6d2/);
+  assert.doesNotMatch(html, /\u0016/);
+});
+
 test('semanticModelToHtml renders reverse style classes composite text features and z order', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',

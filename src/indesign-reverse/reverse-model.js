@@ -54,8 +54,10 @@ function reverseItem(item) {
       paragraphStyle: item.paragraphStyleName || null,
       objectStyle: item.objectStyleName || null,
       frameStyle: item.frameStyleName || null,
+      tableStyle: item.table && item.table.tableStyle ? item.table.tableStyle : null,
     },
-    content: { text: item.text || '', runs: item.textRuns || item.runs || [] },
+    content: { text: role === 'table' && item.table ? '' : item.text || '', runs: item.textRuns || item.runs || [] },
+    table: item.table || null,
     visualStyle: item.visualStyle || null,
     effects: item.effects || null,
     textStyle: item.textStyle || null,
@@ -150,6 +152,7 @@ function firstLabel(labels, kind) {
 }
 
 function roleFromInDesignType(type, item = {}) {
+  if (item.table) return 'table';
   if (item.placedAsset) return 'graphic';
   const raw = String(type || '').toLowerCase();
   if (raw.includes('text')) return 'text';

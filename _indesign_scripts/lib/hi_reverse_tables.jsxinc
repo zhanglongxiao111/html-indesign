@@ -1,0 +1,172 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.reverseTableData = function (item) {
+    try {
+        if (!HI.isTextFrame(item)) return null;
+        var tables = item.tables;
+        if (!tables || tables.length < 1) return null;
+        var table = tables[0];
+        return {
+            tableStyle: HI.reverseTableStyleName(table),
+            rowCount: HI.collectionLength(table.rows),
+            columnCount: HI.collectionLength(table.columns),
+            columnWidths: HI.reverseTableColumnWidths(table),
+            rowHeights: HI.reverseTableRowHeights(table),
+            rows: HI.reverseTableRows(table)
+        };
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseTableStyleName = function (table) {
+    try {
+        if (table.appliedTableStyle && table.appliedTableStyle.isValid) return String(table.appliedTableStyle.name || "");
+    } catch (_) {}
+    return "";
+};
+
+HI.reverseTableColumnWidths = function (table) {
+    var out = [], columns = HI.collectionElements(table.columns);
+    for (var i = 0; i < columns.length; i++) out.push(HI.numberOrNull(columns[i].width));
+    return out;
+};
+
+HI.reverseTableRowHeights = function (table) {
+    var out = [], rows = HI.collectionElements(table.rows);
+    for (var i = 0; i < rows.length; i++) out.push(HI.numberOrNull(rows[i].height));
+    return out;
+};
+
+HI.reverseTableRows = function (table) {
+    var out = [], rows = HI.collectionElements(table.rows), headerRows = HI.tableHeaderRowCount(table);
+    for (var r = 0; r < rows.length; r++) {
+        var row = { index: r, cells: [] }, cells = HI.collectionElements(rows[r].cells);
+        for (var c = 0; c < cells.length; c++) {
+            var cell = HI.reverseTableCell(cells[c], r, c, headerRows);
+            if (cell) row.cells.push(cell);
+        }
+        out.push(row);
+    }
+    return out;
+};
+
+HI.reverseTableCell = function (cell, rowIndex, cellIndex, headerRows) {
+    try {
+        var style = HI.reverseTableCellTextStyle(cell);
+        var paragraphStyle = HI.reverseCellParagraphStyleName(cell);
+        return {
+            index: cellIndex,
+            text: HI.cleanReverseTableCellText(cell.contents),
+            header: Number(rowIndex) < Number(headerRows || 0) || HI.isLikelyTableHeaderCell(paragraphStyle, rowIndex),
+            rowSpan: HI.tableSpanNumber(cell.rowSpan),
+            colSpan: HI.tableSpanNumber(cell.columnSpan),
+            cellStyle: HI.reverseCellStyleName(cell),
+            paragraphStyle: paragraphStyle,
+            fillColor: HI.reverseColor(cell.fillColor),
+            fillOpacity: HI.reverseCellFillOpacity(cell),
+            textColor: style.fillColor,
+            pointSize: style.pointSize,
+            leading: style.leading,
+            textAlign: style.justification,
+            textStyle: style,
+            padding: HI.reverseTableCellPadding(cell),
+            paddingUnit: "pt",
+            borders: HI.reverseTableCellBorders(cell),
+            runs: HI.reverseTableCellRuns(cell)
+        };
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseTableCellTextStyle = function (cell) {
+    try {
+        var text = cell.texts[0];
+        var font = HI.reverseFontInfo(text.appliedFont);
+        return {
+            appliedFont: font ? font.appliedFont : null,
+            fontFamily: font ? font.fontFamily : null,
+            fontStyleName: font ? font.fontStyleName : null,
+            fontWeight: font ? font.fontWeight : null,
+            fontStyle: font ? font.fontStyle : null,
+            pointSize: HI.numberOrNull(text.pointSize),
+            leading: HI.leadingOrNull(text.leading),
+            fillColor: HI.reverseColor(text.fillColor),
+            tracking: HI.numberOrNull(text.tracking),
+            justification: HI.reverseJustification(text.justification)
+        };
+    } catch (_) {}
+    return { pointSize: null, leading: null, fillColor: null, tracking: null, justification: null };
+};
+
+HI.reverseTableCellRuns = function (cell) {
+    var out = [], current = null, characters = [];
+    try { characters = HI.collectionElements(cell.characters); } catch (_) { characters = []; }
+    for (var i = 0; i < characters.length; i++) {
+        var text = HI.cleanReverseTableCellText(HI.reverseCharacterContents(characters[i]));
+        if (text === "") continue;
+        var run = HI.reverseCharacterRun(characters[i]);
+        run.text = text;
+        var signature = HI.reverseCharacterRunSignature(run);
+        if (current && current._signature === signature) current.text += text;
+        else { run._signature = signature; out.push(run); current = run; }
+    }
+    for (var j = 0; j < out.length; j++) delete out[j]._signature;
+    return out;
+};
+
+HI.reverseCellParagraphStyleName = function (cell) {
+    try {
+        var p = cell.texts[0].paragraphs[0], style = p.appliedParagraphStyle;
+        if (style && style.isValid) return String(style.name || "");
+    } catch (_) {}
+    return "";
+};
+
+HI.reverseCellStyleName = function (cell) {
+    try {
+        if (cell.appliedCellStyle && cell.appliedCellStyle.isValid) return String(cell.appliedCellStyle.name || "");
+    } catch (_) {}
+    return "";
+};
+
+HI.reverseTableCellPadding = function (cell) {
+    return {
+        top: HI.numberOrNull(cell.topInset),
+        right: HI.numberOrNull(cell.rightInset),
+        bottom: HI.numberOrNull(cell.bottomInset),
+        left: HI.numberOrNull(cell.leftInset)
+    };
+};
+
+HI.reverseTableCellBorders = function (cell) {
+    return {
+        top: HI.reverseTableCellBorder(cell.topEdgeStrokeColor, cell.topEdgeStrokeWeight),
+        right: HI.reverseTableCellBorder(cell.rightEdgeStrokeColor, cell.rightEdgeStrokeWeight),
+        bottom: HI.reverseTableCellBorder(cell.bottomEdgeStrokeColor, cell.bottomEdgeStrokeWeight),
+        left: HI.reverseTableCellBorder(cell.leftEdgeStrokeColor, cell.leftEdgeStrokeWeight)
+    };
+};
+
+HI.reverseTableCellBorder = function (color, weight) {
+    return { color: HI.reverseColor(color), borderWeight: HI.numberOrNull(weight) };
+};
+
+HI.reverseCellFillOpacity = function (cell) {
+    try {
+        var o = Number(cell.transparencySettings.blendingSettings.opacity);
+        return o >= 0 && o < 100 ? o / 100 : null;
+    } catch (_) {}
+    return null;
+};
+
+HI.tableHeaderRowCount = function (table) { try { return Number(table.headerRowCount || 0); } catch (_) {} return 0; };
+HI.isLikelyTableHeaderCell = function (paragraphStyle, rowIndex) {
+    if (Number(rowIndex) !== 0) return false;
+    var name = String(paragraphStyle || "").toLowerCase();
+    return name.indexOf("header") >= 0 || name.indexOf("heading") >= 0 || name.indexOf("\u8868\u5934") >= 0;
+};
+HI.tableSpanNumber = function (value) { var n = Number(value || 1); return n > 1 ? n : 1; };
+HI.collectionLength = function (collection) { try { return Number(collection.length || 0); } catch (_) {} return 0; };
+HI.cleanReverseTableCellText = function (value) {
+    return String(value || "").replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
+};

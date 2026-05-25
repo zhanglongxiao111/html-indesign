@@ -221,6 +221,93 @@ test('reverseSnapshotToSemanticModel preserves observed character runs per text 
   assert.equal(title.content.runs[1].textStyle.fontStyle, 'italic');
 });
 
+test('reverseSnapshotToSemanticModel preserves native InDesign table structure', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'table.indd', mode: 'structured' },
+    document: { name: 'table.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'area-table',
+            type: 'PageItem',
+            bounds: { x: 80, y: 100, width: 420, height: 120 },
+            text: '\u0016',
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'area-table',
+                role: 'table',
+                semantic: 'metrics-table',
+              },
+            ],
+            table: {
+              tableStyle: '面积指标表',
+              rowCount: 2,
+              columnCount: 2,
+              columnWidths: [260, 160],
+              rowHeights: [32, 28],
+              rows: [
+                {
+                  index: 0,
+                  cells: [
+                    {
+                      index: 0,
+                      text: 'Space',
+                      header: true,
+                      rowSpan: 1,
+                      colSpan: 1,
+                      fillColor: '#123456',
+                      textColor: '#ffffff',
+                      pointSize: 18,
+                      leading: 24,
+                      textAlign: 'center',
+                      paragraphStyle: '表头文字',
+                      padding: { top: 8, right: 10, bottom: 8, left: 10 },
+                      borders: {
+                        top: { color: '#cfd6d2', borderWeight: 1 },
+                        right: { color: '#cfd6d2', borderWeight: 1 },
+                        bottom: { color: '#cfd6d2', borderWeight: 1 },
+                        left: { color: '#cfd6d2', borderWeight: 1 },
+                      },
+                    },
+                    { index: 1, text: 'Area', header: true, rowSpan: 1, colSpan: 1 },
+                  ],
+                },
+                {
+                  index: 1,
+                  cells: [
+                    { index: 0, text: 'Ice rink', rowSpan: 1, colSpan: 1 },
+                    { index: 1, text: '7,600 sqm', rowSpan: 1, colSpan: 1 },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const table = model.pages[0].items[0];
+  assert.equal(table.role, 'table');
+  assert.equal(table.content.text, '');
+  assert.equal(table.table.tableStyle, '面积指标表');
+  assert.equal(table.table.rowCount, 2);
+  assert.equal(table.table.columnCount, 2);
+  assert.deepEqual(table.table.columnWidths, [260, 160]);
+  assert.equal(table.table.rows[0].cells[0].text, 'Space');
+  assert.equal(table.table.rows[0].cells[0].header, true);
+  assert.equal(table.table.rows[0].cells[0].paragraphStyle, '表头文字');
+  assert.equal(table.table.rows[0].cells[0].borders.left.color, '#cfd6d2');
+});
+
 test('reverseSnapshotToSemanticModel preserves reverse style resources composite fonts and z order', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'styles.indd', mode: 'structured' },
