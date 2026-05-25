@@ -8,6 +8,10 @@ test('public API exposes paged-html and legacy-template entry points', () => {
   assert.equal(typeof api.pagedHtml.compileInstructions, 'function');
   assert.equal(typeof api.pagedHtml.validateAuthoringRules, 'function');
   assert.equal(typeof api.pagedHtml.validateInstructions, 'function');
+  assert.equal(typeof api.semanticModel.snapshotToSemanticModel, 'function');
+  assert.equal(typeof api.semanticModel.semanticModelToInstructions, 'function');
+  assert.equal(typeof api.indesignReverse.reverseSnapshotToSemanticModel, 'function');
+  assert.equal(typeof api.indesignReverse.semanticModelToHtml, 'function');
   assert.equal(typeof api.legacyTemplate.buildInstructions, 'function');
   assert.equal(typeof api.legacyTemplate.validate, 'function');
 });

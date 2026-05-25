@@ -6,6 +6,7 @@
   "scripts": {
     "e2e:indesign": "node scripts/indesign-e2e.js",
     "lint:authoring": "node scripts/lint-authoring.js",
+    "reverse:indesign": "node scripts/indesign-reverse-export.js",
     "test": "node --test \"test/**/*.test.js\""
   },
   "keywords": [],
