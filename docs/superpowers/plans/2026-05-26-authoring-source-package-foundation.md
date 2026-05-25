@@ -16,7 +16,7 @@
 
 - `deck.config.json` v1 schema 的最小读取和校验。
 - 作者源码包组装器：`deck.config.json + styles/*.css + pages/*.html -> deck.html`。
-- CLI：`npm run assemble:authoring -- --package <deck.config.json>`。
+- CLI：`npm run assemble:authoring -- -- --package <deck.config.json>`。
 - `lint:authoring` 支持 `--package <deck.config.json>`。
 - 当前 `test/fixtures/e2e/architecture-report/deck.html` 迁移为源码包生成物。
 
@@ -515,7 +515,7 @@ function parseArgs(args) {
 
 function printUsage(exitCode) {
   const usage = [
-    'Usage: npm run assemble:authoring -- --package <deck.config.json> [--check]',
+    'Usage: npm run assemble:authoring -- -- --package <deck.config.json> [--check]',
     '',
     'Options:',
     '  --package <file>  Authoring source package config.',
@@ -884,7 +884,7 @@ Do not change page IDs, `data-page`, class names, `data-id-*`, resource paths, t
 Run:
 
 ```powershell
-npm run assemble:authoring -- --package test/fixtures/e2e/architecture-report/deck.config.json
+npm run assemble:authoring -- -- --package test/fixtures/e2e/architecture-report/deck.config.json
 ```
 
 Expected:
@@ -922,22 +922,22 @@ git commit -m "test: migrate architecture report to authoring package"
 - Modify: `docs/README.md` if needed
 - Modify: `docs/规范/SEMANTIC_PROTOCOL.md` if needed
 
-- [ ] **Step 1: Update AGENTS execution baseline**
+- [x] **Step 1: Update AGENTS execution baseline**
 
 In `AGENTS.md` section `8. 执行基线`, add:
 
 ```markdown
-| 作者源码包组装 | `npm run assemble:authoring -- --package <deck.config.json>` |
-| 作者源码包一致性检查 | `npm run assemble:authoring -- --package <deck.config.json> --check` |
+| 作者源码包组装 | `npm run assemble:authoring -- -- --package <deck.config.json>` |
+| 作者源码包一致性检查 | `npm run assemble:authoring -- -- --package <deck.config.json> --check` |
 ```
 
 Add a short paragraph after the table:
 
 ```markdown
-Agent 编写多页汇报时，优先编辑作者源码包中的 `pages/*.html` 和 `styles/*.css`。`deck.html` 是组装生成物，仍作为浏览器预览、快照和 HTML-to-InDesign 转换入口。修改源码包后必须重新运行 `npm run assemble:authoring -- --package <deck.config.json>`。
+Agent 编写多页汇报时，优先编辑作者源码包中的 `pages/*.html` 和 `styles/*.css`。`deck.html` 是组装生成物，仍作为浏览器预览、快照和 HTML-to-InDesign 转换入口。修改源码包后必须重新运行 `npm run assemble:authoring -- -- --package <deck.config.json>`。
 ```
 
-- [ ] **Step 2: Update semantic protocol authoring note**
+- [x] **Step 2: Update semantic protocol authoring note**
 
 If `docs/规范/SEMANTIC_PROTOCOL.md` does not mention source packages yet, add one concise paragraph in the Agent authoring section:
 
@@ -945,7 +945,7 @@ If `docs/规范/SEMANTIC_PROTOCOL.md` does not mention source packages yet, add 
 对于多页建筑汇报，推荐使用作者源码包组织 HTML：`deck.config.json` 记录页面顺序和共享样式，`pages/*.html` 保存页面片段，`styles/*.css` 保存共享样式，`deck.html` 由组装器生成。转换器仍消费组装后的 `deck.html`，但 Agent 默认不直接编辑该生成物。
 ```
 
-- [ ] **Step 3: Run docs-adjacent checks**
+- [x] **Step 3: Run docs-adjacent checks**
 
 Run:
 
@@ -959,7 +959,7 @@ Expected:
 no output
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add AGENTS.md docs/规范/SEMANTIC_PROTOCOL.md
@@ -991,7 +991,7 @@ pass
 Run:
 
 ```powershell
-npm run assemble:authoring -- --package test/fixtures/e2e/architecture-report/deck.config.json --check
+npm run assemble:authoring -- -- --package test/fixtures/e2e/architecture-report/deck.config.json --check
 ```
 
 Expected:

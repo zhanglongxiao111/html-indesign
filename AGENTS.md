@@ -131,9 +131,13 @@
 | ---- | ---- |
 | 安装依赖 | `npm install` |
 | 单元测试 | `npm test` |
+| 作者源码包组装 | `npm run assemble:authoring -- -- --package <deck.config.json>` |
+| 作者源码包一致性检查 | `npm run assemble:authoring -- -- --package <deck.config.json> --check` |
 | HTML 作者侧规则检查 | `npm run lint:authoring -- <deck.html>` |
 | 真实 InDesign E2E | `npm run e2e:indesign` |
 | 真实 InDesign E2E + 回读 | `npm run e2e:indesign -- -- --reverse-roundtrip` |
+
+Agent 编写多页汇报时，优先编辑作者源码包中的 `pages/*.html` 和 `styles/*.css`。`deck.html` 是组装生成物，仍作为浏览器预览、快照和 HTML-to-InDesign 转换入口。修改源码包后必须重新运行 `npm run assemble:authoring -- -- --package <deck.config.json>`。
 
 真实 InDesign 验证只在触及执行输出、样式映射、资源置入、导出或用户明确要求时运行。临时产物放 `test/workspace/`，不要记录客户文档内容、客户名称或私有资产完整路径。
 

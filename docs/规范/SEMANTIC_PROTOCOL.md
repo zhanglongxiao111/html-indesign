@@ -231,6 +231,8 @@ HTML 示例：
 
 页面级排版语义优先使用不破坏浏览器预览的自然表达：`.page` 的 `padding` 映射为 InDesign 页边距；当现有 HTML 采用绝对定位、不适合增加 padding 时，可用 `data-id-margin="top right bottom left"` 声明非视觉页边距。主网格使用页面级 `data-id-grid="列数"`、`data-id-grid="列数x行数"` 或可解析的 CSS Grid 派生；带间距网格使用 `data-id-column-gutter`、`data-id-row-gutter` 或 CSS `gap` 表达；baseline / 模数行使用 `data-id-baseline="4mm"` 表达。执行器应生成 InDesign 原生参考线，不生成可打印对象。
 
+对于多页建筑汇报，推荐使用作者源码包组织 HTML：`deck.config.json` 记录页面顺序和共享样式，`pages/*.html` 保存页面片段，`styles/*.css` 保存共享样式，`deck.html` 由组装器生成。转换器仍消费组装后的 `deck.html`，但 Agent 默认不直接编辑该生成物。
+
 网格不是给人工拖拽使用的装饰层，而是 Agent 编写分页 HTML 的版面契约。每个页面必须声明边距和主网格；顶层可映射元素的关键边缘应贴合页边距、列线、栏间距两侧、行线或 baseline。允许浏览器继续使用自然 CSS Grid / gap / padding 预览，但翻译层会把这些规则沉淀为 InDesign 页边距和原生参考线。卡片、图例、表格内部的嵌套文字可以使用局部节奏，不强制贴页面主网格。
 
 建筑汇报页面推荐声明 12 列、6 个粗行模块的主网格，同时声明栏间距和作者侧 baseline：

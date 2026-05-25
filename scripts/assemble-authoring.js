@@ -49,7 +49,7 @@ function parseArgs(args) {
 
 function printUsage(exitCode) {
   const usage = [
-    'Usage: npm run assemble:authoring -- --package <deck.config.json> [--check]',
+    'Usage: npm run assemble:authoring -- -- --package <deck.config.json> [--check]',
     '',
     'Options:',
     '  --package <file>  Authoring source package config.',
