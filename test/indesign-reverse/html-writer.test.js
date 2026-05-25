@@ -123,6 +123,48 @@ test('semanticModelToHtml can write local asset URLs relative to the HTML output
   assert.doesNotMatch(html, /<img src="file:\/\//);
 });
 
+test('semanticModelToHtml renders placed PDFs through image previews when available', () => {
+  const outputDir = path.resolve('test/workspace/manual-reverse-html');
+  const pdfPath = path.resolve('test/fixtures/e2e/reference-pdfs/ice-rink-layout-reference.pdf');
+  const previewPath = path.resolve('test/fixtures/e2e/reference-pdfs/ice-rink-layout-reference-page1.png');
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'pdf-preview-reverse',
+    title: 'pdf-preview-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'pdf-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'placed-pdf',
+            role: 'graphic',
+            semantic: 'drawing-frame-object',
+            tagName: 'figure',
+            bounds: { x: 80, y: 40, width: 500, height: 300 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'ice-rink-layout-reference.pdf',
+              path: pdfPath,
+              cropped: false,
+              graphicType: 'PDF',
+            },
+          },
+        ],
+      },
+    ],
+  }, { outputDir });
+
+  const expectedUrl = path.relative(outputDir, previewPath).replace(/\\/g, '/');
+  assert.match(html, /<figure[^>]+data-id-asset-path="/);
+  assert.match(html, new RegExp(`<img src="${escapeRegExp(expectedUrl)}"`));
+  assert.match(html, /data-id-preview-asset-path=/);
+  assert.doesNotMatch(html, /<object[^>]+type="application\/pdf"/);
+});
+
 test('semanticModelToHtml renders reverse gradient feather effects over observed fill', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',

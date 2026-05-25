@@ -1,4 +1,5 @@
 const path = require('node:path');
+const fs = require('node:fs');
 const { fileURLToPath, pathToFileURL } = require('node:url');
 
 const SAFE_TAGS = new Set([
@@ -138,6 +139,7 @@ function baseCss(model) {
     '    .id-object[data-id-role="table"] { border-collapse: collapse; table-layout: fixed; }',
     '    .id-object[data-id-role="table"] th, .id-object[data-id-role="table"] td { overflow: hidden; vertical-align: top; }',
     '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; }',
+    '    .id-object > img[data-id-preview-kind="pdf"] { border: 0; outline: 0; }',
     '    .list-item { display: block; padding: 0; }',
     '    .list-item.has-bullet::before { content: "•"; margin-right: 0.5em; }',
     '    .list-item.has-number::before { content: attr(data-circle); margin-right: 0.5em; }',
@@ -263,9 +265,37 @@ function assetHtml(item, options) {
     return `<img src="${attr(url)}" alt="${attr(label)}" style="object-fit:${fit}">`;
   }
   if (/\.pdf$/.test(extension)) {
+    const previewPath = pdfPreviewPath(asset);
+    if (previewPath) {
+      return `<img src="${attr(assetUrl(previewPath, options))}" alt="${attr(label)}" data-id-preview-kind="pdf" data-id-preview-asset-path="${attr(previewPath)}" style="object-fit:${fit}">`;
+    }
     return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}" style="object-fit:${fit}"></object>`;
   }
   return `<span class="id-asset-placeholder">${escapeHtml(label)}</span>`;
+}
+
+function pdfPreviewPath(asset) {
+  const explicit = asset.previewPath || asset.preview || asset.previewAssetPath;
+  if (explicit && fileExists(explicit)) return explicit;
+  const rawPath = String(asset.path || '');
+  if (!rawPath || !path.isAbsolute(rawPath)) return null;
+  const parsed = path.parse(rawPath);
+  const page = Number(asset.pageNumber || asset.page || 1);
+  const candidates = [
+    path.join(parsed.dir, `${parsed.name}-page${page}.png`),
+    path.join(parsed.dir, `${parsed.name}-page-${page}.png`),
+    path.join(parsed.dir, `${parsed.name}-preview.png`),
+    path.join(parsed.dir, `${parsed.name}.png`),
+  ];
+  return candidates.find(fileExists) || null;
+}
+
+function fileExists(filePath) {
+  try {
+    return fs.existsSync(filePath);
+  } catch (_) {
+    return false;
+  }
 }
 
 function styleResourceCss(model) {
