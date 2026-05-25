@@ -85,6 +85,58 @@ test('semanticModelToHtml renders observed shapes and placed image assets', () =
   assert.match(html, /data-id-image-cropped="true"/);
 });
 
+test('semanticModelToHtml renders source img graphic items through a frame container', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'source-img-reverse',
+    title: 'source-img-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'source-img-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'hero-image',
+            role: 'graphic',
+            semantic: 'hero-image',
+            tagName: 'img',
+            bounds: { x: 0, y: 0, width: 800, height: 450 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'hero.png',
+              path: 'D:\\assets\\hero.png',
+              cropped: true,
+            },
+          },
+          {
+            id: 'placed-pdf',
+            role: 'graphic',
+            semantic: 'drawing-frame-object',
+            tagName: 'object',
+            bounds: { x: 100, y: 100, width: 400, height: 240 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'drawing.pdf',
+              path: 'D:\\assets\\drawing.pdf',
+              cropped: false,
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<figure[^>]+id="hero-image"[^>]+data-id-asset-path="D:\\assets\\hero\.png"/);
+  assert.match(html, /<img src="file:\/\/\/D:\/assets\/hero\.png"/);
+  assert.match(html, /<figure[^>]+id="placed-pdf"[^>]+data-id-asset-path="D:\\assets\\drawing\.pdf"/);
+  assert.match(html, /<object data="file:\/\/\/D:\/assets\/drawing\.pdf" type="application\/pdf"/);
+  assert.doesNotMatch(html, /<\/img>/);
+});
+
 test('semanticModelToHtml can write local asset URLs relative to the HTML output directory', () => {
   const outputDir = path.resolve('test/workspace/manual-reverse-html');
   const assetPath = path.resolve('test/fixtures/e2e/smoke-assets/photos/industrial-site.jpg');

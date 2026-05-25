@@ -83,7 +83,7 @@ function pageToHtml(page, model, options) {
 
 function itemToHtml(item, model, options) {
   const itemId = requiredString(item.id, 'Item is missing id');
-  const tag = safeTagName(item.tagName || htmlTagForRole(item.role));
+  const tag = safeTagName(containerTagForItem(item));
   const classes = itemClasses(item, model).join(' ');
   const inlineStyle = itemInlineStyle(item);
   const attrs = [
@@ -607,6 +607,12 @@ function htmlTagForRole(role) {
   if (role === 'graphic') return 'figure';
   if (role === 'table') return 'table';
   return 'div';
+}
+
+function containerTagForItem(item) {
+  const tagName = String(item.tagName || '').toLowerCase();
+  if (item.role === 'graphic' && ['img', 'object', 'picture'].includes(tagName)) return 'figure';
+  return item.tagName || htmlTagForRole(item.role);
 }
 
 function safeTagName(tagName) {
