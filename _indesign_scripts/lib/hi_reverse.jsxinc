@@ -124,6 +124,7 @@ HI.reversePageItem = function (item, index, total, layerOrder) {
         paragraphStyleName: HI.appliedParagraphStyleName(item),
         objectStyleName: HI.appliedObjectStyleName(item),
         visualStyle: HI.reverseVisualStyle(item),
+        effects: HI.reverseEffects(item),
         textStyle: HI.reverseTextStyle(item),
         textFrameStyle: HI.reverseTextFrameStyle(item),
         inlineStyle: HI.reverseInlineStyle(item),
@@ -154,7 +155,7 @@ HI.reverseLayerIndexMap = function (doc) {
 };
 
 HI.reverseItemZIndex = function (item, index, total, layerOrder) {
-    var local = Number(total - 1 - index);
+    var local = Number(index);
     var layerName = HI.itemLayerName(item);
     var layer = layerOrder && layerOrder[layerName];
     if (!layer) return local;

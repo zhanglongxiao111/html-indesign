@@ -259,6 +259,7 @@ test('reverse snapshot script loads reverse and label helpers', () => {
   assert.match(source, /hi_core\.jsxinc/);
   assert.match(source, /hi_labels\.jsxinc/);
   assert.match(source, /hi_reverse_styles\.jsxinc/);
+  assert.match(source, /hi_reverse_effects\.jsxinc/);
   assert.match(source, /hi_reverse\.jsxinc/);
   assert.match(source, /HI\.exportReverseSnapshot/);
 });
@@ -266,9 +267,12 @@ test('reverse snapshot script loads reverse and label helpers', () => {
 test('reverse snapshot helper extracts labels, pages, styles, layers and assets', () => {
   const reverseSource = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
   const stylePath = path.resolve('_indesign_scripts/lib/hi_reverse_styles.jsxinc');
+  const effectPath = path.resolve('_indesign_scripts/lib/hi_reverse_effects.jsxinc');
   assert.equal(fs.existsSync(stylePath), true, 'hi_reverse_styles.jsxinc should exist');
+  assert.equal(fs.existsSync(effectPath), true, 'hi_reverse_effects.jsxinc should exist');
   const styleSource = fs.readFileSync(stylePath, 'utf8');
-  const source = `${reverseSource}\n${styleSource}`;
+  const effectSource = fs.readFileSync(effectPath, 'utf8');
+  const source = `${reverseSource}\n${styleSource}\n${effectSource}`;
   assert.match(source, /HI\.readProtocolLabel/);
   assert.match(source, /snapshot\.pages/);
   assert.match(source, /snapshot\.styles/);
@@ -277,6 +281,10 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /HI\.reverseVisualStyle/);
   assert.match(source, /HI\.reversePlacedAsset/);
   assert.match(source, /HI\.reverseTextStyle/);
+  assert.match(source, /HI\.reverseEffects/);
+  assert.match(source, /fillTransparencySettings/);
+  assert.match(source, /gradientFeatherSettings/);
+  assert.match(source, /opacityGradientStops/);
   assert.match(source, /allGraphics/);
   assert.match(source, /fillColor/);
   assert.match(source, /strokeColor/);
@@ -288,6 +296,7 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /bulletsAndNumberingListType/);
   assert.match(source, /textColumnCount/);
   assert.ok(styleSource.split(/\r?\n/).length <= 340, 'hi_reverse_styles.jsxinc should stay focused');
+  assert.ok(effectSource.split(/\r?\n/).length <= 120, 'hi_reverse_effects.jsxinc should stay focused');
 });
 
 test('reverse snapshot derives HTML z order from InDesign layer order', () => {
@@ -297,6 +306,8 @@ test('reverse snapshot derives HTML z order from InDesign layer order', () => {
   assert.match(source, /HI\.reverseItemZIndex/);
   assert.match(source, /itemLayer/);
   assert.match(source, /layerBase/);
+  assert.match(source, /var local = Number\(index\)/);
+  assert.doesNotMatch(source, /total\s*-\s*1\s*-\s*index/);
   assert.match(source, /layer\.count\s*-\s*1\s*-\s*layer\.index/);
   assert.match(source, /zIndex:\s*HI\.reverseItemZIndex\(item,\s*index,\s*total,\s*layerOrder\)/);
 });

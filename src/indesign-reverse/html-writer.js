@@ -1,4 +1,5 @@
-const { pathToFileURL } = require('node:url');
+const path = require('node:path');
+const { fileURLToPath, pathToFileURL } = require('node:url');
 
 const SAFE_TAGS = new Set([
   'article',
@@ -33,11 +34,11 @@ const SAFE_TAGS = new Set([
   'ul',
 ]);
 
-function semanticModelToHtml(model) {
+function semanticModelToHtml(model, options = {}) {
   assertDocumentModel(model);
 
   const title = model.title || model.id;
-  const pages = (model.pages || []).map((page) => pageToHtml(page, model)).join('\n');
+  const pages = (model.pages || []).map((page) => pageToHtml(page, model, options)).join('\n');
   const reverseMode = model.reverseMode || 'structured';
 
   return [
@@ -60,7 +61,7 @@ function semanticModelToHtml(model) {
   ].join('\n');
 }
 
-function pageToHtml(page, model) {
+function pageToHtml(page, model, options) {
   const pageId = requiredString(page.id, 'Page is missing id');
   const attrs = [
     `class="page"`,
@@ -75,11 +76,11 @@ function pageToHtml(page, model) {
     `style="${attr(pageStyle(page))}"`,
   ].filter(Boolean);
 
-  const items = (page.items || []).map((item) => itemToHtml(item, model)).join('\n');
+  const items = (page.items || []).map((item) => itemToHtml(item, model, options)).join('\n');
   return [`  <section ${attrs.join(' ')}>`, items, '  </section>'].join('\n');
 }
 
-function itemToHtml(item, model) {
+function itemToHtml(item, model, options) {
   const itemId = requiredString(item.id, 'Item is missing id');
   const tag = safeTagName(item.tagName || htmlTagForRole(item.role));
   const classes = itemClasses(item, model).join(' ');
@@ -111,7 +112,7 @@ function itemToHtml(item, model) {
   ].filter(Boolean);
 
   if (tag === 'figure') {
-    return `    <figure ${attrs.join(' ')}>${assetHtml(item)}${escapeHtml(textContent(item))}</figure>`;
+    return `    <figure ${attrs.join(' ')}>${assetHtml(item, options)}${escapeHtml(textContent(item))}</figure>`;
   }
 
   return `    <${tag} ${attrs.join(' ')}>${renderTextContent(item, model)}</${tag}>`;
@@ -168,6 +169,7 @@ function boundsStyle(itemId, bounds, inlineStyle) {
 function itemInlineStyle(item) {
   return [
     visualStyleCss(item.visualStyle),
+    effectsCss(item.effects, item.visualStyle),
     textStyleCss(item.textStyle),
     textFrameStyleCss(item.textFrameStyle),
     cssForHtml(item.inlineStyle),
@@ -243,10 +245,10 @@ function zIndexCss(zIndex) {
   return Number.isFinite(Number(zIndex)) ? `z-index:${formatNumber(zIndex)}` : '';
 }
 
-function assetHtml(item) {
+function assetHtml(item, options) {
   const asset = item.asset || {};
   if (!asset.path) return '';
-  const url = assetUrl(asset.path);
+  const url = assetUrl(asset.path, options);
   const label = asset.name || item.semantic || item.id;
   const extension = String(asset.name || asset.path).toLowerCase();
   const fit = asset.cropped ? 'cover' : 'contain';
@@ -359,9 +361,82 @@ function firstLineStyleCss(grepStyle, item, model) {
   return styles.join('; ');
 }
 
-function assetUrl(assetPath) {
-  if (/^(https?:|file:)/i.test(assetPath)) return assetPath;
-  return pathToFileURL(assetPath).href;
+function effectsCss(effects, visualStyle) {
+  if (!effects || !effects.gradientFeather) return '';
+  const gradient = gradientFeatherCss(effects.gradientFeather, visualStyle);
+  return gradient ? `background:${gradient}` : '';
+}
+
+function gradientFeatherCss(gradientFeather, visualStyle) {
+  if (!gradientFeather || String(gradientFeather.type || 'linear').toLowerCase() !== 'linear') return '';
+  const stops = Array.isArray(gradientFeather.stops) ? gradientFeather.stops : [];
+  if (!stops.length) return '';
+  const rgb = hexToRgb(visualStyle && visualStyle.fillColor ? visualStyle.fillColor : '#ffffff');
+  if (!rgb) return '';
+  const angle = indesignGradientAngleToCss(gradientFeather.angle);
+  const cssStops = stops.map((stop) => {
+    const opacity = clamp(Number(stop.opacity) / 100, 0, 1);
+    const location = clamp(Number(stop.location), 0, 100);
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${formatNumber(opacity)}) ${formatNumber(location)}%`;
+  });
+  return `linear-gradient(${formatNumber(angle)}deg, ${cssStops.join(', ')})`;
+}
+
+function indesignGradientAngleToCss(angle) {
+  return ((Number(angle || 0) - 270) % 360 + 360) % 360;
+}
+
+function hexToRgb(value) {
+  const raw = String(value || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(raw)) {
+    return {
+      r: parseInt(raw[0] + raw[0], 16),
+      g: parseInt(raw[1] + raw[1], 16),
+      b: parseInt(raw[2] + raw[2], 16),
+    };
+  }
+  if (/^[0-9a-f]{6}$/i.test(raw)) {
+    return {
+      r: parseInt(raw.slice(0, 2), 16),
+      g: parseInt(raw.slice(2, 4), 16),
+      b: parseInt(raw.slice(4, 6), 16),
+    };
+  }
+  return null;
+}
+
+function assetUrl(assetPath, options = {}) {
+  const rawPath = String(assetPath || '');
+  if (/^https?:/i.test(rawPath)) return rawPath;
+
+  let localPath = rawPath;
+  if (/^file:/i.test(rawPath)) {
+    try {
+      localPath = fileURLToPath(rawPath);
+    } catch (_) {
+      return rawPath;
+    }
+  }
+
+  if (options && options.outputDir && path.isAbsolute(localPath)) {
+    return filePathToUrlPath(path.relative(path.resolve(options.outputDir), localPath));
+  }
+
+  if (/^file:/i.test(rawPath)) return rawPath;
+  return pathToFileURL(localPath).href;
+}
+
+function filePathToUrlPath(filePath) {
+  return String(filePath || '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((segment) => (segment === '..' || segment === '.' ? segment : encodeURIComponent(segment)))
+    .join('/');
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 function marginValue(margins) {

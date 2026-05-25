@@ -57,8 +57,8 @@ function compileReverseSnapshotToHtml(options) {
   const model = options.blueprintPath
     ? legacyBlueprintToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
     : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), { mode: options.mode });
-  const html = semanticModelToHtml(model);
   const outDir = path.resolve(options.outDir);
+  const html = semanticModelToHtml(model, { outputDir: outDir });
   const report = createReport(model, { ...options, inputFormat });
   const modeHtmlName = `deck.${options.mode}.html`;
   const modeReportName = `${options.mode}-report.json`;

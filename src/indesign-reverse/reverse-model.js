@@ -57,6 +57,7 @@ function reverseItem(item) {
     },
     content: { text: item.text || '' },
     visualStyle: item.visualStyle || null,
+    effects: item.effects || null,
     textStyle: item.textStyle || null,
     textFrameStyle: item.textFrameStyle || null,
     inlineStyle: item.inlineStyle || item.inlineCSS || null,

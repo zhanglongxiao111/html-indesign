@@ -85,6 +85,95 @@ test('semanticModelToHtml renders observed shapes and placed image assets', () =
   assert.match(html, /data-id-image-cropped="true"/);
 });
 
+test('semanticModelToHtml can write local asset URLs relative to the HTML output directory', () => {
+  const outputDir = path.resolve('test/workspace/manual-reverse-html');
+  const assetPath = path.resolve('test/fixtures/e2e/smoke-assets/photos/industrial-site.jpg');
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'relative-asset-reverse',
+    title: 'relative-asset-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'relative-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'hero-image',
+            role: 'graphic',
+            semantic: 'hero-image',
+            tagName: 'figure',
+            bounds: { x: 0, y: 0, width: 800, height: 450 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'industrial-site.jpg',
+              path: assetPath,
+              cropped: true,
+            },
+          },
+        ],
+      },
+    ],
+  }, { outputDir });
+
+  const expectedUrl = path.relative(outputDir, assetPath).replace(/\\/g, '/');
+  assert.match(html, new RegExp(`<img src="${escapeRegExp(expectedUrl)}"`));
+  assert.doesNotMatch(html, /<img src="file:\/\//);
+});
+
+test('semanticModelToHtml renders reverse gradient feather effects over observed fill', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'effect-reverse',
+    title: 'effect-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'effect-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'cover-veil',
+            role: 'shape',
+            semantic: 'cover-veil',
+            tagName: 'div',
+            bounds: { x: 0, y: 0, width: 800, height: 450 },
+            visualStyle: {
+              fillColor: '#fbfaf7',
+              strokeColor: null,
+              strokeWeight: null,
+              opacity: 100,
+              cornerRadius: null,
+            },
+            effects: {
+              gradientFeather: {
+                type: 'linear',
+                scope: 'fill',
+                angle: 0,
+                stops: [
+                  { location: 0, opacity: 94 },
+                  { location: 45, opacity: 55 },
+                  { location: 100, opacity: 8 },
+                ],
+              },
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /id="cover-veil"[^>]+background:linear-gradient/);
+  assert.match(html, /rgba\(251, 250, 247, 0\.94\) 0%/);
+  assert.match(html, /rgba\(251, 250, 247, 0\.55\) 45%/);
+  assert.match(html, /rgba\(251, 250, 247, 0\.08\) 100%/);
+});
+
 test('semanticModelToHtml renders observed text style', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',
@@ -233,3 +322,7 @@ test('semanticModelToHtml renders reverse style classes composite text features 
   assert.match(html, /id="drop"[\s\S]*<span class="dropcap-chars">首<\/span>/);
   assert.match(html, /id="grep"[\s\S]*<span class="grep-first-line" style="font-weight:bold; color:#c8102e">标题行<\/span>/);
 });
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

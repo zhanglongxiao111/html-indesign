@@ -83,6 +83,48 @@ test('reverseSnapshotToSemanticModel preserves observed visual style and placed 
   assert.equal(hero.asset.cropped, true);
 });
 
+test('reverseSnapshotToSemanticModel preserves observed item effects', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'effects.indd', mode: 'structured' },
+    document: { name: 'effects.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'cover-veil',
+            type: 'Rectangle',
+            bounds: { x: 0, y: 0, width: 800, height: 450 },
+            visualStyle: { fillColor: '#fbfaf7' },
+            effects: {
+              gradientFeather: {
+                type: 'linear',
+                scope: 'fill',
+                angle: 0,
+                start: { x: -400, y: 225 },
+                length: 0,
+                stops: [
+                  { location: 0, opacity: 94 },
+                  { location: 45, opacity: 55 },
+                  { location: 100, opacity: 8 },
+                ],
+              },
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const veil = model.pages[0].items[0];
+  assert.equal(veil.effects.gradientFeather.scope, 'fill');
+  assert.deepEqual(veil.effects.gradientFeather.stops.map((stop) => stop.opacity), [94, 55, 8]);
+});
+
 test('reverseSnapshotToSemanticModel preserves observed text style per text item', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'type.indd', mode: 'structured' },

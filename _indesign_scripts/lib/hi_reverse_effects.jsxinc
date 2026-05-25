@@ -1,0 +1,69 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.reverseEffects = function (item) {
+    var gradientFeather = HI.reverseGradientFeather(item);
+    if (!gradientFeather) return null;
+    return { gradientFeather: gradientFeather };
+};
+
+HI.reverseGradientFeather = function (item) {
+    var fill = HI.reverseGradientFeatherFor(item, "fill");
+    if (fill) return fill;
+    return HI.reverseGradientFeatherFor(item, "item");
+};
+
+HI.reverseGradientFeatherFor = function (item, scope) {
+    try {
+        var settings = scope === "fill"
+            ? item.fillTransparencySettings.gradientFeatherSettings
+            : item.transparencySettings.gradientFeatherSettings;
+        if (!settings || settings.applied !== true) return null;
+        var stops = HI.reverseOpacityGradientStops(settings);
+        if (!stops.length) return null;
+        var out = {
+            type: "linear",
+            scope: scope,
+            angle: HI.numberOrNull(settings.angle) || 0,
+            length: HI.numberOrNull(settings.length),
+            stops: stops
+        };
+        var start = HI.reverseGradientStart(settings);
+        if (start) out.start = start;
+        return out;
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseGradientStart = function (settings) {
+    try {
+        var value = settings.gradientStart;
+        if (!value || value.length < 2) return null;
+        return { x: Number(value[0] || 0), y: Number(value[1] || 0) };
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseOpacityGradientStops = function (settings) {
+    var out = [], count = HI.reverseGradientStopCount(settings);
+    for (var i = 0; i < count; i++) {
+        var stop = HI.reverseGradientStopAt(settings, i);
+        if (!stop) continue;
+        out.push({
+            location: Number(stop.location || 0),
+            opacity: Number(stop.opacity || 0)
+        });
+    }
+    return out;
+};
+
+HI.reverseGradientStopCount = function (settings) {
+    try { return settings.opacityGradientStops.count(); } catch (_) {}
+    try { return settings.opacityGradientStops.length; } catch (_) {}
+    return 0;
+};
+
+HI.reverseGradientStopAt = function (settings, index) {
+    try { return settings.opacityGradientStops.item(index); } catch (_) {}
+    try { return settings.opacityGradientStops[index]; } catch (_) {}
+    return null;
+};
