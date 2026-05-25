@@ -37,6 +37,8 @@ function validateInstructions(instructions, options = {}) {
     }
   }
 
+  validateProtocolLabels(instructions, options, errors);
+
   return {
     valid: errors.length === 0,
     errors,
@@ -182,6 +184,74 @@ function validatePlacedAsset(item, assetIds, errors) {
       assetId: item.placed.assetId,
     });
   }
+}
+
+function validateProtocolLabels(instructions, options, errors) {
+  if (!options.requireLabels) return;
+
+  if (!hasProtocolLabel(instructions.document && instructions.document.labels, 'document')) {
+    errors.push({
+      code: 'INSTRUCTION_LABEL_MISSING',
+      message: 'Document protocol label is missing.',
+      target: 'document',
+    });
+  }
+
+  for (const layer of instructions.layers || []) {
+    if (!hasProtocolLabel(layer.labels, 'layer')) {
+      errors.push({
+        code: 'INSTRUCTION_LABEL_MISSING',
+        message: `Layer '${layer.name || layer.token || ''}' protocol label is missing.`,
+        target: 'layer',
+        layerName: layer.name || layer.token || '',
+      });
+    }
+  }
+
+  const documentPages = instructions.document && Array.isArray(instructions.document.pages)
+    ? instructions.document.pages
+    : [];
+  for (const page of documentPages) {
+    if (!hasProtocolLabel(page.labels, 'page')) {
+      errors.push({
+        code: 'INSTRUCTION_LABEL_MISSING',
+        message: `Page '${page.id}' protocol label is missing.`,
+        target: 'page',
+        pageId: page.id,
+      });
+    }
+    for (const guide of page.guides || []) {
+      if (!hasProtocolLabel(guide.labels, 'guide')) {
+        errors.push({
+          code: 'INSTRUCTION_LABEL_MISSING',
+          message: `Guide on page '${page.id}' protocol label is missing.`,
+          target: 'guide',
+          pageId: page.id,
+        });
+      }
+    }
+  }
+
+  for (const page of instructions.pages || []) {
+    for (const item of page.items || []) {
+      if (!hasProtocolLabel(item.labels, 'item')) {
+        errors.push({
+          code: 'INSTRUCTION_LABEL_MISSING',
+          message: `Item '${item.id}' protocol label is missing.`,
+          target: 'item',
+          pageId: page.id,
+          itemId: item.id,
+        });
+      }
+    }
+  }
+}
+
+function hasProtocolLabel(labels, kind) {
+  return (labels || []).some((label) => label
+    && label.protocol === 'html-indesign'
+    && label.kind === kind
+    && label.id);
 }
 
 module.exports = {

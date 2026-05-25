@@ -3,6 +3,7 @@ const { parseCssLength, round } = require('../shared/geometry');
 const { placementFromAttributes } = require('../paged-html/asset-detector');
 const { normalizeCssColor } = require('../paged-html/style-utils');
 const { assetSourceFromElementLike } = require('../shared/assets');
+const { createProtocolLabel } = require('../shared/labels');
 const {
   itemBounds,
   cssLengthToTarget,
@@ -26,7 +27,8 @@ function semanticModelToInstructions(model, options = {}) {
   const pages = model.pages.map((page) => {
     const rawPage = page.raw || page;
     const dimensions = { width: page.width, height: page.height };
-    const background = pageBackgroundItemFor(rawPage, model.styles || {}, dimensions, options);
+    const guides = guideInstructionsFor(page);
+    const background = ensureItemLabels(pageBackgroundItemFor(rawPage, model.styles || {}, dimensions, options));
     const items = [
       background,
       ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options)),
@@ -40,7 +42,7 @@ function semanticModelToInstructions(model, options = {}) {
       width: dimensions.width,
       height: dimensions.height,
       margins: page.margins,
-      guides: page.guides || [],
+      guides,
       labels: page.labels || [],
       items,
     };
@@ -86,7 +88,7 @@ function instructionItemsFor(modelItem, assets, page, layout, options) {
   return [
     baseItem,
     ...decorationItemsFor(item, baseItem, layout),
-  ];
+  ].map(ensureItemLabels);
 }
 
 function instructionItemFor(modelItem, assets, page, layout, options) {
@@ -183,6 +185,39 @@ function mergeReport(target, source) {
     if (message.level === 'error') target.errorCount += 1;
     if (message.level === 'warning') target.warningCount += 1;
   }
+}
+
+function guideInstructionsFor(page) {
+  return (page.guides || []).map((guide, index) => ({
+    ...guide,
+    labels: labelsFor(guide.labels, {
+      kind: 'guide',
+      id: `${page.id}-guide-${index + 1}`,
+      source: 'html-to-indesign',
+      pageId: page.id,
+      orientation: guide.orientation,
+      position: guide.position,
+      guideSource: guide.source || null,
+    }),
+  }));
+}
+
+function ensureItemLabels(item) {
+  if (!item) return item;
+  return {
+    ...item,
+    labels: labelsFor(item.labels, {
+      kind: 'item',
+      id: item.id,
+      source: 'html-to-indesign',
+      role: item.role || String(item.type || '').toLowerCase(),
+      generated: item.role === 'background' || item.role === 'decoration',
+    }),
+  };
+}
+
+function labelsFor(labels, fallback) {
+  return Array.isArray(labels) && labels.length ? labels : [createProtocolLabel(fallback)];
 }
 
 function effectsForInstruction(effects, page, layout) {
@@ -632,10 +667,22 @@ function collectLayers(pages, options) {
     const rankB = layerRank(b);
     if (rankA !== rankB) return rankA - rankB;
     return names.get(a) - names.get(b);
-  }).map((name, index) => ({
-    name,
-    order: index,
-  }));
+  }).map((name, index) => layerInstruction(name, name, index));
+}
+
+function layerInstruction(token, displayName, order) {
+  return {
+    token,
+    name: displayName || token,
+    order,
+    labels: [createProtocolLabel({
+      kind: 'layer',
+      id: `layer-${token}`,
+      source: 'html-to-indesign',
+      token,
+      displayName: displayName || token,
+    })],
+  };
 }
 
 function layerRank(name) {

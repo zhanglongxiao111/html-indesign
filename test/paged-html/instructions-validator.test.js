@@ -178,3 +178,20 @@ test('validateInstructions rejects mixed page sizes until executor supports per-
   assert.equal(result.valid, false);
   assert.equal(result.errors.some((error) => error.code === 'MIXED_PAGE_SIZE_UNSUPPORTED'), true);
 });
+
+test('validateInstructions rejects missing required protocol labels in strict mode', () => {
+  const instructions = {
+    document: {
+      unitMode: 'presentation',
+      coordinateUnit: 'pt',
+      pages: [{ id: 'p1', width: 100, height: 100, margins: {}, guides: [] }],
+    },
+    styles: {},
+    assets: [],
+    layers: [],
+    pages: [{ id: 'p1', items: [{ id: 'i1', type: 'SHAPE', bounds: { x: 0, y: 0, width: 10, height: 10 } }] }],
+  };
+  const result = validateInstructions(instructions, { requireLabels: true });
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((error) => error.code === 'INSTRUCTION_LABEL_MISSING'), true);
+});
