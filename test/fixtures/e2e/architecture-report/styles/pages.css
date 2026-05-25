@@ -1,0 +1,43 @@
+.cover .hero-media {
+      inset: 0;
+      width: 420mm;
+      height: 236.25mm;
+    }
+
+
+
+    .veil {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(251, 250, 247, .94), rgba(251, 250, 247, .55) 45%, rgba(251, 250, 247, .08));
+      z-index: 20;
+    }
+
+
+
+    .cover-title {
+      position: absolute;
+      left: 24mm;
+      top: 52mm;
+      width: 170mm;
+      margin: 0;
+      font-size: 34pt;
+      line-height: 39pt;
+      font-weight: 700;
+      color: var(--ink);
+      z-index: 30;
+    }
+
+
+
+    .cover-subtitle {
+      position: absolute;
+      left: 24mm;
+      top: 136mm;
+      width: 130mm;
+      margin: 0;
+      font-size: 11pt;
+      line-height: 16pt;
+      color: #263b42;
+      z-index: 30;
+    }

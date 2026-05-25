@@ -769,7 +769,7 @@ git commit -m "feat: lint authoring source packages"
 - Modify: `test/fixtures/e2e/architecture-report/deck.html`
 - Modify: `test/e2e-fixtures/architecture-report-fixture.test.js`
 
-- [ ] **Step 1: Write failing fixture package tests**
+- [x] **Step 1: Write failing fixture package tests**
 
 Append to `test/e2e-fixtures/architecture-report-fixture.test.js`:
 
@@ -800,7 +800,7 @@ test('architecture report fixture is generated from an authoring source package'
 });
 ```
 
-- [ ] **Step 2: Run fixture tests to verify they fail**
+- [x] **Step 2: Run fixture tests to verify they fail**
 
 Run:
 
@@ -814,7 +814,7 @@ Expected:
 not ok ... AUTHOR_PACKAGE_CONFIG_MISSING
 ```
 
-- [ ] **Step 3: Create package config**
+- [x] **Step 3: Create package config**
 
 Create `test/fixtures/e2e/architecture-report/deck.config.json`:
 
@@ -848,7 +848,7 @@ Create `test/fixtures/e2e/architecture-report/deck.config.json`:
 }
 ```
 
-- [ ] **Step 4: Split CSS from current generated deck**
+- [x] **Step 4: Split CSS from current generated deck**
 
 Use the current `deck.html` as source of truth and split its `<style>` block into four files.
 
@@ -863,7 +863,7 @@ Recommended split:
 
 After splitting, no CSS should remain in page fragments except element-level grid variables and intentionally local inline geometry already present in the fixture.
 
-- [ ] **Step 5: Split page fragments**
+- [x] **Step 5: Split page fragments**
 
 Move each `<section class="page"...>...</section>` into its matching `pages/*.html` file:
 
@@ -879,7 +879,7 @@ Move each `<section class="page"...>...</section>` into its matching `pages/*.ht
 
 Do not change page IDs, `data-page`, class names, `data-id-*`, resource paths, text content, or grid CSS variables during the split.
 
-- [ ] **Step 6: Regenerate deck.html**
+- [x] **Step 6: Regenerate deck.html**
 
 Run:
 
@@ -893,7 +893,7 @@ Expected:
 Wrote D:\AI\html-indesign\test\fixtures\e2e\architecture-report\deck.html
 ```
 
-- [ ] **Step 7: Run fixture tests**
+- [x] **Step 7: Run fixture tests**
 
 Run:
 
@@ -907,7 +907,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```powershell
 git add test/fixtures/e2e/architecture-report test/e2e-fixtures/architecture-report-fixture.test.js

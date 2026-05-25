@@ -1,0 +1,299 @@
+.eyebrow {
+      position: absolute;
+      left: 18mm;
+      top: 14mm;
+      width: 82mm;
+      height: 8mm;
+      margin: 0;
+      font-size: 8pt;
+      line-height: 11pt;
+      text-transform: uppercase;
+      color: var(--accent);
+      z-index: 40;
+    }
+
+
+
+    .page-title {
+      position: absolute;
+      left: 18mm;
+      top: 22mm;
+      width: 148mm;
+      margin: 0;
+      font-size: 22pt;
+      line-height: 26pt;
+      font-weight: 700;
+      color: var(--ink);
+      z-index: 40;
+    }
+
+
+
+    .body-copy {
+      position: absolute;
+      margin: 0;
+      font-size: 10pt;
+      line-height: 15pt;
+      color: #31454b;
+      z-index: 40;
+    }
+
+
+
+    .caption {
+      position: absolute;
+      margin: 0;
+      font-size: 7.5pt;
+      line-height: 10pt;
+      color: var(--muted);
+      z-index: 45;
+    }
+
+
+
+    .accent {
+      color: var(--accent);
+      font-style: italic;
+      font-weight: 700;
+    }
+
+
+
+    .hero-media,
+    .large-media,
+    .grid-media,
+    .diagram-media,
+    .material-media {
+      position: absolute;
+      object-fit: cover;
+      object-position: center center;
+      z-index: 10;
+    }
+
+
+
+    .metric-card {
+      position: absolute;
+      padding: 6mm;
+      background: rgba(251, 250, 247, .92);
+      border: 1pt solid var(--line);
+      border-radius: 4px;
+      z-index: 35;
+    }
+
+
+
+    .metric-value {
+      margin: 0;
+      font-size: 24pt;
+      line-height: 28pt;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+
+
+    .metric-label {
+      margin: 2mm 0 0;
+      font-size: 7.5pt;
+      line-height: 10pt;
+      color: var(--muted);
+    }
+
+
+
+    .panel {
+      position: absolute;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-radius: 6px;
+      z-index: 20;
+    }
+
+
+
+    .chapter {
+      position: absolute;
+      padding: 7mm;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-left: 3mm solid var(--accent);
+      border-radius: 4px;
+      z-index: 25;
+    }
+
+
+
+    .chapter h3,
+    .strategy-card h3 {
+      margin: 0;
+      font-size: 13pt;
+      line-height: 16pt;
+      color: var(--ink);
+    }
+
+
+
+    .chapter p,
+    .strategy-card p {
+      margin: 3mm 0 0;
+      font-size: 8.5pt;
+      line-height: 12pt;
+      color: var(--muted);
+    }
+
+
+
+    .map-frame {
+      position: absolute;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-radius: 5px;
+      overflow: hidden;
+      z-index: 12;
+    }
+
+
+
+    .annotation {
+      position: absolute;
+      padding: 2mm 3mm;
+      min-width: 34mm;
+      background: #ffffff;
+      border: 1pt solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent);
+      font-size: 7pt;
+      line-height: 9pt;
+      z-index: 55;
+    }
+
+
+
+    .dot {
+      position: absolute;
+      width: 5mm;
+      height: 5mm;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 1mm solid #ffffff;
+      z-index: 54;
+    }
+
+
+
+    .line {
+      position: absolute;
+      height: 0;
+      border-top: 1pt solid var(--accent);
+      transform-origin: left center;
+      z-index: 53;
+    }
+
+
+
+    .strategy-card {
+      position: absolute;
+      padding: 7mm;
+      background: #ffffff;
+      border: 1pt solid var(--line);
+      border-radius: 5px;
+      z-index: 25;
+    }
+
+
+
+    .drawing-frame {
+      position: absolute;
+      background: #ffffff;
+      border: 1pt solid #aeb8b8;
+      border-radius: 4px;
+      overflow: hidden;
+      z-index: 12;
+    }
+
+
+
+    .drawing-frame object {
+      width: 100%;
+      height: 100%;
+    }
+
+
+
+    .pdf-preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      z-index: 1;
+    }
+
+
+
+    .pdf-source {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      z-index: 2;
+    }
+
+
+
+    .legend {
+      position: absolute;
+      display: grid;
+      gap: 3mm;
+      z-index: 40;
+    }
+
+
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 6mm 1fr;
+      gap: 3mm;
+      align-items: center;
+      font-size: 8pt;
+      color: var(--muted);
+    }
+
+
+
+    .swatch {
+      width: 6mm;
+      height: 6mm;
+      border-radius: 2px;
+      border: 1pt solid rgba(0, 0, 0, .12);
+    }
+
+
+
+    .data-table {
+      position: absolute;
+      border-collapse: collapse;
+      background: #ffffff;
+      font-size: 8.5pt;
+      line-height: 12pt;
+      z-index: 22;
+    }
+
+
+
+    .data-table th,
+    .data-table td {
+      border: 1pt solid var(--line);
+      padding: 4mm;
+      text-align: left;
+    }
+
+
+
+    .data-table th {
+      background: var(--ink);
+      color: #ffffff;
+      font-weight: 700;
+    }

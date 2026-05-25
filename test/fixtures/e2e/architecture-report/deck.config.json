@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "architecture-report",
+  "title": "冰球场首层平面排布汇报",
+  "profile": "architecture-report",
+  "unitMode": "presentation",
+  "targetSize": "source",
+  "entry": "deck.html",
+  "styles": [
+    "styles/tokens.css",
+    "styles/layout.css",
+    "styles/components.css",
+    "styles/pages.css"
+  ],
+  "pages": [
+    { "id": "cover", "file": "pages/00-cover.html" },
+    { "id": "agenda", "file": "pages/01-agenda.html" },
+    { "id": "site-analysis", "file": "pages/02-site-analysis.html" },
+    { "id": "design-strategy", "file": "pages/03-design-strategy.html" },
+    { "id": "drawing-sheet", "file": "pages/04-drawing-sheet.html" },
+    { "id": "material-system", "file": "pages/05-material-system.html" },
+    { "id": "metrics-table", "file": "pages/06-metrics-table.html" }
+  ],
+  "assets": {
+    "root": "assets"
+  }
+}
