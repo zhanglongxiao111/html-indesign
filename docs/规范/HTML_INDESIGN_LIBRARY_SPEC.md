@@ -31,10 +31,10 @@ HTML 中的每个页面容器对应一个 InDesign 页面。
 
 ```html
 <main class="deck">
-  <section class="page" data-page>
+  <section class="page" data-page="cover">
     ...
   </section>
-  <section class="page" data-page>
+  <section class="page" data-page="agenda">
     ...
   </section>
 </main>
@@ -51,14 +51,21 @@ HTML 中的每个页面容器对应一个 InDesign 页面。
 }
 ```
 
-转换时创建同尺寸 InDesign 页面，不做 fit-to-page 缩放。浏览器测量得到的是 CSS px，InDesign 使用 mm/pt，因此仍需要稳定的单位换算：
+转换时不做任意 fit-to-page 视觉适配。页面尺寸由明确模式决定：
+
+| 模式 | InDesign 坐标单位 | 页面尺寸来源 | 用途 |
+| ---- | ----------------- | ------------ | ---- |
+| `print` | `mm` | HTML 声明的物理尺寸 | 需要保留纸张、打印或毫米制尺寸的文档 |
+| `presentation` | `pt` | 浏览器捕获像素，或显式 `targetSize` | 屏幕演示、PDF 放映、希望 CSS 视觉 px 直接对齐 ID 坐标的文档 |
+
+`presentation` 模式下，浏览器视觉 CSS px 映射为 InDesign point。默认目标尺寸等于捕获到的 HTML 页面像素；也可以指定等比例目标尺寸，例如 2560x1440。指定目标尺寸时只允许同宽高比缩放，元素坐标、线宽、圆角、字号和间距随同一比例进入 InDesign。
+
+`print` 模式仍按物理尺寸换算：
 
 ```text
 mmPerPxX = pageWidthMm / pageRect.widthPx
 mmPerPxY = pageHeightMm / pageRect.heightPx
 ```
-
-这是坐标单位转换，不是视觉适配缩放。
 
 ### 2.2 浏览器布局为页内坐标真相
 
@@ -100,49 +107,60 @@ CSS 不应直接编译为散落的 InDesign 局部 override。转换应优先创
 
 ## 3. 总体架构
 
+库级架构以统一语义模型为中心，而不是以某一种输入或输出格式为中心。
+
 ```text
-HTML/CSS input
+HTML Adapter
+  - browser snapshot
+  - CSS/style/resource extraction
+  - data-id semantic extraction
   |
   v
-Browser Renderer
-  - load assets
-  - enforce page size
-  - wait for fonts/images
-  - compute layout
+Semantic Model
+  - document/page/parentPage
+  - layers/styles/assets/guides
+  - items/labels/layout metadata
+  ^
   |
-  v
-Layout Snapshot
-  - pages
-  - elements
-  - computed styles
-  - pseudo elements
-  - text runs
-  - assets
-  |
-  v
-Style Compiler
-  - swatches
-  - fonts/compositeFonts
-  - paragraph styles
-  - character styles
-  - object/frame styles
-  - table/cell styles
-  |
-  v
-Element Compiler
-  - text frames
-  - image frames
-  - shapes
-  - lines
-  - tables
-  - groups/fallback rasters
-  |
-  v
-Build Instructions
-  |
-  v
-InDesign Executor
+InDesign Adapter
+  - html_indesign label reader/writer
+  - InDesign object snapshot
+  - parent page/style/layer extraction
+
+Semantic Model -> HTML Writer -> fixed semantic HTML
+Semantic Model -> Instruction Compiler -> InDesign Build Instructions -> InDesign Executor
 ```
+
+当前已实现主线仍是：
+
+```text
+Paged HTML
+-> Browser Layout Snapshot
+-> Style/Element Compiler
+-> InDesign Build Instructions
+-> InDesign Executor
+```
+
+这条链路会逐步迁移为：
+
+```text
+Paged HTML -> Semantic Model -> InDesign
+InDesign -> Semantic Model -> Paged HTML
+```
+
+`Build Instructions` 只是 InDesign 执行器消费的命令格式，不是长期事实模型。反向导出、回环校验、模板/母版保真都必须以 `Semantic Model` 和标签协议为依据。
+
+### 3.1 模块职责
+
+| 层级 | 职责 | 典型模块 |
+| ---- | ---- | -------- |
+| HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/paged-html/*` |
+| Semantic Model | 保存双向共享事实：页面、母版、样式、图层、对象、资源、标签、网格 | `src/semantic-model/*` |
+| InDesign Adapter | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/indesign-reverse/*`、`src/paged-html/instructions-compiler.js` |
+| HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/indesign-reverse/html-writer.js` |
+| InDesign Executor | 只执行已验证 instructions，创建 InDesign 原生对象 | `_indesign_scripts/*` |
+
+ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推理。
 
 ## 4. 建筑汇报映射范围
 
@@ -165,7 +183,9 @@ InDesign Executor
 
 ## 5. Canonical Mapping Model
 
-内部 IR 必须把“页面、样式、资源、框架、置入内容”拆开。这样 HTML -> InDesign 和后续 InDesign -> HTML 都能使用同一组语义字段。
+内部语义模型必须把“文档、页面、母版、样式、资源、框架、置入内容、标签”拆开。HTML -> InDesign 和 InDesign -> HTML 必须使用同一组语义字段。
+
+模型不是 InDesign build instructions。instructions 可以从模型派生，但不能反过来成为唯一事实来源。
 
 ### 5.1 DocumentModel
 
@@ -178,6 +198,10 @@ InDesign Executor
 | `facingPages` | boolean | 是否对页 |
 | `bleed` | `{top,right,bottom,left}` | 出血，单位 mm |
 | `colorIntent` | enum: `rgb`, `cmyk`, `mixed` | 颜色策略 |
+| `unitMode` | enum: `print`, `presentation` | 坐标和页面尺寸策略 |
+| `coordinateUnit` | enum: `pt`, `mm` | 语义模型和标签中裸数字几何值的统一单位；`presentation` 默认 `pt`，`print` 默认 `mm` |
+| `labels` | `LabelModel[]` | 文档级协议标签 |
+| `parentPages` | `ParentPageModel[]` | InDesign 母版页 / HTML 跨页重复模板 |
 | `pages` | `PageModel[]` | 页面列表 |
 | `layers` | `LayerModel[]` | 层列表 |
 | `styles` | `StyleModel` | 样式资源 |
@@ -190,14 +214,35 @@ InDesign Executor
 | `id` | string | 页面 ID |
 | `index` | number | 页面顺序 |
 | `label` | string | 页面标签 |
+| `semantic` | string | 页面语义 |
+| `parentPageId` | string | 应用的 InDesign 母版页稳定 ID |
+| `parentPageName` | string | 应用的 InDesign 母版页显示名 |
+| `layout` | string | HTML/Agent 侧页面结构模板稳定 token，不自动对应 InDesign 母版 |
 | `widthMm` | number | 页面宽度 |
 | `heightMm` | number | 页面高度 |
 | `rectPx` | `RectPx` | 浏览器页面 box |
 | `mmPerPxX` | number | X 方向单位换算 |
 | `mmPerPxY` | number | Y 方向单位换算 |
+| `margins` | `{top,right,bottom,left}` | 页边距；来自 `.page` padding 或 `data-id-margin` |
+| `guides` | `GuideModel[]` | 页面参考线；当前主要来自页面级网格 |
 | `items` | `PageItemModel[]` | 页面对象 |
 
-### 5.3 StyleModel
+### 5.3 ParentPageModel
+
+| 字段 | 类型 | 含义 |
+| ---- | ---- | ---- |
+| `id` | string | 母版页 ID |
+| `name` | string | InDesign 母版页名称 |
+| `semantic` | string | 母版语义 |
+| `provides` | string[] | 提供的跨页重复结构，如 `folio`、`header-line` |
+| `items` | `PageItemModel[]` | 母版页对象 |
+| `labels` | `LabelModel[]` | 母版标签 |
+
+母版页只承载跨页重复结构：页码、页眉页脚、章节标识、固定装饰线、永远重复的背景元素和页面参考线。
+
+“左文右图”“四图矩阵”“指标卡片区”等页面结构模板属于 HTML/Agent 侧布局约束，记录在 PageModel 的 `layout`，不默认导出为 InDesign 母版。
+
+### 5.4 StyleModel
 
 | 字段 | InDesign 目标 | 说明 |
 | ---- | ------------- | ---- |
@@ -211,7 +256,9 @@ InDesign Executor
 | `tableStyles` | Table Styles | 表格样式 |
 | `cellStyles` | Cell Styles | 单元格样式 |
 
-### 5.4 PageItemModel
+每个样式资源应能携带稳定 token 和 InDesign 显示名。token 用于 HTML/Agent 协议，显示名用于 InDesign 面板。
+
+### 5.5 PageItemModel
 
 | 字段 | 类型 | 含义 |
 | ---- | ---- | ---- |
@@ -219,6 +266,8 @@ InDesign Executor
 | `role` | enum: `text`, `graphic`, `shape`, `line`, `table`, `group`, `fallback` | 对象角色 |
 | `sourceSelector` | string | HTML 来源选择器 |
 | `tagName` | string | HTML 标签名 |
+| `semantic` | string | 稳定语义 token |
+| `htmlClass` | string | HTML class |
 | `boundsMm` | `RectMm` | 页面内几何位置 |
 | `zIndex` | number | 页面内叠放顺序 |
 | `layer` | string | 目标层 |
@@ -226,9 +275,10 @@ InDesign Executor
 | `transform` | `TransformModel` | transform 信息 |
 | `opacity` | number | 透明度 |
 | `content` | object | 文本、资源、表格等内容 |
+| `labels` | `LabelModel[]` | InDesign/HTML 双向标签 |
 | `fallback` | `FallbackModel` | fallback 信息 |
 
-### 5.5 StyleRefs
+### 5.6 StyleRefs
 
 | 字段 | 含义 |
 | ---- | ---- |
@@ -240,7 +290,9 @@ InDesign Executor
 | `tableStyle` | 表格样式引用 |
 | `cellStyle` | 单元格样式引用 |
 
-### 5.6 AssetModel
+样式引用必须能区分稳定 token 和 InDesign 显示名。推荐结构为 `{ "token": "page-title", "displayName": "页面标题" }`；仅写字符串属于 legacy 简写，只能作为 token 或显示名的兼容输入，不能作为双向协议的唯一表达。
+
+### 5.7 AssetModel
 
 | 字段 | 类型 | 含义 |
 | ---- | ---- | ---- |
@@ -258,7 +310,7 @@ InDesign Executor
 | `transparent` | boolean | 是否含透明通道 |
 | `warnings` | string[] | 资源级 warning |
 
-### 5.7 GraphicFrameModel 与 PlacedGraphicModel
+### 5.8 GraphicFrameModel 与 PlacedGraphicModel
 
 图形框和置入内容必须分开建模。InDesign 中 frame bounds 和 graphic content transform 是两个不同层级。
 
@@ -279,6 +331,19 @@ InDesign Executor
 | `PlacedGraphicModel` | `layerComp` | PSD layer comp |
 | `PlacedGraphicModel` | `preserveVector` | 是否优先保留矢量 |
 
+### 5.9 LabelModel
+
+标签协议详见 `LABEL_PROTOCOL.md`。模型层只要求标签可序列化、可验证、可回写。
+
+| 字段 | 类型 | 含义 |
+| ---- | ---- | ---- |
+| `protocol` | string | 固定为 `html-indesign` |
+| `version` | number | 标签协议版本 |
+| `kind` | string | `document`、`page`、`parentPage`、`item`、`style`、`layer`、`guide` |
+| `id` | string | 稳定 ID |
+| `source` | string | `html-to-indesign`、`manual-tagged`、`legacy-blueprint`、`agent-semanticized` |
+| `payload` | object | kind 特定字段 |
+
 ## 6. 输入约束
 
 ### 6.1 页面容器
@@ -289,6 +354,36 @@ InDesign Executor
 - 有明确物理宽高，推荐 `mm`。
 - 不依赖浏览器滚动区域表达分页。
 - 页面内部溢出默认视为错误或 warning。
+
+页面级 `padding` 映射为 InDesign 页边距。若页面使用绝对定位且不能通过 padding 表达边距，可用 `data-id-margin="top right bottom left"` 声明非视觉页边距。页面级主网格必须通过可解析的 CSS Grid 或 `data-id-grid="12"` / `data-id-grid="12x9"` 声明，编译为 InDesign 原生参考线，不生成可打印对象。
+
+边距和主网格也是 Agent 作者侧规则，不只是输出到 InDesign 的辅助信息。新写分页 HTML 时，每个页面必须有可识别页边距和主网格规则；顶层可映射元素应优先贴合页边距、列线、行线、gutter 两侧或 baseline。CSS Grid 的 `gap` 等同于 InDesign 常见的带间距网格，适合表达建筑汇报里的图文列、卡片阵列、图纸区和标注区。嵌套在卡片、图例、表格内部的文字可以服从局部节奏，不强制贴页面主网格。
+
+页面可以同时声明输出参考线和作者侧吸附网格：
+
+| 属性 | 用途 |
+| ---- | ---- |
+| `data-id-grid="12x6"` | 描述 12 列、6 个粗行模块主网格，适合建筑汇报默认参考线 |
+| `data-id-grid="12"` | 只描述 12 列主网格，不生成粗行参考线 |
+| `data-id-grid="12x9"` | 描述 12 列、9 行主网格，生成带 gutter 的 InDesign 页面参考线 |
+| `data-id-column-gutter` / `data-id-row-gutter` | 声明主网格栏间距和行间距；兼容 `data-id-column-gap` / `data-id-row-gap` |
+| `data-id-baseline="4mm"` | 声明作者侧 baseline / 模数行，用于 HTML 排版与校验；默认不全量生成可见参考线 |
+| `data-id-baseline-guides="all"` | 显式要求把每条 baseline 也输出为 InDesign 可见参考线，通常只用于调试 |
+| `data-id-snap-grid="2mm"` | 描述次级微调模数；不能单独满足页面主网格规则 |
+| `data-id-snap-grid-x` / `data-id-snap-grid-y` | 分别声明水平和垂直方向的作者侧模数 |
+| `data-id-guide-mode="used-snap"` | 兼容/调试模式：InDesign 参考线来自实际顶层排版对象边缘和页边距，不作为建筑汇报默认规则 |
+
+作者侧检查器 `validateAuthoringRules` 负责在快照层检查这些约束：
+
+| 代码 | 等级 | 含义 |
+| ---- | ---- | ---- |
+| `PAGE_MARGIN_RULE_MISSING` | error | 页面缺少边距规则 |
+| `PAGE_GRID_RULE_MISSING` | error | 页面缺少网格规则 |
+| `PAGE_GRID_RULE_INVALID` | error | 网格声明不可解析 |
+| `GRID_ALIGNMENT_OFF` | warning | 元素边缘未贴合声明网格 |
+| `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定语义 token |
+
+普通模式下，网格偏移和语义 token 缺失先作为 warning；`strict` 模式会把 warning 提升为 error。
 
 ### 6.2 可映射元素
 
@@ -322,7 +417,7 @@ InDesign Executor
         type="application/pdf"
         data-id-object
         data-id-asset-kind="pdf"
-        data-id-page="3"
+        data-id-pdf-page="3"
         data-id-crop="trim"
         data-id-fit="contain"></object>
 
@@ -340,12 +435,14 @@ InDesign Executor
 | 属性 | 含义 |
 | ---- | ---- |
 | `data-id-asset-kind` | 显式资源类型：`raster`、`pdf`、`psd`、`ai`、`svg` |
-| `data-id-page` | PDF 页码 |
+| `data-id-pdf-page` | PDF 页码 |
 | `data-id-crop` | PDF crop box：`media`、`crop`、`bleed`、`trim`、`art` |
 | `data-id-artboard` | AI/SVG 画板或导入区域 |
 | `data-id-layer-comp` | PSD layer comp |
 | `data-id-fit` | `cover`、`contain`、`fill`、`none` |
 | `data-id-preserve-vector` | 是否优先保留矢量 |
+
+历史字段 `data-id-page` 曾被用作 PDF 页码。新 HTML 必须使用 `data-id-pdf-page`，读取层可以兼容旧字段并报告迁移 warning，避免和页面容器标记 `data-page` 混淆。
 
 ### 6.4 CSS 支持范围
 
@@ -710,11 +807,54 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
 {
   "metadata": {
     "source": "input.html",
-    "mode": "editable-first"
+    "mode": "editable-first",
+    "protocolVersion": 1
   },
   "document": {
+    "id": "architecture-report",
+    "unitMode": "presentation",
+    "coordinateUnit": "pt",
+    "labels": [
+      {
+        "protocol": "html-indesign",
+        "version": 1,
+        "kind": "document",
+        "id": "architecture-report",
+        "source": "html-to-indesign"
+      }
+    ],
     "pages": [
-      { "id": "page-1", "width": 528, "height": 297 }
+      {
+        "id": "page-1",
+        "width": 528,
+        "height": 297,
+        "margins": { "top": 14, "right": 16, "bottom": 10, "left": 18 },
+        "labels": [
+          {
+            "protocol": "html-indesign",
+            "version": 1,
+            "kind": "page",
+            "id": "page-1",
+            "source": "html-to-indesign"
+          }
+        ],
+        "guides": [
+          {
+            "orientation": "vertical",
+            "position": 60,
+            "source": "grid",
+            "labels": [
+              {
+                "protocol": "html-indesign",
+                "version": 1,
+                "kind": "guide",
+                "id": "page-1-grid-x-01",
+                "source": "html-to-indesign"
+              }
+            ]
+          }
+        ]
+      }
     ]
   },
   "styles": {
@@ -729,7 +869,21 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
     "cellStyles": {}
   },
   "assets": [],
-  "layers": [],
+  "layers": [
+    {
+      "token": "text",
+      "displayName": "文字",
+      "labels": [
+        {
+          "protocol": "html-indesign",
+          "version": 1,
+          "kind": "layer",
+          "id": "layer-text",
+          "source": "html-to-indesign"
+        }
+      ]
+    }
+  ],
   "pages": [
     {
       "id": "page-1",
@@ -747,9 +901,20 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
   "id": "title-1",
   "type": "TEXT",
   "bounds": { "x": 15, "y": 20, "width": 200, "height": 30 },
-  "paragraphStyle": "page-title",
+  "paragraphStyle": { "token": "page-title", "displayName": "页面标题" },
   "runs": [
     { "text": "标题", "characterStyle": null }
+  ],
+  "labels": [
+    {
+      "protocol": "html-indesign",
+      "version": 1,
+      "kind": "item",
+      "id": "title-1",
+      "source": "html-to-indesign",
+      "role": "text",
+      "semantic": "page-title"
+    }
   ],
   "zIndex": 10
 }
@@ -763,8 +928,8 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
   "type": "GRAPHIC",
   "role": "graphic",
   "bounds": { "x": 15, "y": 35, "width": 240, "height": 180 },
-  "objectStyle": "drawing-frame",
-  "frameStyle": "pdf-contain",
+  "objectStyle": { "token": "drawing-frame", "displayName": "图纸图框" },
+  "frameStyle": { "token": "pdf-contain", "displayName": "PDF 等比置入" },
   "placed": {
     "assetId": "asset-site-plan-pdf",
     "fit": "contain",
@@ -774,9 +939,22 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
     "preserveVector": true
   },
   "layer": "drawing",
+  "labels": [
+    {
+      "protocol": "html-indesign",
+      "version": 1,
+      "kind": "item",
+      "id": "site-plan",
+      "source": "html-to-indesign",
+      "role": "graphic",
+      "semantic": "drawing-frame"
+    }
+  ],
   "zIndex": 20
 }
 ```
+
+前向导出的 instructions 必须承载完整标签，或承载足以由 executor 确定性生成完整 `html_indesign` 标签的稳定字段。文档、页面、母版页、样式、图层、参考线和页面对象都必须能写出协议标签；紧凑 `pageItem.label` 不能替代 JSON 脚本标签。
 
 ## 11. InDesign 执行器要求
 
@@ -784,6 +962,7 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
 
 - 创建或复用文档。
 - 创建页面并设置物理尺寸。
+- 应用页面边距和原生参考线。
 - 创建或复用 layers。
 - 创建 swatches。
 - 创建 fonts / composite font references。
@@ -804,39 +983,62 @@ Build instructions 是 InDesign executor 的唯一输入。它应包含页面、
 - 语义推理。
 - 模板选择。
 
-## 12. 反向转换预留
+## 12. 反向转换
 
-虽然第一阶段是 HTML -> InDesign，但数据结构必须为反向转换留接口。
+反向转换是长期主线，不再只是预留接口。
 
-反向转换目标：
+目标：
 
 ```text
 InDesign Document
--> Document Snapshot
--> Style Model
+-> InDesign Reverse Snapshot
+-> Semantic Model
 -> Paged HTML/CSS
 ```
 
-反向转换需要保留：
+反向转换规范见 `REVERSE_EXPORT.md`。
+
+反向转换必须保留：
 
 - InDesign 页面尺寸。
+- 页面标签、母版引用、页面结构模板信息。
 - page items 的 geometry。
 - applied styles。
 - style definitions。
 - swatches。
+- layers。
+- guides。
 - placed assets。
 - graphic frame 与 placed content transform。
 - text runs 和字符样式范围。
 - object fitting。
 - z-order。
+- `html_indesign` 标签。
 
-正向生成的 InDesign 对象应写入可追踪 label，例如：
+正向生成的 InDesign 必须写入完整 JSON 脚本标签：
 
-```text
-html-indesign:id=title-1;role=text;style=page-title
+```js
+target.insertLabel("html_indesign", JSON.stringify({
+  protocol: "html-indesign",
+  version: 1,
+  kind: "item",
+  id: "title-1",
+  role: "text",
+  semantic: "page-title"
+}));
 ```
 
-这样后续可以稳定地从 InDesign 导回 HTML。
+紧凑 `pageItem.label` 只能作为人类面板和旧调试兜底，不能替代 `html_indesign` JSON 标签。
+
+标签写入失败不得静默吞掉。文档、页面、母版、核心页面对象、样式 token 和图层 token 的标签写入失败是 error；旧兼容标签或非核心诊断标签写入失败至少写入 warning 和执行报告。
+
+反向导出有三种模式：
+
+| 模式 | 用途 |
+| ---- | ---- |
+| `structured` | 读取本项目生成或人工按协议打标签的 InDesign |
+| `observation` | 导出未标注 InDesign 为低语义观察 HTML，供 Agent 补标签 |
+| `blueprint-legacy` | 保留旧 blueprint 模板查看和迁移能力 |
 
 ## 13. API 设计
 
@@ -845,7 +1047,14 @@ html-indesign:id=title-1;role=text;style=page-title
 建议 API：
 
 ```js
-const { renderSnapshot, compileStyles, compileInstructions } = require('html-indesign');
+const {
+  renderSnapshot,
+  validateAuthoringRules,
+  snapshotToSemanticModel,
+  compileStyles,
+  compileInstructions,
+  exportInDesignToHtml
+} = require('html-indesign');
 
 const snapshot = await renderSnapshot({
   htmlPath: 'deck.html',
@@ -853,9 +1062,18 @@ const snapshot = await renderSnapshot({
   mode: 'editable-first'
 });
 
+const authoring = validateAuthoringRules(snapshot, {
+  strict: false
+});
+
 const instructions = compileInstructions(snapshot, {
   assetRoot: 'assets',
   styleNaming: 'class-first'
+});
+
+const reverse = await exportInDesignToHtml({
+  mode: 'structured',
+  outDir: 'test/workspace/reverse-export'
 });
 ```
 
@@ -863,8 +1081,12 @@ CLI：
 
 ```bash
 html-indesign snapshot deck.html --out test/workspace/snapshot.json
+html-indesign lint-authoring deck.html --strict
+html-indesign model deck.html --out test/workspace/model.json
 html-indesign compile deck.html --out test/workspace/instructions.json
 html-indesign build test/workspace/instructions.json
+html-indesign reverse --mode structured --out test/workspace/reverse-export
+html-indesign reverse --mode observation --out test/workspace/reverse-observed
 ```
 
 ## 14. 验证和报告
@@ -905,6 +1127,7 @@ html-indesign build test/workspace/instructions.json
 覆盖：
 
 - 页面识别。
+- 作者侧边距、网格和语义 token 校验。
 - mm/px 坐标换算。
 - CSS token 到 swatch。
 - CSS class 到 paragraph/object style。
@@ -954,11 +1177,13 @@ html-indesign build test/workspace/instructions.json
 
 | 当前文件 | 新角色 |
 | -------- | ------ |
-| `src/generator.js` | 反向/参考 HTML 生成能力的来源，可拆分为 style export 和 reference writer |
+| `src/paged-html/` | HTML Adapter 的现有实现：浏览器快照、样式读取、HTML -> instructions |
+| `src/generator.js` | 旧 blueprint -> 模板预览 HTML，可作为 legacy reference writer |
 | `src/spec-generator.js` | Agent 可读规范生成器，后续从 style model 生成 |
-| `src/validator.js` | 迁移为 snapshot/instructions validator |
-| `src/builder.js` | 迁移为 snapshot -> instructions compiler |
+| `src/validator.js` | legacy template validator，保留兼容 |
+| `src/builder.js` | legacy template builder，保留兼容 |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
+| `_indesign_scripts/extract_blueprint.jsx` | legacy blueprint 抽取，不作为新反向主线 |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
@@ -968,19 +1193,32 @@ html-indesign build test/workspace/instructions.json
 
 ```text
 src/
-  browser-snapshot.js
-  style-compiler.js
-  element-compiler.js
-  instructions-validator.js
-  asset-resolver.js
-  placed-asset-compiler.js
-  report.js
-  types/
-    snapshot.ts
-    styles.ts
-    assets.ts
-    instructions.ts
+  semantic-model/
+    document-model.js
+    labels.js
+    styles.js
+    assets.js
+    validators.js
+  paged-html/
+    browser-snapshot.js
+    style-compiler.js
+    semantic-model-compiler.js
+    instructions-compiler.js
+    instructions-validator.js
+  indesign-reverse/
+    snapshot-reader.js
+    label-protocol.js
+    reverse-model.js
+    html-writer.js
+    asset-exporter.js
+    report.js
+  shared/
+    report.js
+    geometry.js
+    assets.js
 ```
+
+`instructions-compiler.js` 后续应从“直接消费浏览器快照”迁移为“消费 Semantic Model 并生成 InDesign instructions”。迁移期间可以保留兼容入口，但新增双向能力必须围绕 Semantic Model 和标签协议实现。
 
 ## 17. 非目标
 
@@ -988,7 +1226,8 @@ src/
 
 - 任意长网页自动分页。
 - 自动模板选择。
-- 自动母版推理。
+- 从普通未标注 InDesign 自动推理完美语义。
+- 把页面结构模板自动推理成 InDesign 母版。
 - 完整浏览器 CSS 到 InDesign 的无损 native 映射承诺。
 - 完整交互网页转换。
 - JavaScript 动态应用状态转换，除非页面在快照前已经稳定渲染。

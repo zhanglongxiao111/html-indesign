@@ -10,4 +10,6 @@
 | ---- | ---- |
 | `HTML_INDESIGN_LIBRARY_SPEC.md` | 库级目标、边界和转换架构 |
 | `SEMANTIC_PROTOCOL.md` | 固定语义 HTML 协议 |
+| `LABEL_PROTOCOL.md` | HTML `data-id-*` 与 InDesign `html_indesign` 脚本标签协议 |
+| `REVERSE_EXPORT.md` | InDesign 反向导出、观察模式和语义化迁移规范 |
 | `FONT_POLICY.md` | 项目公共字体库、字体 token、映射和预检规范 |
