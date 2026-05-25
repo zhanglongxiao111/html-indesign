@@ -54,3 +54,27 @@ test('snapshotToSemanticModel preserves page layout and parent page metadata', (
   assert.equal(model.pages[0].layout, 'contents-grid');
   assert.deepEqual(model.pages[0].margins, { top: 14, right: 14, bottom: 14, left: 14 });
 });
+
+test('snapshotToSemanticModel accepts alternate parent page display-name metadata', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'p1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: {
+        'data-page': 'p1',
+        'data-id-parent-page': 'report-parent',
+        'data-id-parent-page-display-name': '汇报母版',
+      },
+      computedStyle: {},
+      items: [],
+    }],
+    assets: [],
+  }, { unitMode: 'print' });
+
+  assert.equal(model.pages[0].parentPageName, '汇报母版');
+  assert.equal(model.parentPages[0].name, '汇报母版');
+});

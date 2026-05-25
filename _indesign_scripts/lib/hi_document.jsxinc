@@ -31,10 +31,12 @@ HI.prepareDocument = function (appRef, instructions, report) {
     }
 
     HI.writeProtocolLabels(doc, instructions.document && instructions.document.labels || [], report, { target: "document", critical: true });
+    var parentPages = HI.ensureParentPages(doc, instructions.document && instructions.document.parentPages || [], report);
     var layers = HI.ensureLayers(doc, instructions.layers || [], report);
     return {
         doc: doc,
         layers: layers,
+        parentPages: parentPages,
         coordinateUnit: measurementUnitName,
         scriptPreferences: appRef.scriptPreferences,
         oldUnits: { h: oldH, v: oldV, origin: oldOrigin, script: oldScriptUnit }
@@ -132,6 +134,7 @@ HI.getPageForInstruction = function (doc, pageInstruction, index, context, repor
         page.name = String(index + 1);
     } catch (_) {}
     HI.writeProtocolLabels(page, pageInstruction.labels || [], report, { pageId: pageInstruction.id, critical: true });
+    HI.applyParentPage(page, pageInstruction, context, report);
     HI.applyPageMargins(page, pageInstruction.margins, context.coordinateUnit, report);
     HI.applyPageGuides(page, pageInstruction.guides || [], context.coordinateUnit, report);
     report.counts.pages = Math.max(report.counts.pages, index + 1);
@@ -167,6 +170,34 @@ HI.applyPageGuides = function (page, guides, unit, report) {
         } catch (error) {
             HI.addMessage(report, "warning", "PAGE_GUIDE_APPLY_FAILED", String(error), guide);
         }
+    }
+};
+
+HI.ensureParentPages = function (doc, parentPages, report) {
+    var out = {};
+    for (var i = 0; i < (parentPages || []).length; i++) {
+        var spec = parentPages[i];
+        var name = spec.name || spec.id;
+        var master = doc.masterSpreads.itemByName(name);
+        try { master.name; } catch (_) {
+            master = doc.masterSpreads.add();
+            try { master.name = name; } catch (nameError) {
+                HI.addMessage(report, "warning", "PARENT_PAGE_RENAME_FAILED", String(nameError), { parentPageId: spec.id });
+            }
+        }
+        HI.writeProtocolLabels(master, spec.labels || [], report, { parentPageId: spec.id, critical: true });
+        out[spec.id] = master;
+    }
+    return out;
+};
+
+HI.applyParentPage = function (page, pageInstruction, context, report) {
+    var id = pageInstruction.parentPageId;
+    if (!id || !context.parentPages || !context.parentPages[id]) return;
+    try {
+        page.appliedMaster = context.parentPages[id];
+    } catch (error) {
+        HI.addMessage(report, "warning", "PARENT_PAGE_APPLY_FAILED", String(error), { pageId: pageInstruction.id, parentPageId: id });
     }
 };
 
