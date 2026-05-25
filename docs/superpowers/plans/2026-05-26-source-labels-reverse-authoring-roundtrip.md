@@ -521,7 +521,7 @@ git commit -m "feat: capture authoring source metadata"
 - Modify: `test/semantic-model/from-snapshot.test.js`
 - Modify: `test/paged-html/instructions-compiler.test.js`
 
-- [ ] **Step 1: Write failing semantic model tests**
+- [x] **Step 1: Write failing semantic model tests**
 
 Append to `test/semantic-model/from-snapshot.test.js`:
 
@@ -613,7 +613,7 @@ Expected failure:
 TypeError: Cannot read properties of undefined (reading 'config')
 ```
 
-- [ ] **Step 2: Implement semantic model source fields and labels**
+- [x] **Step 2: Implement semantic model source fields and labels**
 
 Modify `src/semantic-model/from-snapshot.js`:
 
@@ -740,7 +740,7 @@ function lengthNumber(value) {
 }
 ```
 
-- [ ] **Step 3: Write failing instruction compiler tests**
+- [x] **Step 3: Write failing instruction compiler tests**
 
 Append to `test/paged-html/instructions-compiler.test.js`:
 
@@ -776,7 +776,7 @@ Expected failure:
 AssertionError: expected documentLabel.sourcePackage.config to equal deck.config.json
 ```
 
-- [ ] **Step 4: Preserve enriched labels in instructions**
+- [x] **Step 4: Preserve enriched labels in instructions**
 
 `src/semantic-model/to-instructions.js` already keeps `model.labels`, `page.labels` and `modelItem.labels`. Confirm `ensureItemLabels` only fills missing labels:
 
@@ -788,7 +788,7 @@ function labelsFor(labels, fallback) {
 
 If a new decoration/background item lacks labels, keep current fallback; do not copy source metadata onto generated decoration items.
 
-- [ ] **Step 5: Run semantic model and compiler tests**
+- [x] **Step 5: Run semantic model and compiler tests**
 
 Run:
 
@@ -802,7 +802,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/semantic-model/from-snapshot.js src/semantic-model/to-instructions.js test/semantic-model/from-snapshot.test.js test/paged-html/instructions-compiler.test.js

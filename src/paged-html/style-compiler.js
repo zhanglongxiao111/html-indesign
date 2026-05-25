@@ -38,6 +38,7 @@ function compileStyles(snapshot, options = {}) {
 
   return {
     metadata: snapshot.metadata,
+    sourcePackageInput: snapshot.sourcePackageInput || null,
     pages,
     assets: snapshot.assets || [],
     warnings: snapshot.warnings || [],

@@ -7,11 +7,17 @@ const {
   itemBounds,
 } = require('../paged-html/layout');
 const { createProtocolLabel } = require('../shared/labels');
+const {
+  sourcePackageFromDocument,
+  sourceNodeForSnapshotItem,
+  gridLayoutFromCssVars,
+} = require('../paged-html/source-metadata');
 
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
   const styled = styledSnapshotForLayout(snapshot, options, layout);
   const documentId = documentIdFor(styled, options);
+  const sourcePackage = sourcePackageFromDocument(styled.sourcePackageInput || {});
   const pages = (styled.pages || []).map((page) => pageModelFor(page, layout));
   return {
     kind: 'DocumentModel',
@@ -22,6 +28,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     coordinateUnit: layout.targetUnit,
     layoutInfo: layout,
     pageSize: pages[0] ? { width: pages[0].width, height: pages[0].height, unit: layout.targetUnit } : null,
+    sourcePackage,
     labels: [createProtocolLabel({
       kind: 'document',
       id: documentId,
@@ -29,6 +36,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
       unitMode: layout.unitMode,
       coordinateUnit: layout.targetUnit,
       profile: options.profile || null,
+      sourcePackage,
     })],
     parentPages: parentPagesFor(pages),
     pages,
@@ -56,6 +64,9 @@ function pageModelFor(page, layout) {
   const parentPageId = attrs['data-id-parent-page'] || null;
   const parentPageName = attrs['data-id-parent-page-name'] || attrs['data-id-parent-page-display-name'] || null;
   const layoutToken = attrs['data-id-layout'] || null;
+  const sourceFile = attrs['data-id-source-file'] || page.sourceFile || null;
+  const sourceNode = page.sourceNode || sourceNodeForSnapshotItem(Object.assign({}, page, { tagName: 'section' }));
+  const grid = pageGridFromAttributes(attrs);
   return {
     id: pageId,
     raw: page,
@@ -65,6 +76,9 @@ function pageModelFor(page, layout) {
     parentPageId,
     parentPageName,
     layout: layoutToken,
+    sourceFile,
+    sourceNode,
+    grid,
     width: dimensions.width,
     height: dimensions.height,
     margins,
@@ -76,6 +90,9 @@ function pageModelFor(page, layout) {
       semantic,
       parentPage: parentPageId ? { id: parentPageId, name: parentPageName } : null,
       layout: layoutToken,
+      sourceFile,
+      sourceNode,
+      grid,
     })],
     items: (page.items || []).map((item) => itemModelFor(item, page, layout)),
   };
@@ -104,6 +121,13 @@ function parentPagesFor(pages) {
 function itemModelFor(item, page, layout) {
   const attrs = item.attributes || {};
   const semantic = attrs['data-id-semantic'] || attrs['data-id-object-style'] || attrs['data-id-paragraph-style'] || null;
+  const sourceFile = attrs['data-id-source-file']
+    || page.sourceFile
+    || (page.attributes && page.attributes['data-id-source-file'])
+    || null;
+  const sourceNode = item.sourceNode || sourceNodeForSnapshotItem(item);
+  const itemLayout = gridLayoutFromCssVars(item.cssVars || {});
+  const structure = { parentId: page.id, order: item.documentOrder || 0, containerPolicy: 'group' };
   return {
     id: item.id,
     raw: item,
@@ -117,6 +141,10 @@ function itemModelFor(item, page, layout) {
     layer: attrs['data-id-layer'] || null,
     classList: item.classList || [],
     attributes: attrs,
+    sourceFile,
+    sourceNode,
+    structure,
+    layout: itemLayout,
     styleRefs: item.styleRefs || {},
     content: contentForItem(item),
     table: item.table || null,
@@ -127,8 +155,31 @@ function itemModelFor(item, page, layout) {
       source: 'html-to-indesign',
       role: item.role,
       semantic,
+      htmlTag: item.tagName || null,
+      className: (item.classList || []).join(' '),
+      sourceFile,
+      sourceNode,
+      structure,
+      layout: itemLayout,
     })],
   };
+}
+
+function pageGridFromAttributes(attrs = {}) {
+  const grid = String(attrs['data-id-grid'] || '').match(/^(\d+)x(\d+)$/);
+  if (!grid) return null;
+  return {
+    columns: Number(grid[1]),
+    rows: Number(grid[2]),
+    columnGutter: lengthNumber(attrs['data-id-column-gutter']),
+    rowGutter: lengthNumber(attrs['data-id-row-gutter']),
+    baseline: lengthNumber(attrs['data-id-baseline']),
+  };
+}
+
+function lengthNumber(value) {
+  const match = String(value || '').match(/^([+-]?(?:\d+|\d*\.\d+))/);
+  return match ? Number(match[1]) : null;
 }
 
 function contentForItem(item) {

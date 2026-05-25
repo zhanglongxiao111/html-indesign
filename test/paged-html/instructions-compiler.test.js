@@ -21,6 +21,30 @@ test('compileInstructions emits document styles pages and text items', async () 
   assert.equal(title.layer, 'text');
 });
 
+test('compileInstructions carries source package labels into instructions', async () => {
+  const htmlPath = path.resolve('test/fixtures/e2e/architecture-report/deck.html');
+  const snapshot = await renderSnapshot({ htmlPath });
+  const instructions = compileInstructions(snapshot, {
+    mode: 'editable-first',
+    unitMode: 'presentation',
+    targetSize: 'same',
+  });
+
+  const documentLabel = instructions.document.labels.find((label) => label.kind === 'document');
+  const pageLabel = instructions.pages[0].labels.find((label) => label.kind === 'page');
+  const itemWithSource = instructions.pages[0].items.find((item) => {
+    const label = (item.labels || []).find((candidate) => candidate.kind === 'item');
+    return label && label.sourceFile;
+  });
+  const itemLabel = itemWithSource.labels.find((label) => label.kind === 'item');
+
+  assert.equal(documentLabel.sourcePackage.config, 'deck.config.json');
+  assert.match(pageLabel.sourceFile, /^pages\/\d\d-/);
+  assert.match(itemLabel.sourceFile, /^pages\/\d\d-/);
+  assert.ok(itemLabel.sourceNode.tagName);
+  assert.equal(itemLabel.structure.parentId, instructions.pages[0].id);
+});
+
 test('compileInstructions emits graphic placed assets and layers', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
