@@ -1649,7 +1649,7 @@ git commit -m "feat: export reverse author package from cli"
 - Modify: `AGENTS.md`
 - Modify: `docs/superpowers/plans/2026-05-26-source-labels-reverse-authoring-roundtrip.md`
 
-- [ ] **Step 1: Document reverse output split**
+- [x] **Step 1: Document reverse output split**
 
 Update `docs/规范/REVERSE_EXPORT.md` section `4. 产物目录` so it explicitly lists:
 
@@ -1683,7 +1683,7 @@ Add rule:
 反向导出不得只生成单个超大 HTML。无论 structured、inferred 还是 observation 模式，都必须至少按页面拆出 author/pages/*.html，并生成可由组装器重建的 author/deck.html。
 ```
 
-- [ ] **Step 2: Document source metadata fields**
+- [x] **Step 2: Document source metadata fields**
 
 Update `docs/规范/SEMANTIC_PROTOCOL.md` with a short subsection:
 
@@ -1697,7 +1697,7 @@ Update `docs/规范/SEMANTIC_PROTOCOL.md` with a short subsection:
 这些字段只描述作者来源和结构关系，不作为视觉兜底补丁。反向源码包优先使用这些字段拆分页面和恢复 class/data-id。
 ```
 
-- [ ] **Step 3: Update AGENTS execution baseline**
+- [x] **Step 3: Update AGENTS execution baseline**
 
 Update `AGENTS.md` under real E2E description:
 
@@ -1705,7 +1705,7 @@ Update `AGENTS.md` under real E2E description:
 加 `--reverse-roundtrip` 时还会生成 `reverse-html/deck.visual.html` 和 `reverse-html/author/`。其中 `reverse-html/author/deck.html` 是由反向源码包组装出来的编辑入口，顶层 `reverse-html/deck.html` 仅保留为视觉兼容入口。
 ```
 
-- [ ] **Step 4: Run focused tests**
+- [x] **Step 4: Run focused tests**
 
 Run:
 
@@ -1719,7 +1719,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 5: Run full tests**
+- [x] **Step 5: Run full tests**
 
 Run:
 
@@ -1733,7 +1733,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 6: Run real InDesign reverse roundtrip**
+- [x] **Step 6: Run real InDesign reverse roundtrip**
 
 Run:
 
@@ -1754,7 +1754,7 @@ reverse-html/author/deck.html is up to date
 oversetTextFrames: 0
 ```
 
-- [ ] **Step 7: Commit docs and checklist**
+- [x] **Step 7: Commit docs and checklist**
 
 ```powershell
 git add docs/规范/REVERSE_EXPORT.md docs/规范/SEMANTIC_PROTOCOL.md AGENTS.md docs/superpowers/plans/2026-05-26-source-labels-reverse-authoring-roundtrip.md

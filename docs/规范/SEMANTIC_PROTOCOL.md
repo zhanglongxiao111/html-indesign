@@ -233,6 +233,14 @@ HTML 示例：
 
 对于多页建筑汇报，推荐使用作者源码包组织 HTML：`deck.config.json` 记录页面顺序和共享样式，`pages/*.html` 保存页面片段，`styles/*.css` 保存共享样式，`deck.html` 由组装器生成。转换器仍消费组装后的 `deck.html`，但 Agent 默认不直接编辑该生成物。
 
+源码包来源字段：
+
+- 文档标签记录 `sourcePackage`。
+- 页面标签记录 `sourceFile`、`sourceNode`、`grid`。
+- 对象标签记录 `sourceFile`、`sourceNode`、`structure`、`layout.grid` 和 `layout.cssVars`。
+
+这些字段只描述作者来源和结构关系，不作为视觉兜底补丁。反向源码包优先使用这些字段拆分页面和恢复 `class` / `data-id-*`。
+
 网格不是给人工拖拽使用的装饰层，而是 Agent 编写分页 HTML 的版面契约。每个页面必须声明边距和主网格；顶层可映射元素的关键边缘应贴合页边距、列线、栏间距两侧、行线或 baseline。允许浏览器继续使用自然 CSS Grid / gap / padding 预览，但翻译层会把这些规则沉淀为 InDesign 页边距和原生参考线。卡片、图例、表格内部的嵌套文字可以使用局部节奏，不强制贴页面主网格。
 
 建筑汇报页面推荐声明 12 列、6 个粗行模块的主网格，同时声明栏间距和作者侧 baseline：

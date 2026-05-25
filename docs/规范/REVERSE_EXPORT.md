@@ -115,16 +115,35 @@
 
 ```text
 reverse-export-<timestamp>/
-  deck.html
+  deck.visual.html
   deck.<mode>.html
+  deck.html                  # compatibility alias of visual output
   reverse-model.json
   report.json
   <mode>-report.json
-  assets/
-    ...
+  author/
+    deck.config.json
+    deck.html                # generated from author source package
+    styles/
+      tokens.css
+      layout.css
+      components.css
+      pages.css
+      reverse-overrides.css
+    pages/
+      00-page.html
+    reports/
+      authoring-report.json
+      inference-report.json
 ```
 
-### 4.1 `deck.html`
+反向导出不得只生成单个超大 HTML。无论 `structured`、`inferred` 还是 `observation` 模式，都必须至少按页面拆出 `author/pages/*.html`，并生成可由组装器重建的 `author/deck.html`。
+
+### 4.1 视觉 HTML 与作者入口
+
+`deck.visual.html` 是视觉对照入口。`deck.<mode>.html` 是同一视觉 HTML 的模式命名入口。顶层 `deck.html` 只作为旧调用方的兼容别名，语义上仍是视觉输出。
+
+`author/deck.html` 是可编辑作者源码包的组装结果。Agent 和人类后续维护应优先修改 `author/pages/*.html` 与 `author/styles/*.css`，再由组装器重建 `author/deck.html`。
 
 结构化模式输出固定语义 HTML：
 
