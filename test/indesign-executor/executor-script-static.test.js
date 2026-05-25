@@ -11,6 +11,7 @@ test('build_from_instructions.jsx is a thin bootstrap that loads executor libs',
   const source = fs.readFileSync(scriptPath, 'utf8');
   for (const name of [
     'hi_core.jsxinc',
+    'hi_labels.jsxinc',
     'hi_document.jsxinc',
     'hi_fonts.jsxinc',
     'hi_styles.jsxinc',
@@ -28,6 +29,7 @@ test('build_from_instructions.jsx is a thin bootstrap that loads executor libs',
 test('executor lib files expose expected HI APIs and stay focused', () => {
   const expectations = {
     'hi_core.jsxinc': ['HI.readJsonFile', 'HI.stringify', 'HI.makeReport', 'HI.boundsToGeometricBounds', 'HI.measurementString'],
+    'hi_labels.jsxinc': ['HI.writeProtocolLabels', 'HI.writeProtocolLabel', 'HI.readProtocolLabel'],
     'hi_document.jsxinc': ['HI.prepareDocument', 'HI.ensureLayers', 'HI.getPageForInstruction'],
     'hi_fonts.jsxinc': ['HI.resolveFont', 'HI.fontStyleNameFor', 'HI.fontByName'],
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
@@ -46,6 +48,13 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     }
     assert.ok(source.split(/\r?\n/).length <= 340, `${fileName} should stay small`);
   }
+});
+
+test('executor label helpers report key label write failures', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_labels.jsxinc'), 'utf8');
+  assert.match(source, /HI\.writeProtocolLabels/);
+  assert.match(source, /LABEL_WRITE_FAILED/);
+  assert.match(source, /critical/);
 });
 
 test('document helper configures page geometry layers and unit restoration', () => {

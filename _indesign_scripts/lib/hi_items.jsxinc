@@ -34,6 +34,7 @@ HI.createTextFrame = function (doc, page, item, context, report) {
     HI.applyParagraphStyle(doc, frame, item.paragraphStyle, report);
     HI.applyRuns(doc, frame, item.runs || [], report);
     try { frame.label = HI.itemLabel(item); } catch (_) {}
+    HI.writeProtocolLabels(frame, item.labels || [], report, { itemId: item.id, critical: true });
     if (frame.overflows) {
         report.counts.oversetTextFrames += 1;
         HI.addMessage(report, "warning", "TEXT_OVERSET", "Text frame is overset", { itemId: item.id });
@@ -72,6 +73,7 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
     HI.applyStyleOverride(doc, rect, item.styleOverride, report);
     HI.applyItemEffects(rect, item.effects, item.bounds, report);
     try { rect.label = HI.itemLabel(item); } catch (_) {}
+    HI.writeProtocolLabels(rect, item.labels || [], report, { itemId: item.id, critical: true });
 
     var placed = item.placed || {};
     var asset = HI.findAssetById(context.assets || [], placed.assetId);
@@ -93,6 +95,7 @@ HI.createShapeFrame = function (doc, page, item, context, report) {
     HI.applyStyleOverride(doc, rect, item.styleOverride, report);
     HI.applyItemEffects(rect, item.effects, item.bounds, report);
     try { rect.label = HI.itemLabel(item); } catch (_) {}
+    HI.writeProtocolLabels(rect, item.labels || [], report, { itemId: item.id, critical: true });
     report.counts.shapes += 1;
     return rect;
 };
@@ -111,6 +114,7 @@ HI.createLineFrame = function (doc, page, item, context, report) {
     try { if (item.strokeColor) line.strokeColor = doc.swatches.itemByName(item.strokeColor); } catch (_) {}
     try { if (item.strokeWeight !== null && typeof item.strokeWeight !== "undefined") line.strokeWeight = Number(item.strokeWeight); } catch (_) {}
     try { line.label = HI.itemLabel(item); } catch (_) {}
+    HI.writeProtocolLabels(line, item.labels || [], report, { itemId: item.id, critical: true });
     report.counts.shapes += 1;
     return line;
 };
@@ -135,6 +139,7 @@ HI.createTableFrame = function (doc, page, item, context, report) {
     var grid = HI.tableGridFromRows(item.rows || []);
     frame.contents = HI.tableTextFromGrid(grid, item.text || "");
     try { frame.label = HI.itemLabel(item); } catch (_) {}
+    HI.writeProtocolLabels(frame, item.labels || [], report, { itemId: item.id, critical: true });
 
     var table = null;
     try {

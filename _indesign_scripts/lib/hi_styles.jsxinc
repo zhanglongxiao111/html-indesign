@@ -61,6 +61,7 @@ HI.ensureParagraphStyles = function (doc, paragraphStyles, report) {
             report.counts.paragraphStyles += 1;
         }
         HI.assignTextStyleProperties(doc, style, def, report);
+        HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "paragraph", critical: false });
         out[name] = style;
     }
     return out;
@@ -78,6 +79,7 @@ HI.ensureCharacterStyles = function (doc, characterStyles, report) {
             report.counts.characterStyles += 1;
         }
         HI.assignTextStyleProperties(doc, style, def, report);
+        HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "character", critical: false });
         out[name] = style;
     }
     return out;
@@ -114,7 +116,6 @@ HI.justificationFor = function (value) {
     if (key === "justify") return Justification.FULLY_JUSTIFIED;
     return Justification.LEFT_ALIGN;
 };
-
 HI.ensureObjectStyles = function (doc, objectStyles, report) {
     var out = {};
     for (var name in objectStyles) {
@@ -135,11 +136,11 @@ HI.ensureObjectStyles = function (doc, objectStyles, report) {
         try { if (def.strokeAlignment === "inside") style.strokeAlignment = StrokeAlignment.INSIDE_ALIGNMENT; } catch (_) {}
         HI.applyCornerRadius(style, def.cornerRadius);
         HI.applyOpacity(style, def.opacity);
+        HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "object", critical: false });
         out[name] = style;
     }
     return out;
 };
-
 HI.ensureFrameStyles = function (frameStyles, report) {
     var out = {};
     for (var name in frameStyles) {
@@ -150,14 +151,12 @@ HI.ensureFrameStyles = function (frameStyles, report) {
     HI.frameStyles = out;
     return out;
 };
-
 HI.strokeStyleName = function (value) {
     var key = String(value || "").toLowerCase();
     if (key === "dashed") return "$ID/Dashed";
     if (key === "dotted") return "$ID/Dotted";
     return "$ID/Solid";
 };
-
 HI.cssLengthToMm = function (value) {
     var text = String(value || "").replace(/\s+/g, "");
     var match = text.match(/^([+-]?(?:\d+|\d*\.\d+))(mm|pt|px)?/);
@@ -198,6 +197,7 @@ HI.ensureTableStyles = function (doc, tableStyles, report) {
                 HI.addMessage(report, "warning", "TABLE_STYLE_CREATE_FAILED", String(error), { name: name });
             }
         }
+        HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "table", critical: false });
         out[name] = style;
     }
     return out;

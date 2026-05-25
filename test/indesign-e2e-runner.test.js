@@ -38,6 +38,7 @@ test('buildBuildJsx creates an isolated document and loads executor libs', () =>
 
   assert.match(jsx, /app\.documents\.add\(\)/);
   assert.match(jsx, /HI\.runBuildFromInstructions\(app, "D:\/AI\/html-indesign\/test\/workspace\/indesign-e2e-20260524-190000\/instructions\.json"\)/);
+  assert.match(jsx, /includeLib\("hi_labels\.jsxinc"\)/);
   assert.match(jsx, /includeLib\("hi_fonts\.jsxinc"\)/);
   assert.match(jsx, /includeLib\("hi_tables\.jsxinc"\)/);
   assert.match(jsx, /html-indesign-indesign-e2e/);

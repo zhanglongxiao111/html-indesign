@@ -30,6 +30,7 @@ HI.prepareDocument = function (appRef, instructions, report) {
         }
     }
 
+    HI.writeProtocolLabels(doc, instructions.document && instructions.document.labels || [], report, { target: "document", critical: true });
     var layers = HI.ensureLayers(doc, instructions.layers || [], report);
     return {
         doc: doc,
@@ -58,9 +59,10 @@ HI.ensureLayers = function (doc, layers, report) {
     var ordered = layers.slice(0).sort(function (a, b) {
         return Number(a.order || 0) - Number(b.order || 0);
     });
-    var start = HI.reuseDefaultLayer(doc, ordered, out);
+    var start = HI.reuseDefaultLayer(doc, ordered, out, report);
     for (var i = start; i < ordered.length; i++) {
-        var name = ordered[i].name || "content";
+        var instruction = ordered[i];
+        var name = instruction.name || "content";
         var layer = doc.layers.itemByName(name);
         try {
             layer.name;
@@ -68,19 +70,22 @@ HI.ensureLayers = function (doc, layers, report) {
             layer = doc.layers.add({ name: name });
             report.counts.layers += 1;
         }
+        HI.writeProtocolLabels(layer, instruction.labels || [], report, { layerName: name, critical: false });
         out[name] = layer;
     }
     HI.removeUnusedDefaultLayers(doc, out);
     return out;
 };
 
-HI.reuseDefaultLayer = function (doc, ordered, out) {
+HI.reuseDefaultLayer = function (doc, ordered, out, report) {
     if (!ordered.length) return 0;
     var layer = HI.findDefaultLayer(doc);
     if (layer) {
         try {
-            var name = ordered[0].name || "content";
+            var instruction = ordered[0];
+            var name = instruction.name || "content";
             layer.name = name;
+            HI.writeProtocolLabels(layer, instruction.labels || [], report, { layerName: name, critical: false });
             out[name] = layer;
             return 1;
         } catch (_) {}
@@ -126,6 +131,7 @@ HI.getPageForInstruction = function (doc, pageInstruction, index, context, repor
     try {
         page.name = String(index + 1);
     } catch (_) {}
+    HI.writeProtocolLabels(page, pageInstruction.labels || [], report, { pageId: pageInstruction.id, critical: true });
     HI.applyPageMargins(page, pageInstruction.margins, context.coordinateUnit, report);
     HI.applyPageGuides(page, pageInstruction.guides || [], context.coordinateUnit, report);
     report.counts.pages = Math.max(report.counts.pages, index + 1);
@@ -155,7 +161,8 @@ HI.applyPageGuides = function (page, guides, unit, report) {
                 orientation: orientation,
                 location: HI.measurementString(guide.position || 0, unit)
             });
-            HI.insertJsonLabel(created, "html_indesign_guide", { source: guide.source || "grid" });
+            HI.insertJsonLabel(created, "html_indesign_guide", { source: guide.source || "grid" }, report, guide);
+            HI.writeProtocolLabels(created, guide.labels || [], report, { pageId: page.name, guideSource: guide.source || "grid", critical: false });
             report.counts.guides += 1;
         } catch (error) {
             HI.addMessage(report, "warning", "PAGE_GUIDE_APPLY_FAILED", String(error), guide);

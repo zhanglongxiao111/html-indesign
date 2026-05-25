@@ -1,0 +1,33 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.writeProtocolLabels = function (target, labels, report, details) {
+    var ok = true;
+    var critical = details && details.critical === true;
+    for (var i = 0; i < (labels || []).length; i++) {
+        if (!HI.writeProtocolLabel(target, labels[i], report, details)) ok = false;
+    }
+    if (!ok && critical) {
+        HI.addMessage(report, "error", "LABEL_WRITE_FAILED", "Critical html_indesign label write failed", details || {});
+    }
+    return ok;
+};
+
+HI.writeProtocolLabel = function (target, label, report, details) {
+    try {
+        target.insertLabel("html_indesign", HI.stringify(label));
+        return true;
+    } catch (error) {
+        if (report) HI.addMessage(report, "warning", "LABEL_WRITE_FAILED", String(error), details || {});
+        return false;
+    }
+};
+
+HI.readProtocolLabel = function (target) {
+    try {
+        var raw = target.extractLabel("html_indesign");
+        if (!raw) return null;
+        return HI.parseJson(raw);
+    } catch (_) {
+        return null;
+    }
+};

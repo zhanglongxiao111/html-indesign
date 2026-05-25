@@ -363,6 +363,7 @@ function buildBuildJsx({ repoRoot, instructionsPath }) {
     }
 
     includeLib("hi_core.jsxinc");
+    includeLib("hi_labels.jsxinc");
     includeLib("hi_document.jsxinc");
     includeLib("hi_fonts.jsxinc");
     includeLib("hi_styles.jsxinc");

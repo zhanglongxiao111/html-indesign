@@ -90,10 +90,14 @@ HI.measurementString = function (value, unit) {
     return String(Number(value || 0)) + HI.measurementUnitName(unit);
 };
 
-HI.insertJsonLabel = function (target, key, value) {
+HI.insertJsonLabel = function (target, key, value, report, details) {
     try {
         target.insertLabel(key, HI.stringify(value));
-    } catch (_) {}
+        return true;
+    } catch (error) {
+        if (report) HI.addMessage(report, "warning", "JSON_LABEL_WRITE_FAILED", String(error), details || {});
+        return false;
+    }
 };
 
 HI.itemLabel = function (item) {
