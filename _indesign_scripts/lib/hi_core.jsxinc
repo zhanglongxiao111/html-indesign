@@ -41,6 +41,7 @@ HI.makeReport = function () {
         counts: {
             pages: 0,
             layers: 0,
+            guides: 0,
             swatches: 0,
             paragraphStyles: 0,
             characterStyles: 0,
@@ -73,6 +74,20 @@ HI.addMessage = function (report, level, code, message, details) {
 
 HI.boundsToGeometricBounds = function (bounds) {
     return [Number(bounds.y), Number(bounds.x), Number(bounds.y) + Number(bounds.height), Number(bounds.x) + Number(bounds.width)];
+};
+
+HI.measurementUnitName = function (value) {
+    var key = String(value || "mm").toLowerCase();
+    if (key === "pt" || key === "point" || key === "points" || key === "px" || key === "pixel" || key === "pixels") return "pt";
+    return "mm";
+};
+
+HI.measurementUnitsFor = function (value) {
+    return HI.measurementUnitName(value) === "pt" ? MeasurementUnits.POINTS : MeasurementUnits.MILLIMETERS;
+};
+
+HI.measurementString = function (value, unit) {
+    return String(Number(value || 0)) + HI.measurementUnitName(unit);
 };
 
 HI.insertJsonLabel = function (target, key, value) {

@@ -16,6 +16,7 @@ function validateInstructions(instructions, options = {}) {
       message: 'instructions.document.pages must contain at least one page.',
     });
   }
+  validatePageSizes(documentPages, errors);
 
   if (options.checkAssetFiles) {
     validateAssetFiles(instructions.assets || [], options, errors);
@@ -40,6 +41,21 @@ function validateInstructions(instructions, options = {}) {
     valid: errors.length === 0,
     errors,
   };
+}
+
+function validatePageSizes(documentPages, errors) {
+  if (documentPages.length < 2) return;
+  const first = documentPages[0] || {};
+  for (const page of documentPages.slice(1)) {
+    if (Math.abs(Number(page.width || 0) - Number(first.width || 0)) > 0.01
+      || Math.abs(Number(page.height || 0) - Number(first.height || 0)) > 0.01) {
+      errors.push({
+        code: 'MIXED_PAGE_SIZE_UNSUPPORTED',
+        message: 'Mixed page sizes are not supported by the current InDesign executor.',
+      });
+      return;
+    }
+  }
 }
 
 function validateAssetFiles(assets, options, errors) {
@@ -102,7 +118,7 @@ function validateStyleRefs(item, styles, errors) {
       });
     }
   }
-  if ((item.type === 'GRAPHIC' || item.type === 'SHAPE' || item.type === 'LINE') && item.objectStyle && !(styles.objectStyles || {})[item.objectStyle]) {
+  if ((item.type === 'TEXT' || item.type === 'GRAPHIC' || item.type === 'SHAPE' || item.type === 'LINE' || item.type === 'TABLE') && item.objectStyle && !(styles.objectStyles || {})[item.objectStyle]) {
     errors.push({
       code: 'OBJECT_STYLE_NOT_FOUND',
       message: `Object style '${item.objectStyle}' was not found.`,
@@ -110,7 +126,7 @@ function validateStyleRefs(item, styles, errors) {
       styleName: item.objectStyle,
     });
   }
-  if ((item.type === 'GRAPHIC' || item.type === 'SHAPE') && item.frameStyle && !(styles.frameStyles || {})[item.frameStyle]) {
+  if ((item.type === 'TEXT' || item.type === 'GRAPHIC' || item.type === 'SHAPE' || item.type === 'TABLE') && item.frameStyle && !(styles.frameStyles || {})[item.frameStyle]) {
     errors.push({
       code: 'FRAME_STYLE_NOT_FOUND',
       message: `Frame style '${item.frameStyle}' was not found.`,
@@ -134,12 +150,30 @@ function validateTableCellStyleRefs(item, styles, errors) {
           styleName: cell.paragraphStyle,
         });
       }
+      for (const run of cell.runs || []) {
+        if (run.characterStyle && !(styles.characterStyles || {})[run.characterStyle]) {
+          errors.push({
+            code: 'TABLE_CELL_CHARACTER_STYLE_NOT_FOUND',
+            message: `Table cell character style '${run.characterStyle}' was not found.`,
+            itemId: item.id,
+            styleName: run.characterStyle,
+          });
+        }
+      }
     }
   }
 }
 
 function validatePlacedAsset(item, assetIds, errors) {
-  if (item.type !== 'GRAPHIC' || !item.placed || !item.placed.assetId) return;
+  if (item.type !== 'GRAPHIC') return;
+  if (!item.placed || !item.placed.assetId) {
+    errors.push({
+      code: 'GRAPHIC_ASSET_MISSING',
+      message: `Graphic item '${item.id}' is missing a placed asset reference.`,
+      itemId: item.id,
+    });
+    return;
+  }
   if (!assetIds.has(item.placed.assetId)) {
     errors.push({
       code: 'ASSET_NOT_FOUND',

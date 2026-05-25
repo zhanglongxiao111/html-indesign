@@ -5,16 +5,25 @@ HI.prepareDocument = function (appRef, instructions, report) {
     var oldH = doc.viewPreferences.horizontalMeasurementUnits;
     var oldV = doc.viewPreferences.verticalMeasurementUnits;
     var oldOrigin = doc.viewPreferences.rulerOrigin;
+    var oldScriptUnit = null;
 
-    doc.viewPreferences.horizontalMeasurementUnits = MeasurementUnits.MILLIMETERS;
-    doc.viewPreferences.verticalMeasurementUnits = MeasurementUnits.MILLIMETERS;
+    var coordinateUnit = instructions.document && instructions.document.coordinateUnit || "mm";
+    var measurementUnits = HI.measurementUnitsFor(coordinateUnit);
+    var measurementUnitName = HI.measurementUnitName(coordinateUnit);
+
+    doc.viewPreferences.horizontalMeasurementUnits = measurementUnits;
+    doc.viewPreferences.verticalMeasurementUnits = measurementUnits;
     doc.viewPreferences.rulerOrigin = RulerOrigin.PAGE_ORIGIN;
+    try {
+        oldScriptUnit = appRef.scriptPreferences.measurementUnit;
+        appRef.scriptPreferences.measurementUnit = measurementUnits;
+    } catch (_) {}
 
     var firstPage = instructions.document && instructions.document.pages && instructions.document.pages[0];
     if (firstPage) {
         try {
-            doc.documentPreferences.pageWidth = String(firstPage.width) + "mm";
-            doc.documentPreferences.pageHeight = String(firstPage.height) + "mm";
+            doc.documentPreferences.pageWidth = HI.measurementString(firstPage.width, measurementUnitName);
+            doc.documentPreferences.pageHeight = HI.measurementString(firstPage.height, measurementUnitName);
             doc.documentPreferences.facingPages = false;
         } catch (error) {
             HI.addMessage(report, "warning", "DOCUMENT_SIZE_SET_FAILED", String(error), {});
@@ -25,7 +34,9 @@ HI.prepareDocument = function (appRef, instructions, report) {
     return {
         doc: doc,
         layers: layers,
-        oldUnits: { h: oldH, v: oldV, origin: oldOrigin }
+        coordinateUnit: measurementUnitName,
+        scriptPreferences: appRef.scriptPreferences,
+        oldUnits: { h: oldH, v: oldV, origin: oldOrigin, script: oldScriptUnit }
     };
 };
 
@@ -35,6 +46,11 @@ HI.restoreDocumentPreferences = function (doc, context) {
         doc.viewPreferences.verticalMeasurementUnits = context.oldUnits.v;
         doc.viewPreferences.rulerOrigin = context.oldUnits.origin;
     } catch (_) {}
+    try {
+        if (context.scriptPreferences && context.oldUnits.script !== null) {
+            context.scriptPreferences.measurementUnit = context.oldUnits.script;
+        }
+    } catch (_) {}
 };
 
 HI.ensureLayers = function (doc, layers, report) {
@@ -42,7 +58,8 @@ HI.ensureLayers = function (doc, layers, report) {
     var ordered = layers.slice(0).sort(function (a, b) {
         return Number(a.order || 0) - Number(b.order || 0);
     });
-    for (var i = 0; i < ordered.length; i++) {
+    var start = HI.reuseDefaultLayer(doc, ordered, out);
+    for (var i = start; i < ordered.length; i++) {
         var name = ordered[i].name || "content";
         var layer = doc.layers.itemByName(name);
         try {
@@ -53,10 +70,55 @@ HI.ensureLayers = function (doc, layers, report) {
         }
         out[name] = layer;
     }
+    HI.removeUnusedDefaultLayers(doc, out);
     return out;
 };
 
-HI.getPageForInstruction = function (doc, pageInstruction, index, report) {
+HI.reuseDefaultLayer = function (doc, ordered, out) {
+    if (!ordered.length) return 0;
+    var layer = HI.findDefaultLayer(doc);
+    if (layer) {
+        try {
+            var name = ordered[0].name || "content";
+            layer.name = name;
+            out[name] = layer;
+            return 1;
+        } catch (_) {}
+    }
+    return 0;
+};
+
+HI.removeUnusedDefaultLayers = function (doc, keep) {
+    var layer = HI.findDefaultLayer(doc);
+    if (!layer) return;
+    try {
+        if (keep[layer.name]) return;
+        try { doc.activeLayer = doc.layers.firstItem(); } catch (_) {}
+        layer.remove();
+    } catch (_) {}
+};
+
+HI.findDefaultLayer = function (doc) {
+    try {
+        var layers = doc.layers.everyItem().getElements();
+        for (var i = 0; i < layers.length; i++) {
+            if (HI.isDefaultLayerName(layers[i].name)) return layers[i];
+        }
+    } catch (_) {}
+    return null;
+};
+
+HI.isDefaultLayerName = function (name) {
+    name = String(name || "");
+    if (/^Layer 1$/.test(name)) return true;
+    return name.length === 4 &&
+        name.charCodeAt(0) === 22270 &&
+        name.charCodeAt(1) === 23618 &&
+        name.charCodeAt(2) === 32 &&
+        name.charCodeAt(3) === 49;
+};
+
+HI.getPageForInstruction = function (doc, pageInstruction, index, context, report) {
     while (doc.pages.length <= index) {
         doc.pages.add(LocationOptions.AT_END);
     }
@@ -64,6 +126,50 @@ HI.getPageForInstruction = function (doc, pageInstruction, index, report) {
     try {
         page.name = String(index + 1);
     } catch (_) {}
+    HI.applyPageMargins(page, pageInstruction.margins, context.coordinateUnit, report);
+    HI.applyPageGuides(page, pageInstruction.guides || [], context.coordinateUnit, report);
     report.counts.pages = Math.max(report.counts.pages, index + 1);
     return page;
+};
+
+HI.applyPageMargins = function (page, margins, unit, report) {
+    if (!margins) return;
+    try {
+        var prefs = page.marginPreferences;
+        prefs.top = HI.measurementString(margins.top || 0, unit);
+        prefs.right = HI.measurementString(margins.right || 0, unit);
+        prefs.bottom = HI.measurementString(margins.bottom || 0, unit);
+        prefs.left = HI.measurementString(margins.left || 0, unit);
+    } catch (error) {
+        HI.addMessage(report, "warning", "PAGE_MARGINS_APPLY_FAILED", String(error), {});
+    }
+};
+
+HI.applyPageGuides = function (page, guides, unit, report) {
+    HI.clearGeneratedGuides(page);
+    for (var i = 0; i < guides.length; i++) {
+        var guide = guides[i];
+        try {
+            var orientation = guide.orientation === "vertical" ? HorizontalOrVertical.VERTICAL : HorizontalOrVertical.HORIZONTAL;
+            var created = page.guides.add(undefined, {
+                orientation: orientation,
+                location: HI.measurementString(guide.position || 0, unit)
+            });
+            HI.insertJsonLabel(created, "html_indesign_guide", { source: guide.source || "grid" });
+            report.counts.guides += 1;
+        } catch (error) {
+            HI.addMessage(report, "warning", "PAGE_GUIDE_APPLY_FAILED", String(error), guide);
+        }
+    }
+};
+
+HI.clearGeneratedGuides = function (page) {
+    try {
+        var guides = page.guides.everyItem().getElements();
+        for (var i = guides.length - 1; i >= 0; i--) {
+            try {
+                if (guides[i].extractLabel("html_indesign_guide")) guides[i].remove();
+            } catch (_) {}
+        }
+    } catch (_) {}
 };

@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .page {
+      box-sizing: border-box;
+      position: relative;
+      width: 160mm;
+      height: 100mm;
+      padding: 10mm 20mm 30mm 40mm;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .title {
+      position: absolute;
+      left: 40mm;
+      top: 10mm;
+      width: 80mm;
+      margin: 0;
+      font-size: 14pt;
+      line-height: 18pt;
+      color: #123456;
+    }
+  </style>
+</head>
+<body>
+  <section class="page" data-page id="grid-page" data-id-grid="4x3">
+    <h1 class="title">Grid guide page</h1>
+  </section>
+</body>
+</html>

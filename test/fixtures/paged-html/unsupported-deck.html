@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    .page {
+      position: relative;
+      width: 160mm;
+      height: 100mm;
+      overflow: hidden;
+      background: white;
+    }
+    .shadow-card {
+      position: absolute;
+      left: 16mm;
+      top: 16mm;
+      width: 50mm;
+      height: 24mm;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+    }
+    .shadow-card::before {
+      content: "01";
+      display: block;
+    }
+    .filtered {
+      position: absolute;
+      left: 76mm;
+      top: 16mm;
+      width: 50mm;
+      height: 24mm;
+      background: #123456;
+      filter: blur(2px);
+    }
+    .inline-svg {
+      position: absolute;
+      left: 16mm;
+      top: 50mm;
+      width: 30mm;
+      height: 20mm;
+    }
+  </style>
+</head>
+<body>
+  <section class="page" data-page id="unsupported-page">
+    <div class="shadow-card" data-id-object></div>
+    <div class="filtered" data-id-object></div>
+    <svg class="inline-svg" data-id-object viewBox="0 0 100 60">
+      <rect x="5" y="5" width="90" height="50" fill="#123456"></rect>
+    </svg>
+  </section>
+</body>
+</html>

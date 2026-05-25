@@ -21,6 +21,7 @@
         includeLib("hi_fonts.jsxinc");
         includeLib("hi_styles.jsxinc");
         includeLib("hi_assets.jsxinc");
+        includeLib("hi_tables.jsxinc");
         includeLib("hi_items.jsxinc");
         includeLib("hi_executor.jsxinc");
 

@@ -42,7 +42,29 @@ function compileStyles(snapshot, options = {}) {
     assets: snapshot.assets || [],
     warnings: snapshot.warnings || [],
     styles,
+    styleLayout: styleLayoutSignature(options.layout),
     report,
+  };
+}
+
+function styleLayoutSignature(layout) {
+  if (!layout || layout.unitMode !== 'presentation') {
+    return {
+      unitMode: 'print',
+      targetUnit: 'mm',
+      scale: 1,
+      targetSize: null,
+    };
+  }
+  return {
+    unitMode: 'presentation',
+    targetUnit: layout.targetUnit || 'pt',
+    scale: Number(layout.scale || 1),
+    targetSize: layout.targetSize ? {
+      width: Number(layout.targetSize.width || 0),
+      height: Number(layout.targetSize.height || 0),
+      name: layout.targetSize.name || null,
+    } : null,
   };
 }
 
@@ -64,14 +86,19 @@ function compileItemStyles(item, styles, report, options) {
 
   if (item.role === 'text') {
     styleRefs.paragraphStyle = ensureParagraphStyle(styles, item, report, options);
+    if (shouldCompileTextFrameObjectStyle(item)) {
+      styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
+      styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
+    }
     compiled.content.runs = compileTextRuns(item, styles, styleRefs, report, options);
   }
 
   if (item.role === 'graphic' || item.role === 'shape') {
     styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
     styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
-    compiled.box = compileBoxModel(item, styles);
-    compiled.effects = compileEffects(item);
+    compiled.box = compileBoxModel(item, styles, options);
+    warnObjectBorderLimitations(item, compiled.box, report);
+    compiled.effects = compileEffects(item, report);
   }
 
   if (item.role === 'shape' && shouldCompileObjectText(item)) {
@@ -81,9 +108,15 @@ function compileItemStyles(item, styles, report, options) {
   }
 
   if (item.role === 'table') {
-    styleRefs.tableStyle = explicitName(item.attributes, ['data-id-table-style']) || firstClassName(item) || 'default-table';
+    styleRefs.tableStyle = styleNameForKind(item, 'tableStyles', null, options)
+      || firstClassName(item)
+      || 'default-table';
     if (!styles.tableStyles[styleRefs.tableStyle]) {
       styles.tableStyles[styleRefs.tableStyle] = { name: styleRefs.tableStyle };
+    }
+    styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
+    if (explicitFrameStyleName(item, options)) {
+      styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
     }
     compiled.content.rows = compileTableRows(item, styles, report, options);
     compiled.content.columnCount = tableColumnCount(compiled.content.rows);
@@ -119,6 +152,9 @@ function contentForItem(item) {
 }
 
 function compileTextRuns(item, styles, styleRefs, report, options) {
+  if (isWholeItemTextRun(item)) {
+    return [{ text: item.text || '', characterStyle: null }];
+  }
   const runs = item.runs && item.runs.length > 0
     ? expandTextRunsWithPlainSegments(item)
     : [{ text: item.text || '', attributes: {}, classList: [], computedStyle: item.computedStyle, tagName: item.tagName }];
@@ -140,6 +176,15 @@ function compileTextRuns(item, styles, styleRefs, report, options) {
   });
 }
 
+function isWholeItemTextRun(item) {
+  const runs = item.runs || [];
+  if (runs.length !== 1) return false;
+  const run = runs[0];
+  if (run.attributes && run.attributes['data-id-character-style']) return false;
+  return String(run.text || '').trim() === String(item.text || '').trim()
+    && String(run.tagName || '') === String(item.tagName || '');
+}
+
 function shouldCompileObjectText(item) {
   return Boolean(
     item
@@ -150,8 +195,11 @@ function shouldCompileObjectText(item) {
 }
 
 function expandTextRunsWithPlainSegments(item) {
-  const fullText = item.text || '';
-  const inlineRuns = (item.runs || []).filter((run) => run.text);
+  return expandRunsWithPlainSegments(item.text || '', item.runs || []);
+}
+
+function expandRunsWithPlainSegments(fullText, runs) {
+  const inlineRuns = (runs || []).filter((run) => run.text);
   if (!fullText || inlineRuns.length === 0) return inlineRuns;
 
   const out = [];
@@ -171,6 +219,12 @@ function expandTextRunsWithPlainSegments(item) {
   return out.filter((run) => run.text);
 }
 
+function capitalizationFor(style) {
+  const transform = String(style && style.textTransform || '').toLowerCase();
+  if (transform === 'uppercase') return 'allCaps';
+  return null;
+}
+
 function ensureParagraphStyle(styles, item, report, options) {
   const style = item.computedStyle || {};
   const fillColor = ensureSwatch(styles, style.color);
@@ -178,17 +232,18 @@ function ensureParagraphStyle(styles, item, report, options) {
   const signature = {
     appliedFont: fontName,
     fontStyleName: fontStyleNameFor(style),
-    pointSize: cssLengthToPt(style.fontSize),
-    leading: cssLengthToPt(style.lineHeight),
+    pointSize: styleLengthToPt(style, 'fontSize', options),
+    leading: styleLengthToPt(style, 'lineHeight', options),
     fontWeight: style.fontWeight || '400',
     fontStyle: style.fontStyle || 'normal',
     fillColor,
     justification: style.textAlign || 'left',
-    tracking: cssLengthToPt(style.letterSpacing),
-    spaceBefore: cssLengthToPt(style.marginTop),
-    spaceAfter: cssLengthToPt(style.marginBottom),
+    tracking: trackingValue(style, options),
+    capitalization: capitalizationFor(style),
+    spaceBefore: styleLengthToPt(style, 'marginTop', options),
+    spaceAfter: styleLengthToPt(style, 'marginBottom', options),
   };
-  const name = explicitName(item.attributes, ['data-id-paragraph-style', 'data-id-style'])
+  const name = styleNameForKind(item, 'paragraphStyles', signature, options)
     || firstClassName(item)
     || stableAutoName('paragraph', signature);
   if (!styles.paragraphStyles[name]) {
@@ -210,15 +265,16 @@ function ensureCharacterStyle(styles, run, report, options) {
   const signature = {
     appliedFont: fontName,
     fontStyleName: fontStyleNameFor(style),
-    pointSize: cssLengthToPt(style.fontSize),
+    pointSize: styleLengthToPt(style, 'fontSize', options),
     fontWeight: style.fontWeight || '400',
     fontStyle: style.fontStyle || 'normal',
     fillColor,
-    tracking: cssLengthToPt(style.letterSpacing),
+    tracking: trackingValue(style, options),
     verticalPosition: style.verticalAlign || 'baseline',
     textDecoration: style.textDecorationLine || 'none',
+    capitalization: capitalizationFor(style),
   };
-  const name = explicitName(run.attributes, ['data-id-character-style', 'data-id-style'])
+  const name = styleNameForKind(run, 'characterStyles', signature, options)
     || firstClassName(run)
     || stableAutoName('character', signature);
   if (!styles.characterStyles[name]) {
@@ -237,19 +293,20 @@ function ensureObjectStyle(styles, item, report, options) {
   const style = item.computedStyle || {};
   const fill = ensureFillSwatch(styles, style);
   const fillColor = fill && fill.name;
-  const strokeColor = ensureSwatch(styles, style.borderTopColor);
+  const uniformBorder = uniformBorderForObject(item, options);
+  const strokeColor = uniformBorder ? uniformBorder.color : null;
   const signature = {
     fillColor,
     fillOpacity: fill && fill.alpha != null ? fill.alpha : null,
     strokeColor,
-    strokeWeight: cssLengthToPt(lengthStyleValue(item, 'borderTopWidth')),
-    strokeStyle: style.borderTopStyle || 'none',
-    strokeAlignment: visibleStroke(style, lengthStyleValue(item, 'borderTopWidth')) ? 'inside' : null,
-    cornerRadius: lengthStyleValue(item, 'borderRadius') || style.borderRadius || '0px',
+    strokeWeight: uniformBorder ? uniformBorder.widthPt : 0,
+    strokeStyle: uniformBorder ? uniformBorder.style : 'none',
+    strokeAlignment: uniformBorder ? 'inside' : null,
+    cornerRadius: cornerRadiusValue(item, options),
     opacity: effectiveObjectOpacity(item, fill),
     overflow: style.overflow || 'visible',
   };
-  const name = explicitName(item.attributes, ['data-id-object-style', 'data-id-style'])
+  const name = styleNameForKind(item, 'objectStyles', signature, options)
     || firstClassName(item)
     || stableAutoName('object', signature);
   if (!styles.objectStyles[name]) {
@@ -258,7 +315,7 @@ function ensureObjectStyle(styles, item, report, options) {
       ...signature,
     };
   }
-  if (style.transform && style.transform !== 'none') {
+  if (style.transform && style.transform !== 'none' && !isNativeLineCandidate(item)) {
     addMessage(report, 'warning', 'TRANSFORM_NOT_NATIVE', 'CSS transform captured but not compiled to native InDesign transform in this plan', {
       itemId: item.id,
       transform: style.transform,
@@ -267,10 +324,43 @@ function ensureObjectStyle(styles, item, report, options) {
   return name;
 }
 
-function compileEffects(item) {
+function shouldCompileTextFrameObjectStyle(item) {
+  const attributes = item.attributes || {};
+  if (attributes['data-id-object-style'] || attributes['data-id-frame-style']) return true;
+  const style = item.computedStyle || {};
+  return Boolean(
+    ensureFillPreview(style)
+    || visibleStroke(item, 'borderTopWidth', {})
+    || visibleStroke(item, 'borderRightWidth', {})
+    || visibleStroke(item, 'borderBottomWidth', {})
+    || visibleStroke(item, 'borderLeftWidth', {})
+    || Number(style.opacity || 1) < 1
+    || (style.borderRadius && style.borderRadius !== '0px')
+  );
+}
+
+function ensureFillPreview(style) {
+  return normalizeCssColor(style.backgroundColor) || singleColorGradientSwatch(style.backgroundImage);
+}
+
+function isNativeLineCandidate(item) {
+  const classNames = item.classList || [];
+  const objectStyle = item.attributes && item.attributes['data-id-object-style'];
+  return item.role === 'shape'
+    && (classNames.includes('line') || /(^|-)line($|-)/.test(String(objectStyle || '')));
+}
+
+function compileEffects(item, report) {
   const style = item.computedStyle || {};
   const gradient = parseCssLinearGradient(style.backgroundImage);
   if (!gradient) return null;
+  if (!gradientHasSingleColor(gradient)) {
+    addMessage(report, 'warning', 'GRADIENT_COLOR_UNSUPPORTED', 'Multi-color CSS gradients are not mapped to InDesign gradient feather effects', {
+      itemId: item.id,
+      backgroundImage: style.backgroundImage,
+    });
+    return null;
+  }
   return {
     gradientFeather: {
       type: 'linear',
@@ -304,22 +394,27 @@ function gradientStartForBounds(bounds, angle) {
   return { x: round(x - width / 2, 2), y: round(y + height / 2, 2) };
 }
 
-function compileBoxModel(item, styles) {
+function gradientHasSingleColor(gradient) {
+  const names = new Set((gradient.stops || []).map((stop) => stop.color && stop.color.name).filter(Boolean));
+  return names.size <= 1;
+}
+
+function compileBoxModel(item, styles, options) {
   const style = item.computedStyle || {};
   return {
     borders: {
-      top: compileBorderEdge(styles, style.borderTopColor, lengthStyleValue(item, 'borderTopWidth'), style.borderTopStyle),
-      right: compileBorderEdge(styles, style.borderRightColor, lengthStyleValue(item, 'borderRightWidth'), style.borderRightStyle),
-      bottom: compileBorderEdge(styles, style.borderBottomColor, lengthStyleValue(item, 'borderBottomWidth'), style.borderBottomStyle),
-      left: compileBorderEdge(styles, style.borderLeftColor, lengthStyleValue(item, 'borderLeftWidth'), style.borderLeftStyle),
+      top: compileBorderEdge(styles, style.borderTopColor, lengthStyleValue(item, 'borderTopWidth'), style.borderTopStyle, itemLengthToPt(item, 'borderTopWidth', options)),
+      right: compileBorderEdge(styles, style.borderRightColor, lengthStyleValue(item, 'borderRightWidth'), style.borderRightStyle, itemLengthToPt(item, 'borderRightWidth', options)),
+      bottom: compileBorderEdge(styles, style.borderBottomColor, lengthStyleValue(item, 'borderBottomWidth'), style.borderBottomStyle, itemLengthToPt(item, 'borderBottomWidth', options)),
+      left: compileBorderEdge(styles, style.borderLeftColor, lengthStyleValue(item, 'borderLeftWidth'), style.borderLeftStyle, itemLengthToPt(item, 'borderLeftWidth', options)),
     },
   };
 }
 
-function compileBorderEdge(styles, color, width, style) {
+function compileBorderEdge(styles, color, width, style, widthPt) {
   return {
     color: ensureSwatch(styles, color),
-    widthPt: cssLengthToPt(width),
+    widthPt,
     widthCss: width || '0px',
     style: style || 'none',
   };
@@ -336,9 +431,12 @@ function compileTableRows(item, styles, report, options) {
 function compileTableCell(cell, styles, report, options) {
   const style = cell.computedStyle || {};
   const fill = ensureFillSwatch(styles, style);
-  const paragraphStyle = explicitName(cell.attributes, ['data-id-paragraph-style', 'data-id-style'])
+  const paragraphStyle = styleTokenForKind(cell.attributes, 'paragraphStyles')
     ? ensureParagraphStyle(styles, tableCellStyleItem(cell), report, options)
     : null;
+  const padding = tableCellPadding(style, options);
+  const borders = compileTableCellBorders(cell, styles, options);
+  warnTableCellBorderLimitations(cell, borders, report);
   return {
     index: cell.index,
     text: cell.text || '',
@@ -350,17 +448,66 @@ function compileTableCell(cell, styles, report, options) {
     fillColor: fill && fill.name,
     fillOpacity: fill && fill.alpha != null ? fill.alpha : null,
     textColor: ensureSwatch(styles, style.color),
-    pointSize: cssLengthToPt(style.fontSize),
-    leading: cssLengthToPt(style.lineHeight),
+    pointSize: styleLengthToPt(style, 'fontSize', options),
+    leading: styleLengthToPt(style, 'lineHeight', options),
     textAlign: style.textAlign || 'left',
     borderColor: ensureSwatch(styles, style.borderTopColor),
-    borderWeight: cssLengthToPt(lengthStyleValue(cell, 'borderTopWidth')),
-    padding: {
-      top: cssLengthToMm(style.paddingTop),
-      right: cssLengthToMm(style.paddingRight),
-      bottom: cssLengthToMm(style.paddingBottom),
-      left: cssLengthToMm(style.paddingLeft),
-    },
+    borderWeight: itemLengthToPt(cell, 'borderTopWidth', options),
+    borders,
+    runs: compileTableCellRuns(cell, styles, report, options),
+    padding: padding.values,
+    paddingUnit: padding.unit,
+  };
+}
+
+function compileTableCellRuns(cell, styles, report, options) {
+  const runs = expandRunsWithPlainSegments(cell.text || '', cell.runs || []);
+  return runs.map((run) => {
+    if (run.plain) return { text: run.text, characterStyle: null };
+    return {
+      text: run.text,
+      characterStyle: ensureCharacterStyle(styles, run, report, options),
+    };
+  });
+}
+
+function warnObjectBorderLimitations(item, box, report) {
+  const borders = box && box.borders;
+  if (!borders || bordersAreUniform(borders)) return;
+  const edges = [borders.top, borders.right, borders.bottom, borders.left].filter(visibleCompiledBorder);
+  const hasStyledEdge = edges.some((edge) => !['solid', 'none', 'hidden', ''].includes(String(edge.style || '').toLowerCase()));
+  const hasRadius = String(item.computedStyle && item.computedStyle.borderRadius || '').trim();
+  if (!hasStyledEdge && (!hasRadius || hasRadius === '0px')) return;
+  addMessage(report, 'warning', 'BORDER_DECORATION_LIMITED', 'Asymmetric CSS borders are translated as solid decoration strips; dashed/dotted styles and rounded clipping are not preserved exactly.', {
+    itemId: item.id,
+  });
+}
+
+function warnTableCellBorderLimitations(cell, borders, report) {
+  const edges = [borders.top, borders.right, borders.bottom, borders.left].filter(visibleCompiledCellBorder);
+  const unsupported = edges.some((edge) => !['solid', 'none', 'hidden', ''].includes(String(edge.style || '').toLowerCase()));
+  if (!unsupported) return;
+  addMessage(report, 'warning', 'TABLE_CELL_BORDER_STYLE_UNSUPPORTED', 'Table cell dashed/dotted border styles are not applied by the current executor.', {
+    cellIndex: cell.index,
+  });
+}
+
+function compileTableCellBorders(cell, styles, options) {
+  const style = cell.computedStyle || {};
+  return {
+    top: compileCellBorderEdge(styles, style.borderTopColor, lengthStyleValue(cell, 'borderTopWidth'), style.borderTopStyle, itemLengthToPt(cell, 'borderTopWidth', options)),
+    right: compileCellBorderEdge(styles, style.borderRightColor, lengthStyleValue(cell, 'borderRightWidth'), style.borderRightStyle, itemLengthToPt(cell, 'borderRightWidth', options)),
+    bottom: compileCellBorderEdge(styles, style.borderBottomColor, lengthStyleValue(cell, 'borderBottomWidth'), style.borderBottomStyle, itemLengthToPt(cell, 'borderBottomWidth', options)),
+    left: compileCellBorderEdge(styles, style.borderLeftColor, lengthStyleValue(cell, 'borderLeftWidth'), style.borderLeftStyle, itemLengthToPt(cell, 'borderLeftWidth', options)),
+  };
+}
+
+function compileCellBorderEdge(styles, color, widthCss, style, borderWeight) {
+  return {
+    color: ensureSwatch(styles, color),
+    widthCss: widthCss || '0px',
+    style: style || 'none',
+    borderWeight,
   };
 }
 
@@ -423,15 +570,15 @@ function ensureFrameStyle(styles, item, options) {
     fit: style.objectFit || 'fill',
     position: style.objectPosition || '50% 50%',
     inset: {
-      top: cssLengthToPt(style.paddingTop),
-      right: cssLengthToPt(style.paddingRight),
-      bottom: cssLengthToPt(style.paddingBottom),
-      left: cssLengthToPt(style.paddingLeft),
+      top: styleLengthToPt(style, 'paddingTop', options),
+      right: styleLengthToPt(style, 'paddingRight', options),
+      bottom: styleLengthToPt(style, 'paddingBottom', options),
+      left: styleLengthToPt(style, 'paddingLeft', options),
     },
     overflow: style.overflow || 'visible',
   };
-  const name = explicitName(item.attributes, ['data-id-frame-style'])
-    || (firstClassName(item) ? `${firstClassName(item)}-frame` : null)
+  const name = styleNameForKind(item, 'frameStyles', signature, options)
+    || classFrameStyleName(item, options)
     || stableAutoName('frame', signature);
   if (!styles.frameStyles[name]) {
     styles.frameStyles[name] = {
@@ -442,6 +589,144 @@ function ensureFrameStyle(styles, item, options) {
   return name;
 }
 
+function explicitFrameStyleName(item, options) {
+  const attributes = item.attributes || {};
+  const explicitDisplay = explicitName(attributes, styleDisplayAttributes('frameStyles'));
+  if (explicitDisplay) return explicitDisplay;
+  const token = styleTokenForKind(attributes, 'frameStyles');
+  return mappedStyleName(token, 'frameStyles', options) || token || null;
+}
+
+function styleNameForKind(item, kind, signature, options) {
+  const attributes = item.attributes || {};
+  const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
+  if (explicitDisplay) return explicitDisplay;
+  const token = styleTokenForKind(attributes, kind);
+  const mapped = mappedStyleName(token, kind, options);
+  if (mapped) return mapped;
+  if (token) return token;
+  const className = firstClassName(item);
+  const mappedClass = mappedStyleName(className, kind, options);
+  if (mappedClass) return mappedClass;
+  return signature ? null : firstClassName(item);
+}
+
+function classFrameStyleName(item, options) {
+  const className = firstClassName(item);
+  if (!className) return null;
+  return mappedStyleName(`${className}-frame`, 'frameStyles', options)
+    || mappedStyleName(className, 'frameStyles', options)
+    || `${className}-frame`;
+}
+
+function styleTokenForKind(attributes, kind) {
+  return explicitName(attributes || {}, styleTokenAttributes(kind));
+}
+
+function mappedStyleName(token, kind, options) {
+  if (!token || !options || !options.styleNameMap) return null;
+  const map = options.styleNameMap;
+  return (map[kind] && map[kind][token]) || map[token] || null;
+}
+
+function styleDisplayAttributes(kind) {
+  const byKind = {
+    paragraphStyles: ['data-id-paragraph-style-name', 'data-id-style-name'],
+    characterStyles: ['data-id-character-style-name', 'data-id-style-name'],
+    objectStyles: ['data-id-object-style-name', 'data-id-style-name'],
+    frameStyles: ['data-id-frame-style-name', 'data-id-style-name'],
+    tableStyles: ['data-id-table-style-name', 'data-id-style-name'],
+  };
+  return byKind[kind] || ['data-id-style-name'];
+}
+
+function styleTokenAttributes(kind) {
+  const byKind = {
+    paragraphStyles: ['data-id-paragraph-style', 'data-id-style'],
+    characterStyles: ['data-id-character-style', 'data-id-style'],
+    objectStyles: ['data-id-object-style', 'data-id-style'],
+    frameStyles: ['data-id-frame-style'],
+    tableStyles: ['data-id-table-style'],
+  };
+  return byKind[kind] || ['data-id-style'];
+}
+
+function styleLengthToPt(style, prop, options) {
+  const value = style && style[prop];
+  if (isPresentationLayout(options)) return cssLengthToPresentationPt(value, options);
+  return cssLengthToPt(value);
+}
+
+function trackingValue(style, options) {
+  const letterSpacing = styleLengthToPt(style, 'letterSpacing', options);
+  const fontSize = styleLengthToPt(style, 'fontSize', options);
+  if (!letterSpacing || !fontSize) return null;
+  return round(letterSpacing / fontSize * 1000, 4);
+}
+
+function itemLengthToPt(item, prop, options) {
+  if (isPresentationLayout(options)) {
+    return cssLengthToPresentationPt(item && item.computedStyle && item.computedStyle[prop], options);
+  }
+  return cssLengthToPt(lengthStyleValue(item, prop));
+}
+
+function cssLengthToPresentationPt(value, options) {
+  const px = cssLengthToPx(value);
+  if (px == null) return null;
+  return round(px * presentationScale(options), 4);
+}
+
+function cornerRadiusValue(item, options) {
+  const computed = item && item.computedStyle && item.computedStyle.borderRadius;
+  if (isPresentationLayout(options)) {
+    if (String(computed || '').trim().endsWith('%')) return computed;
+    const pt = cssLengthToPresentationPt(computed, options);
+    return pt == null ? '0pt' : `${pt}pt`;
+  }
+  return lengthStyleValue(item, 'borderRadius') || computed || '0px';
+}
+
+function tableCellPadding(style, options) {
+  if (isPresentationLayout(options)) {
+    return {
+      unit: 'pt',
+      values: {
+        top: styleLengthToPt(style, 'paddingTop', options),
+        right: styleLengthToPt(style, 'paddingRight', options),
+        bottom: styleLengthToPt(style, 'paddingBottom', options),
+        left: styleLengthToPt(style, 'paddingLeft', options),
+      },
+    };
+  }
+  return {
+    unit: 'mm',
+    values: {
+      top: cssLengthToMm(style.paddingTop),
+      right: cssLengthToMm(style.paddingRight),
+      bottom: cssLengthToMm(style.paddingBottom),
+      left: cssLengthToMm(style.paddingLeft),
+    },
+  };
+}
+
+function isPresentationLayout(options) {
+  return options && options.layout && options.layout.unitMode === 'presentation';
+}
+
+function presentationScale(options) {
+  return Number(options && options.layout && options.layout.scale || 1);
+}
+
+function cssLengthToPx(value) {
+  const parsed = parseCssLength(value);
+  if (!parsed) return null;
+  if (parsed.unit === 'px') return parsed.value;
+  if (parsed.unit === 'pt') return parsed.value * 96 / 72;
+  if (parsed.unit === 'mm') return parsed.value * 96 / 25.4;
+  return null;
+}
+
 function ensureSwatch(styles, cssColor) {
   const normalized = normalizeCssColor(cssColor);
   return ensureNormalizedSwatch(styles, normalized);
@@ -449,10 +734,16 @@ function ensureSwatch(styles, cssColor) {
 
 function ensureFillSwatch(styles, style) {
   const normalized = normalizeCssColor(style.backgroundColor)
-    || normalizeCssColorFromBackgroundImage(style.backgroundImage);
+    || singleColorGradientSwatch(style.backgroundImage);
   if (!normalized) return null;
   ensureNormalizedSwatch(styles, normalized);
   return normalized;
+}
+
+function singleColorGradientSwatch(backgroundImage) {
+  const gradient = parseCssLinearGradient(backgroundImage);
+  if (!gradient || !gradientHasSingleColor(gradient)) return null;
+  return normalizeCssColorFromBackgroundImage(backgroundImage);
 }
 
 function ensureNormalizedSwatch(styles, normalized) {
@@ -485,12 +776,56 @@ function effectiveObjectOpacity(item, fill) {
   return cssOpacity;
 }
 
-function visibleStroke(style, width) {
-  const strokeStyle = String(style.borderTopStyle || '').toLowerCase();
+function visibleStroke(item, prop, options) {
+  const style = item.computedStyle || {};
+  const side = prop.match(/^border(Top|Right|Bottom|Left)Width$/);
+  const styleProp = side ? `border${side[1]}Style` : 'borderTopStyle';
+  const strokeStyle = String(style[styleProp] || '').toLowerCase();
   return strokeStyle
     && strokeStyle !== 'none'
     && strokeStyle !== 'hidden'
-    && Number(cssLengthToPt(width) || 0) > 0;
+    && Number(itemLengthToPt(item, prop, options) || 0) > 0;
+}
+
+function uniformBorderForObject(item, options) {
+  const box = compileBoxModel(item, createEmptyStyleModel(), options);
+  const edges = [box.borders.top, box.borders.right, box.borders.bottom, box.borders.left];
+  if (!edges.every((edge) => visibleCompiledBorder(edge))) return null;
+  const first = edges[0];
+  const uniform = edges.every((edge) => edge.color === first.color
+    && edge.style === first.style
+    && Math.abs(Number(edge.widthPt || 0) - Number(first.widthPt || 0)) < 0.01);
+  return uniform ? first : null;
+}
+
+function visibleCompiledBorder(edge) {
+  return edge
+    && edge.color
+    && edge.style !== 'none'
+    && edge.style !== 'hidden'
+    && Number(edge.widthPt || 0) > 0;
+}
+
+function visibleCompiledCellBorder(edge) {
+  return edge
+    && edge.color
+    && edge.style !== 'none'
+    && edge.style !== 'hidden'
+    && Number(edge.borderWeight || 0) > 0;
+}
+
+function bordersAreUniform(borders) {
+  return sameCompiledBorder(borders.top, borders.right)
+    && sameCompiledBorder(borders.top, borders.bottom)
+    && sameCompiledBorder(borders.top, borders.left);
+}
+
+function sameCompiledBorder(a, b) {
+  if (!visibleCompiledBorder(a) && !visibleCompiledBorder(b)) return true;
+  if (!visibleCompiledBorder(a) || !visibleCompiledBorder(b)) return false;
+  return a.color === b.color
+    && a.style === b.style
+    && Math.abs(Number(a.widthPt || 0) - Number(b.widthPt || 0)) < 0.01;
 }
 
 function cssLengthToMm(value) {

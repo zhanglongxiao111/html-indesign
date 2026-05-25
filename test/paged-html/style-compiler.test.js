@@ -9,12 +9,12 @@ test('compileStyles creates swatches fonts and named paragraph styles', async ()
   const styled = compileStyles(snapshot);
   const title = styled.pages[0].items.find((item) => item.attributes['data-id-paragraph-style'] === 'report-title');
 
-  assert.equal(styled.styles.swatches['color-123456'].value, '#123456');
+  assert.equal(styled.styles.swatches['颜色-18-52-86'].value, '#123456');
   assert.equal(styled.styles.fonts.Arial.family, 'Arial');
   assert.equal(title.styleRefs.paragraphStyle, 'report-title');
   assert.equal(styled.styles.paragraphStyles['report-title'].pointSize, 30);
   assert.equal(styled.styles.paragraphStyles['report-title'].leading, 34);
-  assert.equal(styled.styles.paragraphStyles['report-title'].fillColor, 'color-123456');
+  assert.equal(styled.styles.paragraphStyles['report-title'].fillColor, '颜色-18-52-86');
   assert.equal(styled.styles.paragraphStyles['report-title'].justification, 'center');
 });
 
@@ -28,14 +28,106 @@ test('compileStyles creates character object and frame styles', async () => {
   const accentRun = title.content.runs.find((run) => run.text === '重点');
 
   assert.equal(accentRun.characterStyle, 'accent');
-  assert.equal(styled.styles.characterStyles.accent.fillColor, 'color-c8102e');
+  assert.equal(styled.styles.characterStyles.accent.fillColor, '颜色-200-16-46');
+  assert.equal(styled.styles.characterStyles.accent.tracking, 33.3333);
   assert.equal(card.styleRefs.objectStyle, 'metric-card');
-  assert.equal(styled.styles.objectStyles['metric-card'].fillColor, 'color-f2f2f2');
-  assert.equal(styled.styles.objectStyles['metric-card'].strokeColor, 'color-333333');
+  assert.equal(styled.styles.objectStyles['metric-card'].fillColor, '颜色-242-242-242');
+  assert.equal(styled.styles.objectStyles['metric-card'].strokeColor, '颜色-51-51-51');
   assert.equal(styled.styles.objectStyles['metric-card'].strokeWeight, 2);
   assert.equal(image.styleRefs.frameStyle, 'hero-image-frame');
   assert.equal(styled.styles.frameStyles['hero-image-frame'].fit, 'cover');
   assert.equal(styled.styles.frameStyles['hero-image-frame'].position, '0% 0%');
+});
+
+test('compileStyles maps CSS character typography into InDesign character style fields', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'title',
+        role: 'text',
+        tagName: 'p',
+        classList: [],
+        attributes: { 'data-id-paragraph-style': 'body' },
+        text: 'H2O link',
+        boundsMm: { x: 0, y: 0, width: 60, height: 10 },
+        computedStyle: {
+          color: 'rgb(0, 0, 0)',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '10pt',
+          lineHeight: '12pt',
+          fontWeight: '400',
+          fontStyle: 'normal',
+          textAlign: 'left',
+        },
+        runs: [{
+          text: '2',
+          tagName: 'sup',
+          classList: [],
+          attributes: { 'data-id-character-style': 'sup-run' },
+          computedStyle: {
+            color: 'rgb(0, 0, 0)',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '10pt',
+            fontWeight: '400',
+            fontStyle: 'normal',
+            letterSpacing: '1pt',
+            verticalAlign: 'super',
+            textDecorationLine: 'underline',
+          },
+        }],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const style = styled.styles.characterStyles['sup-run'];
+
+  assert.equal(style.tracking, 100);
+  assert.equal(style.verticalPosition, 'super');
+  assert.equal(style.textDecoration, 'underline');
+});
+
+test('compileStyles maps CSS text-transform into native text style semantics', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'eyebrow',
+        role: 'text',
+        tagName: 'p',
+        classList: [],
+        attributes: { 'data-id-paragraph-style': 'eyebrow' },
+        text: 'section one',
+        boundsMm: { x: 0, y: 0, width: 60, height: 10 },
+        computedStyle: {
+          color: 'rgb(200, 16, 46)',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '10pt',
+          lineHeight: '12pt',
+          fontWeight: '700',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          textTransform: 'uppercase',
+        },
+        runs: [],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+
+  assert.equal(styled.styles.paragraphStyles.eyebrow.capitalization, 'allCaps');
 });
 
 test('compileStyles keeps fill alpha separate from object opacity', async () => {
@@ -44,7 +136,7 @@ test('compileStyles keeps fill alpha separate from object opacity', async () => 
   const styled = compileStyles(snapshot);
   const metricCard = styled.styles.objectStyles['metric-card'];
 
-  assert.equal(metricCard.fillColor, 'color-fbfaf7');
+  assert.equal(metricCard.fillColor, '颜色-251-250-247');
   assert.equal(metricCard.fillOpacity, 0.92);
   assert.equal(metricCard.opacity, 1);
   assert.equal(metricCard.strokeAlignment, 'inside');
@@ -64,4 +156,384 @@ test('compileStyles selects CJK fonts and InDesign font style names for Chinese 
   assert.equal(coverAccent.fontStyleName, 'Bold Italic');
   assert.equal(eyebrow.appliedFont, 'Arial');
   assert.equal(styled.styles.fonts['Microsoft YaHei'].family, 'Microsoft YaHei');
+});
+
+test('compileStyles can use human readable Chinese style names from HTML attributes', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      items: [{
+        id: 'title',
+        role: 'text',
+        tagName: 'h1',
+        classList: [],
+        attributes: {
+          'data-id-paragraph-style': 'page-title',
+          'data-id-paragraph-style-name': '页面标题',
+        },
+        text: '标题',
+        computedStyle: {
+          color: 'rgb(18, 52, 86)',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '32px',
+          lineHeight: '40px',
+          fontWeight: '700',
+          fontStyle: 'normal',
+          textAlign: 'left',
+        },
+        runs: [],
+      }],
+    }],
+  };
+
+  const styled = compileStyles(snapshot);
+  const title = styled.pages[0].items[0];
+
+  assert.equal(title.styleRefs.paragraphStyle, '页面标题');
+  assert.ok(styled.styles.paragraphStyles['页面标题']);
+  assert.equal(styled.styles.paragraphStyles['page-title'], undefined);
+});
+
+test('compileStyles can translate stable style tokens through a styleNameMap', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      items: [{
+        id: 'card',
+        role: 'shape',
+        tagName: 'div',
+        classList: ['metric-card'],
+        attributes: {
+          'data-id-object-style': 'metric-card',
+        },
+        text: '',
+        computedStyle: {
+          backgroundColor: 'rgb(255, 255, 255)',
+          borderTopColor: 'rgb(0, 0, 0)',
+          borderTopWidth: '1px',
+          borderTopStyle: 'solid',
+          borderRadius: '4px',
+          opacity: '1',
+          overflow: 'visible',
+        },
+        authoredStyle: {
+          borderTopWidth: '1pt',
+        },
+      }],
+    }],
+  };
+
+  const styled = compileStyles(snapshot, {
+    styleNameMap: {
+      objectStyles: {
+        'metric-card': '指标卡片',
+      },
+    },
+  });
+
+  const card = styled.pages[0].items[0];
+  assert.equal(card.styleRefs.objectStyle, '指标卡片');
+  assert.ok(styled.styles.objectStyles['指标卡片']);
+});
+
+test('compileStyles maps visual CSS pixels to points in presentation mode', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
+  const snapshot = await renderSnapshot({ htmlPath });
+  const styled = compileStyles(snapshot, {
+    layout: {
+      unitMode: 'presentation',
+      scale: 2,
+      targetUnit: 'pt',
+    },
+  });
+  const metricCard = styled.styles.objectStyles['metric-card'];
+  const coverTitle = styled.styles.paragraphStyles['cover-title'];
+
+  assert.equal(metricCard.strokeWeight, 2);
+  assert.equal(metricCard.cornerRadius, '8pt');
+  assert.equal(coverTitle.pointSize, 90.6666);
+});
+
+test('compileStyles warns instead of compiling multi-color gradients as opacity feathers', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'color-gradient',
+        role: 'shape',
+        tagName: 'div',
+        classList: ['color-gradient'],
+        attributes: { 'data-id-object': '' },
+        text: '',
+        boundsMm: { x: 0, y: 0, width: 50, height: 20 },
+        computedStyle: {
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          backgroundImage: 'linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 0, 255))',
+          borderTopColor: 'rgba(0, 0, 0, 0)',
+          borderTopWidth: '0px',
+          borderTopStyle: 'none',
+          borderRadius: '0px',
+          opacity: '1',
+          overflow: 'visible',
+        },
+        authoredStyle: {},
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const item = styled.pages[0].items[0];
+
+  assert.equal(item.effects, null);
+  assert.equal(styled.styles.objectStyles['color-gradient'].fillColor, null);
+  assert.equal(styled.report.messages.some((message) => message.code === 'GRADIENT_COLOR_UNSUPPORTED'), true);
+});
+
+test('compileStyles preserves per-edge table cell border styles', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'table',
+        role: 'table',
+        tagName: 'table',
+        classList: ['native-table'],
+        attributes: { 'data-id-table-style': 'native-table' },
+        text: 'A',
+        boundsMm: { x: 0, y: 0, width: 50, height: 20 },
+        computedStyle: {},
+        authoredStyle: {},
+        table: [{
+          index: 0,
+          header: false,
+          cells: [{
+            index: 0,
+            text: 'A',
+            tagName: 'td',
+            header: false,
+            rowSpan: 1,
+            colSpan: 1,
+            classList: [],
+            attributes: {},
+            boundsMm: { x: 0, y: 0, width: 50, height: 20 },
+            computedStyle: {
+              color: 'rgb(0, 0, 0)',
+              fontSize: '8pt',
+              lineHeight: '10pt',
+              textAlign: 'left',
+              backgroundColor: 'rgb(255, 255, 255)',
+              borderTopColor: 'rgb(18, 52, 86)',
+              borderTopWidth: '1pt',
+              borderTopStyle: 'solid',
+              borderRightColor: 'rgb(200, 16, 46)',
+              borderRightWidth: '2pt',
+              borderRightStyle: 'solid',
+              borderBottomColor: 'rgb(245, 200, 80)',
+              borderBottomWidth: '3pt',
+              borderBottomStyle: 'solid',
+              borderLeftColor: 'rgb(100, 140, 150)',
+              borderLeftWidth: '4pt',
+              borderLeftStyle: 'solid',
+              paddingTop: '0px',
+              paddingRight: '0px',
+              paddingBottom: '0px',
+              paddingLeft: '0px',
+            },
+            authoredStyle: {},
+          }],
+        }],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const cell = styled.pages[0].items[0].content.rows[0].cells[0];
+
+  assert.equal(cell.borders.top.color, '颜色-18-52-86');
+  assert.equal(cell.borders.right.color, '颜色-200-16-46');
+  assert.equal(cell.borders.bottom.borderWeight, 3);
+  assert.equal(cell.borders.left.borderWeight, 4);
+});
+
+test('compileStyles preserves table cell fill opacity and inline character runs', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'table',
+        role: 'table',
+        tagName: 'table',
+        classList: ['native-table'],
+        attributes: { 'data-id-table-style': 'native-table' },
+        text: 'Net +12%',
+        boundsMm: { x: 0, y: 0, width: 50, height: 20 },
+        computedStyle: {},
+        authoredStyle: {},
+        table: [{
+          index: 0,
+          header: false,
+          cells: [{
+            index: 0,
+            text: 'Net +12%',
+            tagName: 'td',
+            header: false,
+            rowSpan: 1,
+            colSpan: 1,
+            classList: [],
+            attributes: {},
+            boundsMm: { x: 0, y: 0, width: 50, height: 20 },
+            computedStyle: {
+              color: 'rgb(0, 0, 0)',
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '8pt',
+              lineHeight: '10pt',
+              textAlign: 'left',
+              backgroundColor: 'rgba(200, 16, 46, 0.35)',
+              borderTopColor: 'rgb(18, 52, 86)',
+              borderTopWidth: '1pt',
+              borderTopStyle: 'solid',
+              paddingTop: '0px',
+              paddingRight: '0px',
+              paddingBottom: '0px',
+              paddingLeft: '0px',
+            },
+            authoredStyle: {},
+            runs: [{
+              text: '+12%',
+              tagName: 'span',
+              classList: [],
+              attributes: { 'data-id-character-style': 'metric-delta' },
+              computedStyle: {
+                color: 'rgb(200, 16, 46)',
+                fontFamily: 'Arial, sans-serif',
+                fontSize: '8pt',
+                fontWeight: '700',
+                fontStyle: 'normal',
+              },
+            }],
+          }],
+        }],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const cell = styled.pages[0].items[0].content.rows[0].cells[0];
+
+  assert.equal(cell.fillOpacity, 0.35);
+  assert.deepEqual(cell.runs, [
+    { text: 'Net ', characterStyle: null },
+    { text: '+12%', characterStyle: 'metric-delta' },
+  ]);
+  assert.equal(styled.styles.characterStyles['metric-delta'].fillColor, '颜色-200-16-46');
+});
+
+test('compileStyles warns for border styles that decoration strips cannot preserve exactly', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'dashed-card',
+        role: 'shape',
+        tagName: 'div',
+        classList: ['dashed-card'],
+        attributes: { 'data-id-object': '' },
+        text: '',
+        boundsMm: { x: 0, y: 0, width: 50, height: 20 },
+        computedStyle: {
+          backgroundColor: 'rgb(255, 255, 255)',
+          borderTopColor: 'rgba(0, 0, 0, 0)',
+          borderTopWidth: '0px',
+          borderTopStyle: 'none',
+          borderRightColor: 'rgba(0, 0, 0, 0)',
+          borderRightWidth: '0px',
+          borderRightStyle: 'none',
+          borderBottomColor: 'rgba(0, 0, 0, 0)',
+          borderBottomWidth: '0px',
+          borderBottomStyle: 'none',
+          borderLeftColor: 'rgb(18, 52, 86)',
+          borderLeftWidth: '3pt',
+          borderLeftStyle: 'dashed',
+          borderRadius: '6px',
+          opacity: '1',
+          overflow: 'visible',
+        },
+        authoredStyle: {},
+      }, {
+        id: 'table',
+        role: 'table',
+        tagName: 'table',
+        classList: ['native-table'],
+        attributes: { 'data-id-table-style': 'native-table' },
+        text: 'A',
+        boundsMm: { x: 0, y: 25, width: 50, height: 20 },
+        computedStyle: {},
+        authoredStyle: {},
+        table: [{
+          index: 0,
+          header: false,
+          cells: [{
+            index: 0,
+            text: 'A',
+            tagName: 'td',
+            header: false,
+            rowSpan: 1,
+            colSpan: 1,
+            classList: [],
+            attributes: {},
+            boundsMm: { x: 0, y: 25, width: 50, height: 20 },
+            computedStyle: {
+              color: 'rgb(0, 0, 0)',
+              fontSize: '8pt',
+              lineHeight: '10pt',
+              textAlign: 'left',
+              backgroundColor: 'rgb(255, 255, 255)',
+              borderTopColor: 'rgb(18, 52, 86)',
+              borderTopWidth: '1pt',
+              borderTopStyle: 'dotted',
+              paddingTop: '0px',
+              paddingRight: '0px',
+              paddingBottom: '0px',
+              paddingLeft: '0px',
+            },
+            authoredStyle: {},
+          }],
+        }],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const codes = styled.report.messages.map((message) => message.code);
+
+  assert.equal(codes.includes('BORDER_DECORATION_LIMITED'), true);
+  assert.equal(codes.includes('TABLE_CELL_BORDER_STYLE_UNSUPPORTED'), true);
 });

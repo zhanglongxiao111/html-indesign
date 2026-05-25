@@ -55,6 +55,30 @@
       height: 70mm;
       z-index: 23;
     }
+    .wrapped-pdf-frame {
+      position: absolute;
+      left: 245mm;
+      top: 180mm;
+      width: 100mm;
+      height: 70mm;
+      border: 1pt solid #123456;
+      object-fit: contain;
+      z-index: 24;
+    }
+    .wrapped-pdf-frame object {
+      width: 100%;
+      height: 100%;
+    }
+    .linked-pdf {
+      position: absolute;
+      left: 360mm;
+      top: 180mm;
+      width: 80mm;
+      height: 50mm;
+      display: block;
+      opacity: 0;
+      z-index: 25;
+    }
   </style>
 </head>
 <body>
@@ -81,6 +105,24 @@
          data-id-asset-kind="ai"
          data-id-artboard="2"
          alt="ai">
+    <div id="wrapped-pdf-frame"
+         class="wrapped-pdf-frame"
+         data-id-ignore
+         data-id-object-style="wrapped-drawing"
+         data-id-frame-style="wrapped-frame">
+      <object class="wrapped-pdf"
+              data="./assets/site-plan.pdf"
+              type="application/pdf"
+              data-id-object
+              data-id-asset-kind="pdf"></object>
+    </div>
+    <a id="linked-pdf"
+       class="linked-pdf"
+       href="./assets/site-plan.pdf"
+       data-id-object
+       data-id-asset-kind="pdf"
+       data-id-page="2"
+       data-id-crop="media">PDF link</a>
   </section>
 </body>
 </html>

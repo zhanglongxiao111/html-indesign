@@ -10,8 +10,8 @@ const {
 } = require('../../src/paged-html/style-utils');
 
 test('normalizeCssColor converts browser rgb colors to hex swatches', () => {
-  assert.deepEqual(normalizeCssColor('rgb(18, 52, 86)'), { hex: '#123456', name: 'color-123456' });
-  assert.deepEqual(normalizeCssColor('rgba(200, 16, 46, 1)'), { hex: '#c8102e', name: 'color-c8102e' });
+  assert.deepEqual(normalizeCssColor('rgb(18, 52, 86)'), { hex: '#123456', name: '颜色-18-52-86' });
+  assert.deepEqual(normalizeCssColor('rgba(200, 16, 46, 1)'), { hex: '#c8102e', name: '颜色-200-16-46' });
   assert.equal(normalizeCssColor('rgba(0, 0, 0, 0)'), null);
   assert.equal(normalizeCssColor('transparent'), null);
 });
@@ -21,7 +21,7 @@ test('parseCssLinearGradient preserves color alpha stops', () => {
 
   assert.equal(gradient.angle, 90);
   assert.deepEqual(gradient.stops.map((stop) => stop.location), [0, 45, 100]);
-  assert.deepEqual(gradient.stops.map((stop) => stop.color.name), ['color-fbfaf7', 'color-fbfaf7', 'color-fbfaf7']);
+  assert.deepEqual(gradient.stops.map((stop) => stop.color.name), ['颜色-251-250-247', '颜色-251-250-247', '颜色-251-250-247']);
   assert.deepEqual(gradient.stops.map((stop) => stop.opacity), [94, 55, 8]);
 });
 
@@ -42,7 +42,7 @@ test('stableAutoName generates deterministic auto names from signatures', () => 
   const a = stableAutoName('paragraph', { fontSize: 30, fillColor: 'color-123456' });
   const b = stableAutoName('paragraph', { fontSize: 30, fillColor: 'color-123456' });
   assert.equal(a, b);
-  assert.match(a, /^auto-paragraph-[a-f0-9]{8}$/);
+  assert.match(a, /^自动段落-\d{8}$/);
 });
 
 test('firstClassName ignores empty class lists', () => {

@@ -14,7 +14,7 @@ function normalizeCssColor(value) {
   const hex = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   const out = {
     hex,
-    name: `color-${hex.slice(1)}`,
+    name: swatchNameFromRgb(r, g, b),
   };
   if (alpha !== 1) out.alpha = alpha;
   return out;
@@ -100,9 +100,13 @@ function normalizeCssColorForGradientStop(value) {
   const hex = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   return {
     hex,
-    name: `color-${hex.slice(1)}`,
+    name: swatchNameFromRgb(r, g, b),
     alpha,
   };
+}
+
+function swatchNameFromRgb(r, g, b) {
+  return `颜色-${r}-${g}-${b}`;
 }
 
 function assignStopLocations(stops) {
@@ -161,8 +165,19 @@ function stableAutoName(prefix, signature) {
     .createHash('sha1')
     .update(JSON.stringify(sortObject(signature)))
     .digest('hex')
-    .slice(0, 8);
-  return `auto-${prefix}-${hash}`;
+    .slice(0, 12);
+  const digits = (BigInt(`0x${hash}`) % 100000000n).toString().padStart(8, '0');
+  return `${autoNamePrefix(prefix)}-${digits}`;
+}
+
+function autoNamePrefix(prefix) {
+  const labels = {
+    paragraph: '自动段落',
+    character: '自动字符',
+    object: '自动对象',
+    frame: '自动框架',
+  };
+  return labels[prefix] || '自动样式';
 }
 
 function sortObject(value) {

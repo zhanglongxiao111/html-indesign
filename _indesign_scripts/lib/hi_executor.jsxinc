@@ -19,7 +19,7 @@ HI.runPagedHtmlBuildInstructions = function (appRef, instructions, baseFolder) {
 
         var pages = instructions.pages || [];
         for (var i = 0; i < pages.length; i++) {
-            var page = HI.getPageForInstruction(context.doc, pages[i], i, report);
+            var page = HI.getPageForInstruction(context.doc, pages[i], i, context, report);
             HI.buildInstructionItems(context.doc, page, pages[i], context, report);
         }
 

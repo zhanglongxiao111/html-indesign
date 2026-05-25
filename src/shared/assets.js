@@ -23,6 +23,8 @@ function inferAssetKind(src, explicitKind) {
 function assetSourceFromElementLike(element) {
   const tagName = String(element.tagName || '').toUpperCase();
   const attrs = element.attributes || {};
+  const style = element.computedStyle || {};
+  const authoredStyle = element.authoredStyle || {};
   const explicitKind = cleanKind(attrs['data-id-asset-kind']);
   if (tagName === 'IMG') return { src: attrs.src || null, explicitKind };
   if (tagName === 'OBJECT') {
@@ -39,7 +41,15 @@ function assetSourceFromElementLike(element) {
       explicitKind: explicitKind || (type === 'application/pdf' ? 'pdf' : null),
     };
   }
-  return { src: attrs.src || attrs.href || attrs.data || null, explicitKind };
+  return {
+    src: attrs.src || attrs.href || attrs.data || firstCssUrl(authoredStyle.backgroundImage) || firstCssUrl(style.backgroundImage) || null,
+    explicitKind,
+  };
+}
+
+function firstCssUrl(value) {
+  const match = String(value || '').match(/url\(\s*(['"]?)(.*?)\1\s*\)/i);
+  return match ? match[2] : null;
 }
 
 function createAssetId(src) {
@@ -56,4 +66,5 @@ module.exports = {
   inferAssetKind,
   assetSourceFromElementLike,
   createAssetId,
+  firstCssUrl,
 };

@@ -1,0 +1,220 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.tableTextFromRows = function (rows, fallbackText) {
+    return HI.tableTextFromGrid(HI.tableGridFromRows(rows || []), fallbackText);
+};
+
+HI.tableGridFromRows = function (rows) {
+    var grid = [];
+    var occupied = [];
+    var maxColumns = 0;
+    for (var r = 0; r < rows.length; r++) {
+        if (!occupied[r]) occupied[r] = {};
+        var row = [];
+        var column = 0;
+        var cells = rows[r].cells || [];
+        for (var c = 0; c < cells.length; c++) {
+            while (occupied[r][column]) {
+                row[column] = { placeholder: true };
+                column += 1;
+            }
+            var def = cells[c];
+            var rowSpan = Math.max(1, Number(def.rowSpan || 1));
+            var colSpan = Math.max(1, Number(def.colSpan || 1));
+            def.gridRow = r;
+            def.gridColumn = column;
+            row[column] = { origin: true, cell: def };
+            for (var dc = 1; dc < colSpan; dc++) row[column + dc] = { placeholder: true };
+            for (var dr = 1; dr < rowSpan; dr++) {
+                if (!occupied[r + dr]) occupied[r + dr] = {};
+                for (var spanColumn = 0; spanColumn < colSpan; spanColumn++) {
+                    occupied[r + dr][column + spanColumn] = true;
+                }
+            }
+            column += colSpan;
+        }
+        if (row.length > maxColumns) maxColumns = row.length;
+        grid.push(row);
+    }
+    for (var gr = 0; gr < grid.length; gr++) {
+        for (var gc = 0; gc < maxColumns; gc++) {
+            if (!grid[gr][gc]) grid[gr][gc] = { placeholder: true };
+        }
+    }
+    return grid;
+};
+
+HI.tableTextFromGrid = function (grid, fallbackText) {
+    var rows = grid || [];
+    if (!rows || !rows.length) return fallbackText || "";
+    var lines = [];
+    for (var r = 0; r < rows.length; r++) {
+        var cells = rows[r] || [];
+        var parts = [];
+        for (var c = 0; c < cells.length; c++) {
+            parts.push(cells[c].origin ? HI.cleanTableCellText(cells[c].cell.text || "") : "");
+        }
+        lines.push(parts.join("\t"));
+    }
+    return lines.join("\r");
+};
+
+HI.cleanTableCellText = function (value) {
+    return String(value || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ");
+};
+
+HI.applyTableStyle = function (doc, table, styleName, report) {
+    if (!styleName) return;
+    try {
+        table.appliedTableStyle = doc.tableStyles.itemByName(styleName);
+    } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_STYLE_APPLY_FAILED", String(error), { styleName: styleName });
+    }
+};
+
+HI.fitTableToFrame = function (table, item, context, report) {
+    var columnCount = Number(item.columnCount || 0);
+    if (!columnCount && table.columns) {
+        try { columnCount = table.columns.length; } catch (_) {}
+    }
+    if (!columnCount) return;
+    var unit = context && context.coordinateUnit || "mm";
+    try {
+        if (item.columnWidths && item.columnWidths.length) {
+            for (var c = 0; c < item.columnWidths.length; c++) table.columns[c].width = HI.measurementString(item.columnWidths[c], unit);
+        } else {
+            table.columns.everyItem().width = HI.measurementString(Number(item.bounds.width) / columnCount, unit);
+        }
+        if (item.rowHeights && item.rowHeights.length) {
+            for (var r = 0; r < item.rowHeights.length; r++) table.rows[r].height = HI.measurementString(item.rowHeights[r], unit);
+        }
+    } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_WIDTH_APPLY_FAILED", String(error), { itemId: item.id });
+    }
+};
+
+HI.applyTableSpans = function (table, grid, report) {
+    for (var r = 0; r < grid.length; r++) {
+        var cells = grid[r] || [];
+        for (var c = 0; c < cells.length; c++) {
+            if (!cells[c].origin) continue;
+            var def = cells[c].cell;
+            var rowSpan = Math.max(1, Number(def.rowSpan || 1));
+            var colSpan = Math.max(1, Number(def.colSpan || 1));
+            if (rowSpan > 1 || colSpan > 1) {
+                try { table.rows[r].cells[c].merge(table.rows[r + rowSpan - 1].cells[c + colSpan - 1]); } catch (error) {
+                    HI.addMessage(report, "warning", "TABLE_CELL_MERGE_FAILED", String(error), { row: r, column: c });
+                }
+            }
+        }
+    }
+};
+
+HI.applyTableCells = function (doc, table, grid, report) {
+    for (var r = 0; r < grid.length; r++) {
+        var rowDef = grid[r] || [];
+        for (var c = 0; c < rowDef.length; c++) {
+            if (!rowDef[c].origin) continue;
+            try {
+                var cell = table.rows[r].cells[c];
+                HI.applyTableCell(doc, cell, rowDef[c].cell, report);
+            } catch (error) {
+                HI.addMessage(report, "warning", "TABLE_CELL_APPLY_FAILED", String(error), { row: r, column: c });
+            }
+        }
+    }
+};
+
+HI.applyTableCell = function (doc, cell, cellDef, report) {
+    if (!cell || !cellDef) return;
+    try { if (cellDef.fillColor) cell.fillColor = doc.swatches.itemByName(cellDef.fillColor); } catch (_) {}
+    HI.applyTableCellFillOpacity(cell, cellDef.fillOpacity, report);
+    try { if (cellDef.textColor) cell.texts[0].fillColor = doc.swatches.itemByName(cellDef.textColor); } catch (_) {}
+    try { if (cellDef.pointSize !== null && typeof cellDef.pointSize !== "undefined") cell.texts[0].pointSize = HI.ptValue(cellDef.pointSize); } catch (_) {}
+    try { if (cellDef.leading !== null && typeof cellDef.leading !== "undefined") cell.texts[0].leading = HI.ptValue(cellDef.leading); } catch (_) {}
+    try { if (cellDef.textAlign) cell.texts[0].justification = HI.justificationFor(cellDef.textAlign); } catch (_) {}
+    try {
+        if (cellDef.paragraphStyle) {
+            cell.texts[0].appliedParagraphStyle = doc.paragraphStyles.itemByName(cellDef.paragraphStyle);
+        }
+    } catch (_) {}
+    HI.applyTableCellRuns(doc, cell, cellDef.runs || [], report);
+    HI.applyCellStroke(doc, cell, cellDef);
+    HI.applyCellPadding(cell, cellDef.padding || {}, cellDef.paddingUnit || "mm");
+};
+
+HI.applyTableCellFillOpacity = function (cell, opacity, report) {
+    if (opacity === null || typeof opacity === "undefined") return;
+    try { cell.transparencySettings.blendingSettings.opacity = Number(opacity) * 100; } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_CELL_FILL_OPACITY_APPLY_FAILED", String(error), {});
+    }
+};
+
+HI.applyTableCellRuns = function (doc, cell, runs, report) {
+    var index = 0;
+    for (var i = 0; i < runs.length; i++) {
+        var text = runs[i].text || "";
+        if (runs[i].characterStyle && text.length > 0) {
+            try {
+                cell.texts[0].characters.itemByRange(index, index + text.length - 1).appliedCharacterStyle = doc.characterStyles.itemByName(runs[i].characterStyle);
+            } catch (error) {
+                HI.addMessage(report, "warning", "CHARACTER_STYLE_APPLY_FAILED", String(error), { styleName: runs[i].characterStyle });
+            }
+        }
+        index += text.length;
+    }
+};
+
+HI.applyCellStroke = function (doc, cell, cellDefOrColor, weight) {
+    if (cellDefOrColor && cellDefOrColor.borders) {
+        HI.applyCellEdgeStroke(doc, cell, "top", cellDefOrColor.borders.top);
+        HI.applyCellEdgeStroke(doc, cell, "right", cellDefOrColor.borders.right);
+        HI.applyCellEdgeStroke(doc, cell, "bottom", cellDefOrColor.borders.bottom);
+        HI.applyCellEdgeStroke(doc, cell, "left", cellDefOrColor.borders.left);
+        return;
+    }
+    var colorName = cellDefOrColor;
+    if (!colorName && (weight === null || typeof weight === "undefined")) return;
+    var swatch = null;
+    try { if (colorName) swatch = doc.swatches.itemByName(colorName); } catch (_) {}
+    try { if (swatch) cell.topEdgeStrokeColor = swatch; } catch (_) {}
+    try { if (swatch) cell.rightEdgeStrokeColor = swatch; } catch (_) {}
+    try { if (swatch) cell.bottomEdgeStrokeColor = swatch; } catch (_) {}
+    try { if (swatch) cell.leftEdgeStrokeColor = swatch; } catch (_) {}
+    try {
+        if (weight !== null && typeof weight !== "undefined") {
+            cell.topEdgeStrokeWeight = Number(weight);
+            cell.rightEdgeStrokeWeight = Number(weight);
+            cell.bottomEdgeStrokeWeight = Number(weight);
+            cell.leftEdgeStrokeWeight = Number(weight);
+        }
+    } catch (_) {}
+};
+
+HI.applyCellEdgeStroke = function (doc, cell, side, edge) {
+    if (!edge) return;
+    var swatch = null;
+    try { if (edge.color) swatch = doc.swatches.itemByName(edge.color); } catch (_) {}
+    var weight = edge.borderWeight;
+    try {
+        if (side === "top" && swatch) cell.topEdgeStrokeColor = swatch;
+        if (side === "right" && swatch) cell.rightEdgeStrokeColor = swatch;
+        if (side === "bottom" && swatch) cell.bottomEdgeStrokeColor = swatch;
+        if (side === "left" && swatch) cell.leftEdgeStrokeColor = swatch;
+    } catch (_) {}
+    try {
+        if (weight !== null && typeof weight !== "undefined") {
+            if (side === "top") cell.topEdgeStrokeWeight = Number(weight);
+            if (side === "right") cell.rightEdgeStrokeWeight = Number(weight);
+            if (side === "bottom") cell.bottomEdgeStrokeWeight = Number(weight);
+            if (side === "left") cell.leftEdgeStrokeWeight = Number(weight);
+        }
+    } catch (_) {}
+};
+
+HI.applyCellPadding = function (cell, padding, unit) {
+    try { if (padding.top !== null && typeof padding.top !== "undefined") cell.topInset = HI.measurementString(padding.top, unit); } catch (_) {}
+    try { if (padding.right !== null && typeof padding.right !== "undefined") cell.rightInset = HI.measurementString(padding.right, unit); } catch (_) {}
+    try { if (padding.bottom !== null && typeof padding.bottom !== "undefined") cell.bottomInset = HI.measurementString(padding.bottom, unit); } catch (_) {}
+    try { if (padding.left !== null && typeof padding.left !== "undefined") cell.leftInset = HI.measurementString(padding.left, unit); } catch (_) {}
+};

@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HTML / InDesign 网格体系草图</title>
+  <style>
+    :root {
+      --bg: #eef1f0;
+      --paper: #fbfaf7;
+      --ink: #123456;
+      --muted: #5e6b70;
+      --margin: #b15cff;
+      --column: #00a0df;
+      --gutter: #0077b6;
+      --module: #f4a261;
+      --baseline: #9aa0a6;
+      --object: #d0004b;
+      --note: #2a9d8f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(680px, 1fr) 340px;
+      gap: 24px;
+      align-items: start;
+      padding: 28px;
+    }
+
+    .stage {
+      overflow: auto;
+      padding: 18px;
+      border: 1px solid #cfd6d2;
+      background: #fff;
+    }
+
+    .page {
+      position: relative;
+      width: 1120px;
+      aspect-ratio: 16 / 9;
+      background: var(--paper);
+      border: 2px solid #263b42;
+      box-shadow: 0 16px 36px rgba(18, 52, 86, .18);
+    }
+
+    .guide,
+    .band,
+    .frame,
+    .block,
+    .label,
+    .measure {
+      position: absolute;
+    }
+
+    .safe-frame {
+      border: 2px solid color-mix(in srgb, var(--margin) 72%, transparent);
+    }
+
+    .column-line {
+      width: 0;
+      border-left: 1px solid color-mix(in srgb, var(--column) 78%, transparent);
+    }
+
+    .gutter-line {
+      width: 0;
+      border-left: 2px solid color-mix(in srgb, var(--gutter) 70%, transparent);
+    }
+
+    .module-line {
+      height: 0;
+      border-top: 2px solid color-mix(in srgb, var(--module) 78%, transparent);
+    }
+
+    .baseline-line {
+      height: 0;
+      border-top: 1px dashed color-mix(in srgb, var(--baseline) 42%, transparent);
+    }
+
+    .column-band {
+      background: color-mix(in srgb, var(--column) 7%, transparent);
+    }
+
+    .gutter-band {
+      background: color-mix(in srgb, var(--gutter) 11%, transparent);
+    }
+
+    .module-band {
+      background: color-mix(in srgb, var(--module) 6%, transparent);
+    }
+
+    .block {
+      border: 2px solid color-mix(in srgb, var(--object) 76%, transparent);
+      background: rgba(255, 255, 255, .56);
+      padding: 16px 18px;
+      z-index: 20;
+    }
+
+    .block::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 8px;
+      background: var(--object);
+    }
+
+    .block h3 {
+      margin: 0 0 8px 16px;
+      font-size: 18px;
+      line-height: 24px;
+    }
+
+    .block p {
+      margin: 0 0 0 16px;
+      font-size: 13px;
+      line-height: 18px;
+      color: var(--muted);
+    }
+
+    .title {
+      z-index: 25;
+      font-weight: 700;
+      font-size: 34px;
+      line-height: 38px;
+      color: var(--ink);
+    }
+
+    .copy {
+      z-index: 25;
+      font-size: 15px;
+      line-height: 22px;
+      color: #31454b;
+    }
+
+    .caption {
+      z-index: 25;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--muted);
+    }
+
+    .label {
+      z-index: 40;
+      padding: 4px 6px;
+      background: rgba(251, 250, 247, .9);
+      border: 1px solid #cfd6d2;
+      font-size: 12px;
+      line-height: 14px;
+      color: var(--ink);
+    }
+
+    .measure {
+      z-index: 35;
+      height: 0;
+      border-top: 2px solid var(--note);
+    }
+
+    .measure::before,
+    .measure::after {
+      content: "";
+      position: absolute;
+      top: -5px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--note);
+    }
+
+    .measure::before {
+      left: -4px;
+    }
+
+    .measure::after {
+      right: -4px;
+    }
+
+    .panel {
+      border: 1px solid #cfd6d2;
+      background: #fff;
+      padding: 18px;
+    }
+
+    .panel h1 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      line-height: 26px;
+    }
+
+    .panel p {
+      margin: 0 0 14px;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--muted);
+    }
+
+    .legend {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 16px;
+      margin-top: 2px;
+      border: 1px solid #cfd6d2;
+      background: var(--color);
+    }
+
+    .legend-item strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    .legend-item span {
+      display: block;
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--muted);
+    }
+
+    .toggles {
+      display: grid;
+      gap: 8px;
+      margin: 16px 0;
+      padding: 12px;
+      background: #f7f8f7;
+      border: 1px solid #dfe3e1;
+    }
+
+    .toggles label {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      line-height: 18px;
+    }
+
+    .hide-baseline .baseline-layer,
+    .hide-objects .object-layer,
+    .hide-modules .module-layer {
+      display: none;
+    }
+
+    @media (max-width: 1180px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        max-width: 1120px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="stage">
+      <div id="page" class="page" aria-label="网格体系示意页">
+        <div id="bands"></div>
+        <div id="guides"></div>
+        <div class="object-layer">
+          <div class="label" style="left:48px;top:32px">页眉 / eyebrow</div>
+          <div class="title" style="position:absolute;left:48px;top:66px;width:304px">汇报结构</div>
+          <div class="copy" style="position:absolute;left:48px;top:190px;width:304px">正文块贴合左侧 4 列；它的上下位置应由粗行模块控制，内部行距再服从文字节奏。</div>
+          <article class="block" style="left:400px;top:112px;width:224px;height:120px">
+            <h3>01 轴网与骨架</h3>
+            <p>卡片贴合主列和粗行模块。</p>
+          </article>
+          <article class="block" style="left:748px;top:112px;width:224px;height:120px">
+            <h3>02 核心与观众区</h3>
+            <p>跨列数量由设计网格决定。</p>
+          </article>
+          <article class="block" style="left:400px;top:288px;width:224px;height:120px">
+            <h3>03 运营配套</h3>
+            <p>上下排卡片对齐粗行模块。</p>
+          </article>
+          <article class="block" style="left:748px;top:288px;width:224px;height:120px">
+            <h3>04 图纸与指标</h3>
+            <p>4mm baseline 不直接变成满屏参考线。</p>
+          </article>
+          <div class="measure" style="left:400px;top:480px;width:572px"></div>
+          <div class="caption" style="position:absolute;left:400px;top:502px;width:572px">示例标注线可不贴主网格；它属于 annotation 层。</div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h1>网格线草图</h1>
+      <p>这张图区分“控制版面的主设计网格”和“只用于文字/间距节奏的细 baseline”。推荐导出到 InDesign 的是主设计网格，不是每一条细 baseline。</p>
+
+      <div class="toggles">
+        <label><input type="checkbox" id="toggleModules" checked> 显示粗行模块</label>
+        <label><input type="checkbox" id="toggleBaseline" checked> 显示细 baseline 示例</label>
+        <label><input type="checkbox" id="toggleObjects" checked> 显示示例版面块</label>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item">
+          <i class="swatch" style="--color: color-mix(in srgb, var(--margin) 28%, transparent)"></i>
+          <div><strong>紫色：页边距 / 安全框</strong><span>定义内容可进入的页面范围；应映射为 InDesign margin。</span></div>
+        </div>
+        <div class="legend-item">
+          <i class="swatch" style="--color: color-mix(in srgb, var(--column) 35%, transparent)"></i>
+          <div><strong>蓝色：12 列主网格</strong><span>控制大块图文、卡片、图纸框的左右位置和跨列宽度；应导出为 ID 参考线。</span></div>
+        </div>
+        <div class="legend-item">
+          <i class="swatch" style="--color: color-mix(in srgb, var(--gutter) 42%, transparent)"></i>
+          <div><strong>深蓝：栏间距两侧</strong><span>表达列之间的 gutter 边界；用于避免对象落在栏缝中。</span></div>
+        </div>
+        <div class="legend-item">
+          <i class="swatch" style="--color: color-mix(in srgb, var(--module) 45%, transparent)"></i>
+          <div><strong>橙色：粗行模块</strong><span>控制页面纵向大区块，例如标题区、图纸区、卡片行、页脚区；应导出为 ID 参考线。</span></div>
+        </div>
+        <div class="legend-item">
+          <i class="swatch" style="--color: repeating-linear-gradient(0deg, transparent 0 4px, var(--baseline) 4px 5px)"></i>
+          <div><strong>灰色虚线：baseline / 间距节奏</strong><span>用于文字行距、padding、局部间距；默认不应全量导出为 ID 参考线。</span></div>
+        </div>
+        <div class="legend-item">
+          <i class="swatch" style="--color: color-mix(in srgb, var(--object) 45%, transparent)"></i>
+          <div><strong>红色：示例对象边缘</strong><span>对象应贴合主列和粗行模块；对象边缘不是网格来源。</span></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const config = {
+      width: 1120,
+      height: 630,
+      margin: { top: 36, right: 44, bottom: 30, left: 48 },
+      columns: 12,
+      gutter: 16,
+      modules: 6,
+      baseline: 12,
+    };
+
+    const page = document.getElementById('page');
+    const bands = document.getElementById('bands');
+    const guides = document.getElementById('guides');
+
+    function add(parent, className, style) {
+      const el = document.createElement('div');
+      el.className = className;
+      Object.assign(el.style, style);
+      parent.appendChild(el);
+      return el;
+    }
+
+    function px(value) {
+      return `${Math.round(value * 100) / 100}px`;
+    }
+
+    function draw() {
+      const { width, height, margin, columns, gutter, modules, baseline } = config;
+      const contentW = width - margin.left - margin.right;
+      const contentH = height - margin.top - margin.bottom;
+      const colW = (contentW - gutter * (columns - 1)) / columns;
+      const moduleH = contentH / modules;
+
+      add(guides, 'frame safe-frame', {
+        left: px(margin.left),
+        top: px(margin.top),
+        width: px(contentW),
+        height: px(contentH),
+        zIndex: 10,
+      });
+
+      for (let i = 0; i < columns; i += 1) {
+        const x = margin.left + i * (colW + gutter);
+        add(bands, 'band column-band', {
+          left: px(x),
+          top: px(margin.top),
+          width: px(colW),
+          height: px(contentH),
+          zIndex: 1,
+        });
+        add(guides, 'guide column-line', {
+          left: px(x),
+          top: px(margin.top),
+          height: px(contentH),
+          zIndex: 12,
+        });
+        add(guides, 'guide column-line', {
+          left: px(x + colW),
+          top: px(margin.top),
+          height: px(contentH),
+          zIndex: 12,
+        });
+        if (i < columns - 1) {
+          add(bands, 'band gutter-band', {
+            left: px(x + colW),
+            top: px(margin.top),
+            width: px(gutter),
+            height: px(contentH),
+            zIndex: 2,
+          });
+          add(guides, 'guide gutter-line', {
+            left: px(x + colW),
+            top: px(margin.top),
+            height: px(contentH),
+            zIndex: 13,
+          });
+          add(guides, 'guide gutter-line', {
+            left: px(x + colW + gutter),
+            top: px(margin.top),
+            height: px(contentH),
+            zIndex: 13,
+          });
+        }
+      }
+
+      for (let i = 1; i < modules; i += 1) {
+        const y = margin.top + moduleH * i;
+        add(guides, 'guide module-line module-layer', {
+          left: px(margin.left),
+          top: px(y),
+          width: px(contentW),
+          zIndex: 14,
+        });
+      }
+
+      for (let y = margin.top + baseline; y < margin.top + contentH; y += baseline) {
+        add(guides, 'guide baseline-line baseline-layer', {
+          left: px(margin.left),
+          top: px(y),
+          width: px(contentW),
+          zIndex: 11,
+        });
+      }
+
+      for (let i = 0; i < modules; i += 2) {
+        add(bands, 'band module-band module-layer', {
+          left: px(margin.left),
+          top: px(margin.top + moduleH * i),
+          width: px(contentW),
+          height: px(moduleH),
+          zIndex: 0,
+        });
+      }
+    }
+
+    draw();
+
+    document.getElementById('toggleModules').addEventListener('change', (event) => {
+      page.classList.toggle('hide-modules', !event.target.checked);
+    });
+    document.getElementById('toggleBaseline').addEventListener('change', (event) => {
+      page.classList.toggle('hide-baseline', !event.target.checked);
+    });
+    document.getElementById('toggleObjects').addEventListener('change', (event) => {
+      page.classList.toggle('hide-objects', !event.target.checked);
+    });
+  </script>
+</body>
+</html>
