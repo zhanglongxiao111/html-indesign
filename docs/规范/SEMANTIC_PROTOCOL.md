@@ -22,7 +22,7 @@
 -> 样式和资源解析
 -> 统一语义模型
 -> InDesign 构建指令 JSON
--> cli-anything-indesign 执行 JSX
+-> indesign-cli 执行 JSX
 -> InDesign 内容页、样式和资源
 ```
 

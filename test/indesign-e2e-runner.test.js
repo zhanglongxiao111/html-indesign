@@ -13,6 +13,7 @@ const {
   isAllowedBuiltInPanelName,
   parseArgs,
   parseCliResultJson,
+  resolveIndesignCliCommand,
   parseTargetSize,
 } = require('../scripts/indesign-e2e');
 const { renderSnapshot, compileInstructions } = require('../src/paged-html');
@@ -59,7 +60,7 @@ test('buildExportJsx exports IDD PDF IDML and closes the temporary document', ()
   assert.match(jsx, /doc\.close\(SaveOptions\.NO\)/);
 });
 
-test('parseCliResultJson returns nested result_json from cli-anything-indesign output', () => {
+test('parseCliResultJson returns nested result_json from indesign cli output', () => {
   const parsed = parseCliResultJson(JSON.stringify({
     ok: true,
     data: {
@@ -148,6 +149,13 @@ test('build reverse snapshot jsx writes target output label and runs reverse scr
 
   assert.match(jsx, /html_indesign_reverse_output/);
   assert.match(jsx, /export_to_html_snapshot\.jsx/);
+});
+
+test('resolveIndesignCliCommand defaults to new command and accepts explicit env override', () => {
+  assert.equal(resolveIndesignCliCommand({}), 'indesign-cli');
+  assert.equal(resolveIndesignCliCommand({
+    INDESIGN_CLI_BIN: 'D:/AI/mcp-indesign/.indesign-cli/package-test-venv-root/Scripts/indesign-cli.exe',
+  }), 'D:/AI/mcp-indesign/.indesign-cli/package-test-venv-root/Scripts/indesign-cli.exe');
 });
 
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {

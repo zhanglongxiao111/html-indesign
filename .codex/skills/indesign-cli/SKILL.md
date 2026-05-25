@@ -7,7 +7,7 @@ description: 在 html-indesign 项目中需要用真实 Adobe InDesign 验证生
 
 ## 用途
 
-使用已安装的 `cli-anything-indesign` 作为本项目连接真实 Adobe InDesign 的执行桥。当前项目专注语义 HTML、校验器和编译输出，不在这里重建 COM、MCP 或 JSX 传输层。
+使用已安装的 `indesign-cli` 作为本项目连接真实 Adobe InDesign 的执行桥。当前项目专注语义 HTML、校验器和编译输出，不在这里重建 COM、MCP 或 JSX 传输层。
 
 ## 边界
 
@@ -21,15 +21,15 @@ description: 在 html-indesign 项目中需要用真实 Adobe InDesign 验证生
 除非任务明确要求其他目录，默认在 `D:\AI\html-indesign` 下运行。
 
 ```powershell
-cli-anything-indesign server health
-cli-anything-indesign --json --pretty server health
-cli-anything-indesign tool domains
-cli-anything-indesign tool list --domain utility
-cli-anything-indesign tool schema <tool_id>
-cli-anything-indesign tool call <tool_id> --args test\workspace\args.json
-cli-anything-indesign script run _indesign_scripts\build_from_instructions.jsx
-cli-anything-indesign script run test\workspace\probe.jsx
-cli-anything-indesign export verify test\workspace\output.pdf
+indesign-cli server health
+indesign-cli --json --pretty server health
+indesign-cli tool domains
+indesign-cli tool list --domain utility
+indesign-cli tool schema <tool_id>
+indesign-cli tool call <tool_id> --args test\workspace\args.json
+indesign-cli script run _indesign_scripts\build_from_instructions.jsx
+indesign-cli script run test\workspace\probe.jsx
+indesign-cli export verify test\workspace\output.pdf
 ```
 
 需要给测试脚本解析结果时，优先加 `--json --pretty`。
@@ -41,9 +41,9 @@ cli-anything-indesign export verify test\workspace\output.pdf
 `_indesign_scripts\build_from_instructions.jsx` 默认读取 `D:/AI/html-indesign/test/workspace/instructions.json`，除非脚本或文档标签覆盖路径。编译器 E2E 默认流程：
 
 1. 生成 `test\workspace\instructions.json`。
-2. 运行 `cli-anything-indesign script run _indesign_scripts\build_from_instructions.jsx`。
+2. 运行 `indesign-cli script run _indesign_scripts\build_from_instructions.jsx`。
 3. 检查 CLI 返回值或 InDesign 文档中的结果标签。
-4. 如需导出，导出后运行 `cli-anything-indesign export verify <path>`。
+4. 如需导出，导出后运行 `indesign-cli export verify <path>`。
 
 ## 测试卫生
 

@@ -1151,7 +1151,7 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 
 ### 15.3 真实 InDesign 端到端测试
 
-少量高价值样例通过 `cli-anything-indesign` 执行：
+少量高价值样例通过 `indesign-cli` 执行：
 
 - 纯文本页。
 - 图文混排页。

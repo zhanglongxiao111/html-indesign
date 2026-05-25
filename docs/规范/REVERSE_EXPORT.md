@@ -285,7 +285,7 @@ node scripts/indesign-reverse-export.js --mode observation --out test/workspace/
 内部流程：
 
 ```text
-cli-anything-indesign script run _indesign_scripts/export_to_html_snapshot.jsx
+indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 -> read reverse-snapshot.json
 -> compile to deck.html / reverse-model.json / report.json
 ```

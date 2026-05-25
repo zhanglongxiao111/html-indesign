@@ -104,7 +104,7 @@ async function runIndesignE2E(options = {}) {
   const health = runCli(['--json', '--pretty', 'server', 'health'], context.repoRoot);
   const healthJson = JSON.parse(health.stdout);
   if (!healthJson.ok || healthJson.tool_success === false) {
-    throw new Error(`cli-anything-indesign health failed: ${health.stdout || health.stderr}`);
+    throw new Error(`${resolveIndesignCliCommand()} health failed: ${health.stdout || health.stderr}`);
   }
 
   fs.writeFileSync(context.buildScriptPath, buildBuildJsx({
@@ -313,7 +313,13 @@ function architectureStyleNameMap() {
 }
 
 function runCli(args, cwd) {
-  return runCommand('cli-anything-indesign', args, cwd);
+  return runCommand(resolveIndesignCliCommand(), args, cwd);
+}
+
+function resolveIndesignCliCommand(env = process.env) {
+  const explicit = env.INDESIGN_CLI_BIN;
+  if (explicit && String(explicit).trim()) return String(explicit).trim();
+  return 'indesign-cli';
 }
 
 function runCommand(command, args, cwd) {
@@ -700,6 +706,7 @@ module.exports = {
   buildReverseSnapshotJsx,
   architectureStyleNameMap,
   parseCliResultJson,
+  resolveIndesignCliCommand,
   parseArgs,
   parseTargetSize,
   assertPanelNameAuditOk,

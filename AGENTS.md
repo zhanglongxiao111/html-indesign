@@ -133,10 +133,13 @@
 | 单元测试 | `npm test` |
 | HTML 作者侧规则检查 | `npm run lint:authoring -- <deck.html>` |
 | 真实 InDesign E2E | `npm run e2e:indesign` |
+| 真实 InDesign E2E + 回读 | `npm run e2e:indesign -- -- --reverse-roundtrip` |
 
 真实 InDesign 验证只在触及执行输出、样式映射、资源置入、导出或用户明确要求时运行。临时产物放 `test/workspace/`，不要记录客户文档内容、客户名称或私有资产完整路径。
 
-`npm run e2e:indesign` 默认读取 `test/fixtures/e2e/architecture-report/deck.html`，输出到 `test/workspace/indesign-e2e-<时间戳>/`。它会生成 `instructions.json`，调用真实 InDesign 构建，导出 `INDD`、`PDF`、`IDML`，并尽量生成 PDF 预览 contact sheet。
+真实 InDesign CLI 当前入口为 `indesign-cli`。如果本机未把该命令加入 `PATH`，用 `INDESIGN_CLI_BIN=<indesign-cli.exe 绝对路径>` 显式指定；不要回退到已退役的 `cli-anything-indesign` 入口。
+
+`npm run e2e:indesign` 默认读取 `test/fixtures/e2e/architecture-report/deck.html`，输出到 `test/workspace/indesign-e2e-<时间戳>/`。它会生成 `instructions.json`，调用真实 InDesign 构建，导出 `INDD`、`PDF`、`IDML`，并尽量生成 PDF 预览 contact sheet。加 `--reverse-roundtrip` 时还会生成 `reverse-snapshot.json` 和 `reverse-html/`。
 
 真实 E2E 默认使用 `presentation` 模式：浏览器视觉 CSS px 映射为 InDesign point，页面尺寸默认保持浏览器捕获尺寸。通过 npm 转发参数时需要双 `--`，例如 `npm run e2e:indesign -- -- --target-size qhd` 输出 2560x1440，也可以传 `--target-size 2048x1152`；目标比例必须和 HTML 页面比例一致。用 `npm run e2e:indesign -- -- --html <deck.html>` 可以指定其他固定语义 HTML。建筑汇报 fixture 会默认把稳定样式 token 映射成人类可读中文样式名。
 
