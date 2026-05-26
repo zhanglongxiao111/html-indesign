@@ -1054,7 +1054,7 @@ git commit -m "test: audit reverse author html quality"
 
 - Modify only if verification exposes a concrete bug.
 
-- [ ] **Step 1: Run focused reverse tests**
+- [x] **Step 1: Run focused reverse tests**
 
 Run:
 
@@ -1068,7 +1068,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 2: Run full unit suite**
+- [x] **Step 2: Run full unit suite**
 
 Run:
 
@@ -1082,7 +1082,7 @@ Expected:
 pass
 ```
 
-- [ ] **Step 3: Run real InDesign reverse roundtrip**
+- [x] **Step 3: Run real InDesign reverse roundtrip**
 
 Run:
 
@@ -1098,7 +1098,7 @@ reverse.html.author.audit.ok: true
 oversetTextFrames: 0
 ```
 
-- [ ] **Step 4: Inspect generated author package with simple static checks**
+- [x] **Step 4: Inspect generated author package with simple static checks**
 
 Replace `<RUN_DIR>` with the run directory printed by Step 3:
 
@@ -1119,7 +1119,7 @@ third command: at least one image/object match for the architecture fixture
 fourth command: matches grid CSS rules
 ```
 
-- [ ] **Step 5: Commit final verification record if files changed**
+- [x] **Step 5: Commit final verification record if files changed**
 
 If tests or docs were adjusted during verification:
 
