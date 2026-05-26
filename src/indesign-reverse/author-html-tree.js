@@ -34,8 +34,9 @@ function buildAuthorTree(page) {
     const companion = companionTextByBase.get(item.id);
     nodes.set(item.id, { item: companion ? Object.assign({}, item, { authorTextCompanion: companion }) : item, children: [] });
   }
+  const parentOverrides = attachSourceAncestorNodes(nodes, rootId);
   for (const node of nodes.values()) {
-    const parentId = node.item.structure && node.item.structure.parentId;
+    const parentId = parentOverrides.get(node.item.id) || (node.item.structure && node.item.structure.parentId);
     if (parentId && parentId !== rootId && nodes.has(parentId)) {
       nodes.get(parentId).children.push(node);
     } else {
@@ -66,7 +67,11 @@ function renderNode(node, options, depth) {
 
 function attrsForItem(item, sourceNode, options) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item));
-  attrs.id = sourceNode.id || item.id;
+  if (sourceNode.id) {
+    attrs.id = sourceNode.id;
+  } else if (!item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
+    attrs.id = item.id;
+  }
   const classes = new Set(sourceNode.classList || []);
   if (options.mode === 'observation' && item.role === 'text') classes.add('observed-text');
   if (options.mode === 'observation') classes.add('id-object');
@@ -77,7 +82,9 @@ function attrsForItem(item, sourceNode, options) {
     attrs.style = sourceNode.attributes.style;
   }
   if (classes.size) attrs.class = Array.from(classes).join(' ');
-  if (!hasDataIdObject(attrs) && item.role !== 'text') attrs['data-id-object'] = '';
+  if (!hasDataIdObject(attrs) && item.role !== 'text' && !item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
+    attrs['data-id-object'] = '';
+  }
   if (item.semantic) attrs['data-id-semantic'] = item.semantic;
   return attrsToHtml(orderAttrs(attrs));
 }
@@ -107,6 +114,15 @@ function previewAttrsForPdf(item, sourceNode) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item));
   const pdfPath = attrs.data || attrs.src || (item.asset && item.asset.path) || '';
   const page = attrs['data-id-page'] || attrs['data-id-pdf-page'] || '1';
+  if (sourceNode.previewNode) {
+    const previewAttrs = mergeAttributes(sourceNode.previewNode.attributes);
+    const previewClasses = new Set(sourceNode.previewNode.classList || []);
+    if (previewClasses.size) previewAttrs.class = Array.from(previewClasses).join(' ');
+    if (!previewAttrs.src) previewAttrs.src = pdfPreviewPath(pdfPath, page);
+    if (!previewAttrs.alt) previewAttrs.alt = attrs.alt || `${fileStem(pdfPath)} preview`;
+    if (!hasDataIdIgnore(previewAttrs)) previewAttrs['data-id-ignore'] = '';
+    return attrsToHtml(orderAttrs(previewAttrs));
+  }
   const preview = pdfPreviewPath(pdfPath, page);
   if (!preview) return '';
   return attrsToHtml(orderAttrs({
@@ -117,19 +133,94 @@ function previewAttrsForPdf(item, sourceNode) {
   }));
 }
 
+function attachSourceAncestorNodes(nodes, rootId) {
+  const parentOverrides = new Map();
+  for (const node of Array.from(nodes.values())) {
+    const chain = sourceAncestorChain(node.item, nodes);
+    if (!chain.length) continue;
+    let parentId = node.item.structure && node.item.structure.parentId || rootId;
+    for (const ancestor of chain) {
+      const key = sourceAncestorKey(ancestor);
+      ensureVirtualAncestorNode(nodes, key, ancestor, node.item);
+      if (!parentOverrides.has(key)) parentOverrides.set(key, parentId);
+      parentId = key;
+    }
+    parentOverrides.set(node.item.id, parentId);
+  }
+  return parentOverrides;
+}
+
+function sourceAncestorChain(item, nodes) {
+  return (item.sourceAncestorNodes || [])
+    .filter((ancestor) => ancestor && ancestor.tagName)
+    .filter((ancestor) => !(ancestor.id && nodes.has(ancestor.id)));
+}
+
+function sourceAncestorKey(ancestor) {
+  if (ancestor.id) return String(ancestor.id);
+  if (ancestor.sourcePath) return `source:${ancestor.sourcePath}`;
+  const classes = (ancestor.classList || []).join('.');
+  return `source:${ancestor.tagName || 'div'}:${classes}:${JSON.stringify(ancestor.attributes || {})}`;
+}
+
+function ensureVirtualAncestorNode(nodes, key, ancestor, sourceItem) {
+  const existing = nodes.get(key);
+  if (existing) {
+    const existingOrder = structureOrder(existing.item);
+    const sourceOrder = structureOrder(sourceItem);
+    if (sourceOrder < existingOrder) existing.item.structure.order = sourceOrder - 0.001;
+    return;
+  }
+  nodes.set(key, {
+    item: {
+      id: key,
+      role: 'container',
+      virtual: true,
+      semantic: null,
+      tagName: ancestor.tagName,
+      sourceNode: {
+        tagName: ancestor.tagName,
+        id: ancestor.id || null,
+        classList: Array.isArray(ancestor.classList) ? ancestor.classList.slice() : [],
+        attributes: { ...(ancestor.attributes || {}) },
+      },
+      structure: { parentId: null, order: structureOrder(sourceItem) - 0.001 },
+      content: { text: '' },
+    },
+    children: [],
+  });
+}
+
 function renderPdfObjectNode(node, options, depth) {
+  if (hasSourcePdfWrapper(node.item)) {
+    return renderPdfObjectContents(node, options, depth);
+  }
   const item = node.item;
   const sourceNode = item.sourceNode || {};
   const wrapperAttrs = wrapperAttrsForPdf(item, sourceNode);
+  const body = renderPdfObjectContents(node, options, depth + 2);
+  return `${indent(depth)}<div ${wrapperAttrs}>\n${body}\n${indent(depth)}</div>`;
+}
+
+function renderPdfObjectContents(node, options, depth) {
+  const item = node.item;
+  const sourceNode = item.sourceNode || {};
   const previewAttrs = previewAttrsForPdf(item, sourceNode);
   const objectAttrs = objectAttrsForPdf(item, sourceNode, options);
-  const children = node.children.map((child) => renderNode(child, options, depth + 2)).join('\n');
-  const body = [
-    previewAttrs ? `${indent(depth + 2)}<img ${previewAttrs}>` : null,
-    `${indent(depth + 2)}<object ${objectAttrs}></object>`,
+  const children = node.children.map((child) => renderNode(child, options, depth)).join('\n');
+  return [
+    previewAttrs ? `${indent(depth)}<img ${previewAttrs}>` : null,
+    `${indent(depth)}<object ${objectAttrs}></object>`,
     children || null,
   ].filter(Boolean).join('\n');
-  return `${indent(depth)}<div ${wrapperAttrs}>\n${body}\n${indent(depth)}</div>`;
+}
+
+function hasSourcePdfWrapper(item) {
+  return (item.sourceAncestorNodes || []).some((node) => {
+    const attrs = node.attributes || {};
+    const classes = new Set(node.classList || []);
+    return hasDataIdIgnore(attrs) || Array.from(classes).some((name) => PDF_WRAPPER_CLASSES.has(String(name || '').trim()));
+  });
 }
 
 function assetAttributes(item) {
@@ -147,6 +238,9 @@ function ownContent(item, depth) {
   if (item.role === 'table' && item.table) return `\n${tableContent(item.table, depth + 2)}\n${indent(depth)}`;
   if (item.authorTextCompanion && item.authorTextCompanion.content) {
     return plainTextContent(item.authorTextCompanion.content.text || '');
+  }
+  if (item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== '') {
+    return item.content.sourceHtml;
   }
   const rich = richTextContent(item);
   if (rich != null) return rich;
@@ -312,6 +406,10 @@ function structureOrder(item) {
 
 function hasDataIdObject(attrs) {
   return Object.prototype.hasOwnProperty.call(attrs, 'data-id-object');
+}
+
+function hasDataIdIgnore(attrs) {
+  return Object.prototype.hasOwnProperty.call(attrs, 'data-id-ignore');
 }
 
 function safeTag(value) {

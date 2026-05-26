@@ -242,6 +242,16 @@ test('compileStyles can translate stable style tokens through a styleNameMap', (
   const card = styled.pages[0].items[0];
   assert.equal(card.styleRefs.objectStyle, '指标卡片');
   assert.ok(styled.styles.objectStyles['指标卡片']);
+  assert.deepEqual(styled.styles.objectStyles['指标卡片'].labels[0], {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'style',
+    id: 'metric-card',
+    source: 'html-to-indesign',
+    styleKind: 'objectStyles',
+    token: 'metric-card',
+    displayName: '指标卡片',
+  });
 });
 
 test('compileStyles maps visual CSS pixels to points in presentation mode', async () => {

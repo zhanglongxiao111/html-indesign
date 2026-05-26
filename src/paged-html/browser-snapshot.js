@@ -280,6 +280,50 @@ async function renderSnapshot(options) {
         for (const attr of Array.from(el.attributes || [])) out[attr.name] = attr.value;
         return out;
       }
+      function sourceText(el) {
+        return String(el.textContent || '');
+      }
+      function sourcePathFor(el, pageEl) {
+        const parts = [];
+        let current = el;
+        while (current && current !== pageEl && current.nodeType === 1) {
+          const tag = current.tagName.toLowerCase();
+          let index = 1;
+          let sibling = current.previousElementSibling;
+          while (sibling) {
+            if (sibling.tagName && sibling.tagName.toLowerCase() === tag) index += 1;
+            sibling = sibling.previousElementSibling;
+          }
+          parts.unshift(`${tag}:nth-of-type(${index})`);
+          current = current.parentElement;
+        }
+        return parts.join('>');
+      }
+      function sourceNodeFor(el, pageEl, extra) {
+        const node = {
+          tagName: el.tagName.toLowerCase(),
+          id: el.id || null,
+          classList: classList(el),
+          attributes: attrs(el),
+          sourcePath: sourcePathFor(el, pageEl),
+        };
+        if (extra) {
+          for (const key of Object.keys(extra)) node[key] = extra[key];
+        }
+        return node;
+      }
+      function sourcePreviewNodeFor(el, frameEl, pageEl) {
+        const tagName = el.tagName.toLowerCase();
+        if (tagName !== 'object' && tagName !== 'embed') return null;
+        if (!frameEl || frameEl === el) return null;
+        const preview = frameEl.querySelector('img[data-id-ignore]');
+        return preview ? sourceNodeFor(preview, pageEl) : null;
+      }
+      function sourceHtmlFor(el) {
+        const html = String(el.innerHTML || '');
+        if (!html) return null;
+        return html === sourceText(el) ? null : html;
+      }
       function cssVarsFor(el) {
         const style = getComputedStyle(el);
         const out = {};
@@ -366,7 +410,7 @@ async function renderSnapshot(options) {
           || Boolean(style.backgroundImage && style.backgroundImage !== 'none');
       }
       function isPaintOnlyCandidate(el) {
-        if (String(el.innerText || el.textContent || '').trim()) return false;
+        if (sourceText(el).trim()) return false;
         const rect = el.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return false;
         const style = getComputedStyle(el);
@@ -379,7 +423,7 @@ async function renderSnapshot(options) {
         const inlineSelector = 'span,strong,b,em,i,mark,sup,sub,[data-id-character-style]';
         const inlineEls = Array.from(el.querySelectorAll(inlineSelector));
         return inlineEls.map((runEl) => ({
-          text: (runEl.innerText || runEl.textContent || '').trim(),
+          text: sourceText(runEl).trim(),
           tagName: runEl.tagName.toLowerCase(),
           classList: classList(runEl),
           attributes: attrs(runEl),
@@ -392,7 +436,7 @@ async function renderSnapshot(options) {
         const inlineRuns = inlineRunsFor(el);
         if (inlineRuns.length) return inlineRuns;
         return [{
-          text: (el.innerText || el.textContent || '').trim(),
+          text: sourceText(el).trim(),
           tagName,
           classList: classList(el),
           attributes: attrs(el),
@@ -408,7 +452,7 @@ async function renderSnapshot(options) {
             header: isHeaderRow,
             cells: Array.from(row.cells || []).map((cell, cellIndex) => ({
               index: cellIndex,
-              text: (cell.innerText || cell.textContent || '').trim(),
+              text: sourceText(cell).trim(),
               tagName: cell.tagName.toLowerCase(),
               header: isHeaderRow || cell.tagName.toLowerCase() === 'th',
               rowSpan: cell.rowSpan || 1,
@@ -439,6 +483,15 @@ async function renderSnapshot(options) {
         while (parent && candidates[0] && parent !== candidates[0].closest(selector)) {
           const index = candidates.indexOf(parent);
           if (index >= 0) out.push(itemIdFor(parent, visualFrameFor(parent), pageIndex, index));
+          parent = parent.parentElement;
+        }
+        return out;
+      }
+      function sourceAncestorNodes(el, pageEl, candidates) {
+        const out = [];
+        let parent = el.parentElement;
+        while (parent && parent !== pageEl) {
+          if (!candidates.includes(parent)) out.unshift(sourceNodeFor(parent, pageEl));
           parent = parent.parentElement;
         }
         return out;
@@ -485,20 +538,22 @@ async function renderSnapshot(options) {
             const frameAuthoredStyle = authoredStyleObject(frameEl, styleRules);
             const itemAttrs = attrs(el);
             const frameAttrs = attrs(frameEl);
+            const previewNode = sourcePreviewNodeFor(el, frameEl, pageEl);
             return {
               id: itemIdFor(el, frameEl, pageIndex, itemIndex),
               tagName: el.tagName.toLowerCase(),
               classList: mergeClassList(classList(el), classList(frameEl)),
               attributes: mergeFrameAttributes(itemAttrs, frameAttrs),
-              sourceNode: {
-                tagName: el.tagName.toLowerCase(),
-                id: itemIdFor(el, frameEl, pageIndex, itemIndex),
-                classList: mergeClassList(classList(el), classList(frameEl)),
-                attributes: mergeFrameAttributes(itemAttrs, frameAttrs),
-              },
+              sourceNode: sourceNodeFor(el, pageEl, {
+                classList: classList(el),
+                attributes: itemAttrs,
+                previewNode,
+                sourceHtml: sourceHtmlFor(el),
+              }),
+              sourceAncestorNodes: sourceAncestorNodes(el, pageEl, candidates),
               cssVars: cssVarsFor(el),
               rectPx: rectObject(frameEl.getBoundingClientRect()),
-              text: el.innerText || el.textContent || '',
+              text: sourceText(el),
               computedStyle: mergeVisualFrameStyle(itemStyle, frameStyle),
               authoredStyle: mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle),
               runs: textRunsFor(el),
@@ -537,6 +592,7 @@ async function renderSnapshot(options) {
           classList: item.classList,
           attributes: item.attributes,
           sourceNode: item.sourceNode || null,
+          sourceAncestorNodes: item.sourceAncestorNodes || [],
           cssVars: item.cssVars || {},
           text: item.text.trim(),
           rectPx: item.rectPx,

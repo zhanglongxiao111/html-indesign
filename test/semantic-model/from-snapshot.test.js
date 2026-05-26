@@ -159,6 +159,97 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
   assert.equal(itemLabel.structure.parentId, 'agenda-page');
 });
 
+test('snapshotToSemanticModel labels source text runs and nonvisual ancestor nodes', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'agenda-page',
+      index: 0,
+      rectPx: { x: 0, y: 0, width: 1000, height: 600 },
+      widthMm: 264,
+      heightMm: 158,
+      attributes: { 'data-page': 'agenda' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'agenda-copy',
+          role: 'text',
+          tagName: 'p',
+          classList: ['body-copy'],
+          attributes: { 'data-id-paragraph-style': 'body-copy' },
+          sourceNode: { tagName: 'p', id: 'agenda-copy', classList: ['body-copy'], attributes: { 'data-id-paragraph-style': 'body-copy' } },
+          sourceAncestorNodes: [
+            { sourcePath: 'section>div:nth-of-type(1)', tagName: 'div', id: null, classList: ['legend-item'], attributes: {} },
+          ],
+          documentOrder: 1,
+          text: 'PDF 置入',
+          rectPx: { x: 10, y: 10, width: 200, height: 30 },
+          runs: [
+            { text: 'PDF 置入', tagName: 'span', classList: ['accent'], attributes: { 'data-id-character-style': 'term-accent' } },
+          ],
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation' });
+
+  const label = model.pages[0].items[0].labels[0];
+
+  assert.equal(label.sourceText, 'PDF 置入');
+  assert.deepEqual(label.sourceRuns, [
+    {
+      text: 'PDF 置入',
+      tagName: 'span',
+      classList: ['accent'],
+      attributes: { 'data-id-character-style': 'term-accent' },
+    },
+  ]);
+  assert.equal(label.sourceAncestorNodes[0].classList[0], 'legend-item');
+});
+
+test('snapshotToSemanticModel omits whole-item source runs and keeps source inner html', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'title.html' },
+    pages: [{
+      id: 'cover-page',
+      index: 0,
+      rectPx: { x: 0, y: 0, width: 1000, height: 600 },
+      widthMm: 264,
+      heightMm: 158,
+      attributes: { 'data-page': 'cover' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'title',
+          role: 'text',
+          tagName: 'h1',
+          classList: ['cover-title'],
+          attributes: { 'data-id-paragraph-style': 'cover-title' },
+          sourceNode: {
+            tagName: 'h1',
+            id: null,
+            classList: ['cover-title'],
+            attributes: { 'data-id-paragraph-style': 'cover-title' },
+            sourceHtml: '冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报</span>',
+          },
+          documentOrder: 1,
+          text: '冰球场首层平面排布汇报',
+          rectPx: { x: 10, y: 10, width: 400, height: 80 },
+          runs: [
+            { text: '冰球场首层平面排布汇报', tagName: 'h1', classList: ['cover-title'], attributes: { 'data-id-paragraph-style': 'cover-title' } },
+          ],
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation' });
+
+  const label = model.pages[0].items[0].labels[0];
+
+  assert.equal(label.sourceHtml, '冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报</span>');
+  assert.deepEqual(label.sourceRuns, []);
+});
+
 test('snapshotToSemanticModel uses nearest candidate ancestor as structure parent', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },

@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
 const { renderSnapshot } = require('../../src/paged-html');
 
@@ -118,6 +119,57 @@ test('renderSnapshot captures inline character runs inside table cells', async (
   assert.deepEqual(cell.runs.map((run) => run.text), ['+12%', '2']);
   assert.equal(cell.runs[0].attributes['data-id-character-style'], 'metric-delta');
   assert.equal(cell.runs[1].tagName, 'sup');
+});
+
+test('renderSnapshot preserves source text when CSS text-transform changes visual case', async () => {
+  const outDir = path.resolve('test/workspace/browser-text-transform-source');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+  .eyebrow { text-transform: uppercase; font: 16px Arial; }
+</style>
+<section class="page" id="page-1">
+  <p class="eyebrow" data-id-paragraph-style="eyebrow">Contents <span data-id-character-style="accent">Pdf</span></p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const eyebrow = snapshot.pages[0].items.find((item) => item.attributes['data-id-paragraph-style'] === 'eyebrow');
+
+  assert.equal(eyebrow.text, 'Contents Pdf');
+  assert.equal(eyebrow.computedStyle.textTransform, 'uppercase');
+  assert.equal(eyebrow.sourceNode.id, null);
+  assert.match(eyebrow.sourceNode.sourceHtml, /Contents <span data-id-character-style="accent">Pdf<\/span>/);
+  assert.deepEqual(eyebrow.runs.map((run) => run.text), ['Pdf']);
+});
+
+test('renderSnapshot keeps PDF source node separate from its preview wrapper', async () => {
+  const outDir = path.resolve('test/workspace/browser-pdf-source-node');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+  .drawing-frame { width: 400px; height: 240px; }
+</style>
+<section class="page" id="page-1">
+  <div class="drawing-frame grid-item grid-frame" style="--grid-col:5;--grid-span:8" data-id-ignore>
+    <img class="pdf-preview" src="../reference-pdfs/drawing-page1.png" alt="drawing preview" data-id-ignore>
+    <object class="pdf-source" data="../reference-pdfs/drawing.pdf" type="application/pdf" data-id-object data-id-object-style="drawing-frame-object"></object>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const pdf = snapshot.pages[0].items.find((item) => item.tagName === 'object');
+
+  assert.deepEqual(pdf.sourceNode.classList, ['pdf-source']);
+  assert.equal(pdf.sourceNode.attributes.data, '../reference-pdfs/drawing.pdf');
+  assert.equal(pdf.sourceNode.attributes.style, undefined);
+  assert.equal(pdf.sourceNode.previewNode.attributes.alt, 'drawing preview');
+  assert.equal(pdf.sourceAncestorNodes[0].classList[0], 'drawing-frame');
 });
 
 test('renderSnapshot captures page padding and grid semantics for InDesign guides', async () => {

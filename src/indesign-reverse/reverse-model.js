@@ -1,6 +1,7 @@
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
-  const pages = (snapshot.pages || []).map(reversePage);
+  const styleMaps = reverseStyleNameMaps(snapshot.styles || {});
+  const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps));
   return {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
@@ -10,7 +11,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     coordinateUnit: documentLabel.coordinateUnit || 'pt',
     labels: (snapshot.document && snapshot.document.labels) || [],
     sourcePackage: documentLabel.sourcePackage || null,
-    parentPages: (snapshot.parentPages || []).map(reverseParentPage),
+    parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps)),
     pages,
     layers: (snapshot.layers || []).map(reverseLayer),
     styles: reverseStyles(snapshot.styles || {}),
@@ -21,7 +22,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   };
 }
 
-function reversePage(page) {
+function reversePage(page, styleMaps) {
   const label = firstLabel(page.labels, 'page') || {};
   const parent = label.parentPage || {};
   return {
@@ -39,13 +40,14 @@ function reversePage(page) {
     margins: label.margins || page.margins || null,
     guides: page.guides || [],
     labels: page.labels || [],
-    items: (page.items || []).map(reverseItem),
+    items: (page.items || []).map((item) => reverseItem(item, styleMaps)),
   };
 }
 
-function reverseItem(item) {
+function reverseItem(item, styleMaps = {}) {
   const label = firstLabel(item.labels, 'item') || {};
   const role = label.role || roleFromInDesignType(item.type, item);
+  const table = reverseTable(item.table, styleMaps);
   return {
     id: label.id || item.id,
     role,
@@ -55,13 +57,13 @@ function reverseItem(item) {
     bounds: item.bounds,
     layerName: item.layerName || null,
     styleRefs: {
-      paragraphStyle: item.paragraphStyleName || null,
-      objectStyle: item.objectStyleName || null,
-      frameStyle: item.frameStyleName || null,
-      tableStyle: item.table && item.table.tableStyle ? item.table.tableStyle : null,
+      paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', item.paragraphStyleName),
+      objectStyle: mapStyleName(styleMaps, 'objectStyles', item.objectStyleName),
+      frameStyle: mapStyleName(styleMaps, 'frameStyles', item.frameStyleName),
+      tableStyle: table && table.tableStyle ? table.tableStyle : null,
     },
-    content: { text: role === 'table' && item.table ? '' : item.text || '', runs: item.textRuns || item.runs || [] },
-    table: item.table || null,
+    content: contentForReverseItem(role, item, label, styleMaps),
+    table,
     visualStyle: item.visualStyle || null,
     effects: item.effects || null,
     textStyle: item.textStyle || null,
@@ -71,6 +73,7 @@ function reverseItem(item) {
     firstLineFont: item.firstLineFont || null,
     sourceFile: label.sourceFile || null,
     sourceNode: label.sourceNode || null,
+    sourceAncestorNodes: Array.isArray(label.sourceAncestorNodes) ? label.sourceAncestorNodes : [],
     structure: label.structure || null,
     layout: label.layout || null,
     asset: item.placedAsset || null,
@@ -78,7 +81,7 @@ function reverseItem(item) {
   };
 }
 
-function reverseParentPage(parentPage) {
+function reverseParentPage(parentPage, styleMaps) {
   const label = firstLabel(parentPage.labels, 'parentPage') || {};
   return {
     id: label.id || parentPage.name,
@@ -86,7 +89,7 @@ function reverseParentPage(parentPage) {
     semantic: label.semantic || label.id || parentPage.name,
     provides: label.provides || [],
     labels: parentPage.labels || [],
-    items: (parentPage.items || []).map(reverseItem),
+    items: (parentPage.items || []).map((item) => reverseItem(item, styleMaps)),
   };
 }
 
@@ -112,9 +115,111 @@ function reverseStyles(styles) {
   };
 }
 
+function reverseStyleNameMaps(styles) {
+  return {
+    paragraphStyles: reverseStyleNameMap(styles.paragraphStyles || []),
+    characterStyles: reverseStyleNameMap(styles.characterStyles || []),
+    objectStyles: reverseStyleNameMap(styles.objectStyles || []),
+    frameStyles: reverseStyleNameMap(styles.frameStyles || []),
+    tableStyles: reverseStyleNameMap(styles.tableStyles || []),
+    cellStyles: reverseStyleNameMap(styles.cellStyles || []),
+  };
+}
+
+function reverseStyleNameMap(items) {
+  const map = new Map();
+  for (const item of styleItems(items)) {
+    const label = firstLabel(item.labels, 'style') || {};
+    const token = label.token || label.id || null;
+    if (!token) continue;
+    for (const name of [item.name, item.safeName, label.displayName, label.safeName]) {
+      if (name) map.set(String(name), token);
+    }
+  }
+  return map;
+}
+
+function styleItems(items) {
+  if (Array.isArray(items)) return items;
+  if (items && typeof items === 'object') return Object.values(items);
+  return [];
+}
+
+function mapStyleName(styleMaps, kind, value) {
+  if (!value) return null;
+  const map = styleMaps && styleMaps[kind];
+  return map && map.get(String(value)) || value;
+}
+
+function contentForReverseItem(role, item, label, styleMaps) {
+  const rawText = role === 'table' && item.table ? '' : String(item.text || '');
+  const sourceText = typeof label.sourceText === 'string' ? label.sourceText : null;
+  if (sourceText != null && sourceTextMatchesCurrentText(sourceText, rawText)) {
+    return {
+      text: sourceText,
+      sourceHtml: typeof label.sourceHtml === 'string' ? label.sourceHtml : null,
+      runs: sourceRunsFromLabel(label, styleMaps),
+    };
+  }
+  return {
+    text: rawText,
+    runs: reverseTextRuns(item.textRuns || item.runs || [], styleMaps),
+  };
+}
+
+function sourceTextMatchesCurrentText(sourceText, currentText) {
+  return normalizeLineEndings(sourceText) === normalizeLineEndings(currentText);
+}
+
+function normalizeLineEndings(value) {
+  return String(value || '').replace(/\r\n|\r/g, '\n');
+}
+
+function sourceRunsFromLabel(label, styleMaps) {
+  const runs = Array.isArray(label.sourceRuns) ? label.sourceRuns : [];
+  return runs.map((run) => {
+    const attributes = { ...(run.attributes || {}) };
+    const characterStyle = mapStyleName(styleMaps, 'characterStyles', run.characterStyle || attributes['data-id-character-style']);
+    if (characterStyle && !attributes['data-id-character-style']) {
+      attributes['data-id-character-style'] = characterStyle;
+    }
+    return {
+      text: String(run.text || ''),
+      tagName: run.tagName || null,
+      classList: Array.isArray(run.classList) ? run.classList.slice() : [],
+      attributes,
+      characterStyle,
+    };
+  });
+}
+
+function reverseTextRuns(runs, styleMaps) {
+  return (runs || []).map((run) => ({
+    ...run,
+    characterStyle: mapStyleName(styleMaps, 'characterStyles', run.characterStyle),
+  }));
+}
+
+function reverseTable(table, styleMaps) {
+  if (!table) return null;
+  return {
+    ...table,
+    tableStyle: mapStyleName(styleMaps, 'tableStyles', table.tableStyle),
+    rows: (table.rows || []).map((row) => ({
+      ...row,
+      cells: (row.cells || []).map((cell) => ({
+        ...cell,
+        paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', cell.paragraphStyle),
+        cellStyle: mapStyleName(styleMaps, 'cellStyles', cell.cellStyle),
+        runs: reverseTextRuns(cell.runs || [], styleMaps),
+      })),
+    })),
+  };
+}
+
 function reverseStyleCollection(items) {
   const out = {};
-  for (const item of items || []) {
+  for (const item of styleItems(items)) {
     const label = firstLabel(item.labels, 'style') || {};
     const token = label.token || item.name;
     out[token] = {

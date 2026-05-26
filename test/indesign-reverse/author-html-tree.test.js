@@ -102,6 +102,29 @@ test('pageItemsToAuthorHtml restores inline character runs as editable inline ta
   assert.match(html, /本页用 <span class="accent" data-id-character-style="term-accent">PDF 置入<\/span> 校核。/);
 });
 
+test('pageItemsToAuthorHtml restores original source inner html when text is unchanged', () => {
+  const page = {
+    id: 'cover-page',
+    items: [
+      {
+        id: 'title',
+        role: 'text',
+        sourceNode: { tagName: 'h1', id: null, classList: ['cover-title'], attributes: { 'data-id-paragraph-style': 'cover-title' } },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: {
+          text: '冰球场首层平面排布汇报',
+          sourceHtml: '冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报</span>',
+          runs: [],
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<h1 class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报<\/span><\/h1>/);
+});
+
 test('pageItemsToAuthorHtml restores InDesign character styles as inline character tags', () => {
   const page = {
     id: 'agenda-page',
@@ -154,6 +177,37 @@ test('pageItemsToAuthorHtml keeps classless sourced child text classless in auth
   assert.match(html, /<h3 id="chapter-1-title" data-id-paragraph-style="chapter-title">01 轴网与场馆骨架<\/h3>/);
   assert.doesNotMatch(html, /chapter-1-title" class="id-object"/);
   assert.doesNotMatch(html, /chapter-1-title"[^>]+--grid-col/);
+});
+
+test('pageItemsToAuthorHtml restores missing nonvisual source ancestor wrappers', () => {
+  const page = {
+    id: 'analysis-page',
+    items: [
+      {
+        id: 'legend-swatch',
+        role: 'shape',
+        sourceNode: { tagName: 'span', id: null, classList: ['swatch'], attributes: { style: 'background:var(--accent)' } },
+        sourceAncestorNodes: [
+          { sourcePath: 'section>div:nth-of-type(1)', tagName: 'div', id: null, classList: ['legend-item'], attributes: {} },
+        ],
+        structure: { parentId: 'analysis-page', order: 1 },
+      },
+      {
+        id: 'legend-label',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: null, classList: [], attributes: {} },
+        sourceAncestorNodes: [
+          { sourcePath: 'section>div:nth-of-type(1)', tagName: 'div', id: null, classList: ['legend-item'], attributes: {} },
+        ],
+        structure: { parentId: 'analysis-page', order: 2 },
+        content: { text: 'Service rooms' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<div class="legend-item">\n\s+<span class="swatch" style="background:var\(--accent\)"><\/span>\n\s+<span>Service rooms<\/span>\n<\/div>/);
 });
 
 test('pageItemsToAuthorHtml does not emit non-semantic automatic character spans', () => {
@@ -240,6 +294,15 @@ test('pageItemsToAuthorHtml restores PDF source inside an editable preview wrapp
             'data-id-crop': 'media',
             'data-id-fit': 'contain',
           },
+          previewNode: {
+            tagName: 'img',
+            classList: ['pdf-preview'],
+            attributes: {
+              src: '../reference-pdfs/ice-rink-layout-reference-page1.png',
+              alt: 'ice rink layout preview',
+              'data-id-ignore': '',
+            },
+          },
         },
         structure: { parentId: 'drawing-page', order: 1 },
         layout: { cssVars: { '--grid-col': '5', '--grid-span': '8', '--grid-row': '2', '--grid-row-span': '5' } },
@@ -251,9 +314,59 @@ test('pageItemsToAuthorHtml restores PDF source inside an editable preview wrapp
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
   assert.match(html, /<div[^>]+class="drawing-frame grid-item grid-frame"[^>]+data-id-ignore/);
-  assert.match(html, /<img[^>]+class="pdf-preview"[^>]+src="\.\.\/reference-pdfs\/ice-rink-layout-reference-page1\.png"[^>]+data-id-ignore/);
+  assert.match(html, /<img[^>]+class="pdf-preview"[^>]+src="\.\.\/reference-pdfs\/ice-rink-layout-reference-page1\.png"[^>]+alt="ice rink layout preview"[^>]+data-id-ignore/);
   assert.match(html, /<object[^>]+class="pdf-source"[^>]+data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"[^>]*><\/object>/);
   assert.doesNotMatch(html, /<div[^>]+data="\.\.\/reference-pdfs/);
+});
+
+test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nesting a new one', () => {
+  const page = {
+    id: 'drawing-page',
+    items: [
+      {
+        id: 'pdf-source',
+        role: 'graphic',
+        semantic: 'drawing-pdf',
+        sourceNode: {
+          tagName: 'object',
+          id: null,
+          classList: ['pdf-source'],
+          attributes: {
+            data: '../reference-pdfs/ice-rink-layout-reference.pdf',
+            type: 'application/pdf',
+            'data-id-object': '',
+            'data-id-page': '1',
+          },
+          previewNode: {
+            tagName: 'img',
+            classList: ['pdf-preview'],
+            attributes: {
+              src: '../reference-pdfs/ice-rink-layout-reference-page1.png',
+              alt: 'ice rink layout preview',
+              'data-id-ignore': '',
+            },
+          },
+        },
+        sourceAncestorNodes: [
+          {
+            tagName: 'div',
+            id: null,
+            classList: ['drawing-frame', 'grid-item', 'grid-frame'],
+            attributes: { style: '--grid-col:5;--grid-span:8', 'data-id-ignore': '' },
+            sourcePath: 'section>div:nth-of-type(1)',
+          },
+        ],
+        structure: { parentId: 'drawing-page', order: 1 },
+        asset: { path: '../reference-pdfs/ice-rink-layout-reference.pdf', graphicType: 'pdf' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.equal((html.match(/class="drawing-frame grid-item grid-frame"/g) || []).length, 1);
+  assert.match(html, /<div class="drawing-frame grid-item grid-frame" style="--grid-col:5;--grid-span:8" data-id-ignore="">\n\s+<img class="pdf-preview"/);
+  assert.match(html, /<object class="pdf-source" data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
 });
 
 test('pageItemsToAuthorHtml formats tables with editable thead and tbody', () => {

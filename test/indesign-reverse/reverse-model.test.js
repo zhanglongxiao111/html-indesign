@@ -229,6 +229,92 @@ test('reverseSnapshotToSemanticModel preserves observed character runs per text 
   assert.equal(title.content.runs[1].textStyle.fontStyle, 'italic');
 });
 
+test('reverseSnapshotToSemanticModel maps InDesign display style names back to source tokens', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'tokens.indd', mode: 'structured' },
+    document: { name: 'tokens.indd', labels: [] },
+    styles: {
+      paragraphStyles: [
+        {
+          name: '正文',
+          labels: [{ protocol: 'html-indesign', version: 1, kind: 'style', id: 'body-copy', token: 'body-copy', displayName: '正文', styleKind: 'paragraphStyles' }],
+          css: 'font-size:12pt',
+        },
+        {
+          name: '表格正文',
+          labels: [{ protocol: 'html-indesign', version: 1, kind: 'style', id: 'table-body', token: 'table-body', displayName: '表格正文', styleKind: 'paragraphStyles' }],
+          css: 'font-size:10pt',
+        },
+      ],
+      characterStyles: [
+        {
+          name: '术语强调',
+          labels: [{ protocol: 'html-indesign', version: 1, kind: 'style', id: 'term-accent', token: 'term-accent', displayName: '术语强调', styleKind: 'characterStyles' }],
+          css: 'color:#c8102e',
+        },
+      ],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'copy',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            paragraphStyleName: '正文',
+            text: '流线和 PDF 置入 校核。',
+            textRuns: [
+              { text: '流线和 ', characterStyle: null },
+              { text: 'PDF 置入', characterStyle: '术语强调' },
+              { text: ' 校核。', characterStyle: null },
+            ],
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'copy',
+                role: 'text',
+                sourceText: '流线和 PDF 置入 校核。',
+                sourceHtml: '流线和 <span class="accent" data-id-character-style="term-accent">PDF 置入</span> 校核。',
+                sourceRuns: [
+                  { text: 'PDF 置入', tagName: 'span', classList: ['accent'], attributes: { 'data-id-character-style': 'term-accent' } },
+                ],
+              },
+            ],
+          },
+          {
+            id: 'table',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 160, width: 360, height: 120 },
+            labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'table', role: 'table' }],
+            table: {
+              tableStyle: '面积指标表',
+              rows: [
+                { index: 0, cells: [{ index: 0, text: 'Space', paragraphStyle: '表格正文' }] },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const copy = model.pages[0].items[0];
+  const table = model.pages[0].items[1];
+
+  assert.equal(copy.styleRefs.paragraphStyle, 'body-copy');
+  assert.equal(copy.content.sourceHtml, '流线和 <span class="accent" data-id-character-style="term-accent">PDF 置入</span> 校核。');
+  assert.equal(copy.content.runs[0].attributes['data-id-character-style'], 'term-accent');
+  assert.equal(copy.content.runs[0].classList[0], 'accent');
+  assert.equal(model.styles.characterStyles['term-accent'].displayName, '术语强调');
+  assert.equal(table.table.rows[0].cells[0].paragraphStyle, 'table-body');
+});
+
 test('reverseSnapshotToSemanticModel preserves native InDesign table structure', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'table.indd', mode: 'structured' },

@@ -1,5 +1,6 @@
 const { createReport, addMessage } = require('../shared/report');
 const { parseCssLength, round } = require('../shared/geometry');
+const { createProtocolLabel } = require('../shared/labels');
 const {
   normalizeCssColor,
   normalizeCssColorFromBackgroundImage,
@@ -109,11 +110,18 @@ function compileItemStyles(item, styles, report, options) {
   }
 
   if (item.role === 'table') {
-    styleRefs.tableStyle = styleNameForKind(item, 'tableStyles', null, options)
+    const tableStyleName = styleNameForKind(item, 'tableStyles', null, options)
       || firstClassName(item)
       || 'default-table';
+    styleRefs.tableStyle = tableStyleName;
     if (!styles.tableStyles[styleRefs.tableStyle]) {
-      styles.tableStyles[styleRefs.tableStyle] = { name: styleRefs.tableStyle };
+      const identity = styleIdentityForKind(item, 'tableStyles', tableStyleName, options);
+      styles.tableStyles[styleRefs.tableStyle] = {
+        name: styleRefs.tableStyle,
+        token: identity.token,
+        displayName: identity.displayName,
+        labels: [styleProtocolLabel('tableStyles', identity)],
+      };
     }
     styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
     if (explicitFrameStyleName(item, options)) {
@@ -248,8 +256,12 @@ function ensureParagraphStyle(styles, item, report, options) {
     || firstClassName(item)
     || stableAutoName('paragraph', signature);
   if (!styles.paragraphStyles[name]) {
+    const identity = styleIdentityForKind(item, 'paragraphStyles', name, options);
     styles.paragraphStyles[name] = {
       name,
+      token: identity.token,
+      displayName: identity.displayName,
+      labels: [styleProtocolLabel('paragraphStyles', identity)],
       ...signature,
     };
   }
@@ -279,8 +291,12 @@ function ensureCharacterStyle(styles, run, report, options) {
     || firstClassName(run)
     || stableAutoName('character', signature);
   if (!styles.characterStyles[name]) {
+    const identity = styleIdentityForKind(run, 'characterStyles', name, options);
     styles.characterStyles[name] = {
       name,
+      token: identity.token,
+      displayName: identity.displayName,
+      labels: [styleProtocolLabel('characterStyles', identity)],
       ...signature,
     };
   }
@@ -311,8 +327,12 @@ function ensureObjectStyle(styles, item, report, options) {
     || firstClassName(item)
     || stableAutoName('object', signature);
   if (!styles.objectStyles[name]) {
+    const identity = styleIdentityForKind(item, 'objectStyles', name, options);
     styles.objectStyles[name] = {
       name,
+      token: identity.token,
+      displayName: identity.displayName,
+      labels: [styleProtocolLabel('objectStyles', identity)],
       ...signature,
     };
   }
@@ -582,8 +602,12 @@ function ensureFrameStyle(styles, item, options) {
     || classFrameStyleName(item, options)
     || stableAutoName('frame', signature);
   if (!styles.frameStyles[name]) {
+    const identity = styleIdentityForKind(item, 'frameStyles', name, options);
     styles.frameStyles[name] = {
       name,
+      token: identity.token,
+      displayName: identity.displayName,
+      labels: [styleProtocolLabel('frameStyles', identity)],
       ...signature,
     };
   }
@@ -622,6 +646,30 @@ function classFrameStyleName(item, options) {
 
 function styleTokenForKind(attributes, kind) {
   return explicitName(attributes || {}, styleTokenAttributes(kind));
+}
+
+function styleIdentityForKind(item, kind, name, options) {
+  const attributes = item && item.attributes || {};
+  const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
+  const explicitToken = styleTokenForKind(attributes, kind);
+  const className = firstClassName(item);
+  const token = explicitToken || className || name;
+  const displayName = explicitDisplay || mappedStyleName(token, kind, options) || name;
+  return {
+    token: token || name,
+    displayName: displayName || name,
+  };
+}
+
+function styleProtocolLabel(kind, identity) {
+  return createProtocolLabel({
+    kind: 'style',
+    id: identity.token,
+    source: 'html-to-indesign',
+    styleKind: kind,
+    token: identity.token,
+    displayName: identity.displayName,
+  });
 }
 
 function mappedStyleName(token, kind, options) {

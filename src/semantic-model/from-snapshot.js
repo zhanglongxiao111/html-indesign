@@ -126,6 +126,10 @@ function itemModelFor(item, page, layout) {
     || (page.attributes && page.attributes['data-id-source-file'])
     || null;
   const sourceNode = item.sourceNode || sourceNodeForSnapshotItem(item);
+  const sourceAncestorNodes = sourceAncestorNodesForItem(item);
+  const sourceText = sourceTextForItem(item);
+  const sourceRuns = sourceRunsForItem(item);
+  const sourceHtml = sourceHtmlForItem(item);
   const itemLayout = gridLayoutFromCssVars(item.cssVars || {});
   const parentId = nearestSourceParentId(item, page);
   const structure = { parentId, order: item.documentOrder || 0, containerPolicy: parentId === page.id ? 'group' : 'child' };
@@ -144,6 +148,7 @@ function itemModelFor(item, page, layout) {
     attributes: attrs,
     sourceFile,
     sourceNode,
+    sourceAncestorNodes,
     structure,
     layout: itemLayout,
     styleRefs: item.styleRefs || {},
@@ -160,6 +165,10 @@ function itemModelFor(item, page, layout) {
       className: (item.classList || []).join(' '),
       sourceFile,
       sourceNode,
+      sourceText,
+      sourceHtml,
+      sourceRuns,
+      sourceAncestorNodes,
       structure,
       layout: itemLayout,
     })],
@@ -195,6 +204,52 @@ function contentForItem(item) {
   if (item.content) return item.content;
   if (item.text != null) return { text: item.text, runs: item.runs || [] };
   return null;
+}
+
+function sourceTextForItem(item) {
+  if (typeof item.text === 'string') return item.text;
+  if (item.content && typeof item.content.text === 'string') return item.content.text;
+  return null;
+}
+
+function sourceRunsForItem(item) {
+  const runs = item.runs || (item.content && item.content.runs) || [];
+  if (!Array.isArray(runs) || !runs.length) return [];
+  if (isWholeItemSourceRun(item, runs)) return [];
+  return runs
+    .filter((run) => run && String(run.text || '') !== '')
+    .map((run) => ({
+      text: String(run.text || ''),
+      tagName: run.tagName || null,
+      classList: Array.isArray(run.classList) ? run.classList.slice() : [],
+      attributes: { ...(run.attributes || {}) },
+    }));
+}
+
+function isWholeItemSourceRun(item, runs) {
+  if (!Array.isArray(runs) || runs.length !== 1) return false;
+  const run = runs[0] || {};
+  return String(run.text || '') === String(sourceTextForItem(item) || '')
+    && String(run.tagName || '').toLowerCase() === String(item.tagName || '').toLowerCase();
+}
+
+function sourceHtmlForItem(item) {
+  if (item.sourceNode && typeof item.sourceNode.sourceHtml === 'string') return item.sourceNode.sourceHtml;
+  if (typeof item.sourceHtml === 'string') return item.sourceHtml;
+  return null;
+}
+
+function sourceAncestorNodesForItem(item) {
+  if (!Array.isArray(item.sourceAncestorNodes)) return [];
+  return item.sourceAncestorNodes
+    .filter((node) => node && node.tagName)
+    .map((node) => ({
+      tagName: node.tagName,
+      id: node.id || null,
+      classList: Array.isArray(node.classList) ? node.classList.slice() : [],
+      attributes: { ...(node.attributes || {}) },
+      sourcePath: node.sourcePath || null,
+    }));
 }
 
 function styledSnapshotForLayout(snapshot, options, layout) {
