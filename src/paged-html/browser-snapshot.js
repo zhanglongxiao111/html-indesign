@@ -433,6 +433,16 @@ async function renderSnapshot(options) {
         }
         return out;
       }
+      function ancestorCandidateIds(el, candidates, pageIndex) {
+        const out = [];
+        let parent = el.parentElement;
+        while (parent && candidates[0] && parent !== candidates[0].closest(selector)) {
+          const index = candidates.indexOf(parent);
+          if (index >= 0) out.push(itemIdFor(parent, visualFrameFor(parent), pageIndex, index));
+          parent = parent.parentElement;
+        }
+        return out;
+      }
       const pageEls = Array.from(document.querySelectorAll(selector));
       const styleRules = collectStyleRules();
       const deckEl = document.querySelector('main.deck') || document.body;
@@ -496,6 +506,7 @@ async function renderSnapshot(options) {
               unsupported: unsupportedFor(el),
               candidateIndex: itemIndex,
               ancestorCandidateIndexes: ancestorCandidateIndexes(el, candidates),
+              ancestorCandidateIds: ancestorCandidateIds(el, candidates, pageIndex),
             };
           }),
         };
@@ -544,6 +555,7 @@ async function renderSnapshot(options) {
           table: tableRowsWithBounds(item.table || [], pageInfo.rectPx, widthMm, heightMm),
           documentOrder: item.candidateIndex,
           ancestorCandidateIndexes: item.ancestorCandidateIndexes || [],
+          ancestorCandidateIds: item.ancestorCandidateIds || [],
         }));
       applyNestedPaintOrder(items);
       return {

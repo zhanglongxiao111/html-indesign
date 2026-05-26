@@ -588,7 +588,7 @@ git commit -m "feat: restore editable reverse author html tags"
 - Modify: `test/paged-html/source-metadata.test.js`
 - Modify: `test/semantic-model/from-snapshot.test.js`
 
-- [ ] **Step 1: Add failing source metadata tests for stable attributes**
+- [x] **Step 1: Add failing source metadata tests for stable attributes**
 
 Append to `test/paged-html/source-metadata.test.js`:
 
@@ -628,7 +628,7 @@ Expected failure:
 AssertionError
 ```
 
-- [ ] **Step 2: Add failing semantic model test for nearest parent**
+- [x] **Step 2: Add failing semantic model test for nearest parent**
 
 Append to `test/semantic-model/from-snapshot.test.js`:
 
@@ -682,7 +682,7 @@ Expected failure:
 AssertionError: expected "page-1" to equal "card-1"
 ```
 
-- [ ] **Step 3: Expand stable attribute capture**
+- [x] **Step 3: Expand stable attribute capture**
 
 Modify `src/paged-html/source-metadata.js`:
 
@@ -692,7 +692,7 @@ const STABLE_ATTRIBUTE_RE = /^(data-|aria-|role$|href$|src$|srcset$|sizes$|alt$|
 
 Keep dropping `id`, `class`, and `style`. Preserve `data-id-ignore` only when it belongs to a captured source node; ignored DOM nodes still must not become mappable InDesign items.
 
-- [ ] **Step 4: Capture ancestor candidate ids in browser snapshot**
+- [x] **Step 4: Capture ancestor candidate ids in browser snapshot**
 
 In `src/paged-html/browser-snapshot.js`, add a browser-side helper near `ancestorCandidateIndexes`:
 
@@ -717,7 +717,7 @@ ancestorCandidateIds: ancestorCandidateIds(el, candidates, pageIndex),
 
 If the existing helper already receives indexes, update it to return item ids rather than only numeric indexes. Preserve `ancestorCandidateIndexes` for compatibility while adding `ancestorCandidateIds`.
 
-- [ ] **Step 5: Use nearest ancestor in semantic model**
+- [x] **Step 5: Use nearest ancestor in semantic model**
 
 Modify `itemModelFor` in `src/semantic-model/from-snapshot.js`:
 
@@ -738,7 +738,7 @@ function nearestSourceParentId(item, page) {
 }
 ```
 
-- [ ] **Step 6: Run metadata and semantic tests**
+- [x] **Step 6: Run metadata and semantic tests**
 
 Run:
 

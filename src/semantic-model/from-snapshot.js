@@ -127,7 +127,8 @@ function itemModelFor(item, page, layout) {
     || null;
   const sourceNode = item.sourceNode || sourceNodeForSnapshotItem(item);
   const itemLayout = gridLayoutFromCssVars(item.cssVars || {});
-  const structure = { parentId: page.id, order: item.documentOrder || 0, containerPolicy: 'group' };
+  const parentId = nearestSourceParentId(item, page);
+  const structure = { parentId, order: item.documentOrder || 0, containerPolicy: parentId === page.id ? 'group' : 'child' };
   return {
     id: item.id,
     raw: item,
@@ -163,6 +164,14 @@ function itemModelFor(item, page, layout) {
       layout: itemLayout,
     })],
   };
+}
+
+function nearestSourceParentId(item, page) {
+  const ids = item.ancestorCandidateIds || [];
+  for (const id of ids) {
+    if ((page.items || []).some((candidate) => candidate.id === id)) return id;
+  }
+  return page.id;
 }
 
 function pageGridFromAttributes(attrs = {}) {

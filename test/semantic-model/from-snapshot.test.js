@@ -158,3 +158,45 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
   assert.equal(itemLabel.sourceNode.tagName, 'div');
   assert.equal(itemLabel.structure.parentId, 'agenda-page');
 });
+
+test('snapshotToSemanticModel uses nearest candidate ancestor as structure parent', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      rectPx: { x: 0, y: 0, width: 1000, height: 600 },
+      widthMm: 264,
+      heightMm: 158,
+      attributes: { 'data-page': 'page-1', 'data-id-grid': '12x6' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'card-1',
+          role: 'shape',
+          tagName: 'div',
+          classList: ['metric-card'],
+          attributes: { 'data-id-object': '' },
+          sourceNode: { tagName: 'div', id: 'card-1', classList: ['metric-card'], attributes: { 'data-id-object': '' } },
+          documentOrder: 1,
+          rectPx: { x: 10, y: 10, width: 300, height: 120 },
+        },
+        {
+          id: 'card-1-value',
+          role: 'text',
+          tagName: 'p',
+          classList: ['metric-value'],
+          attributes: { 'data-id-paragraph-style': 'metric-value' },
+          sourceNode: { tagName: 'p', id: 'card-1-value', classList: ['metric-value'], attributes: { 'data-id-paragraph-style': 'metric-value' } },
+          ancestorCandidateIds: ['card-1'],
+          documentOrder: 2,
+          text: '243.75m',
+          rectPx: { x: 20, y: 20, width: 200, height: 40 },
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation' });
+
+  assert.equal(model.pages[0].items[1].structure.parentId, 'card-1');
+});

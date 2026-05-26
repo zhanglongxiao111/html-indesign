@@ -1,4 +1,4 @@
-const STABLE_ATTRIBUTE_RE = /^(data-id-|aria-|role$|href$|src$|alt$|title$)/i;
+const STABLE_ATTRIBUTE_RE = /^(data-|aria-|role$|href$|src$|srcset$|sizes$|alt$|title$|data$|type$|width$|height$|loading$|decoding$|crossorigin$|referrerpolicy$|media$|poster$)/i;
 const GRID_VAR_NAMES = ['--grid-col', '--grid-span', '--grid-row', '--grid-row-span'];
 
 function sourcePackageFromDocument(input = {}) {

@@ -71,3 +71,31 @@ test('gridLayoutFromCssVars converts grid custom properties to numbers', () => {
     },
   });
 });
+
+test('sourceNodeForSnapshotItem preserves stable resource and data attributes', () => {
+  const node = sourceNodeForSnapshotItem({
+    tagName: 'object',
+    id: 'pdf-source',
+    classList: ['pdf-source'],
+    attributes: {
+      id: 'pdf-source',
+      class: 'pdf-source',
+      data: '../reference-pdfs/ice-rink-layout-reference.pdf',
+      type: 'application/pdf',
+      'data-asset-kind': 'pdf',
+      'data-id-pdf-page': '1',
+      loading: 'lazy',
+      decoding: 'async',
+      style: 'position:absolute',
+    },
+  });
+
+  assert.deepEqual(node.attributes, {
+    data: '../reference-pdfs/ice-rink-layout-reference.pdf',
+    type: 'application/pdf',
+    'data-asset-kind': 'pdf',
+    'data-id-pdf-page': '1',
+    loading: 'lazy',
+    decoding: 'async',
+  });
+});
