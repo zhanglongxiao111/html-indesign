@@ -397,6 +397,7 @@ function auditReverseAuthorPackage(author) {
     return { ok: false, missing: ['author/deck.config.json'] };
   }
   const { checkAuthorPackageEntry } = require('../src/authoring');
+  const { auditReverseAuthorPackage: auditEditableAuthorPackage } = require('../src/indesign-reverse/author-audit');
   let check;
   try {
     check = checkAuthorPackageEntry(author.config);
@@ -410,12 +411,16 @@ function auditReverseAuthorPackage(author) {
   const config = JSON.parse(fs.readFileSync(author.config, 'utf8'));
   const pageFiles = (config.pages || []).map((page) => path.join(path.dirname(author.config), page.file));
   const missingPages = pageFiles.filter((file) => !fs.existsSync(file));
+  const editable = auditEditableAuthorPackage(author.outDir || path.dirname(author.config));
   return {
-    ok: check.ok && missingPages.length === 0,
+    ok: check.ok && missingPages.length === 0 && editable.ok,
     config: author.config,
     entry: check.entryPath,
     pages: pageFiles.length,
     missingPages,
+    editable,
+    errors: editable.errors || [],
+    warnings: editable.warnings || [],
   };
 }
 

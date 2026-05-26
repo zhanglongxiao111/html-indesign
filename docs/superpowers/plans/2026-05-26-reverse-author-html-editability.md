@@ -881,7 +881,7 @@ git commit -m "feat: emit grid first reverse author css"
 - Create: `test/indesign-reverse/author-audit.test.js`
 - Modify: `test/indesign-e2e-runner.test.js`
 
-- [ ] **Step 1: Add failing audit tests**
+- [x] **Step 1: Add failing audit tests**
 
 Create `test/indesign-reverse/author-audit.test.js`:
 
@@ -920,7 +920,7 @@ Expected failure:
 Cannot find module '../../src/indesign-reverse/author-audit'
 ```
 
-- [ ] **Step 2: Implement author audit**
+- [x] **Step 2: Implement author audit**
 
 Create `src/indesign-reverse/author-audit.js`:
 
@@ -998,7 +998,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 3: Export audit and connect E2E**
+- [x] **Step 3: Export audit and connect E2E**
 
 Modify `src/indesign-reverse/index.js`:
 
@@ -1016,7 +1016,7 @@ module.exports = Object.assign(
 
 Modify `scripts/indesign-e2e.js` existing author package audit function so it calls `auditReverseAuthorPackage(author.outDir)` and fails when `audit.ok` is false. Preserve existing `checkAuthorPackageEntry` page count checks.
 
-- [ ] **Step 4: Add E2E runner test for audit integration**
+- [x] **Step 4: Add E2E runner test for audit integration**
 
 Append to `test/indesign-e2e-runner.test.js`:
 
@@ -1027,7 +1027,7 @@ test('auditReverseAuthorPackage includes editable author html checks', () => {
 });
 ```
 
-- [ ] **Step 5: Run audit tests**
+- [x] **Step 5: Run audit tests**
 
 Run:
 

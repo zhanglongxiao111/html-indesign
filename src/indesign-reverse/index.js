@@ -3,6 +3,7 @@ const { reverseSnapshotToSemanticModel } = require('./reverse-model');
 const { semanticModelToHtml } = require('./html-writer');
 const { legacyBlueprintToSemanticModel } = require('./legacy-blueprint');
 const { writeReverseAuthorPackage } = require('./author-package-writer');
+const { auditReverseAuthorPackage } = require('./author-audit');
 
 module.exports = {
   readReverseSnapshot,
@@ -10,4 +11,5 @@ module.exports = {
   semanticModelToHtml,
   legacyBlueprintToSemanticModel,
   writeReverseAuthorPackage,
+  auditReverseAuthorPackage,
 };

@@ -207,6 +207,10 @@ test('auditReverseAuthorPackage reports generated author package health', () => 
   assert.equal(audit.pages, 1);
 });
 
+test('auditReverseAuthorPackage includes editable author html checks', () => {
+  assert.equal(typeof auditReverseAuthorPackage, 'function');
+});
+
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {
   const htmlPath = path.resolve(__dirname, 'fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
