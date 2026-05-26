@@ -95,7 +95,27 @@ function sourcePageAttrs(page, sourceFile, options) {
     if (page.grid.rowGutter != null) attrs['data-id-row-gutter'] = attrs['data-id-row-gutter'] || `${page.grid.rowGutter}px`;
     if (page.grid.baseline != null) attrs['data-id-baseline'] = attrs['data-id-baseline'] || `${page.grid.baseline}px`;
   }
+  const style = pageStyleVars(page);
+  if (style) attrs.style = style;
   return attrsToHtml(orderPageAttrs(attrs));
+}
+
+function pageStyleVars(page) {
+  const pairs = [];
+  if (page.grid) {
+    pairs.push(['--id-grid-columns', page.grid.columns]);
+    pairs.push(['--id-grid-rows', page.grid.rows]);
+    if (page.grid.columnGutter != null) pairs.push(['--id-column-gutter', `${page.grid.columnGutter}px`]);
+    if (page.grid.rowGutter != null) pairs.push(['--id-row-gutter', `${page.grid.rowGutter}px`]);
+    if (page.grid.baseline != null) pairs.push(['--id-baseline', `${page.grid.baseline}px`]);
+  }
+  if (page.margins) {
+    pairs.push(['--id-margin-top', `${page.margins.top}px`]);
+    pairs.push(['--id-margin-right', `${page.margins.right}px`]);
+    pairs.push(['--id-margin-bottom', `${page.margins.bottom}px`]);
+    pairs.push(['--id-margin-left', `${page.margins.left}px`]);
+  }
+  return pairs.map(([name, value]) => `${name}:${value}`).join(';');
 }
 
 function authoringReport(model, pages, options) {

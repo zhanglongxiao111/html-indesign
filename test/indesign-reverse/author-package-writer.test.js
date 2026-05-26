@@ -68,6 +68,23 @@ test('writeReverseAuthorPackage restores source resource tags instead of div pla
   assert.doesNotMatch(html, /<div[^>]+data="\.\.\/reference-pdfs/);
 });
 
+test('writeReverseAuthorPackage emits grid-first layout css and avoids absolute overrides for grid items', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-grid-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage(taggedModel(), { outDir, mode: 'authoring' });
+
+  const layoutCss = fs.readFileSync(path.join(outDir, 'styles/layout.css'), 'utf8');
+  const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+
+  assert.match(layoutCss, /\.page \{[\s\S]*display: grid/);
+  assert.match(layoutCss, /grid-template-columns: repeat\(var\(--id-grid-columns, 12\), minmax\(0, 1fr\)\)/);
+  assert.match(layoutCss, /\.grid-item \{[\s\S]*grid-column: var\(--grid-col\) \/ span var\(--grid-span, 1\)/);
+  assert.match(pageHtml, /style="[^"]*--id-grid-columns:12/);
+  assert.doesNotMatch(overrides, /#agenda-title/);
+});
+
 function taggedModel() {
   return {
     kind: 'DocumentModel',

@@ -767,7 +767,7 @@ git commit -m "feat: preserve reverse author dom structure"
 - Modify: `src/indesign-reverse/author-package-writer.js`
 - Modify: `test/indesign-reverse/author-package-writer.test.js`
 
-- [ ] **Step 1: Add failing tests for grid-first author CSS**
+- [x] **Step 1: Add failing tests for grid-first author CSS**
 
 Append to `test/indesign-reverse/author-package-writer.test.js`:
 
@@ -796,7 +796,7 @@ Expected failure:
 AssertionError: input did not match /display: grid/
 ```
 
-- [ ] **Step 2: Emit page grid CSS variables**
+- [x] **Step 2: Emit page grid CSS variables**
 
 Modify `sourcePageAttrs` in `src/indesign-reverse/author-package-writer.js` so page `style` contains grid and margin variables:
 
@@ -829,7 +829,7 @@ function pageStyleVars(page) {
 
 Ensure `sourcePageAttrs` skips existing `style` from `sourceNode.attributes`.
 
-- [ ] **Step 3: Rewrite author layout CSS**
+- [x] **Step 3: Rewrite author layout CSS**
 
 Modify `layoutCss` in `src/indesign-reverse/author-css-writer.js`:
 
@@ -850,7 +850,7 @@ function layoutCss(model) {
 
 Keep `reverseOverridesCss` unchanged for items without `layout.grid`.
 
-- [ ] **Step 4: Run author package tests**
+- [x] **Step 4: Run author package tests**
 
 Run:
 
