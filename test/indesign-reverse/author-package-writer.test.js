@@ -174,6 +174,59 @@ test('writeReverseAuthorPackage preserves source grid and margin units in page v
   assert.match(pageHtml, /style="[^"]*--id-margin-left:18mm/);
 });
 
+test('writeReverseAuthorPackage preserves source package config metadata', () => {
+  const root = path.resolve('test/workspace/reverse-author-config-metadata-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'architecture-report',
+    title: '冰球场首层平面排布汇报',
+    profile: 'architecture-report',
+    unitMode: 'presentation',
+    targetSize: 'source',
+    entry: 'deck.html',
+    styles: ['styles/tokens.css'],
+    pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
+    assets: { root: 'assets' },
+  }, null, 2));
+  writeFixtureFile(path.join(sourceRoot, 'styles/tokens.css'), ':root { --ink: #123456; }');
+
+  writeReverseAuthorPackage(taggedModel(), { outDir, sourceRoot, mode: 'structured' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.equal(config.id, 'architecture-report');
+  assert.equal(config.title, '冰球场首层平面排布汇报');
+  assert.equal(config.profile, 'architecture-report');
+});
+
+test('writeReverseAuthorPackage writes clean structured author markup', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-clean-markup-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  model.pages[0].items.push({
+    id: 'legend-swatch',
+    role: 'shape',
+    semantic: 'unknown',
+    sourceNode: {
+      tagName: 'span',
+      classList: ['swatch'],
+      attributes: { style: 'background:var(--accent)' },
+    },
+    structure: { parentId: 'agenda-page', order: 2 },
+    bounds: { x: 0, y: 0, width: 20, height: 20 },
+  });
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'structured' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  assert.doesNotMatch(pageHtml, /data-id-reverse-mode/);
+  assert.doesNotMatch(pageHtml, /data-id-semantic="unknown"/);
+  assert.match(pageHtml, /\sdata-id-object(\s|>)/);
+  assert.doesNotMatch(pageHtml, /data-id-object=""/);
+});
+
 test('writeReverseAuthorPackage keeps structured source geometry in html instead of dead override rules', () => {
   const outDir = path.resolve('test/workspace/reverse-author-overrides-test');
   fs.rmSync(outDir, { recursive: true, force: true });

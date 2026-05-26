@@ -5,7 +5,8 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   return {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
-    title: (snapshot.document && snapshot.document.name) || documentLabel.id || 'indesign-document',
+    title: documentLabel.title || (documentLabel.sourcePackage && documentLabel.sourcePackage.title) || (snapshot.document && snapshot.document.name) || documentLabel.id || 'indesign-document',
+    profile: documentLabel.profile || (documentLabel.sourcePackage && documentLabel.sourcePackage.profile) || null,
     source: snapshot.metadata && snapshot.metadata.sourceDocument,
     unitMode: documentLabel.unitMode || 'presentation',
     coordinateUnit: documentLabel.coordinateUnit || 'pt',

@@ -1,5 +1,24 @@
 const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
-const BOOLEAN_ATTRIBUTES = new Set(['allowfullscreen', 'async', 'autofocus', 'autoplay', 'checked', 'controls', 'defer', 'disabled', 'hidden', 'loop', 'muted', 'open', 'playsinline', 'readonly', 'required', 'selected']);
+const BOOLEAN_ATTRIBUTES = new Set([
+  'allowfullscreen',
+  'async',
+  'autofocus',
+  'autoplay',
+  'checked',
+  'controls',
+  'defer',
+  'disabled',
+  'hidden',
+  'loop',
+  'muted',
+  'open',
+  'playsinline',
+  'readonly',
+  'required',
+  'selected',
+  'data-id-object',
+  'data-id-ignore',
+]);
 const BLOCKED_ATTRIBUTES = new Set(['style']);
 
 function mergeAttributes(...sources) {

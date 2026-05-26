@@ -25,6 +25,8 @@ function auditAuthorSourceRoundtrip(options = {}) {
 
   const sourcePackage = readAuthorPackage(sourceRoot);
   const reversePackage = readAuthorPackage(reverseRoot);
+  compareConfigMetadata(sourcePackage, reversePackage, addIssue);
+  auditReverseSourceQuality(reversePackage, addIssue);
   const reversePages = new Map(reversePackage.pages.map((page) => [page.id, page]));
   let pagesCompared = 0;
 
@@ -41,11 +43,89 @@ function auditAuthorSourceRoundtrip(options = {}) {
     comparePage(sourcePage, reversePage, addIssue);
   }
 
-  return result(errors, warnings, {
+  const report = result(errors, warnings, {
     pagesCompared,
     pagesExpected: sourcePackage.pages.length,
     issues: errors.length + warnings.length,
   });
+  if (options.includeSourceDrift) {
+    report.sourceDrift = measureAuthorSourceDrift({ sourceRoot, reverseRoot });
+  }
+  return report;
+}
+
+function measureAuthorSourceDrift(options = {}) {
+  const sourceRoot = options.sourceRoot && path.resolve(options.sourceRoot);
+  const reverseRoot = options.reverseRoot && path.resolve(options.reverseRoot);
+  const errors = [];
+
+  if (!sourceRoot || !fs.existsSync(path.join(sourceRoot, 'deck.config.json'))) {
+    errors.push({
+      code: 'DRIFT_SOURCE_CONFIG_MISSING',
+      message: 'Source author package deck.config.json is missing.',
+      file: sourceRoot ? path.join(sourceRoot, 'deck.config.json') : 'deck.config.json',
+    });
+    return driftResult(errors, []);
+  }
+  if (!reverseRoot || !fs.existsSync(path.join(reverseRoot, 'deck.config.json'))) {
+    errors.push({
+      code: 'DRIFT_REVERSE_CONFIG_MISSING',
+      message: 'Reverse author package deck.config.json is missing.',
+      file: reverseRoot ? path.join(reverseRoot, 'deck.config.json') : 'deck.config.json',
+    });
+    return driftResult(errors, []);
+  }
+
+  const sourceConfig = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'deck.config.json'), 'utf8'));
+  const reverseConfig = JSON.parse(fs.readFileSync(path.join(reverseRoot, 'deck.config.json'), 'utf8'));
+  const files = collectComparableSourceFiles(sourceConfig, reverseConfig, sourceRoot, reverseRoot);
+  const entries = files.map((file) => compareSourceFile(sourceRoot, reverseRoot, file));
+  return driftResult(errors, entries);
+}
+
+function compareConfigMetadata(sourcePackage, reversePackage, addIssue) {
+  const fields = ['id', 'title', 'profile'];
+  const expected = {};
+  const actual = {};
+  for (const field of fields) {
+    if (!Object.prototype.hasOwnProperty.call(sourcePackage.config, field)) continue;
+    expected[field] = normalizeConfigValue(sourcePackage.config[field]);
+    actual[field] = normalizeConfigValue(reversePackage.config[field]);
+  }
+  if (Object.keys(expected).length && !deepEqual(expected, actual)) {
+    addIssue('ROUNDTRIP_CONFIG_METADATA_CHANGED', 'Author package config metadata changed.', {
+      file: 'deck.config.json',
+      expected,
+      actual,
+    });
+  }
+}
+
+function auditReverseSourceQuality(reversePackage, addIssue) {
+  for (const page of reversePackage.pages) {
+    if (/\sdata-id-reverse-mode\s*=\s*["']structured["']/i.test(page.html)) {
+      addIssue('ROUNDTRIP_REVERSE_MODE_LEAKED', 'Structured reverse bookkeeping leaked into editable author source.', {
+        page: page.id,
+        file: page.file,
+        attribute: 'data-id-reverse-mode',
+      });
+    }
+    if (/\sdata-id-semantic\s*=\s*["']unknown["']/i.test(page.html)) {
+      addIssue('ROUNDTRIP_UNKNOWN_SEMANTIC_LEAKED', 'Unknown semantic marker leaked into editable author source.', {
+        page: page.id,
+        file: page.file,
+        attribute: 'data-id-semantic',
+      });
+    }
+    const serializedEmpty = emptyProjectBooleanAttributes(page.html);
+    if (serializedEmpty.length) {
+      addIssue('ROUNDTRIP_EMPTY_DATA_ATTRIBUTE_SERIALIZED', 'Project boolean data attributes were serialized as empty string attributes.', {
+        page: page.id,
+        file: page.file,
+        attributes: serializedEmpty,
+      });
+    }
+  }
 }
 
 function comparePage(sourcePage, reversePage, addIssue) {
@@ -105,6 +185,84 @@ function readAuthorPackage(root) {
   return { config, pages };
 }
 
+function collectComparableSourceFiles(sourceConfig, reverseConfig, sourceRoot, reverseRoot) {
+  const files = new Set();
+  addSourceFiles(files, sourceConfig);
+  addSourceFiles(files, reverseConfig);
+  return Array.from(files).filter((file) => (
+    fs.existsSync(path.join(sourceRoot, file)) || fs.existsSync(path.join(reverseRoot, file))
+  ));
+}
+
+function addSourceFiles(files, config) {
+  files.add('deck.config.json');
+  if (config && config.entry) files.add(slashPath(config.entry));
+  for (const style of config && Array.isArray(config.styles) ? config.styles : []) {
+    files.add(slashPath(style));
+  }
+  for (const page of config && Array.isArray(config.pages) ? config.pages : []) {
+    if (page && page.file) files.add(slashPath(page.file));
+  }
+}
+
+function compareSourceFile(sourceRoot, reverseRoot, file) {
+  const sourcePath = path.join(sourceRoot, file);
+  const reversePath = path.join(reverseRoot, file);
+  const sourceExists = fs.existsSync(sourcePath);
+  const reverseExists = fs.existsSync(reversePath);
+  const sourceText = sourceExists ? fs.readFileSync(sourcePath, 'utf8') : '';
+  const reverseText = reverseExists ? fs.readFileSync(reversePath, 'utf8') : '';
+  const normalizedSource = normalizeSourceForDrift(sourceText);
+  const normalizedReverse = normalizeSourceForDrift(reverseText);
+  const exactEqual = sourceExists && reverseExists && sourceText === reverseText;
+  const normalizedEqual = sourceExists && reverseExists && normalizedSource === normalizedReverse;
+  return {
+    file,
+    sourceExists,
+    reverseExists,
+    exactEqual,
+    normalizedEqual,
+    sourceLines: countLines(sourceText),
+    reverseLines: countLines(reverseText),
+    sourceBytes: Buffer.byteLength(sourceText, 'utf8'),
+    reverseBytes: Buffer.byteLength(reverseText, 'utf8'),
+    sourceSha256: sourceExists ? sha256(sourceText) : null,
+    reverseSha256: reverseExists ? sha256(reverseText) : null,
+    lineEditDistance: sourceExists && reverseExists ? lineEditDistance(sourceText, reverseText) : null,
+    normalizedLineEditDistance: sourceExists && reverseExists ? lineEditDistance(normalizedSource, normalizedReverse) : null,
+  };
+}
+
+function driftResult(errors, files) {
+  const changed = files.filter((entry) => !entry.exactEqual);
+  const normalizedChanged = files.filter((entry) => !entry.normalizedEqual);
+  const missing = files.filter((entry) => !entry.sourceExists || !entry.reverseExists);
+  return {
+    ok: errors.length === 0,
+    stable: errors.length === 0 && missing.length === 0 && changed.length === 0,
+    errors,
+    stats: {
+      filesCompared: files.length,
+      filesChanged: changed.length,
+      normalizedFilesChanged: normalizedChanged.length,
+      missingFiles: missing.length,
+      lineEditDistance: files.reduce((sum, entry) => sum + (entry.lineEditDistance || 0), 0),
+      normalizedLineEditDistance: files.reduce((sum, entry) => sum + (entry.normalizedLineEditDistance || 0), 0),
+    },
+    files,
+  };
+}
+
+function emptyProjectBooleanAttributes(html) {
+  const names = new Set();
+  const re = /\s(data-id-(?:object|ignore))\s*=\s*["']{2}/gi;
+  let match;
+  while ((match = re.exec(html))) {
+    names.add(match[1].toLowerCase());
+  }
+  return Array.from(names).sort();
+}
+
 function comparableResourceEntry(entry, root) {
   const out = { ...entry };
   if (Object.prototype.hasOwnProperty.call(out, 'src')) {
@@ -129,6 +287,10 @@ function resourceIdentity(root, value) {
 function resolveResourcePath(root, value) {
   if (!value || isRemoteUrl(value)) return null;
   return path.isAbsolute(value) ? path.resolve(value) : path.resolve(root, value);
+}
+
+function slashPath(value) {
+  return String(value || '').replace(/\\/g, '/');
 }
 
 function isRemoteUrl(value) {
@@ -230,6 +392,10 @@ function normalizeClass(value) {
   return String(value || '').split(/\s+/).filter(Boolean).sort().join(' ');
 }
 
+function normalizeConfigValue(value) {
+  return value == null ? null : value;
+}
+
 function normalizeInlineStyle(value) {
   return String(value || '')
     .split(';')
@@ -242,6 +408,46 @@ function normalizeInlineStyle(value) {
     })
     .sort()
     .join(';');
+}
+
+function normalizeSourceForDrift(value) {
+  return String(value || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+$/gm, '')
+    .trimEnd();
+}
+
+function countLines(value) {
+  const text = String(value || '');
+  if (!text) return 0;
+  return text.split(/\r\n?|\n/).length;
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+function lineEditDistance(left, right) {
+  const a = normalizeSourceForDrift(left).split('\n');
+  const b = normalizeSourceForDrift(right).split('\n');
+  if (a.length === 1 && a[0] === '') a.pop();
+  if (b.length === 1 && b[0] === '') b.pop();
+  const lcs = longestCommonSubsequenceLength(a, b);
+  return a.length + b.length - (2 * lcs);
+}
+
+function longestCommonSubsequenceLength(a, b) {
+  const previous = new Array(b.length + 1).fill(0);
+  const current = new Array(b.length + 1).fill(0);
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = a[i - 1] === b[j - 1]
+        ? previous[j - 1] + 1
+        : Math.max(previous[j], current[j - 1]);
+    }
+    for (let j = 0; j <= b.length; j += 1) previous[j] = current[j];
+  }
+  return previous[b.length];
 }
 
 function createIssueWriter({ errors, warnings, strict }) {
@@ -272,4 +478,5 @@ function deepEqual(left, right) {
 
 module.exports = {
   auditAuthorSourceRoundtrip,
+  measureAuthorSourceDrift,
 };

@@ -365,7 +365,7 @@ test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nestin
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
   assert.equal((html.match(/class="drawing-frame grid-item grid-frame"/g) || []).length, 1);
-  assert.match(html, /<div class="drawing-frame grid-item grid-frame" style="--grid-col:5;--grid-span:8" data-id-ignore="">\n\s+<img class="pdf-preview"/);
+  assert.match(html, /<div class="drawing-frame grid-item grid-frame" style="--grid-col:5;--grid-span:8" data-id-ignore>\n\s+<img class="pdf-preview"/);
   assert.match(html, /<object class="pdf-source" data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
 });
 

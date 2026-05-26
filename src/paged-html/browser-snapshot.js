@@ -569,6 +569,7 @@ async function renderSnapshot(options) {
       return {
         sourcePackageInput: {
           attributes: attrs(deckEl),
+          title: document.title || '',
           styleFiles,
           pageFiles,
           assetRoot: 'assets',

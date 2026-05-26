@@ -28,7 +28,8 @@ function writeReverseAuthorPackage(model, options = {}) {
     assetRoot: (model.sourcePackage && model.sourcePackage.assetRoot) || 'assets',
   });
   const renderOptions = { ...options, assetPathMap: assetCopy.pathMap };
-  const config = deckConfigFor(model, pages, styleFiles);
+  const sourceConfig = readSourceConfig(sourceRoot);
+  const config = deckConfigFor(model, pages, styleFiles, sourceConfig);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
   for (const [relativePath, css] of Object.entries(generatedCss)) {
@@ -58,20 +59,35 @@ function writeReverseAuthorPackage(model, options = {}) {
   };
 }
 
-function deckConfigFor(model, pages, styleFiles) {
+function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   const sourcePackage = model.sourcePackage || {};
+  const id = sourceConfig && sourceConfig.id || sourcePackage.id || model.id;
+  const title = sourceConfig && sourceConfig.title || sourcePackage.title || model.title || id;
+  const hasSourceProfile = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'profile');
+  const hasPackageProfile = sourcePackage && Object.prototype.hasOwnProperty.call(sourcePackage, 'profile');
   return {
-    schemaVersion: 1,
-    id: model.id,
-    title: model.title || model.id,
-    profile: model.profile || null,
-    unitMode: model.unitMode || 'presentation',
-    targetSize: 'source',
-    entry: sourcePackage.entry || 'deck.html',
+    schemaVersion: sourceConfig && sourceConfig.schemaVersion || sourcePackage.schemaVersion || 1,
+    id,
+    title,
+    profile: hasSourceProfile ? sourceConfig.profile : hasPackageProfile ? sourcePackage.profile : model.profile || null,
+    unitMode: sourceConfig && sourceConfig.unitMode || model.unitMode || 'presentation',
+    targetSize: sourceConfig && sourceConfig.targetSize || 'source',
+    entry: sourceConfig && sourceConfig.entry || sourcePackage.entry || 'deck.html',
     styles: styleFiles,
     pages: pages.map((page) => ({ id: page.id, file: page.file })),
-    assets: { root: sourcePackage.assetRoot || 'assets' },
+    assets: { root: sourceConfig && sourceConfig.assets && sourceConfig.assets.root || sourcePackage.assetRoot || 'assets' },
   };
+}
+
+function readSourceConfig(sourceRoot) {
+  if (!sourceRoot) return null;
+  const configPath = path.join(sourceRoot, 'deck.config.json');
+  if (!fs.existsSync(configPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch (_error) {
+    return null;
+  }
 }
 
 function pageEntries(model) {
@@ -99,7 +115,7 @@ function sourcePageAttrs(page, sourceFile, options) {
   attrs['data-page'] = page.semantic || page.id;
   attrs['data-id-source-file'] = sourceFile;
   if (options.mode === 'observation' || page.semantic === 'unknown') attrs['data-id-observed'] = 'true';
-  if (options.mode) attrs['data-id-reverse-mode'] = options.mode;
+  if (options.mode && options.mode !== 'structured') attrs['data-id-reverse-mode'] = options.mode;
   if (page.grid) {
     attrs['data-id-grid'] = attrs['data-id-grid'] || `${page.grid.columns}x${page.grid.rows}`;
     if (page.grid.columnGutter != null) attrs['data-id-column-gutter'] = attrs['data-id-column-gutter'] || `${page.grid.columnGutter}px`;

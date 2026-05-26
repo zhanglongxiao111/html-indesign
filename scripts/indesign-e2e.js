@@ -421,6 +421,7 @@ function auditReverseAuthorPackage(author) {
       sourceRoot: author.sourceRoot,
       reverseRoot: outDir,
       strict: !!author.strictSourceRoundtrip,
+      includeSourceDrift: true,
     })
     : null;
   if (sourceRoundtrip) {
@@ -666,13 +667,16 @@ async function runReverseRoundtrip(context, options = {}) {
   const authorAudit = auditReverseAuthorPackage({
     ...htmlResult.files.author,
     sourceRoot: path.dirname(context.htmlPath),
+    strictSourceRoundtrip: true,
   });
   if (!authorAudit.ok) {
     throw new Error(`Reverse author package audit failed: ${JSON.stringify(authorAudit, null, 2)}`);
   }
   const author = Object.assign({}, htmlResult.files.author, { audit: authorAudit });
-  const secondPass = options.secondPassRoundtrip
-    ? await runIndesignE2E({
+  let secondPass = null;
+  let canonicalDrift = null;
+  if (options.secondPassRoundtrip) {
+    secondPass = await runIndesignE2E({
       repoRoot: context.repoRoot,
       workspaceDir: context.workspaceDir,
       runDir: path.join(context.runDir, 'second-pass'),
@@ -684,7 +688,18 @@ async function runReverseRoundtrip(context, options = {}) {
       secondPassRoundtrip: false,
       styleNameMap: options.styleNameMap,
     })
-    : null;
+    const { measureAuthorSourceDrift } = require('../src/indesign-reverse/source-roundtrip-diff');
+    canonicalDrift = measureAuthorSourceDrift({
+      sourceRoot: htmlResult.files.author.outDir,
+      reverseRoot: secondPass.reverse && secondPass.reverse.author && secondPass.reverse.author.outDir,
+    });
+    const reportDir = path.join(htmlResult.files.author.outDir, 'reports');
+    fs.mkdirSync(reportDir, { recursive: true });
+    fs.writeFileSync(path.join(reportDir, 'canonical-source-drift-report.json'), JSON.stringify(canonicalDrift, null, 2), 'utf8');
+    if (!canonicalDrift.ok || canonicalDrift.stats.filesChanged > 0) {
+      throw new Error(`Second-pass reverse author package drifted from first-pass canonical source: ${JSON.stringify(canonicalDrift, null, 2)}`);
+    }
+  }
 
   return {
     snapshot: reverseResult,
@@ -694,6 +709,7 @@ async function runReverseRoundtrip(context, options = {}) {
     },
     author,
     secondPass,
+    canonicalDrift,
   };
 }
 

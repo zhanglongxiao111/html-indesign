@@ -39,6 +39,31 @@ test('audit-reverse-author-roundtrip cli prints JSON report and honors strict mo
   assert.deepEqual(strictReport.errors.map((issue) => issue.code), ['ROUNDTRIP_TEXT_CHANGED']);
 });
 
+test('audit-reverse-author-roundtrip cli can fail on exact source drift', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-cli-drift');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writePackage(sourceRoot, '<section class="page"><h1>Contents</h1></section>');
+  writePackage(reverseRoot, '<section class="page">\n  <h1>Contents</h1>\n</section>\n');
+
+  const script = path.resolve('scripts/audit-reverse-author-roundtrip.js');
+  const result = spawnSync(process.execPath, [
+    script,
+    '--source', sourceRoot,
+    '--reverse', reverseRoot,
+    '--drift',
+    '--fail-on-drift',
+    '--json',
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, true);
+  assert.equal(report.sourceDrift.ok, true);
+  assert.equal(report.sourceDrift.stats.filesChanged, 1);
+});
+
 function writePackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

@@ -16,13 +16,13 @@ const {
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
   const styled = styledSnapshotForLayout(snapshot, options, layout);
-  const documentId = documentIdFor(styled, options);
   const sourcePackage = sourcePackageFromDocument(styled.sourcePackageInput || {});
+  const documentId = documentIdFor(styled, options, sourcePackage);
   const pages = (styled.pages || []).map((page) => pageModelFor(page, layout));
   return {
     kind: 'DocumentModel',
     id: documentId,
-    title: options.title || documentId,
+    title: options.title || sourcePackage && sourcePackage.title || documentId,
     source: styled.metadata && styled.metadata.source,
     unitMode: layout.unitMode,
     coordinateUnit: layout.targetUnit,
@@ -33,9 +33,10 @@ function snapshotToSemanticModel(snapshot, options = {}) {
       kind: 'document',
       id: documentId,
       source: 'html-to-indesign',
+      title: options.title || sourcePackage && sourcePackage.title || documentId,
       unitMode: layout.unitMode,
       coordinateUnit: layout.targetUnit,
-      profile: options.profile || null,
+      profile: options.profile || sourcePackage && sourcePackage.profile || null,
       sourcePackage,
     })],
     parentPages: parentPagesFor(pages),
@@ -48,8 +49,9 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   };
 }
 
-function documentIdFor(snapshot, options) {
+function documentIdFor(snapshot, options, sourcePackage = null) {
   if (options.documentId) return options.documentId;
+  if (sourcePackage && sourcePackage.id) return sourcePackage.id;
   const source = snapshot.metadata && snapshot.metadata.source;
   if (!source) return 'html-document';
   return String(source).split(/[\\/]/).pop().replace(/\.[^.]+$/, '') || 'html-document';

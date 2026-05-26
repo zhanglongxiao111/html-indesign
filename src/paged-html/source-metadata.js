@@ -5,7 +5,7 @@ function sourcePackageFromDocument(input = {}) {
   const attributes = input.attributes || {};
   const config = attributes['data-id-source-package-config'] || null;
   if (!config) return null;
-  return {
+  const out = {
     schemaVersion: Number(attributes['data-id-source-package-schema'] || 1),
     config,
     entry: input.entry || 'deck.html',
@@ -13,6 +13,10 @@ function sourcePackageFromDocument(input = {}) {
     pageFiles: (input.pageFiles || []).map((page) => ({ id: page.id, file: slash(page.file) })),
     assetRoot: input.assetRoot || 'assets',
   };
+  if (attributes['data-id-document']) out.id = attributes['data-id-document'];
+  if (input.title) out.title = input.title;
+  if (attributes['data-id-profile']) out.profile = attributes['data-id-profile'];
+  return out;
 }
 
 function sourceNodeForSnapshotItem(item = {}) {

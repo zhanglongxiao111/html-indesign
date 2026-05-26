@@ -86,7 +86,7 @@ function attrsForItem(item, sourceNode, options) {
   if (!hasDataIdObject(attrs) && item.role !== 'text' && !item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
     attrs['data-id-object'] = '';
   }
-  if (item.semantic) attrs['data-id-semantic'] = item.semantic;
+  if (isUsefulSemantic(item.semantic)) attrs['data-id-semantic'] = item.semantic;
   return attrsToHtml(orderAttrs(attrs));
 }
 
@@ -406,6 +406,11 @@ function hasSourceNode(sourceNode) {
 function isUsefulCharacterStyle(value) {
   const name = String(value || '').trim();
   return Boolean(name && name !== '[无]' && !/^自动字符-/i.test(name));
+}
+
+function isUsefulSemantic(value) {
+  const semantic = String(value || '').trim();
+  return Boolean(semantic && semantic !== 'unknown');
 }
 
 function orderAttrs(attrs) {

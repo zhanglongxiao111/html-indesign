@@ -2,7 +2,7 @@
 
 const path = require('path');
 const { renderSnapshot, validateAuthoringRules } = require('../src/paged-html');
-const { checkAuthorPackageEntry } = require('../src/authoring');
+const { auditAuthorPackageSourceFormat, checkAuthorPackageEntry } = require('../src/authoring');
 
 main().catch((error) => {
   console.error(error && error.stack ? error.stack : String(error));
@@ -17,17 +17,26 @@ async function main() {
   }
 
   let htmlPath;
+  let sourceFormat = null;
   if (options.packagePath) {
-    const packageCheck = checkAuthorPackageEntry(path.resolve(options.packagePath));
+    const packagePath = path.resolve(options.packagePath);
+    sourceFormat = auditAuthorPackageSourceFormat(packagePath, { strict: options.strict });
+    if (!sourceFormat.valid) {
+      const payload = packageFailure(sourceFormat, null);
+      if (options.json) console.log(JSON.stringify(payload, null, 2));
+      else printPackageFailure(payload);
+      process.exit(1);
+    }
+
+    const packageCheck = checkAuthorPackageEntry(packagePath);
     if (!packageCheck.ok) {
       const message = `AUTHOR_GENERATED_ENTRY_DIRTY: ${packageCheck.message}: ${packageCheck.entryPath}`;
       if (options.json) {
-        console.log(JSON.stringify({
-          ok: false,
-          errors: [{ code: 'AUTHOR_GENERATED_ENTRY_DIRTY', message, entryPath: packageCheck.entryPath }],
-          warnings: [],
-          messages: [{ level: 'error', code: 'AUTHOR_GENERATED_ENTRY_DIRTY', message, entryPath: packageCheck.entryPath }],
-        }, null, 2));
+        console.log(JSON.stringify(packageFailure(sourceFormat, {
+          code: 'AUTHOR_GENERATED_ENTRY_DIRTY',
+          message,
+          entryPath: packageCheck.entryPath,
+        }), null, 2));
       } else {
         console.error(message);
       }
@@ -48,10 +57,11 @@ async function main() {
     console.log(JSON.stringify({
       ok: result.valid,
       htmlPath,
+      ...(sourceFormat ? { sourceFormat } : {}),
       ...result,
     }, null, 2));
   } else {
-    printHumanReport(htmlPath, result);
+    printHumanReport(htmlPath, result, sourceFormat);
   }
 
   if (!result.valid) process.exit(1);
@@ -102,14 +112,41 @@ function printUsage(exitCode) {
   process.exit(exitCode);
 }
 
-function printHumanReport(htmlPath, result) {
+function packageFailure(sourceFormat, entryIssue) {
+  const entryErrors = entryIssue ? [{ level: 'error', ...entryIssue }] : [];
+  const errors = entryErrors.concat(sourceFormat ? sourceFormat.errors : []);
+  const warnings = sourceFormat ? sourceFormat.warnings : [];
+  return {
+    ok: false,
+    sourceFormat,
+    errors,
+    warnings,
+    messages: errors.concat(warnings),
+  };
+}
+
+function printPackageFailure(payload) {
+  console.error('Authoring package: FAILED');
+  for (const entry of payload.messages || []) {
+    const file = entry.file ? ` file=${entry.file}` : '';
+    console.error(`[${entry.level}] ${entry.code}${file} ${entry.message}`);
+  }
+}
+
+function printHumanReport(htmlPath, result, sourceFormat = null) {
   console.log(`Authoring rules: ${result.valid ? 'OK' : 'FAILED'}`);
   console.log(`Source: ${htmlPath}`);
-  console.log(`Errors: ${result.errors.length}`);
-  console.log(`Warnings: ${result.warnings.length}`);
-  for (const entry of result.messages) {
+  const messages = [
+    ...(sourceFormat ? sourceFormat.messages : []),
+    ...result.messages,
+  ];
+  console.log(`Errors: ${(sourceFormat ? sourceFormat.errors.length : 0) + result.errors.length}`);
+  console.log(`Warnings: ${(sourceFormat ? sourceFormat.warnings.length : 0) + result.warnings.length}`);
+  for (const entry of messages) {
     const item = entry.itemId ? ` item=${entry.itemId}` : '';
     const edges = entry.edges && entry.edges.length ? ` edges=${entry.edges.join(',')}` : '';
-    console.log(`[${entry.level}] ${entry.code} page=${entry.pageId}${item}${edges} ${entry.message}`);
+    const page = entry.pageId ? ` page=${entry.pageId}` : '';
+    const file = entry.file ? ` file=${entry.file}` : '';
+    console.log(`[${entry.level}] ${entry.code}${page}${file}${item}${edges} ${entry.message}`);
   }
 }
