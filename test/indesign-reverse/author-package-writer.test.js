@@ -53,6 +53,21 @@ test('writeReverseAuthorPackage still splits observation models by page', () => 
   assert.match(overrides, /position:absolute/);
 });
 
+test('writeReverseAuthorPackage restores source resource tags instead of div placeholders', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-resource-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage(resourceModel(), { outDir, mode: 'authoring' });
+
+  const html = fs.readFileSync(path.join(outDir, 'pages/00-cover.html'), 'utf8');
+  assert.match(html, /<img[^>]+class="hero-media"/);
+  assert.match(html, /src="\.\.\/smoke-assets\/photos\/industrial-site\.jpg"/);
+  assert.doesNotMatch(html, /<div[^>]+src="/);
+  assert.match(html, /<object[^>]+class="pdf-source"/);
+  assert.match(html, /data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
+  assert.doesNotMatch(html, /<div[^>]+data="\.\.\/reference-pdfs/);
+});
+
 function taggedModel() {
   return {
     kind: 'DocumentModel',
@@ -138,6 +153,81 @@ function observedModel() {
             styleRefs: {},
             content: { text: '未标注标题', runs: [] },
             textStyle: { pointSize: 32, fillColor: '#123456' },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function resourceModel() {
+  return {
+    kind: 'DocumentModel',
+    id: 'resource-report',
+    title: 'Resource Report',
+    unitMode: 'presentation',
+    sourcePackage: {
+      entry: 'deck.html',
+      assetRoot: 'assets',
+    },
+    styles: {},
+    pages: [
+      {
+        id: 'cover-page',
+        semantic: 'cover',
+        sourceFile: 'pages/00-cover.html',
+        sourceNode: {
+          tagName: 'section',
+          id: 'cover-page',
+          classList: ['page'],
+          attributes: { 'data-page': 'cover', 'data-id-grid': '12x8' },
+        },
+        width: 1920,
+        height: 1080,
+        grid: { columns: 12, rows: 8, columnGutter: 24, rowGutter: 20, baseline: 16 },
+        items: [
+          {
+            id: 'hero-media',
+            role: 'graphic',
+            semantic: 'hero-media',
+            sourceNode: {
+              tagName: 'img',
+              id: 'hero-media',
+              classList: ['hero-media'],
+              attributes: {
+                src: '../smoke-assets/photos/industrial-site.jpg',
+                alt: 'industrial roof aerial',
+                'data-id-object': '',
+              },
+            },
+            structure: { parentId: 'cover-page', order: 1, containerPolicy: 'leaf' },
+            layout: {
+              grid: { col: 1, span: 12, row: 1, rowSpan: 8 },
+              cssVars: { '--grid-col': '1', '--grid-span': '12', '--grid-row': '1', '--grid-row-span': '8' },
+            },
+            asset: { path: '../smoke-assets/photos/industrial-site.jpg', graphicType: 'image' },
+          },
+          {
+            id: 'pdf-source',
+            role: 'graphic',
+            semantic: 'drawing-pdf',
+            sourceNode: {
+              tagName: 'object',
+              id: 'pdf-source',
+              classList: ['pdf-source'],
+              attributes: {
+                data: '../reference-pdfs/ice-rink-layout-reference.pdf',
+                type: 'application/pdf',
+                'data-id-object': '',
+                'data-id-pdf-page': '1',
+              },
+            },
+            structure: { parentId: 'cover-page', order: 2, containerPolicy: 'leaf' },
+            layout: {
+              grid: { col: 7, span: 5, row: 2, rowSpan: 5 },
+              cssVars: { '--grid-col': '7', '--grid-span': '5', '--grid-row': '2', '--grid-row-span': '5' },
+            },
+            asset: { path: '../reference-pdfs/ice-rink-layout-reference.pdf', graphicType: 'pdf' },
           },
         ],
       },

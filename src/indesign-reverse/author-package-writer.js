@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { writeAuthorPackageEntry } = require('../authoring');
 const { writeAuthorCssFiles } = require('./author-css-writer');
+const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
+const { pageItemsToAuthorHtml } = require('./author-html-tree');
 
 function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
@@ -74,78 +76,26 @@ function pageEntries(model) {
 
 function pageHtml(page, sourceFile, options) {
   const attrs = sourcePageAttrs(page, sourceFile, options);
-  const items = (page.items || [])
-    .slice()
-    .sort((a, b) => structureOrder(a) - structureOrder(b))
-    .map((item) => itemHtml(item, options))
-    .join('\n');
-  return [`<section ${attrs.join(' ')}>`, indent(items, 2), '</section>', ''].join('\n');
+  const items = pageItemsToAuthorHtml(page, options);
+  return [`<section ${attrs}>`, indent(items, 2), '</section>', ''].join('\n');
 }
 
 function sourcePageAttrs(page, sourceFile, options) {
   const sourceNode = page.sourceNode || {};
-  const classes = sourceNode.classList && sourceNode.classList.length ? sourceNode.classList.join(' ') : 'page';
-  const attrs = [`class="${attr(classes)}"`];
-  if (sourceNode.id || page.id) attrs.push(`id="${attr(sourceNode.id || page.id)}"`);
-  attrs.push(`data-page="${attr(page.semantic || page.id)}"`);
-  attrs.push(`data-id-source-file="${attr(sourceFile)}"`);
-  if (options.mode === 'observation' || page.semantic === 'unknown') attrs.push('data-id-observed="true"');
-  if (options.mode) attrs.push(`data-id-reverse-mode="${attr(options.mode)}"`);
-
-  for (const [name, value] of Object.entries(sourceNode.attributes || {})) {
-    if (['id', 'class', 'data-page', 'data-id-source-file'].includes(name)) continue;
-    attrs.push(`${name}="${attr(value)}"`);
-  }
+  const attrs = mergeAttributes(sourceNode.attributes);
+  attrs.class = sourceNode.classList && sourceNode.classList.length ? sourceNode.classList.join(' ') : 'page';
+  attrs.id = sourceNode.id || page.id;
+  attrs['data-page'] = page.semantic || page.id;
+  attrs['data-id-source-file'] = sourceFile;
+  if (options.mode === 'observation' || page.semantic === 'unknown') attrs['data-id-observed'] = 'true';
+  if (options.mode) attrs['data-id-reverse-mode'] = options.mode;
   if (page.grid) {
-    attrs.push(`data-id-grid="${attr(`${page.grid.columns}x${page.grid.rows}`)}"`);
-    if (page.grid.columnGutter != null) attrs.push(`data-id-column-gutter="${attr(`${page.grid.columnGutter}px`)}"`);
-    if (page.grid.rowGutter != null) attrs.push(`data-id-row-gutter="${attr(`${page.grid.rowGutter}px`)}"`);
-    if (page.grid.baseline != null) attrs.push(`data-id-baseline="${attr(`${page.grid.baseline}px`)}"`);
+    attrs['data-id-grid'] = attrs['data-id-grid'] || `${page.grid.columns}x${page.grid.rows}`;
+    if (page.grid.columnGutter != null) attrs['data-id-column-gutter'] = attrs['data-id-column-gutter'] || `${page.grid.columnGutter}px`;
+    if (page.grid.rowGutter != null) attrs['data-id-row-gutter'] = attrs['data-id-row-gutter'] || `${page.grid.rowGutter}px`;
+    if (page.grid.baseline != null) attrs['data-id-baseline'] = attrs['data-id-baseline'] || `${page.grid.baseline}px`;
   }
-  return attrs;
-}
-
-function itemHtml(item, options) {
-  const node = item.sourceNode || {};
-  const tag = safeTag(node.tagName || item.tagName || tagForRole(item.role));
-  const classes = itemClasses(item, options, node);
-  const attrs = [`id="${attr(node.id || item.id)}"`, `class="${attr(classes)}"`];
-
-  for (const [name, value] of Object.entries(node.attributes || {})) {
-    if (['id', 'class', 'style'].includes(name)) continue;
-    attrs.push(`${name}="${attr(value)}"`);
-  }
-  if (!attrs.some((part) => /^data-id-object=/.test(part))) attrs.push(`data-id-object="${attr(item.id)}"`);
-  if (item.semantic) attrs.push(`data-id-semantic="${attr(item.semantic)}"`);
-  const style = gridStyle(item);
-  if (style) attrs.push(`style="${attr(style)}"`);
-  return `<${tag} ${attrs.join(' ')}>${itemContent(item)}</${tag}>`;
-}
-
-function itemClasses(item, options, node) {
-  const classes = new Set(node.classList || []);
-  if (options.mode === 'observation' && item.role === 'text') classes.add('observed-text');
-  if (!classes.size || options.mode === 'observation') classes.add('id-object');
-  return Array.from(classes).join(' ');
-}
-
-function gridStyle(item) {
-  const cssVars = item.layout && item.layout.cssVars;
-  if (!cssVars) return '';
-  return Object.entries(cssVars).map(([name, value]) => `${name}:${value}`).join(';');
-}
-
-function itemContent(item) {
-  if (item.role === 'table' && item.table) return tableContent(item.table);
-  return escapeHtml((item.content && item.content.text) || '').replace(/\r\n|\r|\n/g, '<br>');
-}
-
-function tableContent(table) {
-  const rows = table.rows || [];
-  return rows.map((row) => `<tr>${(row.cells || []).map((cell) => {
-    const tag = cell.header ? 'th' : 'td';
-    return `<${tag}>${escapeHtml(cell.text || '')}</${tag}>`;
-  }).join('')}</tr>`).join('');
+  return attrsToHtml(orderPageAttrs(attrs));
 }
 
 function authoringReport(model, pages, options) {
@@ -168,37 +118,24 @@ function writeText(root, relativePath, text) {
   fs.writeFileSync(target, text, 'utf8');
 }
 
-function structureOrder(item) {
-  const order = item.structure && Number(item.structure.order);
-  return Number.isFinite(order) ? order : 0;
-}
-
 function safeFile(value) {
   return String(value || 'page').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
 }
 
-function safeTag(value) {
-  return /^(section|div|p|h1|h2|h3|h4|h5|h6|figure|table|span)$/i.test(value) ? String(value).toLowerCase() : 'div';
-}
-
-function tagForRole(role) {
-  if (role === 'text') return 'p';
-  if (role === 'table') return 'table';
-  if (role === 'graphic') return 'figure';
-  return 'div';
+function orderPageAttrs(attrs) {
+  const out = {};
+  for (const key of ['class', 'id', 'data-page', 'data-id-source-file', 'data-id-layout', 'data-id-grid', 'data-id-column-gutter', 'data-id-row-gutter', 'data-id-baseline', 'data-id-observed', 'data-id-reverse-mode', 'style']) {
+    if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
+  }
+  for (const key of Object.keys(attrs).sort()) {
+    if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = attrs[key];
+  }
+  return out;
 }
 
 function indent(value, spaces) {
   const prefix = ' '.repeat(spaces);
   return String(value || '').split(/\r?\n/).map((line) => (line ? `${prefix}${line}` : line)).join('\n');
-}
-
-function attr(value) {
-  return escapeHtml(value).replace(/"/g, '&quot;');
-}
-
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 module.exports = {

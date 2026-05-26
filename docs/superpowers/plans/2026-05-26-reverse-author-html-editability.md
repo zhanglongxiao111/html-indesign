@@ -129,7 +129,7 @@
 - Modify: `test/indesign-reverse/author-package-writer.test.js`
 - Create: `test/indesign-reverse/author-html-tree.test.js`
 
-- [ ] **Step 1: Add failing tests for resource tag restoration**
+- [x] **Step 1: Add failing tests for resource tag restoration**
 
 Append to `test/indesign-reverse/author-package-writer.test.js`:
 
@@ -229,7 +229,7 @@ Expected failure:
 AssertionError: input did not match /<img/
 ```
 
-- [ ] **Step 2: Add failing tests for nested author tree rendering**
+- [x] **Step 2: Add failing tests for nested author tree rendering**
 
 Create `test/indesign-reverse/author-html-tree.test.js`:
 
@@ -279,7 +279,7 @@ Expected failure:
 Cannot find module '../../src/indesign-reverse/author-html-tree'
 ```
 
-- [ ] **Step 3: Run the new focused tests and confirm red**
+- [x] **Step 3: Run the new focused tests and confirm red**
 
 Run:
 
@@ -301,7 +301,7 @@ fail
 - Create: `src/indesign-reverse/author-html-tree.js`
 - Modify: `src/indesign-reverse/author-package-writer.js`
 
-- [ ] **Step 1: Create attribute writer**
+- [x] **Step 1: Create attribute writer**
 
 Create `src/indesign-reverse/author-attribute-writer.js`:
 
@@ -358,7 +358,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 2: Create author HTML tree renderer**
+- [x] **Step 2: Create author HTML tree renderer**
 
 Create `src/indesign-reverse/author-html-tree.js`:
 
@@ -499,7 +499,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 3: Replace flat item rendering in author package writer**
+- [x] **Step 3: Replace flat item rendering in author package writer**
 
 Modify `src/indesign-reverse/author-package-writer.js`:
 
@@ -557,7 +557,7 @@ function orderPageAttrs(attrs) {
 
 Remove old `itemHtml`, `itemClasses`, `gridStyle`, `itemContent`, `tableContent`, `safeTag`, and `tagForRole` from `author-package-writer.js` after tests pass.
 
-- [ ] **Step 4: Run focused tests**
+- [x] **Step 4: Run focused tests**
 
 Run:
 
