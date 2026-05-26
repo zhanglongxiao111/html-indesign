@@ -68,6 +68,68 @@ test('writeReverseAuthorPackage restores source resource tags instead of div pla
   assert.doesNotMatch(html, /<div[^>]+data="\.\.\/reference-pdfs/);
 });
 
+test('writeReverseAuthorPackage copies source assets into the author package and rewrites resource paths', () => {
+  const root = path.resolve('test/workspace/reverse-author-resource-copy-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, '../smoke-assets/photos/industrial-site.jpg'), 'image-bytes');
+  writeFixtureFile(path.join(sourceRoot, '../reference-pdfs/ice-rink-layout-reference.pdf'), 'pdf-bytes');
+
+  const result = writeReverseAuthorPackage(resourceModel(), { outDir, sourceRoot, mode: 'authoring' });
+
+  const html = fs.readFileSync(path.join(outDir, 'pages/00-cover.html'), 'utf8');
+  assert.match(html, /src="assets\/smoke-assets\/photos\/industrial-site\.jpg"/);
+  assert.match(html, /data="assets\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
+  assert.equal(fs.existsSync(path.join(outDir, 'assets/smoke-assets/photos/industrial-site.jpg')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'assets/reference-pdfs/ice-rink-layout-reference.pdf')), true);
+  assert.equal(result.report.assets.copied, 2);
+  assert.deepEqual(result.report.assets.missing, []);
+});
+
+test('writeReverseAuthorPackage maps absolute placed asset aliases without duplicating copied files', () => {
+  const root = path.resolve('test/workspace/reverse-author-asset-alias-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  const imagePath = path.resolve(sourceRoot, '../smoke-assets/photos/industrial-site.jpg');
+  writeFixtureFile(imagePath, 'image-bytes');
+  const model = resourceModel();
+  model.pages[0].items[0].asset.path = imagePath;
+  model.assets = [{ name: 'industrial-site.jpg', path: imagePath, status: 'NORMAL' }];
+
+  const result = writeReverseAuthorPackage(model, { outDir, sourceRoot, mode: 'authoring' });
+
+  assert.equal(result.report.assets.copiedFiles.filter((file) => /industrial-site\.jpg$/.test(file)).length, 1);
+  assert.equal(fs.existsSync(path.join(outDir, 'assets/smoke-assets/photos/industrial-site.jpg')), true);
+});
+
+test('writeReverseAuthorPackage preserves known source css files for a second HTML to InDesign pass', () => {
+  const root = path.resolve('test/workspace/reverse-author-source-css-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'styles/components.css'), '.swatch { width: 18px; height: 18px; background: #c8102e; }');
+  writeFixtureFile(path.join(sourceRoot, 'styles/layout.css'), '.page { display:grid; }');
+  writeFixtureFile(path.join(sourceRoot, 'styles/tokens.css'), ':root { --id-text: #14324a; }');
+  writeFixtureFile(path.join(sourceRoot, 'styles/pages.css'), '#agenda-page { color: #14324a; }');
+
+  const result = writeReverseAuthorPackage(taggedModel(), { outDir, sourceRoot, mode: 'authoring' });
+
+  const copiedComponents = fs.readFileSync(path.join(outDir, 'styles/components.css'), 'utf8');
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.equal(copiedComponents, '.swatch { width: 18px; height: 18px; background: #c8102e; }');
+  assert.deepEqual(config.styles, [
+    'styles/tokens.css',
+    'styles/layout.css',
+    'styles/components.css',
+    'styles/pages.css',
+    'styles/reverse-overrides.css',
+  ]);
+  assert.equal(result.report.sourceCss.copied, 4);
+  assert.deepEqual(result.report.sourceCss.missing, []);
+});
+
 test('writeReverseAuthorPackage emits grid-first layout css and avoids absolute overrides for grid items', () => {
   const outDir = path.resolve('test/workspace/reverse-author-grid-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -318,4 +380,9 @@ function resourceModel() {
       },
     ],
   };
+}
+
+function writeFixtureFile(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
 }

@@ -144,6 +144,13 @@ test('parseArgs accepts reverse roundtrip flag', () => {
   assert.equal(options.targetSize, 'qhd');
 });
 
+test('parseArgs accepts second pass roundtrip gate flag', () => {
+  const options = parseArgs(['--reverse-roundtrip', '--second-pass-roundtrip'], 'D:/AI/html-indesign');
+
+  assert.equal(options.reverseRoundtrip, true);
+  assert.equal(options.secondPassRoundtrip, true);
+});
+
 test('build reverse snapshot jsx writes target output label and runs reverse script', () => {
   const jsx = buildReverseSnapshotJsx({
     repoRoot: 'D:/AI/html-indesign',

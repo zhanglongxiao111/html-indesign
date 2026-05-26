@@ -75,6 +75,8 @@ function parseArgs(argv, repoRoot) {
       options.skipPreview = true;
     } else if (arg === '--reverse-roundtrip') {
       options.reverseRoundtrip = true;
+    } else if (arg === '--second-pass-roundtrip') {
+      options.secondPassRoundtrip = true;
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else {
@@ -86,8 +88,8 @@ function parseArgs(argv, repoRoot) {
 
 function usage() {
   return [
-    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip]',
-    'npm: npm run e2e:indesign -- -- --target-size qhd --reverse-roundtrip',
+    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--second-pass-roundtrip]',
+    'npm: npm run e2e:indesign -- -- --target-size qhd --reverse-roundtrip --second-pass-roundtrip',
     '',
     'Default HTML: test/fixtures/e2e/architecture-report/deck.html',
     'Default unit mode: presentation',
@@ -136,7 +138,7 @@ async function runIndesignE2E(options = {}) {
   }
 
   const reverse = options.reverseRoundtrip
-    ? await runReverseRoundtrip(context)
+    ? await runReverseRoundtrip(context, options)
     : null;
 
   const preview = options.skipPreview
@@ -642,7 +644,7 @@ ${closeBlock}
 })();`;
 }
 
-async function runReverseRoundtrip(context) {
+async function runReverseRoundtrip(context, options = {}) {
   fs.writeFileSync(context.reverseScriptPath, buildReverseSnapshotJsx({
     repoRoot: context.repoRoot,
     outputPath: context.reverseSnapshotPath,
@@ -657,6 +659,7 @@ async function runReverseRoundtrip(context) {
     snapshotPath: context.reverseSnapshotPath,
     outDir: context.reverseOutDir,
     mode: 'structured',
+    sourceRoot: path.dirname(context.htmlPath),
   });
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
   const htmlAudit = assertReverseHtmlSemantics(fs.readFileSync(reverseHtmlPath, 'utf8'), reverseHtmlPath);
@@ -668,6 +671,20 @@ async function runReverseRoundtrip(context) {
     throw new Error(`Reverse author package audit failed: ${JSON.stringify(authorAudit, null, 2)}`);
   }
   const author = Object.assign({}, htmlResult.files.author, { audit: authorAudit });
+  const secondPass = options.secondPassRoundtrip
+    ? await runIndesignE2E({
+      repoRoot: context.repoRoot,
+      workspaceDir: context.workspaceDir,
+      runDir: path.join(context.runDir, 'second-pass'),
+      htmlPath: htmlResult.files.author.entry,
+      targetSize: options.targetSize,
+      unitMode: options.unitMode,
+      skipPreview: true,
+      reverseRoundtrip: true,
+      secondPassRoundtrip: false,
+      styleNameMap: options.styleNameMap,
+    })
+    : null;
 
   return {
     snapshot: reverseResult,
@@ -676,6 +693,7 @@ async function runReverseRoundtrip(context) {
       audit: htmlAudit,
     },
     author,
+    secondPass,
   };
 }
 

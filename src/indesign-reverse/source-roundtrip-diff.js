@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const cheerio = require('cheerio');
 
 function auditAuthorSourceRoundtrip(options = {}) {
@@ -53,7 +54,7 @@ function comparePage(sourcePage, reversePage, addIssue) {
   compareEntries('ROUNDTRIP_CHARACTER_STYLE_CHANGED', sourcePage, reversePage, characterStyleEntries, 'Character style spans changed.');
   compareEntries('ROUNDTRIP_INLINE_STYLE_CHANGED', sourcePage, reversePage, criticalInlineStyles, 'Critical inline styles changed.');
   compareEntries('ROUNDTRIP_TABLE_CELL_STYLE_CHANGED', sourcePage, reversePage, tableCellStyleEntries, 'Table cell paragraph styles changed.');
-  compareEntries('ROUNDTRIP_RESOURCE_CHANGED', sourcePage, reversePage, resourceEntries, 'Resource references changed.');
+  compareResources(sourcePage, reversePage, addIssue);
 
   function compareEntries(code, expectedPage, actualPage, collect, message) {
     const expected = collect(expectedPage.$);
@@ -69,6 +70,21 @@ function comparePage(sourcePage, reversePage, addIssue) {
   }
 }
 
+function compareResources(sourcePage, reversePage, addIssue) {
+  const expected = resourceEntries(sourcePage.$);
+  const actual = resourceEntries(reversePage.$);
+  const expectedComparable = expected.map((entry) => comparableResourceEntry(entry, sourcePage.root));
+  const actualComparable = actual.map((entry) => comparableResourceEntry(entry, reversePage.root));
+  if (!deepEqual(expectedComparable, actualComparable)) {
+    addIssue('ROUNDTRIP_RESOURCE_CHANGED', 'Resource references changed.', {
+      page: sourcePage.id,
+      file: sourcePage.file,
+      expected,
+      actual,
+    });
+  }
+}
+
 function readAuthorPackage(root) {
   const configPath = path.join(root, 'deck.config.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -78,6 +94,7 @@ function readAuthorPackage(root) {
     return {
       id: page.id || page.file,
       file: page.file,
+      root,
       html,
       $: cheerio.load(html, {
         decodeEntities: false,
@@ -86,6 +103,37 @@ function readAuthorPackage(root) {
     };
   });
   return { config, pages };
+}
+
+function comparableResourceEntry(entry, root) {
+  const out = { ...entry };
+  if (Object.prototype.hasOwnProperty.call(out, 'src')) {
+    out.src = resourceIdentity(root, out.src);
+  }
+  if (Object.prototype.hasOwnProperty.call(out, 'data')) {
+    out.data = resourceIdentity(root, out.data);
+  }
+  return out;
+}
+
+function resourceIdentity(root, value) {
+  const raw = String(value || '');
+  const filePath = resolveResourcePath(root, raw);
+  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    return `path:${raw.replace(/\\/g, '/')}`;
+  }
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+  return `sha256:${hash}`;
+}
+
+function resolveResourcePath(root, value) {
+  if (!value || isRemoteUrl(value)) return null;
+  return path.isAbsolute(value) ? path.resolve(value) : path.resolve(root, value);
+}
+
+function isRemoteUrl(value) {
+  const text = String(value || '');
+  return /^[a-z][a-z0-9+.-]*:/i.test(text) && !/^[a-z]:[\\/]/i.test(text);
 }
 
 function tagSequence($) {

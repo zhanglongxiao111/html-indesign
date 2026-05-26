@@ -67,6 +67,7 @@ function renderNode(node, options, depth) {
 
 function attrsForItem(item, sourceNode, options) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item));
+  rewriteResourceAttrs(attrs, options);
   if (sourceNode.id) {
     attrs.id = sourceNode.id;
   } else if (!item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
@@ -110,12 +111,14 @@ function wrapperAttrsForPdf(item, sourceNode) {
   return attrsToHtml(orderAttrs(attrs));
 }
 
-function previewAttrsForPdf(item, sourceNode) {
+function previewAttrsForPdf(item, sourceNode, options = {}) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item));
+  rewriteResourceAttrs(attrs, options);
   const pdfPath = attrs.data || attrs.src || (item.asset && item.asset.path) || '';
   const page = attrs['data-id-page'] || attrs['data-id-pdf-page'] || '1';
   if (sourceNode.previewNode) {
     const previewAttrs = mergeAttributes(sourceNode.previewNode.attributes);
+    rewriteResourceAttrs(previewAttrs, options);
     const previewClasses = new Set(sourceNode.previewNode.classList || []);
     if (previewClasses.size) previewAttrs.class = Array.from(previewClasses).join(' ');
     if (!previewAttrs.src) previewAttrs.src = pdfPreviewPath(pdfPath, page);
@@ -205,7 +208,7 @@ function renderPdfObjectNode(node, options, depth) {
 function renderPdfObjectContents(node, options, depth) {
   const item = node.item;
   const sourceNode = item.sourceNode || {};
-  const previewAttrs = previewAttrsForPdf(item, sourceNode);
+  const previewAttrs = previewAttrsForPdf(item, sourceNode, options);
   const objectAttrs = objectAttrsForPdf(item, sourceNode, options);
   const children = node.children.map((child) => renderNode(child, options, depth)).join('\n');
   return [
@@ -213,6 +216,27 @@ function renderPdfObjectContents(node, options, depth) {
     `${indent(depth)}<object ${objectAttrs}></object>`,
     children || null,
   ].filter(Boolean).join('\n');
+}
+
+function rewriteResourceAttrs(attrs, options = {}) {
+  if (!attrs || !options.assetPathMap) return attrs;
+  for (const name of ['src', 'data', 'href', 'data-id-source-csv', 'data-id-source-xml']) {
+    if (!attrs[name]) continue;
+    const rewritten = lookupAssetPath(options.assetPathMap, attrs[name]);
+    if (rewritten) attrs[name] = rewritten;
+  }
+  return attrs;
+}
+
+function lookupAssetPath(map, value) {
+  if (!map || !value) return '';
+  const key = normalizePathKey(value);
+  if (typeof map.get === 'function') return map.get(key) || map.get(String(value)) || '';
+  return map[key] || map[String(value)] || '';
+}
+
+function normalizePathKey(value) {
+  return String(value || '').replace(/\\/g, '/').toLowerCase();
 }
 
 function hasSourcePdfWrapper(item) {

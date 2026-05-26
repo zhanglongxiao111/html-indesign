@@ -16,6 +16,7 @@ function parseArgs(argv) {
     snapshotPath: null,
     blueprintPath: null,
     outDir: null,
+    sourceRoot: null,
     help: false,
   };
 
@@ -43,6 +44,11 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg.startsWith('--out=')) {
       out.outDir = arg.slice('--out='.length);
+    } else if (arg === '--source-root') {
+      out.sourceRoot = readValue(argv, index, arg);
+      index += 1;
+    } else if (arg.startsWith('--source-root=')) {
+      out.sourceRoot = arg.slice('--source-root='.length);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -68,6 +74,7 @@ function compileReverseSnapshotToHtml(options) {
   const authorResult = writeReverseAuthorPackage(model, {
     outDir: path.join(outDir, 'author'),
     mode: options.mode,
+    sourceRoot: options.sourceRoot,
   });
 
   fs.writeFileSync(path.join(outDir, 'deck.visual.html'), visualHtml, 'utf8');
@@ -158,7 +165,7 @@ function readValue(argv, index, flag) {
 }
 
 function usage() {
-  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <legacy-blueprint.json>) --out <dir> [--mode structured|inferred|observation]';
+  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <legacy-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>]';
 }
 
 if (require.main === module) {

@@ -23,6 +23,14 @@ test('parseArgs accepts legacy blueprint input', () => {
   assert.equal(args.outDir, 'out-dir');
 });
 
+test('parseArgs accepts source root for self-contained reverse author packages', () => {
+  const args = parseArgs(['--snapshot', 'reverse.json', '--out', 'out-dir', '--source-root', 'source-package']);
+
+  assert.equal(args.snapshotPath, 'reverse.json');
+  assert.equal(args.outDir, 'out-dir');
+  assert.equal(args.sourceRoot, 'source-package');
+});
+
 test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   const outDir = path.resolve('test/workspace/reverse-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -59,6 +67,29 @@ test('compileReverseSnapshotToHtml writes visual HTML and author package', () =>
   assert.equal(result.files.author.config, path.join(outDir, 'author/deck.config.json'));
 });
 
+test('compileReverseSnapshotToHtml forwards source root into the author package writer', () => {
+  const root = path.resolve('test/workspace/reverse-cli-source-root-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'out');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'styles/tokens.css'), ':root { --id-text: #123456; }');
+  writeFixtureFile(path.join(sourceRoot, 'styles/layout.css'), '.page { display:grid; }');
+  writeFixtureFile(path.join(sourceRoot, 'styles/components.css'), '.swatch { width: 18px; height: 18px; }');
+  writeFixtureFile(path.join(sourceRoot, 'styles/pages.css'), '#agenda-page { color:#123456; }');
+
+  compileReverseSnapshotToHtml({
+    snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
+    outDir,
+    mode: 'structured',
+    sourceRoot,
+  });
+
+  assert.equal(
+    fs.readFileSync(path.join(outDir, 'author/styles/components.css'), 'utf8'),
+    '.swatch { width: 18px; height: 18px; }',
+  );
+});
+
 test('compileReverseSnapshotToHtml writes legacy blueprint through reverse pipeline', () => {
   const outDir = path.resolve('test/workspace/reverse-blueprint-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -81,3 +112,8 @@ test('compileReverseSnapshotToHtml writes legacy blueprint through reverse pipel
   assert.match(html, /data-id-source="legacy-blueprint"/);
   assert.match(html, /data-id-legacy-slot="true"/);
 });
+
+function writeFixtureFile(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+}

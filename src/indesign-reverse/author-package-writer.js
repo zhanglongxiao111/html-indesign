@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { writeAuthorPackageEntry } = require('../authoring');
 const { writeAuthorCssFiles } = require('./author-css-writer');
+const { copyAuthorAssets } = require('./author-asset-packager');
+const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
 
@@ -10,23 +12,38 @@ function writeReverseAuthorPackage(model, options = {}) {
     throw new Error('writeReverseAuthorPackage requires a DocumentModel');
   }
   const outDir = path.resolve(options.outDir || 'reverse-export/author');
+  const sourceRoot = options.sourceRoot ? path.resolve(options.sourceRoot) : null;
   fs.mkdirSync(outDir, { recursive: true });
   fs.mkdirSync(path.join(outDir, 'pages'), { recursive: true });
   fs.mkdirSync(path.join(outDir, 'styles'), { recursive: true });
   fs.mkdirSync(path.join(outDir, 'reports'), { recursive: true });
 
   const pages = pageEntries(model);
-  const config = deckConfigFor(model, pages);
+  const generatedCss = writeAuthorCssFiles(model);
+  const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
+  const styleFiles = authorStyleFiles({ sourceCss, generatedCss, sourceRoot });
+  const assetCopy = copyAuthorAssets(model, {
+    outDir,
+    sourceRoot,
+    assetRoot: (model.sourcePackage && model.sourcePackage.assetRoot) || 'assets',
+  });
+  const renderOptions = { ...options, assetPathMap: assetCopy.pathMap };
+  const config = deckConfigFor(model, pages, styleFiles);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
-  for (const [relativePath, css] of Object.entries(writeAuthorCssFiles(model))) {
+  for (const [relativePath, css] of Object.entries(generatedCss)) {
+    if (sourceCss.copiedSet.has(slash(relativePath))) continue;
     writeText(outDir, relativePath, css);
   }
+  copySourceCssFiles(outDir, sourceCss);
   for (const page of pages) {
-    writeText(outDir, page.file, pageHtml(page.modelPage, page.file, options));
+    writeText(outDir, page.file, pageHtml(page.modelPage, page.file, renderOptions));
   }
 
-  const report = authoringReport(model, pages, options);
+  const report = authoringReport(model, pages, options, {
+    assets: assetCopy.report,
+    sourceCss: sourceCss.report,
+  });
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/inference-report.json'), JSON.stringify(report.inference, null, 2), 'utf8');
   writeAuthorPackageEntry(path.join(outDir, 'deck.config.json'));
@@ -41,7 +58,7 @@ function writeReverseAuthorPackage(model, options = {}) {
   };
 }
 
-function deckConfigFor(model, pages) {
+function deckConfigFor(model, pages, styleFiles) {
   const sourcePackage = model.sourcePackage || {};
   return {
     schemaVersion: 1,
@@ -51,13 +68,7 @@ function deckConfigFor(model, pages) {
     unitMode: model.unitMode || 'presentation',
     targetSize: 'source',
     entry: sourcePackage.entry || 'deck.html',
-    styles: [
-      'styles/tokens.css',
-      'styles/layout.css',
-      'styles/components.css',
-      'styles/pages.css',
-      'styles/reverse-overrides.css',
-    ],
+    styles: styleFiles,
     pages: pages.map((page) => ({ id: page.id, file: page.file })),
     assets: { root: sourcePackage.assetRoot || 'assets' },
   };
@@ -146,7 +157,7 @@ function marginTokensFor(value) {
   return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[3] };
 }
 
-function authoringReport(model, pages, options) {
+function authoringReport(model, pages, options, extras = {}) {
   const inferred = pages.filter((page) => !page.modelPage.sourceFile).length;
   return {
     ok: true,
@@ -157,6 +168,8 @@ function authoringReport(model, pages, options) {
       source: inferred ? 'observation-page-split' : 'source-labels',
       confidence: inferred ? 'low' : 'high',
     },
+    assets: extras.assets || { copied: 0, missing: [] },
+    sourceCss: extras.sourceCss || { copied: 0, missing: [] },
   };
 }
 
@@ -168,6 +181,10 @@ function writeText(root, relativePath, text) {
 
 function safeFile(value) {
   return String(value || 'page').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
+}
+
+function slash(value) {
+  return String(value || '').replace(/\\/g, '/');
 }
 
 function orderPageAttrs(attrs) {

@@ -45,6 +45,39 @@ test('auditAuthorSourceRoundtrip reports source-level losses without failing def
   ].sort());
 });
 
+test('auditAuthorSourceRoundtrip accepts self-contained copied resources when file content is equivalent', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-resource-copy');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(root, 'smoke-assets/site.png'), 'same-image-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'assets/smoke-assets/site.png'), 'same-image-bytes');
+  writePackage(sourceRoot, '<section class="page"><img class="photo" src="../smoke-assets/site.png" alt="Site"></section>');
+  writePackage(reverseRoot, '<section class="page"><img class="photo" src="assets/smoke-assets/site.png" alt="Site"></section>');
+
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
+
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.warnings, []);
+});
+
+test('auditAuthorSourceRoundtrip resolves Windows absolute resource paths as files', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-absolute-resource');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  const imagePath = path.join(root, 'shared/site.png');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(imagePath, 'same-image-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'assets/site.png'), 'same-image-bytes');
+  writePackage(sourceRoot, `<section class="page"><img class="photo" src="${slash(imagePath)}" alt="Site"></section>`);
+  writePackage(reverseRoot, '<section class="page"><img class="photo" src="assets/site.png" alt="Site"></section>');
+
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
+
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.warnings, []);
+});
+
 test('auditAuthorSourceRoundtrip ignores generated reverse ids for preserved inline styles', () => {
   const root = path.resolve('test/workspace/source-roundtrip-generated-ids');
   const sourceRoot = path.join(root, 'source');
@@ -88,6 +121,15 @@ function writePackage(root, pageHtml) {
     pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
   }, null, 2), 'utf8');
   fs.writeFileSync(path.join(root, 'pages/01-agenda.html'), pageHtml, 'utf8');
+}
+
+function writeFixtureFile(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
+}
+
+function slash(value) {
+  return String(value).replace(/\\/g, '/');
 }
 
 function equivalentPageHtml() {
