@@ -102,20 +102,48 @@ function sourcePageAttrs(page, sourceFile, options) {
 
 function pageStyleVars(page) {
   const pairs = [];
+  const attrs = (page.sourceNode && page.sourceNode.attributes) || {};
   if (page.grid) {
     pairs.push(['--id-grid-columns', page.grid.columns]);
     pairs.push(['--id-grid-rows', page.grid.rows]);
-    if (page.grid.columnGutter != null) pairs.push(['--id-column-gutter', `${page.grid.columnGutter}px`]);
-    if (page.grid.rowGutter != null) pairs.push(['--id-row-gutter', `${page.grid.rowGutter}px`]);
-    if (page.grid.baseline != null) pairs.push(['--id-baseline', `${page.grid.baseline}px`]);
+    if (page.grid.columnGutter != null || attrs['data-id-column-gutter']) {
+      pairs.push(['--id-column-gutter', attrs['data-id-column-gutter'] || `${page.grid.columnGutter}px`]);
+    }
+    if (page.grid.rowGutter != null || attrs['data-id-row-gutter']) {
+      pairs.push(['--id-row-gutter', attrs['data-id-row-gutter'] || `${page.grid.rowGutter}px`]);
+    }
+    if (page.grid.baseline != null || attrs['data-id-baseline']) {
+      pairs.push(['--id-baseline', attrs['data-id-baseline'] || `${page.grid.baseline}px`]);
+    }
   }
-  if (page.margins) {
+  const marginTokens = marginTokensFor(attrs['data-id-margin']);
+  if (marginTokens) {
+    pairs.push(['--id-margin-top', marginTokens.top]);
+    pairs.push(['--id-margin-right', marginTokens.right]);
+    pairs.push(['--id-margin-bottom', marginTokens.bottom]);
+    pairs.push(['--id-margin-left', marginTokens.left]);
+  } else if (page.margins) {
     pairs.push(['--id-margin-top', `${page.margins.top}px`]);
     pairs.push(['--id-margin-right', `${page.margins.right}px`]);
     pairs.push(['--id-margin-bottom', `${page.margins.bottom}px`]);
     pairs.push(['--id-margin-left', `${page.margins.left}px`]);
   }
   return pairs.map(([name, value]) => `${name}:${value}`).join(';');
+}
+
+function marginTokensFor(value) {
+  const tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+  if (tokens.length === 1) {
+    return { top: tokens[0], right: tokens[0], bottom: tokens[0], left: tokens[0] };
+  }
+  if (tokens.length === 2) {
+    return { top: tokens[0], right: tokens[1], bottom: tokens[0], left: tokens[1] };
+  }
+  if (tokens.length === 3) {
+    return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[1] };
+  }
+  return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[3] };
 }
 
 function authoringReport(model, pages, options) {

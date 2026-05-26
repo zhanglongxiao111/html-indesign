@@ -85,6 +85,33 @@ test('writeReverseAuthorPackage emits grid-first layout css and avoids absolute 
   assert.doesNotMatch(overrides, /#agenda-title/);
 });
 
+test('writeReverseAuthorPackage preserves source grid and margin units in page variables', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-unit-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const model = taggedModel();
+  model.pages[0].sourceNode.attributes = {
+    ...model.pages[0].sourceNode.attributes,
+    'data-id-margin': '14mm 16mm 10mm 18mm',
+    'data-id-column-gutter': '6mm',
+    'data-id-row-gutter': '8mm',
+    'data-id-baseline': '4mm',
+  };
+  model.pages[0].margins = { top: 52.91, right: 60.47, bottom: 37.79, left: 68.03 };
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'authoring' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  assert.match(pageHtml, /data-id-margin="14mm 16mm 10mm 18mm"/);
+  assert.match(pageHtml, /style="[^"]*--id-column-gutter:6mm/);
+  assert.match(pageHtml, /style="[^"]*--id-row-gutter:8mm/);
+  assert.match(pageHtml, /style="[^"]*--id-baseline:4mm/);
+  assert.match(pageHtml, /style="[^"]*--id-margin-top:14mm/);
+  assert.match(pageHtml, /style="[^"]*--id-margin-right:16mm/);
+  assert.match(pageHtml, /style="[^"]*--id-margin-bottom:10mm/);
+  assert.match(pageHtml, /style="[^"]*--id-margin-left:18mm/);
+});
+
 function taggedModel() {
   return {
     kind: 'DocumentModel',
