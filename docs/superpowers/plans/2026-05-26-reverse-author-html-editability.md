@@ -1138,7 +1138,7 @@ If no files changed, do not create an empty commit.
 - Modify: `docs/规范/SEMANTIC_PROTOCOL.md`
 - Modify: `docs/superpowers/plans/2026-05-26-reverse-author-html-editability.md`
 
-- [ ] **Step 1: Update reverse export spec**
+- [x] **Step 1: Update reverse export spec**
 
 Add to `docs/规范/REVERSE_EXPORT.md` under `4.1 视觉 HTML 与作者入口`:
 
@@ -1146,7 +1146,7 @@ Add to `docs/规范/REVERSE_EXPORT.md` under `4.1 视觉 HTML 与作者入口`:
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
 ```
 
-- [ ] **Step 2: Update semantic protocol**
+- [x] **Step 2: Update semantic protocol**
 
 Add to `docs/规范/SEMANTIC_PROTOCOL.md` under `源码包来源字段`:
 
@@ -1154,11 +1154,11 @@ Add to `docs/规范/SEMANTIC_PROTOCOL.md` under `源码包来源字段`:
 `sourceNode` 描述作者源码节点，反向作者源码包必须优先使用它恢复标签名、class 和稳定属性。`sourceAsset` 描述作者源码中的资源引用，服务 `img`、`object`、`embed`、`picture` 等标签恢复。`structure.parentId` 描述作者源码父子关系；当它指向同页对象时，反向源码包应嵌套输出，而不是平铺。
 ```
 
-- [ ] **Step 3: Mark plan verification progress**
+- [x] **Step 3: Mark plan verification progress**
 
 Update this plan’s checkboxes as tasks complete during execution. Do not batch all progress updates at the end.
 
-- [ ] **Step 4: Commit docs**
+- [x] **Step 4: Commit docs**
 
 ```powershell
 git add docs/规范/REVERSE_EXPORT.md docs/规范/SEMANTIC_PROTOCOL.md docs/superpowers/plans/2026-05-26-reverse-author-html-editability.md

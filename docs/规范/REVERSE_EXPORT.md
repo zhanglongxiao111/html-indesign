@@ -145,6 +145,8 @@ reverse-export-<timestamp>/
 
 `author/deck.html` 是可编辑作者源码包的组装结果。Agent 和人类后续维护应优先修改 `author/pages/*.html` 与 `author/styles/*.css`，再由组装器重建 `author/deck.html`。
 
+作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
+
 结构化模式输出固定语义 HTML：
 
 ```html
