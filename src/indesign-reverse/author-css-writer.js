@@ -50,8 +50,13 @@ function pagesCss(model) {
 
 function reverseOverridesCss(model) {
   const lines = ['/* Generated fallback geometry for reverse-exported objects. */'];
+  const itemIds = new Set();
+  for (const page of model.pages || []) {
+    for (const item of page.items || []) itemIds.add(item.id);
+  }
   for (const page of model.pages || []) {
     for (const item of page.items || []) {
+      if (shouldOmitAuthorOverride(item, itemIds)) continue;
       if (item.layout && item.layout.grid) continue;
       if (!item.bounds) continue;
       lines.push(`#${cssId(item.id)} { position:absolute; left:${px(item.bounds.x)}; top:${px(item.bounds.y)}; width:${px(item.bounds.width)}; height:${px(item.bounds.height)}; }`);
@@ -59,6 +64,21 @@ function reverseOverridesCss(model) {
   }
   lines.push('');
   return lines.join('\n');
+}
+
+function shouldOmitAuthorOverride(item, itemIds) {
+  if (!item) return true;
+  if (item.sourceNode) return true;
+  if (isGeneratedLabel(item)) return true;
+  const id = String(item.id || '');
+  if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
+  if (item.semantic === 'unknown' && /-background$/i.test(id)) return true;
+  if (/-text$/i.test(id) && itemIds.has(id.replace(/-text$/i, ''))) return true;
+  return false;
+}
+
+function isGeneratedLabel(item) {
+  return (item.labels || []).some((label) => label && (label.generated === true || label.kind === 'generated'));
 }
 
 function styleCollectionCss(collection, prefix) {

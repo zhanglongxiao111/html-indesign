@@ -179,6 +179,47 @@ test('pageItemsToAuthorHtml does not emit non-semantic automatic character spans
   assert.doesNotMatch(html, /data-id-character-style="自动字符-/);
 });
 
+test('pageItemsToAuthorHtml preserves sourced inline style for absolute annotation objects', () => {
+  const page = {
+    id: 'agenda-page',
+    items: [
+      {
+        id: 'timeline',
+        role: 'shape',
+        semantic: 'timeline-line',
+        sourceNode: {
+          tagName: 'div',
+          id: 'timeline',
+          classList: ['line'],
+          attributes: {
+            style: 'left:158mm;top:184mm;width:225mm;transform:rotate(0deg)',
+            'data-id-object': '',
+            'data-id-role': 'annotation',
+          },
+        },
+        structure: { parentId: 'agenda-page', order: 1 },
+      },
+      {
+        id: 'legend-swatch',
+        role: 'shape',
+        semantic: 'unknown',
+        sourceNode: {
+          tagName: 'span',
+          id: 'legend-swatch',
+          classList: ['swatch'],
+          attributes: { style: 'background:var(--accent)' },
+        },
+        structure: { parentId: 'agenda-page', order: 2 },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<div id="timeline" class="line" style="left:158mm;top:184mm;width:225mm;transform:rotate\(0deg\)"/);
+  assert.match(html, /<span id="legend-swatch" class="swatch" style="background:var\(--accent\)"/);
+});
+
 test('pageItemsToAuthorHtml restores PDF source inside an editable preview wrapper', () => {
   const page = {
     id: 'drawing-page',
@@ -226,8 +267,8 @@ test('pageItemsToAuthorHtml formats tables with editable thead and tbody', () =>
         structure: { parentId: 'table-page', order: 1 },
         table: {
           rows: [
-            { header: true, cells: [{ header: true, text: '指标' }, { header: true, text: '数值' }] },
-            { header: false, cells: [{ text: '结构跨度' }, { text: '243.75m' }] },
+            { header: true, cells: [{ header: true, text: '指标', paragraphStyle: '表头文字' }, { header: true, text: '数值', paragraphStyle: '表头文字' }] },
+            { header: false, cells: [{ text: '结构跨度', paragraphStyle: '表格正文' }, { text: '243.75m', paragraphStyle: '表格正文' }] },
           ],
         },
       },
@@ -237,9 +278,9 @@ test('pageItemsToAuthorHtml formats tables with editable thead and tbody', () =>
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
   assert.match(html, /<table[^>]+id="metrics-table"[\s\S]*\n\s+<thead>\n\s+<tr>/);
-  assert.match(html, /<th>指标<\/th>/);
+  assert.match(html, /<th data-id-paragraph-style="表头文字">指标<\/th>/);
   assert.match(html, /<tbody>\n\s+<tr>/);
-  assert.match(html, /<td>243\.75m<\/td>/);
+  assert.match(html, /<td data-id-paragraph-style="表格正文">243\.75m<\/td>/);
 });
 
 test('pageItemsToAuthorHtml folds generated text companions back into sourced annotation objects', () => {

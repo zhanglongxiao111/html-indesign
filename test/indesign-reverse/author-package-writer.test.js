@@ -112,6 +112,47 @@ test('writeReverseAuthorPackage preserves source grid and margin units in page v
   assert.match(pageHtml, /style="[^"]*--id-margin-left:18mm/);
 });
 
+test('writeReverseAuthorPackage keeps structured source geometry in html instead of dead override rules', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-overrides-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const model = taggedModel();
+  model.pages[0].items.push(
+    {
+      id: 'timeline',
+      role: 'shape',
+      semantic: 'timeline-line',
+      sourceNode: {
+        tagName: 'div',
+        id: 'timeline',
+        classList: ['line'],
+        attributes: { style: 'left:158mm;top:184mm;width:225mm;transform:rotate(0deg)', 'data-id-object': '' },
+      },
+      structure: { parentId: 'agenda-page', order: 2 },
+      bounds: { x: 597.17, y: 695.43, width: 850.39, height: 0 },
+    },
+    {
+      id: 'chapter-1-border-left',
+      role: 'shape',
+      semantic: 'unknown',
+      sourceNode: { tagName: 'div', id: 'chapter-1-border-left', classList: ['id-object'], attributes: {} },
+      structure: { parentId: 'agenda-page', order: 3 },
+      labels: [{ generated: true }],
+      bounds: { x: 0, y: 0, width: 10, height: 100 },
+    },
+  );
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'authoring' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
+
+  assert.match(pageHtml, /id="timeline"[^>]+style="left:158mm;top:184mm;width:225mm;transform:rotate\(0deg\)"/);
+  assert.doesNotMatch(pageHtml, /chapter-1-border-left/);
+  assert.doesNotMatch(overrides, /#timeline/);
+  assert.doesNotMatch(overrides, /#chapter-1-border-left/);
+});
+
 function taggedModel() {
   return {
     kind: 'DocumentModel',

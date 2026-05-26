@@ -73,6 +73,8 @@ function attrsForItem(item, sourceNode, options) {
   if (!classes.size && !hasSourceNode(sourceNode)) classes.add(classForRole(item.role));
   if (item.layout && item.layout.cssVars && classes.has('grid-item')) {
     attrs.style = Object.entries(item.layout.cssVars).map(([name, value]) => `${name}:${value}`).join(';');
+  } else if (sourceNode.attributes && sourceNode.attributes.style) {
+    attrs.style = sourceNode.attributes.style;
   }
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   if (!hasDataIdObject(attrs) && item.role !== 'text') attrs['data-id-object'] = '';
@@ -173,7 +175,10 @@ function tableRow(row, depth) {
 
 function tableCell(cell, depth) {
   const tag = cell.header ? 'th' : 'td';
-  return `${indent(depth)}<${tag}>${escapeHtml(cell.text || '')}</${tag}>`;
+  const attrs = {};
+  if (cell.paragraphStyle) attrs['data-id-paragraph-style'] = cell.paragraphStyle;
+  const attrHtml = attrsToHtml(orderAttrs(attrs));
+  return `${indent(depth)}<${tag}${attrHtml ? ` ${attrHtml}` : ''}>${escapeHtml(cell.text || '')}</${tag}>`;
 }
 
 function richTextContent(item) {
