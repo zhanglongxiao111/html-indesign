@@ -86,6 +86,8 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
       attributes: {
         'data-id-source-package-config': 'deck.config.json',
         'data-id-source-package-schema': '1',
+        'data-id-semantic-preset': 'semantic-preset.json',
+        'data-id-profile': 'architecture-report',
       },
       styleFiles: ['styles/tokens.css'],
       pageFiles: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
@@ -143,6 +145,11 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
   }, { unitMode: 'presentation', targetSize: 'same' });
 
   assert.equal(model.sourcePackage.config, 'deck.config.json');
+  assert.deepEqual(model.semanticPreset, {
+    source: 'project',
+    id: 'architecture-report',
+    relativePath: 'semantic-preset.json',
+  });
   assert.equal(model.pages[0].sourceFile, 'pages/01-agenda.html');
   assert.equal(model.pages[0].grid.columns, 12);
   assert.equal(model.pages[0].items[0].sourceFile, 'pages/01-agenda.html');
@@ -153,6 +160,11 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
   const itemLabel = model.pages[0].items[0].labels.find((label) => label.kind === 'item');
 
   assert.equal(documentLabel.sourcePackage.config, 'deck.config.json');
+  assert.deepEqual(documentLabel.semanticPreset, {
+    source: 'project',
+    id: 'architecture-report',
+    relativePath: 'semantic-preset.json',
+  });
   assert.equal(pageLabel.sourceFile, 'pages/01-agenda.html');
   assert.equal(itemLabel.sourceFile, 'pages/01-agenda.html');
   assert.equal(itemLabel.sourceNode.tagName, 'div');

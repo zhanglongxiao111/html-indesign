@@ -8,6 +8,8 @@ const {
   compileInstructions,
   validateInstructions,
 } = require('../src/paged-html');
+const { readAuthorPackage } = require('../src/authoring');
+const { resolveSemanticPreset, presetToStyleNameMap } = require('../src/semantic-preset');
 
 function createRunContext(options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, '..'));
@@ -167,7 +169,7 @@ async function compileToInstructions(context, options = {}) {
     mode: 'editable-first',
     unitMode: options.unitMode || 'presentation',
     targetSize: options.targetSize || 'same',
-    styleNameMap: options.styleNameMap || architectureStyleNameMap(),
+    styleNameMap: loadStyleNameMapForHtml(context.htmlPath, options),
   });
   const validation = validateInstructions(instructions, {
     checkAssetFiles: true,
@@ -227,91 +229,30 @@ function parseTargetSize(value) {
 }
 
 function architectureStyleNameMap() {
-  return {
-    layers: {
-      background: '背景',
-      image: '图片',
-      drawing: '图纸',
-      graphics: '图形',
-      content: '内容',
-      overlay: '遮罩',
-      tables: '表格',
-      text: '文字',
-      annotation: '标注',
-      annotations: '标注组',
-    },
-    paragraphStyles: {
-      'deck-eyebrow': '页眉小标',
-      'cover-title': '封面标题',
-      'cover-subtitle': '封面副标题',
-      'metric-value': '指标数字',
-      'metric-label': '指标说明',
-      folio: '页码',
-      'page-title': '页面标题',
-      'body-copy': '正文',
-      'chapter-title': '章节标题',
-      'chapter-body': '章节正文',
-      caption: '图注',
-      'legend-label': '图例文字',
-      'strategy-title': '策略标题',
-      'strategy-body': '策略正文',
-      'table-heading': '表头文字',
-      'table-body': '表格正文',
-      annotation: '标注文字',
-    },
-    characterStyles: {
-      'cover-accent': '封面强调',
-      'term-accent': '术语强调',
-      'layer-accent': '图层强调',
-      'asset-accent': '资产强调',
-    },
-    objectStyles: {
-      'hero-image': '封面图像',
-      'cover-veil': '封面渐变遮罩',
-      'metric-card': '指标卡片',
-      'chapter-card': '章节卡片',
-      'timeline-line': '时间轴线',
-      'annotation-dot': '标注圆点',
-      'map-frame': '总图图框',
-      'annotation-line': '标注引线',
-      'annotation-label': '标注标签',
-      'legend-block': '图例框',
-      'image-frame': '图片图框',
-      'diagram-frame-object': '图解对象',
-      'strategy-card': '策略卡片',
-      'drawing-frame-object': '图纸图框',
-      'material-frame-object': '材料图框',
-      'facade-frame-object': '平面图框',
-      'material-note-panel': '说明面板',
-      'table-frame': '表格框',
-      swatch: '色块',
-    },
-    frameStyles: {
-      'hero-frame': '封面图片框架',
-      'veil-frame': '封面遮罩框架',
-      'metric-card-frame': '指标卡片文本框架',
-      'chapter-frame': '章节卡片文本框架',
-      'line-frame': '线条框架',
-      'dot-frame': '圆点框架',
-      'annotation-frame': '标注文本框架',
-      'legend-frame': '图例文本框架',
-      'swatch-frame': '色块框架',
-      'strategy-card-frame': '策略卡片文本框架',
-      'panel-frame': '面板框架',
-      'context-map-frame': '总图框架',
-      'render-frame-cover': '渲染图裁切框架',
-      'section-frame': '剖面图框架',
-      'diagram-frame': '图解框架',
-      'drawing-frame': '图纸框架',
-      'material-frame': '材料框架',
-      'facade-frame': '平面图框架',
-      'grid-frame': '网格图片框架',
-      'panel-frame': '面板框架',
-    },
-    tableStyles: {
-      'area-table': '面积指标表',
-    },
-  };
+  const resolved = resolveSemanticPreset({ profile: 'architecture-report' });
+  return presetToStyleNameMap(resolved.preset);
+}
+
+function loadStyleNameMapForHtml(htmlPath, options = {}) {
+  if (options.styleNameMap) return options.styleNameMap;
+
+  const packageInfo = findAuthorPackageForHtml(htmlPath);
+  if (packageInfo) {
+    const resolved = resolveSemanticPreset({
+      rootDir: packageInfo.rootDir,
+      config: packageInfo.config,
+    });
+    return presetToStyleNameMap(resolved.preset);
+  }
+
+  return architectureStyleNameMap();
+}
+
+function findAuthorPackageForHtml(htmlPath) {
+  const dir = path.dirname(path.resolve(htmlPath));
+  const configPath = path.join(dir, 'deck.config.json');
+  if (!fs.existsSync(configPath)) return null;
+  return readAuthorPackage(configPath);
 }
 
 function runCli(args, cwd) {
@@ -840,6 +781,7 @@ module.exports = {
   buildExportJsx,
   buildReverseSnapshotJsx,
   architectureStyleNameMap,
+  loadStyleNameMapForHtml,
   parseCliResultJson,
   resolveIndesignCliCommand,
   auditReverseAuthorPackage,

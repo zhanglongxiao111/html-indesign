@@ -17,6 +17,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
   const styled = styledSnapshotForLayout(snapshot, options, layout);
   const sourcePackage = sourcePackageFromDocument(styled.sourcePackageInput || {});
+  const semanticPreset = sourcePackage && sourcePackage.semanticPreset ? sourcePackage.semanticPreset : null;
   const documentId = documentIdFor(styled, options, sourcePackage);
   const pages = (styled.pages || []).map((page) => pageModelFor(page, layout));
   return {
@@ -29,6 +30,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     layoutInfo: layout,
     pageSize: pages[0] ? { width: pages[0].width, height: pages[0].height, unit: layout.targetUnit } : null,
     sourcePackage,
+    semanticPreset,
     labels: [createProtocolLabel({
       kind: 'document',
       id: documentId,
@@ -38,6 +40,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
       coordinateUnit: layout.targetUnit,
       profile: options.profile || sourcePackage && sourcePackage.profile || null,
       sourcePackage,
+      semanticPreset,
     })],
     parentPages: parentPagesFor(pages),
     pages,

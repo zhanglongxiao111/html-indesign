@@ -6,6 +6,7 @@
   "unitMode": "presentation",
   "targetSize": "source",
   "entry": "deck.html",
+  "semanticPreset": "semantic-preset.json",
   "styles": [
     "styles/tokens.css",
     "styles/layout.css",

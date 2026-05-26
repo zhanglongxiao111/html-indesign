@@ -48,6 +48,10 @@ function readAuthorPackage(configPath) {
     throw new Error('AUTHOR_PAGE_LIST_EMPTY: deck.config.json must define at least one page');
   }
 
+  const semanticPreset = config.semanticPreset
+    ? resolveSemanticPresetMetadata(rootDir, config.semanticPreset)
+    : null;
+
   return {
     rootDir,
     configPath: resolvedConfigPath,
@@ -55,6 +59,31 @@ function readAuthorPackage(configPath) {
     entryPath: resolveInside(rootDir, config.entry, 'AUTHOR_ENTRY_OUTSIDE_ROOT'),
     styleFiles,
     pageFiles,
+    semanticPreset,
+  };
+}
+
+function loadAuthorPackageConfig(configPath) {
+  if (!configPath) throw new Error('AUTHOR_PACKAGE_CONFIG_MISSING: config path is required');
+  const resolvedConfigPath = path.resolve(configPath);
+  if (!fs.existsSync(resolvedConfigPath)) {
+    throw new Error(`AUTHOR_PACKAGE_CONFIG_MISSING: ${resolvedConfigPath}`);
+  }
+  const rootDir = path.dirname(resolvedConfigPath);
+  const config = JSON.parse(fs.readFileSync(resolvedConfigPath, 'utf8'));
+  if (config.schemaVersion !== 1) {
+    throw new Error(`AUTHOR_PACKAGE_SCHEMA_UNSUPPORTED: ${config.schemaVersion}`);
+  }
+  if (!config.id || typeof config.id !== 'string') {
+    throw new Error('AUTHOR_PACKAGE_ID_MISSING: deck.config.json must define id');
+  }
+  if (!config.entry || typeof config.entry !== 'string') {
+    throw new Error('AUTHOR_PACKAGE_ENTRY_MISSING: deck.config.json must define entry');
+  }
+  return {
+    rootDir,
+    configPath: resolvedConfigPath,
+    config,
   };
 }
 
@@ -77,6 +106,7 @@ function assembleAuthorPackage(configPath) {
     sourcePackage.config.profile ? `data-id-profile="${attr(sourcePackage.config.profile)}"` : null,
     `data-id-source-package-config="${attr(path.relative(sourcePackage.rootDir, sourcePackage.configPath).replace(/\\/g, '/'))}"`,
     `data-id-source-package-schema="${attr(sourcePackage.config.schemaVersion)}"`,
+    sourcePackage.semanticPreset ? `data-id-semantic-preset="${attr(sourcePackage.semanticPreset.relativePath)}"` : null,
   ].filter(Boolean).join(' ');
   const html = [
     '<!doctype html>',
@@ -103,6 +133,10 @@ function writeAuthorPackageEntry(configPath) {
   const { html, sourcePackage } = assembleAuthorPackage(configPath);
   fs.writeFileSync(sourcePackage.entryPath, html, 'utf8');
   return { entryPath: sourcePackage.entryPath };
+}
+
+function writeAuthorPackageConfig(configPath, config) {
+  fs.writeFileSync(path.resolve(configPath), `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 }
 
 function checkAuthorPackageEntry(configPath) {
@@ -254,6 +288,18 @@ function resolveInside(rootDir, relativePath, errorCode) {
   return target;
 }
 
+function resolveSemanticPresetMetadata(rootDir, relativePath) {
+  if (typeof relativePath !== 'string' || !relativePath.trim()) {
+    throw new Error('AUTHOR_SEMANTIC_PRESET_INVALID: semanticPreset must be a non-empty relative path');
+  }
+  const filePath = resolveInside(rootDir, relativePath, 'AUTHOR_SEMANTIC_PRESET_OUTSIDE_ROOT');
+  if (!fs.existsSync(filePath)) throw new Error(`AUTHOR_SEMANTIC_PRESET_MISSING: ${relativePath}`);
+  return {
+    relativePath: slash(relativePath),
+    filePath,
+  };
+}
+
 function indent(value, spaces) {
   const prefix = ' '.repeat(spaces);
   return String(value).split(/\r?\n/).map((line) => (line ? `${prefix}${line}` : line)).join('\n');
@@ -280,6 +326,8 @@ module.exports = {
   auditAuthorPackageSourceFormat,
   assembleAuthorPackage,
   checkAuthorPackageEntry,
+  loadAuthorPackageConfig,
   readAuthorPackage,
+  writeAuthorPackageConfig,
   writeAuthorPackageEntry,
 };

@@ -27,6 +27,24 @@ test('sourcePackageFromDocument reads generated deck metadata', () => {
   });
 });
 
+test('sourcePackageFromDocument reads project semantic preset metadata', () => {
+  const sourcePackage = sourcePackageFromDocument({
+    attributes: {
+      'data-id-source-package-config': 'deck.config.json',
+      'data-id-source-package-schema': '1',
+      'data-id-semantic-preset': 'semantic-preset.json',
+      'data-id-profile': 'architecture-report',
+      'data-id-document': 'architecture-report',
+    },
+  });
+
+  assert.deepEqual(sourcePackage.semanticPreset, {
+    source: 'project',
+    id: 'architecture-report',
+    relativePath: 'semantic-preset.json',
+  });
+});
+
 test('sourceNodeForSnapshotItem keeps stable authoring attributes only', () => {
   const node = sourceNodeForSnapshotItem({
     tagName: 'div',

@@ -2,7 +2,8 @@
 
 const path = require('path');
 const { renderSnapshot, validateAuthoringRules } = require('../src/paged-html');
-const { auditAuthorPackageSourceFormat, checkAuthorPackageEntry } = require('../src/authoring');
+const { auditAuthorPackageSourceFormat, checkAuthorPackageEntry, readAuthorPackage } = require('../src/authoring');
+const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../src/semantic-preset');
 
 main().catch((error) => {
   console.error(error && error.stack ? error.stack : String(error));
@@ -18,11 +19,19 @@ async function main() {
 
   let htmlPath;
   let sourceFormat = null;
+  let semanticAudit = null;
+  let semanticPreset = null;
   if (options.packagePath) {
     const packagePath = path.resolve(options.packagePath);
+    const sourcePackage = readAuthorPackage(packagePath);
+    const resolvedPreset = resolveSemanticPreset({
+      rootDir: sourcePackage.rootDir,
+      config: sourcePackage.config,
+    });
+    semanticPreset = publicSemanticPresetMetadata(resolvedPreset);
     sourceFormat = auditAuthorPackageSourceFormat(packagePath, { strict: options.strict });
     if (!sourceFormat.valid) {
-      const payload = packageFailure(sourceFormat, null);
+      const payload = packageFailure(sourceFormat, null, null, semanticPreset);
       if (options.json) console.log(JSON.stringify(payload, null, 2));
       else printPackageFailure(payload);
       process.exit(1);
@@ -36,13 +45,24 @@ async function main() {
           code: 'AUTHOR_GENERATED_ENTRY_DIRTY',
           message,
           entryPath: packageCheck.entryPath,
-        }), null, 2));
+        }, null, semanticPreset), null, 2));
       } else {
         console.error(message);
       }
       process.exit(1);
     }
     htmlPath = packageCheck.entryPath;
+    semanticAudit = auditAuthoringSemanticTokens({
+      preset: resolvedPreset.preset,
+      pageFiles: sourcePackage.pageFiles,
+      strict: options.strict,
+    });
+    if (!semanticAudit.valid) {
+      const payload = packageFailure(sourceFormat, null, semanticAudit, semanticPreset);
+      if (options.json) console.log(JSON.stringify(payload, null, 2));
+      else printPackageFailure(payload);
+      process.exit(1);
+    }
   } else {
     htmlPath = path.resolve(options.html);
   }
@@ -58,10 +78,12 @@ async function main() {
       ok: result.valid,
       htmlPath,
       ...(sourceFormat ? { sourceFormat } : {}),
+      ...(semanticPreset ? { semanticPreset } : {}),
+      ...(semanticAudit ? { semanticAudit } : {}),
       ...result,
     }, null, 2));
   } else {
-    printHumanReport(htmlPath, result, sourceFormat);
+    printHumanReport(htmlPath, result, sourceFormat, semanticAudit, semanticPreset);
   }
 
   if (!result.valid) process.exit(1);
@@ -112,13 +134,17 @@ function printUsage(exitCode) {
   process.exit(exitCode);
 }
 
-function packageFailure(sourceFormat, entryIssue) {
+function packageFailure(sourceFormat, entryIssue, semanticAudit, semanticPreset) {
   const entryErrors = entryIssue ? [{ level: 'error', ...entryIssue }] : [];
-  const errors = entryErrors.concat(sourceFormat ? sourceFormat.errors : []);
-  const warnings = sourceFormat ? sourceFormat.warnings : [];
+  const semanticErrors = semanticAudit ? semanticAudit.errors : [];
+  const semanticWarnings = semanticAudit ? semanticAudit.warnings : [];
+  const errors = entryErrors.concat(sourceFormat ? sourceFormat.errors : [], semanticErrors);
+  const warnings = (sourceFormat ? sourceFormat.warnings : []).concat(semanticWarnings);
   return {
     ok: false,
     sourceFormat,
+    ...(semanticPreset ? { semanticPreset } : {}),
+    ...(semanticAudit ? { semanticAudit } : {}),
     errors,
     warnings,
     messages: errors.concat(warnings),
@@ -133,15 +159,19 @@ function printPackageFailure(payload) {
   }
 }
 
-function printHumanReport(htmlPath, result, sourceFormat = null) {
+function printHumanReport(htmlPath, result, sourceFormat = null, semanticAudit = null, semanticPreset = null) {
   console.log(`Authoring rules: ${result.valid ? 'OK' : 'FAILED'}`);
   console.log(`Source: ${htmlPath}`);
+  if (semanticPreset) {
+    console.log(`Semantic preset: ${semanticPreset.source}:${semanticPreset.id}`);
+  }
   const messages = [
     ...(sourceFormat ? sourceFormat.messages : []),
+    ...(semanticAudit ? semanticAudit.messages : []),
     ...result.messages,
   ];
-  console.log(`Errors: ${(sourceFormat ? sourceFormat.errors.length : 0) + result.errors.length}`);
-  console.log(`Warnings: ${(sourceFormat ? sourceFormat.warnings.length : 0) + result.warnings.length}`);
+  console.log(`Errors: ${(sourceFormat ? sourceFormat.errors.length : 0) + (semanticAudit ? semanticAudit.errors.length : 0) + result.errors.length}`);
+  console.log(`Warnings: ${(sourceFormat ? sourceFormat.warnings.length : 0) + (semanticAudit ? semanticAudit.warnings.length : 0) + result.warnings.length}`);
   for (const entry of messages) {
     const item = entry.itemId ? ` item=${entry.itemId}` : '';
     const edges = entry.edges && entry.edges.length ? ` edges=${entry.edges.join(',')}` : '';
@@ -149,4 +179,13 @@ function printHumanReport(htmlPath, result, sourceFormat = null) {
     const file = entry.file ? ` file=${entry.file}` : '';
     console.log(`[${entry.level}] ${entry.code}${page}${file}${item}${edges} ${entry.message}`);
   }
+}
+
+function publicSemanticPresetMetadata(resolvedPreset) {
+  return {
+    source: resolvedPreset.source,
+    id: resolvedPreset.preset.id,
+    ...(resolvedPreset.relativePath ? { relativePath: resolvedPreset.relativePath } : {}),
+    ...(resolvedPreset.profile ? { profile: resolvedPreset.profile } : {}),
+  };
 }

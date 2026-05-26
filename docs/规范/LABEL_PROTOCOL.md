@@ -81,6 +81,15 @@ html_indesign
   "unitMode": "presentation",
   "coordinateUnit": "pt",
   "assetRoot": "assets",
+  "sourcePackage": {
+    "config": "deck.config.json",
+    "schemaVersion": 1
+  },
+  "semanticPreset": {
+    "source": "project",
+    "id": "architecture-report",
+    "relativePath": "semantic-preset.json"
+  },
   "createdBy": "html-indesign"
 }
 ```
@@ -90,7 +99,9 @@ html_indesign
 - 识别文档是否属于本协议。
 - 记录单位模式和页面策略。
 - 记录资源根目录。
-- 记录项目 preset 或语义配置。
+- 记录作者源码包和项目语义库配置。
+
+`semanticPreset` 只记录可移植信息，不写本机绝对路径。`source: "project"` 表示 HTML 作者包声明了项目语义库；这种情况下反向导出应继续使用该项目语义库，不再隐式合并标准语义库。
 
 ## 5. 页面标签
 

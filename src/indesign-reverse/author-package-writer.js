@@ -6,6 +6,8 @@ const { copyAuthorAssets } = require('./author-asset-packager');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
+const { collectSemanticCandidates } = require('./semantic-candidates');
+const { loadStandardSemanticPreset } = require('../semantic-preset');
 
 function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
@@ -45,8 +47,10 @@ function writeReverseAuthorPackage(model, options = {}) {
     assets: assetCopy.report,
     sourceCss: sourceCss.report,
   });
+  const semanticCandidates = collectSemanticCandidates(model, activeSemanticPresetFor(model, options));
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/inference-report.json'), JSON.stringify(report.inference, null, 2), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'reports/semantic-candidates.json'), JSON.stringify(semanticCandidates, null, 2), 'utf8');
   writeAuthorPackageEntry(path.join(outDir, 'deck.config.json'));
 
   return {
@@ -56,7 +60,21 @@ function writeReverseAuthorPackage(model, options = {}) {
     entryPath: path.join(outDir, 'deck.html'),
     pages: pages.map((page) => page.file),
     report,
+    semanticCandidates,
   };
+}
+
+function activeSemanticPresetFor(model, options = {}) {
+  if (options.semanticPreset) return options.semanticPreset;
+  const profile = model.profile || model.sourcePackage && model.sourcePackage.profile || 'architecture-report';
+  try {
+    return loadStandardSemanticPreset(profile).preset;
+  } catch (error) {
+    if (error && error.code === 'SEMANTIC_PRESET_NOT_FOUND') {
+      return loadStandardSemanticPreset('architecture-report').preset;
+    }
+    throw error;
+  }
 }
 
 function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {

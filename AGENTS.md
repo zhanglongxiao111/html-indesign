@@ -134,6 +134,7 @@
 | 作者源码包组装 | `npm run assemble:authoring -- -- --package <deck.config.json>` |
 | 作者源码包一致性检查 | `npm run assemble:authoring -- -- --package <deck.config.json> --check` |
 | HTML 作者侧规则检查 | `npm run lint:authoring -- <deck.html>` |
+| 初始化项目语义库 | `npm run preset:init -- -- --package <deck.config.json>` |
 | 源码回环 diff | `npm run audit:roundtrip -- -- --source <source-author-root> --reverse <reverse-author-root> [--strict]` |
 | 真实 InDesign E2E | `npm run e2e:indesign` |
 | 真实 InDesign E2E + 回读 | `npm run e2e:indesign -- -- --reverse-roundtrip` |

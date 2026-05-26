@@ -33,6 +33,96 @@ test('lint-authoring --package snapshots the generated entry when it is current'
   assert.deepEqual(payload.sourceFormat.warnings, []);
 });
 
+test('lint-authoring --package reports active semantic preset metadata', () => {
+  const root = makePackageFixture({
+    semanticPreset: 'semantic-preset.json',
+  });
+  fs.writeFileSync(
+    path.join(root, 'semantic-preset.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: 'project-semantic',
+      styleNameMap: {
+        paragraphStyles: {
+          'cover-title': '项目封面标题',
+        },
+        objectStyles: {
+          'metric-card': '项目指标卡片',
+        },
+      },
+      tokens: {
+        semantic: ['cover'],
+        assets: ['image'],
+        fits: ['cover'],
+        crops: ['media'],
+      },
+    }, null, 2),
+    'utf8'
+  );
+  const configPath = path.join(root, 'deck.config.json');
+  writeAuthorPackageEntry(configPath);
+
+  const result = runLint(['--package', configPath, '--strict', '--json']);
+  const payload = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.deepEqual(payload.semanticPreset, {
+    source: 'project',
+    id: 'project-semantic',
+    relativePath: 'semantic-preset.json',
+  });
+});
+
+test('lint-authoring --package --strict rejects tokens missing from the project semantic preset', () => {
+  const root = makePackageFixture({
+    semanticPreset: 'semantic-preset.json',
+    pageHtml: `
+      <section class="page" data-page="cover" data-id-layout="cover" data-id-margin="10mm" data-id-grid="12x8" data-id-column-gutter="4mm" data-id-row-gutter="4mm">
+        <div class="grid-item" data-id-object-style="metric-card" style="--grid-col:1;--grid-span:4;--grid-row:1;--grid-row-span:2">Metric</div>
+      </section>
+    `,
+  });
+  fs.writeFileSync(
+    path.join(root, 'semantic-preset.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: 'project-semantic',
+      styleNameMap: {
+        objectStyles: {
+          'chapter-card': '章节卡片',
+        },
+      },
+    }, null, 2),
+    'utf8'
+  );
+  const configPath = path.join(root, 'deck.config.json');
+  writeAuthorPackageEntry(configPath);
+
+  const result = runLint(['--package', configPath, '--strict', '--json']);
+  const payload = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.ok(payload.errors.some((entry) => entry.code === 'SEMANTIC_TOKEN_UNKNOWN' && entry.token === 'metric-card'));
+});
+
+test('lint-authoring --package rejects invalid asset kind outside strict mode', () => {
+  const root = makePackageFixture({
+    pageHtml: `
+      <section class="page" data-page="cover" data-id-layout="cover" data-id-margin="10mm" data-id-grid="12x8" data-id-column-gutter="4mm" data-id-row-gutter="4mm">
+        <figure class="grid-item" data-id-object-style="image-frame" data-id-asset-kind="spreadsheet" style="--grid-col:1;--grid-span:4;--grid-row:1;--grid-row-span:2">Asset</figure>
+      </section>
+    `,
+  });
+  const configPath = path.join(root, 'deck.config.json');
+  writeAuthorPackageEntry(configPath);
+
+  const result = runLint(['--package', configPath, '--json']);
+  const payload = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1);
+  assert.ok(payload.errors.some((entry) => entry.code === 'SEMANTIC_ASSET_KIND_UNKNOWN' && entry.token === 'spreadsheet'));
+});
+
 test('lint-authoring --package --strict rejects full html documents as page fragments', () => {
   const root = makePackageFixture({
     pageHtml: '<!doctype html><html><body><section class="page" data-page="cover"></section></body></html>',
@@ -127,6 +217,7 @@ function makePackageFixture(options = {}) {
     title: 'Lint Fixture',
     profile: 'architecture-report',
     entry: 'deck.html',
+    ...(options.semanticPreset ? { semanticPreset: options.semanticPreset } : {}),
     styles: [
       'styles/tokens.css',
       'styles/layout.css',

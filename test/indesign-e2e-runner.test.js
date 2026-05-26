@@ -9,6 +9,7 @@ const {
   buildExportJsx,
   buildReverseSnapshotJsx,
   architectureStyleNameMap,
+  loadStyleNameMapForHtml,
   assertPanelNameAuditOk,
   assertReverseHtmlSemantics,
   auditReverseAuthorPackage,
@@ -260,6 +261,52 @@ test('architecture E2E instructions use Chinese panel-facing resource names', as
   const englishNames = panelNames.filter((name) => /[A-Za-z]/.test(name));
 
   assert.deepEqual(englishNames, []);
+});
+
+test('architecture style map preserves current Chinese panel-facing names', () => {
+  const styleNameMap = architectureStyleNameMap();
+
+  assert.equal(styleNameMap.paragraphStyles['deck-eyebrow'], '页眉小标');
+  assert.equal(styleNameMap.objectStyles['hero-image'], '封面图像');
+  assert.equal(styleNameMap.frameStyles['hero-frame'], '封面图片框架');
+});
+
+test('architecture fixture declares a project semantic preset snapshot', () => {
+  const fixtureRoot = path.resolve(__dirname, 'fixtures/e2e/architecture-report');
+  const config = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'deck.config.json'), 'utf8'));
+
+  assert.equal(config.semanticPreset, 'semantic-preset.json');
+  assert.equal(fs.existsSync(path.join(fixtureRoot, config.semanticPreset)), true);
+});
+
+test('loadStyleNameMapForHtml uses a project semantic preset next to deck config', () => {
+  const root = path.resolve('test/workspace/e2e-style-map-project-preset-test');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  fs.writeFileSync(path.join(root, 'deck.html'), '<!doctype html><main class="deck"></main>\n', 'utf8');
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'project-preset',
+    profile: 'architecture-report',
+    entry: 'deck.html',
+    semanticPreset: 'semantic-preset.json',
+    pages: [
+      { id: 'cover', file: 'deck.html' },
+    ],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'semantic-preset.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'project-preset',
+    styleNameMap: {
+      objectStyles: {
+        'metric-card': '项目指标卡片',
+      },
+    },
+  }, null, 2), 'utf8');
+
+  const styleNameMap = loadStyleNameMapForHtml(path.join(root, 'deck.html'));
+
+  assert.equal(styleNameMap.objectStyles['metric-card'], '项目指标卡片');
 });
 
 function writeMinimalAuthorPackage(root, pageHtml) {

@@ -16,6 +16,13 @@ function sourcePackageFromDocument(input = {}) {
   if (attributes['data-id-document']) out.id = attributes['data-id-document'];
   if (input.title) out.title = input.title;
   if (attributes['data-id-profile']) out.profile = attributes['data-id-profile'];
+  if (attributes['data-id-semantic-preset']) {
+    out.semanticPreset = {
+      source: 'project',
+      id: attributes['data-id-profile'] || attributes['data-id-document'] || out.profile || out.id || null,
+      relativePath: slash(attributes['data-id-semantic-preset']),
+    };
+  }
   return out;
 }
 

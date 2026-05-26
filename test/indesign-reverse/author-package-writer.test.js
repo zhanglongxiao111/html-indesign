@@ -227,6 +227,68 @@ test('writeReverseAuthorPackage writes clean structured author markup', () => {
   assert.doesNotMatch(pageHtml, /data-id-object=""/);
 });
 
+test('writeReverseAuthorPackage writes semantic candidate report', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-semantic-candidates-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  model.pages[0].items.push({
+    id: 'custom-panel',
+    role: 'shape',
+    semantic: 'custom-panel',
+    layer: 'custom-layer',
+    sourceNode: {
+      tagName: 'div',
+      id: 'custom-panel',
+      classList: ['custom-panel'],
+      attributes: { 'data-id-object': '' },
+    },
+    structure: { parentId: 'agenda-page', order: 2 },
+    bounds: { x: 0, y: 0, width: 20, height: 20 },
+  });
+
+  writeReverseAuthorPackage(model, {
+    outDir,
+    mode: 'structured',
+    semanticPreset: {
+      schemaVersion: 1,
+      id: 'project-semantic',
+      styleNameMap: {
+        paragraphStyles: {
+          'page-title': '页面标题',
+        },
+        objectStyles: {
+          'page-title': '页面标题',
+        },
+        layers: {
+          content: '内容',
+        },
+      },
+    },
+  });
+
+  const report = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/semantic-candidates.json'), 'utf8'));
+  assert.deepEqual(report, {
+    schemaVersion: 1,
+    presetId: 'project-semantic',
+    candidates: [
+      {
+        kind: 'layers',
+        token: 'custom-layer',
+        suggestedName: 'custom-layer',
+        source: 'reverse-export',
+        count: 1,
+      },
+      {
+        kind: 'objectStyles',
+        token: 'custom-panel',
+        suggestedName: 'custom-panel',
+        source: 'reverse-export',
+        count: 1,
+      },
+    ],
+  });
+});
+
 test('writeReverseAuthorPackage keeps structured source geometry in html instead of dead override rules', () => {
   const outDir = path.resolve('test/workspace/reverse-author-overrides-test');
   fs.rmSync(outDir, { recursive: true, force: true });

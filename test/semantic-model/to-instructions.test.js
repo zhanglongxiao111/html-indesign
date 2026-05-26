@@ -33,6 +33,39 @@ test('semanticModelToInstructions carries labels for document pages guides layer
   assert.equal(instructions.pages[0].items.every((item) => Array.isArray(item.labels) && item.labels.length > 0), true);
 });
 
+test('semanticModelToInstructions preserves semantic preset document label metadata', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [{
+      protocol: 'html-indesign',
+      version: 1,
+      kind: 'document',
+      id: 'doc',
+      source: 'html-to-indesign',
+      semanticPreset: {
+        source: 'project',
+        id: 'architecture-report',
+        relativePath: 'semantic-preset.json',
+      },
+    }],
+    parentPages: [],
+    pages: [],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+
+  assert.deepEqual(instructions.document.labels[0].semanticPreset, {
+    source: 'project',
+    id: 'architecture-report',
+    relativePath: 'semantic-preset.json',
+  });
+});
+
 test('semanticModelToInstructions emits parent pages and page parent references', () => {
   const model = {
     kind: 'DocumentModel',

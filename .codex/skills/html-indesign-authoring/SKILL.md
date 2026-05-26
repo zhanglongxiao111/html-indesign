@@ -67,7 +67,13 @@ style="--grid-col:1;--grid-span:4;--grid-row:2;--grid-row-span:1"
 - 表格：`data-id-table-style`、`data-id-cell-style`
 - 资源：`data-id-asset-kind`、`data-id-fit`、`data-id-pdf-page`、`data-id-crop`
 
-大多数 token 值可以由项目扩展，例如 `page-title`、`metric-card`、`site-plan-frame`、`section-note`。它们必须稳定、可复用，并由 CSS、项目 preset 或测试覆盖支撑。少数字段有枚举含义，例如 `data-id-asset-kind` 通常是 `raster`、`pdf`、`psd`、`ai`、`svg`，`data-id-fit` 通常是 `cover`、`contain`、`fill`、`none`，`data-id-crop` 对 PDF/AI 有固定导入含义。
+token 值来自当前激活的语义库。未声明 `semanticPreset` 时使用标准语义库；声明 `semanticPreset` 时只使用项目语义库，标准语义库不再参与合并。项目需要扩展 token 时，先运行初始化命令生成项目副本，再维护项目自己的 JSON：
+
+```powershell
+npm run preset:init -- -- --package <deck.config.json>
+```
+
+大多数 token 值可以由项目扩展，例如 `page-title`、`metric-card`、`site-plan-frame`、`section-note`。它们必须稳定、可复用，并由 CSS、项目 preset 或测试覆盖支撑。少数字段有枚举含义，例如 `data-id-asset-kind` 通常是 `raster`、`image`、`pdf`、`psd`、`ai`、`svg`，`data-id-fit` 通常是 `cover`、`contain`、`fill`，`data-id-crop` 对 PDF/AI 有固定导入含义。
 
 样式优先放到 CSS 类里，内联 style 主要保留给网格定位变量或确实局部的几何信息。
 

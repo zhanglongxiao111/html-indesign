@@ -49,6 +49,66 @@ test('assembleAuthorPackage writes source package metadata on main', () => {
   assert.match(html, /<section[^>]+data-id-source-file="pages\/00-cover\.html"/);
 });
 
+test('readAuthorPackage resolves project semantic preset metadata', () => {
+  const root = makePackageFixture({
+    semanticPreset: 'semantic-preset.json',
+  });
+  fs.writeFileSync(
+    path.join(root, 'semantic-preset.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: 'demo-deck',
+      styleNameMap: {
+        paragraphStyles: {
+          headline: '项目标题',
+        },
+      },
+    }, null, 2),
+    'utf8'
+  );
+
+  const sourcePackage = readAuthorPackage(path.join(root, 'deck.config.json'));
+
+  assert.deepEqual(sourcePackage.semanticPreset, {
+    relativePath: 'semantic-preset.json',
+    filePath: path.join(root, 'semantic-preset.json'),
+  });
+});
+
+test('assembleAuthorPackage writes project semantic preset metadata on main', () => {
+  const root = makePackageFixture({
+    semanticPreset: 'semantic-preset.json',
+  });
+  fs.writeFileSync(
+    path.join(root, 'semantic-preset.json'),
+    JSON.stringify({
+      schemaVersion: 1,
+      id: 'demo-deck',
+      styleNameMap: {
+        paragraphStyles: {
+          headline: '项目标题',
+        },
+      },
+    }, null, 2),
+    'utf8'
+  );
+
+  const { html } = assembleAuthorPackage(path.join(root, 'deck.config.json'));
+
+  assert.match(html, /data-id-semantic-preset="semantic-preset\.json"/);
+});
+
+test('readAuthorPackage rejects semantic presets outside the package root', () => {
+  const root = makePackageFixture({
+    semanticPreset: '../semantic-preset.json',
+  });
+
+  assert.throws(
+    () => readAuthorPackage(path.join(root, 'deck.config.json')),
+    /AUTHOR_SEMANTIC_PRESET_OUTSIDE_ROOT/
+  );
+});
+
 test('writeAuthorPackageEntry and checkAuthorPackageEntry detect generated entry drift', () => {
   const root = makePackageFixture();
   const configPath = path.join(root, 'deck.config.json');
@@ -76,7 +136,7 @@ test('readAuthorPackage rejects missing page fragments with a clear error code',
   );
 });
 
-function makePackageFixture() {
+function makePackageFixture(options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hi-author-package-'));
   fs.mkdirSync(path.join(root, 'styles'), { recursive: true });
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
@@ -102,6 +162,7 @@ function makePackageFixture() {
       unitMode: 'presentation',
       targetSize: 'source',
       entry: 'deck.html',
+      ...(options.semanticPreset ? { semanticPreset: options.semanticPreset } : {}),
       styles: ['styles/tokens.css', 'styles/layout.css'],
       pages: [
         { id: 'cover', file: 'pages/00-cover.html' },

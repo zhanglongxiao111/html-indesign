@@ -85,6 +85,8 @@ CSS 不应直接编译为散落的 InDesign 局部 override。转换应优先创
 
 元素应引用样式资源。仅当某些样式不能稳定归并为资源时，才允许生成局部 override，并必须记录 warning。
 
+稳定 token 到 InDesign 面板显示名的映射由语义库负责。未声明项目语义库时使用 `presets/<profile>/semantic-preset.json`；作者包声明 `semanticPreset` 后，只使用项目语义库快照，标准语义库不再参与合并。`src/semantic-preset/` 是该能力的库级 API 边界，未来 `indesign-cli` 插件也必须调用这些 API，而不是通过 shell 调 npm scripts。
+
 ### 2.4 尽量 native，必要时 fallback
 
 转换优先生成可编辑 InDesign 对象：
@@ -120,6 +122,7 @@ Semantic Model
   - document/page/parentPage
   - layers/styles/assets/guides
   - items/labels/layout metadata
+  - source package and semantic preset metadata
   ^
   |
 InDesign Adapter
