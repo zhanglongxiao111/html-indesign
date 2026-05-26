@@ -2,12 +2,17 @@ if (typeof HI === "undefined") { HI = {}; }
 
 HI.reverseVisualStyle = function (item) {
     return {
-        fillColor: HI.reverseColor(item.fillColor),
-        strokeColor: HI.reverseColor(item.strokeColor),
-        strokeWeight: HI.positiveNumberOrNull(item.strokeWeight),
+        fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor")),
+        strokeColor: HI.reverseColor(HI.reverseSafeProperty(item, "strokeColor")),
+        strokeWeight: HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight")),
         opacity: HI.reverseOpacity(item),
         cornerRadius: HI.reverseCornerRadius(item)
     };
+};
+
+HI.reverseSafeProperty = function (target, propertyName) {
+    try { return target[propertyName]; } catch (_) {}
+    return null;
 };
 
 HI.reverseTextStyle = function (item) {
