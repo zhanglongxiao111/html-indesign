@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "assemble:authoring": "node scripts/assemble-authoring.js",
+    "audit:roundtrip": "node scripts/audit-reverse-author-roundtrip.js",
     "e2e:indesign": "node scripts/indesign-e2e.js",
     "lint:authoring": "node scripts/lint-authoring.js",
     "reverse:indesign": "node scripts/indesign-reverse-export.js",

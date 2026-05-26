@@ -211,6 +211,27 @@ test('auditReverseAuthorPackage includes editable author html checks', () => {
   assert.equal(typeof auditReverseAuthorPackage, 'function');
 });
 
+test('auditReverseAuthorPackage attaches source roundtrip report when sourceRoot is provided', () => {
+  const root = path.resolve('test/workspace/e2e-author-source-roundtrip-test');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeMinimalAuthorPackage(sourceRoot, '<section class="page"><h1>Contents</h1></section>');
+  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><h1>CONTENTS</h1></section>');
+
+  const audit = auditReverseAuthorPackage({
+    config: path.join(reverseRoot, 'deck.config.json'),
+    entry: path.join(reverseRoot, 'deck.html'),
+    outDir: reverseRoot,
+    sourceRoot,
+  });
+
+  assert.equal(audit.ok, true);
+  assert.equal(audit.sourceRoundtrip.ok, true);
+  assert.deepEqual(audit.sourceRoundtrip.warnings.map((issue) => issue.code), ['ROUNDTRIP_TEXT_CHANGED']);
+  assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/source-roundtrip-report.json')), true);
+});
+
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {
   const htmlPath = path.resolve(__dirname, 'fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
@@ -233,3 +254,21 @@ test('architecture E2E instructions use Chinese panel-facing resource names', as
 
   assert.deepEqual(englishNames, []);
 });
+
+function writeMinimalAuthorPackage(root, pageHtml) {
+  fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'styles'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'reports'), { recursive: true });
+  const configPath = path.join(root, 'deck.config.json');
+  fs.writeFileSync(configPath, JSON.stringify({
+    schemaVersion: 1,
+    id: 'minimal-author',
+    entry: 'deck.html',
+    styles: ['styles/layout.css'],
+    pages: [{ id: 'page-1', file: 'pages/00-page-1.html' }],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'styles/layout.css'), '.page { display:grid; grid-template-columns:repeat(12, 1fr); }', 'utf8');
+  fs.writeFileSync(path.join(root, 'pages/00-page-1.html'), pageHtml, 'utf8');
+  const { writeAuthorPackageEntry } = require('../src/authoring');
+  writeAuthorPackageEntry(configPath);
+}

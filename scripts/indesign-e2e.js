@@ -398,6 +398,7 @@ function auditReverseAuthorPackage(author) {
   }
   const { checkAuthorPackageEntry } = require('../src/authoring');
   const { auditReverseAuthorPackage: auditEditableAuthorPackage } = require('../src/indesign-reverse/author-audit');
+  const { auditAuthorSourceRoundtrip } = require('../src/indesign-reverse/source-roundtrip-diff');
   let check;
   try {
     check = checkAuthorPackageEntry(author.config);
@@ -411,16 +412,37 @@ function auditReverseAuthorPackage(author) {
   const config = JSON.parse(fs.readFileSync(author.config, 'utf8'));
   const pageFiles = (config.pages || []).map((page) => path.join(path.dirname(author.config), page.file));
   const missingPages = pageFiles.filter((file) => !fs.existsSync(file));
-  const editable = auditEditableAuthorPackage(author.outDir || path.dirname(author.config));
+  const outDir = author.outDir || path.dirname(author.config);
+  const editable = auditEditableAuthorPackage(outDir);
+  const sourceRoundtrip = author.sourceRoot
+    ? auditAuthorSourceRoundtrip({
+      sourceRoot: author.sourceRoot,
+      reverseRoot: outDir,
+      strict: !!author.strictSourceRoundtrip,
+    })
+    : null;
+  if (sourceRoundtrip) {
+    const reportDir = path.join(outDir, 'reports');
+    fs.mkdirSync(reportDir, { recursive: true });
+    fs.writeFileSync(path.join(reportDir, 'source-roundtrip-report.json'), JSON.stringify(sourceRoundtrip, null, 2), 'utf8');
+  }
+  const sourceOk = sourceRoundtrip ? sourceRoundtrip.ok : true;
   return {
-    ok: check.ok && missingPages.length === 0 && editable.ok,
+    ok: check.ok && missingPages.length === 0 && editable.ok && sourceOk,
     config: author.config,
     entry: check.entryPath,
     pages: pageFiles.length,
     missingPages,
     editable,
-    errors: editable.errors || [],
-    warnings: editable.warnings || [],
+    sourceRoundtrip,
+    errors: [
+      ...(editable.errors || []),
+      ...(sourceRoundtrip && !sourceRoundtrip.ok ? sourceRoundtrip.errors : []),
+    ],
+    warnings: [
+      ...(editable.warnings || []),
+      ...(sourceRoundtrip ? sourceRoundtrip.warnings : []),
+    ],
   };
 }
 
@@ -638,7 +660,10 @@ async function runReverseRoundtrip(context) {
   });
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
   const htmlAudit = assertReverseHtmlSemantics(fs.readFileSync(reverseHtmlPath, 'utf8'), reverseHtmlPath);
-  const authorAudit = auditReverseAuthorPackage(htmlResult.files.author);
+  const authorAudit = auditReverseAuthorPackage({
+    ...htmlResult.files.author,
+    sourceRoot: path.dirname(context.htmlPath),
+  });
   if (!authorAudit.ok) {
     throw new Error(`Reverse author package audit failed: ${JSON.stringify(authorAudit, null, 2)}`);
   }
