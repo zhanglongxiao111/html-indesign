@@ -1,4 +1,5 @@
 const { mergeAttributes, attrsToHtml, isVoidTag, escapeHtml } = require('./author-attribute-writer');
+const { authorInlineStyleForItem, authorClassesForItem, mergeCss } = require('./author-style-attrs');
 
 const SAFE_TAGS = new Set([
   'section', 'article', 'header', 'footer', 'main', 'aside', 'nav',
@@ -49,8 +50,8 @@ function buildAuthorTree(page) {
 
 function renderNode(node, options, depth) {
   const item = node.item;
-  const sourceNode = item.sourceNode || {};
-  const tag = safeTag(sourceNode.tagName || item.tagName || tagForRole(item.role));
+  const sourceNode = sourceNodeForItem(item);
+  const tag = safeTag(sourceNode.tagName || tagForAsset(item) || item.tagName || tagForRole(item.role));
   if (isPdfObjectItem(item, sourceNode, tag)) {
     return renderPdfObjectNode(node, options, depth);
   }
@@ -66,32 +67,36 @@ function renderNode(node, options, depth) {
 }
 
 function attrsForItem(item, sourceNode, options) {
-  const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item));
+  const tag = safeTag(sourceNode.tagName || tagForAsset(item) || item.tagName || tagForRole(item.role));
+  const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, tag));
   rewriteResourceAttrs(attrs, options);
+  const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
   if (sourceNode.id) {
     attrs.id = sourceNode.id;
   } else if (!item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
     attrs.id = item.id;
   }
-  const classes = new Set(sourceNode.classList || []);
+  const classes = new Set(preserveTrustedSource
+    ? (sourceNode.classList || [])
+    : authorClassesForItem(item, sourceNode.classList || [], attrs));
   if (options.mode === 'observation' && item.role === 'text') classes.add('observed-text');
   if (options.mode === 'observation') classes.add('id-object');
   if (!classes.size && !hasSourceNode(sourceNode)) classes.add(classForRole(item.role));
-  if (item.layout && item.layout.cssVars && classes.has('grid-item')) {
-    attrs.style = Object.entries(item.layout.cssVars).map(([name, value]) => `${name}:${value}`).join(';');
-  } else if (sourceNode.attributes && sourceNode.attributes.style) {
-    attrs.style = sourceNode.attributes.style;
-  }
+  const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
+  const mergedStyle = preserveTrustedSource ? sourceStyle : authorInlineStyleForItem(item, sourceStyle);
+  if (mergedStyle) attrs.style = mergedStyle;
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   if (!hasDataIdObject(attrs) && item.role !== 'text' && !item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
     attrs['data-id-object'] = '';
   }
   if (isUsefulSemantic(item.semantic)) attrs['data-id-semantic'] = item.semantic;
+  if (!preserveTrustedSource) addObservedLabelAttrs(attrs, item);
   return attrsToHtml(orderAttrs(attrs));
 }
 
 function objectAttrsForPdf(item, sourceNode, options) {
   const objectSource = Object.assign({}, sourceNode, {
+    tagName: 'object',
     classList: (sourceNode.classList || []).filter((name) => !PDF_OBJECT_OMITTED_CLASSES.has(String(name || '').trim())),
   });
   if (!objectSource.classList.length) objectSource.classList = ['pdf-source'];
@@ -105,14 +110,14 @@ function wrapperAttrsForPdf(item, sourceNode) {
     class: classes.length ? classes.join(' ') : 'drawing-frame grid-item grid-frame',
     'data-id-ignore': '',
   };
-  if (item.layout && item.layout.cssVars) {
-    attrs.style = Object.entries(item.layout.cssVars).map(([name, value]) => `${name}:${value}`).join(';');
-  }
+  const sourceStyle = item.layout && item.layout.cssVars ? cssVarsStyle(item.layout.cssVars) : '';
+  const mergedStyle = authorInlineStyleForItem(item, sourceStyle);
+  if (mergedStyle) attrs.style = mergedStyle;
   return attrsToHtml(orderAttrs(attrs));
 }
 
 function previewAttrsForPdf(item, sourceNode, options = {}) {
-  const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item));
+  const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, 'object'));
   rewriteResourceAttrs(attrs, options);
   const pdfPath = attrs.data || attrs.src || (item.asset && item.asset.path) || '';
   const page = attrs['data-id-page'] || attrs['data-id-pdf-page'] || '1';
@@ -134,6 +139,37 @@ function previewAttrsForPdf(item, sourceNode, options = {}) {
     alt: attrs.alt || `${fileStem(pdfPath)} preview`,
     'data-id-ignore': '',
   }));
+}
+
+function sourceNodeForItem(item) {
+  return item && item.effectiveLabel && item.effectiveLabel.sourceNode || item.sourceNode || {};
+}
+
+function shouldPreserveTrustedSource(item, sourceNode, options = {}) {
+  if (!options.preserveTrustedSource || options.mode === 'observation') return false;
+  if (!hasSourceNode(sourceNode)) return false;
+  if (item && item.virtual) return false;
+  return true;
+}
+
+function sourceStyleForItem(item, sourceNode, classes) {
+  const rawStyle = sourceNode && sourceNode.attributes && sourceNode.attributes.style || '';
+  const gridStyle = item && item.layout && item.layout.cssVars && classes.has('grid-item')
+    ? cssVarsStyle(item.layout.cssVars)
+    : '';
+  return mergeCss([rawStyle, gridStyle]);
+}
+
+function cssVarsStyle(cssVars) {
+  return Object.entries(cssVars || {}).map(([name, value]) => `${name}:${value}`).join(';');
+}
+
+function addObservedLabelAttrs(attrs, item) {
+  const status = item && item.labelStatus;
+  if (!status || status === 'accepted') return;
+  attrs['data-id-observed-label-status'] = status;
+  const reasons = item.rejectionReasons || item.observedLabel && item.observedLabel.rejectionReasons || [];
+  if (reasons.length) attrs['data-id-observed-reasons'] = reasons.join(' ');
 }
 
 function attachSourceAncestorNodes(nodes, rootId) {
@@ -247,15 +283,35 @@ function hasSourcePdfWrapper(item) {
   });
 }
 
-function assetAttributes(item) {
+function assetAttributes(item, tagName) {
   const nodeAttrs = (item.sourceNode && item.sourceNode.attributes) || {};
   const asset = item.sourceAsset || item.asset || {};
+  const tag = String(tagName || item.sourceNode && item.sourceNode.tagName || '').toLowerCase();
   const out = {};
-  const tag = item.sourceNode && String(item.sourceNode.tagName || '').toLowerCase();
   if (tag === 'img' && !nodeAttrs.src && asset.path) out.src = asset.path;
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.data && asset.path) out.data = asset.path;
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.type && asset.graphicType === 'pdf') out.type = 'application/pdf';
+  if (asset.path && !nodeAttrs['data-id-asset-path']) out['data-id-asset-path'] = asset.path;
+  if (asset.graphicType && !nodeAttrs['data-id-asset-kind']) out['data-id-asset-kind'] = asset.graphicType;
+  if (tag === 'img' && !nodeAttrs.alt && asset.path) out.alt = fileStem(asset.path);
   return out;
+}
+
+function tagForAsset(item) {
+  const asset = item && (item.sourceAsset || item.asset || item.placedAsset);
+  if (!asset || !asset.path) return '';
+  const kind = String(asset.graphicType || asset.kind || '').toLowerCase();
+  const ext = fileExtension(asset.path);
+  if (kind === 'pdf' || ext === 'pdf') return 'object';
+  if (kind === 'svg' || ext === 'svg') return 'img';
+  if (kind === 'image' || kind === 'raster' || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'].includes(ext)) return 'img';
+  return 'object';
+}
+
+function fileExtension(value) {
+  const clean = String(value || '').split(/[?#]/)[0];
+  const index = clean.lastIndexOf('.');
+  return index === -1 ? '' : clean.slice(index + 1).toLowerCase();
 }
 
 function ownContent(item, depth) {

@@ -1,7 +1,11 @@
+const { loadStandardSemanticPreset } = require('../semantic-preset');
+const { validateReverseLabel } = require('./label-whitelist');
+
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
   const styleMaps = reverseStyleNameMaps(snapshot.styles || {});
-  const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps));
+  const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options);
+  const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, { semanticPreset }));
   return {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
@@ -12,7 +16,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     coordinateUnit: documentLabel.coordinateUnit || 'pt',
     labels: (snapshot.document && snapshot.document.labels) || [],
     sourcePackage: documentLabel.sourcePackage || null,
-    parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps)),
+    parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps, { semanticPreset })),
     pages,
     layers: (snapshot.layers || []).map(reverseLayer),
     styles: reverseStyles(snapshot.styles || {}),
@@ -23,38 +27,49 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   };
 }
 
-function reversePage(page, styleMaps) {
+function reversePage(page, styleMaps, context = {}) {
   const label = firstLabel(page.labels, 'page') || {};
+  const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'page' });
+  const effective = validation.effective;
+  const observed = observedLabelWithReasons(validation);
   const parent = label.parentPage || {};
   return {
     id: label.id || page.id,
     index: page.index,
-    semantic: label.semantic || null,
+    semantic: effective.semantic || null,
     parentPageId: label.parentPageId || parent.id || null,
     parentPageName: label.parentPageName || parent.name || page.appliedParentPageName || null,
-    layout: label.layout || null,
-    sourceFile: label.sourceFile || null,
-    sourceNode: label.sourceNode || null,
+    layout: effective.layout || null,
+    sourceFile: effective.sourceFile || null,
+    sourceNode: effective.sourceNode || null,
     grid: label.grid || null,
     width: page.bounds && page.bounds.width,
     height: page.bounds && page.bounds.height,
     margins: label.margins || page.margins || null,
     guides: page.guides || [],
+    labelStatus: validation.status,
+    effectiveLabel: effective,
+    observedLabel: observed,
+    rejectedFields: validation.rejectedFields,
+    rejectionReasons: validation.rejectionReasons,
     labels: page.labels || [],
-    items: (page.items || []).map((item) => reverseItem(item, styleMaps)),
+    items: (page.items || []).map((item) => reverseItem(item, styleMaps, context)),
   };
 }
 
-function reverseItem(item, styleMaps = {}) {
+function reverseItem(item, styleMaps = {}, context = {}) {
   const label = firstLabel(item.labels, 'item') || {};
+  const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'item' });
+  const effective = validation.effective;
+  const observed = observedLabelWithReasons(validation);
   const role = label.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
   return {
     id: label.id || item.id,
     role,
-    semantic: label.semantic || 'unknown',
-    tagName: label.htmlTag || htmlTagForRole(role),
-    htmlClass: label.className || null,
+    semantic: effective.semantic || 'unknown',
+    tagName: effective.htmlTag || htmlTagForRole(role),
+    htmlClass: effective.className || null,
     bounds: item.bounds,
     layerName: item.layerName || null,
     styleRefs: {
@@ -63,7 +78,7 @@ function reverseItem(item, styleMaps = {}) {
       frameStyle: mapStyleName(styleMaps, 'frameStyles', item.frameStyleName),
       tableStyle: table && table.tableStyle ? table.tableStyle : null,
     },
-    content: contentForReverseItem(role, item, label, styleMaps),
+    content: contentForReverseItem(role, item, effective, styleMaps),
     table,
     visualStyle: item.visualStyle || null,
     effects: item.effects || null,
@@ -72,17 +87,22 @@ function reverseItem(item, styleMaps = {}) {
     inlineStyle: item.inlineStyle || item.inlineCSS || null,
     zIndex: numberOrNull(item.zIndex),
     firstLineFont: item.firstLineFont || null,
-    sourceFile: label.sourceFile || null,
-    sourceNode: label.sourceNode || null,
-    sourceAncestorNodes: Array.isArray(label.sourceAncestorNodes) ? label.sourceAncestorNodes : [],
-    structure: label.structure || null,
-    layout: label.layout || null,
+    sourceFile: effective.sourceFile || null,
+    sourceNode: effective.sourceNode || null,
+    sourceAncestorNodes: Array.isArray(effective.sourceAncestorNodes) ? effective.sourceAncestorNodes : [],
+    structure: effective.structure || null,
+    layout: effective.layout || null,
+    labelStatus: validation.status,
+    effectiveLabel: effective,
+    observedLabel: observed,
+    rejectedFields: validation.rejectedFields,
+    rejectionReasons: validation.rejectionReasons,
     asset: item.placedAsset || null,
     labels: item.labels || [],
   };
 }
 
-function reverseParentPage(parentPage, styleMaps) {
+function reverseParentPage(parentPage, styleMaps, context = {}) {
   const label = firstLabel(parentPage.labels, 'parentPage') || {};
   return {
     id: label.id || parentPage.name,
@@ -90,7 +110,7 @@ function reverseParentPage(parentPage, styleMaps) {
     semantic: label.semantic || label.id || parentPage.name,
     provides: label.provides || [],
     labels: parentPage.labels || [],
-    items: (parentPage.items || []).map((item) => reverseItem(item, styleMaps)),
+    items: (parentPage.items || []).map((item) => reverseItem(item, styleMaps, context)),
   };
 }
 
@@ -259,6 +279,32 @@ function reverseCompositeFonts(items) {
     };
   }
   return out;
+}
+
+function activeSemanticPreset(snapshot, documentLabel, options = {}) {
+  if (options.semanticPreset) return options.semanticPreset;
+  const sourcePackage = documentLabel && documentLabel.sourcePackage || {};
+  const profile = documentLabel && documentLabel.profile
+    || sourcePackage.profile
+    || snapshot && snapshot.metadata && snapshot.metadata.profile
+    || 'architecture-report';
+  try {
+    return loadStandardSemanticPreset(profile).preset;
+  } catch (error) {
+    if (profile !== 'architecture-report') {
+      return loadStandardSemanticPreset('architecture-report').preset;
+    }
+    throw error;
+  }
+}
+
+function observedLabelWithReasons(validation) {
+  const observed = validation.observed || {};
+  if (!validation.rejectionReasons || !validation.rejectionReasons.length) return observed;
+  return {
+    ...observed,
+    rejectionReasons: validation.rejectionReasons.slice(),
+  };
 }
 
 function firstLabel(labels, kind) {

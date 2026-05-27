@@ -122,7 +122,95 @@ test('pageItemsToAuthorHtml restores original source inner html when text is unc
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /<h1 class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报<\/span><\/h1>/);
+  assert.match(html, /<h1 class="cover-title pstyle-cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报<\/span><\/h1>/);
+});
+
+test('pageItemsToAuthorHtml merges observed text style into sourced text nodes', () => {
+  const page = {
+    id: 'cover-page',
+    items: [
+      {
+        id: 'cover-title',
+        role: 'text',
+        semantic: 'page-title',
+        sourceNode: {
+          tagName: 'h1',
+          id: 'cover-title',
+          classList: ['cover-title'],
+          attributes: { 'data-id-paragraph-style': 'page-title', style: '--grid-col:1;--grid-span:6' },
+        },
+        styleRefs: { paragraphStyle: 'page-title' },
+        labelStatus: 'partial',
+        observedLabel: { rejectionReasons: ['unknown-layout'] },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: { text: '冰球场首层平面排布汇报' },
+        textStyle: {
+          fontFamily: 'Microsoft YaHei',
+          fontWeight: '700',
+          pointSize: 32,
+          leading: 38,
+          fillColor: '#123456',
+          tracking: 20,
+          justification: 'center',
+        },
+        textFrameStyle: {
+          inset: { top: 4, right: 6, bottom: 4, left: 6 },
+          columnCount: 1,
+          columnGap: 0,
+          verticalJustification: 'flex-start',
+        },
+        zIndex: 7,
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /class="[^"]*cover-title[^"]*pstyle-page-title/);
+  assert.match(html, /style="[^"]*--grid-col:1/);
+  assert.match(html, /style="[^"]*font-family:&quot;Microsoft YaHei&quot;, Arial, sans-serif/);
+  assert.match(html, /style="[^"]*font-size:32px/);
+  assert.match(html, /style="[^"]*line-height:38px/);
+  assert.match(html, /style="[^"]*color:#123456/);
+  assert.match(html, /style="[^"]*letter-spacing:0\.02em/);
+  assert.match(html, /style="[^"]*text-align:center/);
+  assert.match(html, /style="[^"]*padding:4px 6px 4px 6px/);
+  assert.match(html, /style="[^"]*z-index:7/);
+  assert.match(html, /data-id-observed-label-status="partial"/);
+  assert.match(html, /data-id-observed-reasons="unknown-layout"/);
+});
+
+test('pageItemsToAuthorHtml can preserve trusted source markup without observation style noise', () => {
+  const page = {
+    id: 'cover-page',
+    items: [
+      {
+        id: 'cover-title',
+        role: 'text',
+        semantic: 'page-title',
+        sourceNode: {
+          tagName: 'h1',
+          id: 'cover-title',
+          classList: ['cover-title'],
+          attributes: { 'data-id-paragraph-style': 'page-title', style: '--grid-col:1;--grid-span:6' },
+        },
+        styleRefs: { paragraphStyle: 'page-title' },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: { text: '冰球场首层平面排布汇报' },
+        textStyle: { pointSize: 32, fillColor: '#123456' },
+        visualStyle: { fillColor: '#fbfaf7' },
+        zIndex: 7,
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring', preserveTrustedSource: true });
+
+  assert.match(html, /<h1[^>]+id="cover-title"[^>]+class="cover-title"[^>]+style="--grid-col:1;--grid-span:6"[^>]+data-id-paragraph-style="page-title"/);
+  assert.doesNotMatch(html, /pstyle-page-title/);
+  assert.doesNotMatch(html, /font-size:32px/);
+  assert.doesNotMatch(html, /background-color:#fbfaf7/);
+  assert.doesNotMatch(html, /z-index:7/);
 });
 
 test('pageItemsToAuthorHtml restores InDesign character styles as inline character tags', () => {
@@ -151,7 +239,7 @@ test('pageItemsToAuthorHtml restores InDesign character styles as inline charact
   assert.match(html, /流线和 <span data-id-character-style="术语强调">PDF 置入<\/span> 校核。/);
 });
 
-test('pageItemsToAuthorHtml keeps classless sourced child text classless in author mode', () => {
+test('pageItemsToAuthorHtml adds style classes without inventing generic object classes', () => {
   const page = {
     id: 'agenda-page',
     items: [
@@ -174,7 +262,7 @@ test('pageItemsToAuthorHtml keeps classless sourced child text classless in auth
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /<h3 id="chapter-1-title" data-id-paragraph-style="chapter-title">01 轴网与场馆骨架<\/h3>/);
+  assert.match(html, /<h3 id="chapter-1-title" class="pstyle-chapter-title" data-id-paragraph-style="chapter-title">01 轴网与场馆骨架<\/h3>/);
   assert.doesNotMatch(html, /chapter-1-title" class="id-object"/);
   assert.doesNotMatch(html, /chapter-1-title"[^>]+--grid-col/);
 });
@@ -229,7 +317,7 @@ test('pageItemsToAuthorHtml does not emit non-semantic automatic character spans
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /<span id="folio" class="page-number" data-id-paragraph-style="folio">01<\/span>/);
+  assert.match(html, /<span id="folio" class="page-number pstyle-folio" data-id-paragraph-style="folio">01<\/span>/);
   assert.doesNotMatch(html, /data-id-character-style="自动字符-/);
 });
 
@@ -317,6 +405,39 @@ test('pageItemsToAuthorHtml restores PDF source inside an editable preview wrapp
   assert.match(html, /<img[^>]+class="pdf-preview"[^>]+src="\.\.\/reference-pdfs\/ice-rink-layout-reference-page1\.png"[^>]+alt="ice rink layout preview"[^>]+data-id-ignore/);
   assert.match(html, /<object[^>]+class="pdf-source"[^>]+data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"[^>]*><\/object>/);
   assert.doesNotMatch(html, /<div[^>]+data="\.\.\/reference-pdfs/);
+});
+
+test('pageItemsToAuthorHtml renders observed placed assets as real resource elements', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'nas-image',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: { path: '\\\\daga-nas5\\share\\效果图 A.jpg', graphicType: 'image' },
+      },
+      {
+        id: 'nas-pdf',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 2 },
+        asset: { path: '\\\\daga-nas5\\share\\图纸 A.pdf', graphicType: 'pdf' },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['//daga-nas5/share/效果图 a.jpg', '/nas/daga-nas5/share/%E6%95%88%E6%9E%9C%E5%9B%BE%20A.jpg'],
+    ['//daga-nas5/share/图纸 a.pdf', '/nas/daga-nas5/share/%E5%9B%BE%E7%BA%B8%20A.pdf'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /<img id="nas-image"[^>]+src="\/nas\/daga-nas5\/share\/%E6%95%88%E6%9E%9C%E5%9B%BE%20A\.jpg"/);
+  assert.match(html, /data-id-asset-path="\\\\daga-nas5\\share\\效果图 A\.jpg"/);
+  assert.match(html, /<object[^>]+data="\/nas\/daga-nas5\/share\/%E5%9B%BE%E7%BA%B8%20A\.pdf"[^>]+type="application\/pdf"/);
+  assert.match(html, /data-id-asset-path="\\\\daga-nas5\\share\\图纸 A\.pdf"/);
 });
 
 test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nesting a new one', () => {

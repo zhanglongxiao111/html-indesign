@@ -131,9 +131,14 @@
   "tokens": {
     "semantic": [
       "cover",
+      "agenda",
       "contents",
+      "site-analysis",
       "masterplan",
+      "design-strategy",
       "drawing-sheet",
+      "material-system",
+      "metrics-table",
       "analysis",
       "strategy",
       "materials",

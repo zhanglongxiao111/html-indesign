@@ -17,6 +17,8 @@ function parseArgs(argv) {
     blueprintPath: null,
     outDir: null,
     sourceRoot: null,
+    assetPolicy: 'reference',
+    nasPublicRoot: '/nas',
     help: false,
   };
 
@@ -49,6 +51,16 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg.startsWith('--source-root=')) {
       out.sourceRoot = arg.slice('--source-root='.length);
+    } else if (arg === '--asset-policy') {
+      out.assetPolicy = readValue(argv, index, arg);
+      index += 1;
+    } else if (arg.startsWith('--asset-policy=')) {
+      out.assetPolicy = arg.slice('--asset-policy='.length);
+    } else if (arg === '--nas-public-root') {
+      out.nasPublicRoot = readValue(argv, index, arg);
+      index += 1;
+    } else if (arg.startsWith('--nas-public-root=')) {
+      out.nasPublicRoot = arg.slice('--nas-public-root='.length);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -75,6 +87,8 @@ function compileReverseSnapshotToHtml(options) {
     outDir: path.join(outDir, 'author'),
     mode: options.mode,
     sourceRoot: options.sourceRoot,
+    assetPolicy: options.assetPolicy || 'reference',
+    nasPublicRoot: options.nasPublicRoot || '/nas',
   });
 
   fs.writeFileSync(path.join(outDir, 'deck.visual.html'), visualHtml, 'utf8');
@@ -165,7 +179,7 @@ function readValue(argv, index, flag) {
 }
 
 function usage() {
-  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <legacy-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>]';
+  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <legacy-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas]';
 }
 
 if (require.main === module) {

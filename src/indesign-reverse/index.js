@@ -5,6 +5,7 @@ const { legacyBlueprintToSemanticModel } = require('./legacy-blueprint');
 const { writeReverseAuthorPackage } = require('./author-package-writer');
 const { auditReverseAuthorPackage } = require('./author-audit');
 const { auditAuthorSourceRoundtrip } = require('./source-roundtrip-diff');
+const { validateReverseLabel } = require('./label-whitelist');
 
 module.exports = {
   readReverseSnapshot,
@@ -14,4 +15,5 @@ module.exports = {
   writeReverseAuthorPackage,
   auditReverseAuthorPackage,
   auditAuthorSourceRoundtrip,
+  validateReverseLabel,
 };

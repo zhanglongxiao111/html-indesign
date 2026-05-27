@@ -17,6 +17,8 @@
 
 反向导出的最高质量语义来源是 `docs/规范/LABEL_PROTOCOL.md`。无标签或弱标签输入不能恢复原始 authoring HTML，但仍必须能通过 InDesign 原生信息、旧 blueprint 和样式/几何事实生成可观察 HTML 与补标线索。
 
+反向导出每次都必须按当前项目语义库复核 `html_indesign` 标签。符合白名单的字段进入有效标签；不符合白名单的字段只能作为观察标签保留，不参与后续 HTML-to-InDesign 编译。
+
 ## 2. 导出模式
 
 ### 2.1 `structured`
@@ -108,6 +110,8 @@
 | 人工 InDesign，只使用模板但无标签 | 有母版和样式，语义不完整 | 中 | 输出观察 HTML 和模板线索 |
 | 普通未标注 InDesign | 只有视觉对象 | 低 | 输出观察 HTML，等待 Agent 语义化 |
 | 旧 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `legacyBlueprintToSemanticModel` 进入 `indesign-reverse`，输出 inferred/observation HTML |
+
+首次来自人类用户的 InDesign 文档通常语义混乱，可能混入旧模板、复制来的脚本标签或不符合本项目协议的自定义标签。反向导出不得信任这些标签的存在本身，只能信任通过当前语义库白名单复核的字段。Agent 拿到观察 HTML 后，应根据页面视觉、图层、样式、资源和用户意图重建符合白名单的语义，再导回结构化 InDesign。
 
 ## 4. 产物目录
 
@@ -233,6 +237,7 @@ reverse-export-<timestamp>/
 - 模板信息只能部分恢复。
 - observation 模式中的 unknown 对象数量。
 - inferred 模式中的推断来源、置信度和证据。
+- 标签复核摘要：接受、局部接受、降级观察的数量和原因。
 
 ### 4.4 structured 标签矩阵
 
@@ -250,6 +255,42 @@ reverse-export-<timestamp>/
 | Decorative PageItem | 纯背景、装饰线、非核心视觉元素 | warning；保留视觉但标记 `unknown` |
 
 核心对象缺标签时，`structured` 模式不得用视觉猜测补语义；应失败或要求改用 `observation` 模式。
+
+### 4.5 标签白名单与观察标签
+
+`html_indesign` 标签不是通行证。反向导出必须把标签拆成两类事实：
+
+| 类型 | 字段 | 用途 |
+| ---- | ---- | ---- |
+| 有效标签 | `effectiveLabel` | 通过当前语义库复核，可参与结构化 HTML 和后续正向编译 |
+| 观察标签 | `observedLabel` | 未通过复核，只供 Agent、人类和报告观察，不参与编译 |
+
+字段级规则：
+
+- 合规字段局部有效；同一标签里不合规字段不得拖垮已经合规的语义字段。
+- 不合规语义、未知布局、未知样式 token、来源不明的结构关系必须进入 `observedLabel`。
+- 反向 HTML 可写出 `data-id-observed-label-status` 和 `data-id-observed-reasons`，但这些属性不等于有效语义。
+- 每次从 InDesign 回读都要重新复核标签，不能因为某个标签来自上一次导出就跳过校验。
+- 缺少标签的对象也必须导出视觉事实、样式事实和资源事实，不能因为没有语义而空白。
+
+报告必须记录每个观察标签的降级原因，帮助 Agent 判断是保留、重建还是删除。
+
+### 4.6 NAS 原位资源引用
+
+事务所内部项目默认使用主机名 UNC 路径引用公共素材，例如：
+
+```text
+\\daga-nas5\project\assets\plan.pdf
+```
+
+反向作者 HTML 默认不打包这些原始素材。资源策略为 `reference` 时：
+
+- `data-id-asset-path` 保留原始 UNC 或原始 InDesign 链接路径。
+- 浏览器可访问路径写成发布网关约定的 `/nas/...`。
+- 不把 NAS 上的图片、PDF、PSD、AI、SVG 原件复制到导出目录。
+- 只有 PDF 预览图、格式转换预览图、缺少浏览器可直接显示能力的派生物，才写入导出目录缓存。
+
+只有显式选择 `assetPolicy=copy` 时，才复制可复制素材到作者包；复制行为必须写入资源报告。
 
 ## 5. 流程
 
@@ -366,7 +407,9 @@ read blueprint.json
 
 如果输入是旧 blueprint，可先使用 `inferred` 模式获得槽位名、样式和资源线索，再进入补标流程。
 
-Agent 不应直接修改 InDesign 标签。Agent 应修改 HTML，因为 HTML 更适合审阅、diff、测试和版本管理。
+另一条可选路径是 Agent 直接观察 InDesign 文档，根据页面结构、图层、样式和对象关系推断合规语义，并通过脚本或工具给对象写入白名单标签，再导出 HTML。该路径适合人类已经在 InDesign 中完成大量整理、但没有稳定 HTML 作者包的场景。
+
+默认仍推荐 Agent 修改 HTML，因为 HTML 更适合审阅、diff、测试和版本管理。无论选择哪条路径，最终写回 InDesign 的都只能是通过当前语义库复核的标签。
 
 ## 8. 校验
 

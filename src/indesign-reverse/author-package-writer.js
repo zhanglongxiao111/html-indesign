@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { writeAuthorPackageEntry } = require('../authoring');
 const { writeAuthorCssFiles } = require('./author-css-writer');
-const { copyAuthorAssets } = require('./author-asset-packager');
+const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
@@ -24,12 +24,19 @@ function writeReverseAuthorPackage(model, options = {}) {
   const generatedCss = writeAuthorCssFiles(model);
   const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
   const styleFiles = authorStyleFiles({ sourceCss, generatedCss, sourceRoot });
-  const assetCopy = copyAuthorAssets(model, {
+  const assetCopy = prepareAuthorAssets(model, {
     outDir,
     sourceRoot,
+    assetPolicy: options.assetPolicy || 'reference',
+    nasPublicRoot: options.nasPublicRoot || '/nas',
     assetRoot: (model.sourcePackage && model.sourcePackage.assetRoot) || 'assets',
   });
-  const renderOptions = { ...options, assetPathMap: assetCopy.pathMap };
+  const renderOptions = {
+    ...options,
+    sourceRoot,
+    preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
+    assetPathMap: assetCopy.pathMap,
+  };
   const sourceConfig = readSourceConfig(sourceRoot);
   const config = deckConfigFor(model, pages, styleFiles, sourceConfig);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
@@ -132,6 +139,7 @@ function sourcePageAttrs(page, sourceFile, options) {
   attrs.id = sourceNode.id || page.id;
   attrs['data-page'] = page.semantic || page.id;
   attrs['data-id-source-file'] = sourceFile;
+  const preserveTrustedSource = options.preserveTrustedSource && sourceNode.attributes;
   if (options.mode === 'observation' || page.semantic === 'unknown') attrs['data-id-observed'] = 'true';
   if (options.mode && options.mode !== 'structured') attrs['data-id-reverse-mode'] = options.mode;
   if (page.grid) {
@@ -140,7 +148,9 @@ function sourcePageAttrs(page, sourceFile, options) {
     if (page.grid.rowGutter != null) attrs['data-id-row-gutter'] = attrs['data-id-row-gutter'] || `${page.grid.rowGutter}px`;
     if (page.grid.baseline != null) attrs['data-id-baseline'] = attrs['data-id-baseline'] || `${page.grid.baseline}px`;
   }
-  const style = pageStyleVars(page);
+  const style = preserveTrustedSource
+    ? attrs.style || ''
+    : pageStyleVars(page);
   if (style) attrs.style = style;
   return attrsToHtml(orderPageAttrs(attrs));
 }
@@ -204,7 +214,32 @@ function authoringReport(model, pages, options, extras = {}) {
     },
     assets: extras.assets || { copied: 0, missing: [] },
     sourceCss: extras.sourceCss || { copied: 0, missing: [] },
+    labels: labelReport(model),
   };
+}
+
+function labelReport(model) {
+  const report = { accepted: 0, partial: 0, observed: 0, rejections: [] };
+  for (const page of model.pages || []) {
+    addLabelStatus(report, { pageId: page.id }, page);
+    for (const item of page.items || []) {
+      addLabelStatus(report, { pageId: page.id, itemId: item.id }, item);
+    }
+  }
+  return report;
+}
+
+function addLabelStatus(report, context, value) {
+  const status = value && value.labelStatus;
+  if (!status || !Object.prototype.hasOwnProperty.call(report, status)) return;
+  report[status] += 1;
+  const reasons = value.rejectionReasons || value.observedLabel && value.observedLabel.rejectionReasons || [];
+  if (reasons.length) {
+    report.rejections.push({
+      ...context,
+      reasons: reasons.slice(),
+    });
+  }
 }
 
 function writeText(root, relativePath, text) {

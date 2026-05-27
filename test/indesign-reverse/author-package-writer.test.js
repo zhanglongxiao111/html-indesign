@@ -25,7 +25,7 @@ test('writeReverseAuthorPackage splits tagged model into author source package',
   const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
   assert.match(pageHtml, /<section class="page"/);
   assert.match(pageHtml, /data-id-source-file="pages\/01-agenda\.html"/);
-  assert.match(pageHtml, /<h2[^>]+class="page-title grid-item"/);
+  assert.match(pageHtml, /<h2[^>]+class="[^"]*page-title[^"]*grid-item[^"]*pstyle-page-title/);
   assert.match(pageHtml, /--grid-col:1/);
 
   const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
@@ -57,7 +57,7 @@ test('writeReverseAuthorPackage restores source resource tags instead of div pla
   const outDir = path.resolve('test/workspace/reverse-author-resource-test');
   fs.rmSync(outDir, { recursive: true, force: true });
 
-  writeReverseAuthorPackage(resourceModel(), { outDir, mode: 'authoring' });
+  const result = writeReverseAuthorPackage(resourceModel(), { outDir, mode: 'authoring' });
 
   const html = fs.readFileSync(path.join(outDir, 'pages/00-cover.html'), 'utf8');
   assert.match(html, /<img[^>]+class="hero-media"/);
@@ -66,6 +66,8 @@ test('writeReverseAuthorPackage restores source resource tags instead of div pla
   assert.match(html, /<object[^>]+class="pdf-source"/);
   assert.match(html, /data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
   assert.doesNotMatch(html, /<div[^>]+data="\.\.\/reference-pdfs/);
+  assert.equal(result.report.assets.policy, 'reference');
+  assert.equal(result.report.assets.copied, 0);
 });
 
 test('writeReverseAuthorPackage copies source assets into the author package and rewrites resource paths', () => {
@@ -76,7 +78,7 @@ test('writeReverseAuthorPackage copies source assets into the author package and
   writeFixtureFile(path.join(sourceRoot, '../smoke-assets/photos/industrial-site.jpg'), 'image-bytes');
   writeFixtureFile(path.join(sourceRoot, '../reference-pdfs/ice-rink-layout-reference.pdf'), 'pdf-bytes');
 
-  const result = writeReverseAuthorPackage(resourceModel(), { outDir, sourceRoot, mode: 'authoring' });
+  const result = writeReverseAuthorPackage(resourceModel(), { outDir, sourceRoot, mode: 'authoring', assetPolicy: 'copy' });
 
   const html = fs.readFileSync(path.join(outDir, 'pages/00-cover.html'), 'utf8');
   assert.match(html, /src="assets\/smoke-assets\/photos\/industrial-site\.jpg"/);
@@ -98,7 +100,7 @@ test('writeReverseAuthorPackage maps absolute placed asset aliases without dupli
   model.pages[0].items[0].asset.path = imagePath;
   model.assets = [{ name: 'industrial-site.jpg', path: imagePath, status: 'NORMAL' }];
 
-  const result = writeReverseAuthorPackage(model, { outDir, sourceRoot, mode: 'authoring' });
+  const result = writeReverseAuthorPackage(model, { outDir, sourceRoot, mode: 'authoring', assetPolicy: 'copy' });
 
   assert.equal(result.report.assets.copiedFiles.filter((file) => /industrial-site\.jpg$/.test(file)).length, 1);
   assert.equal(fs.existsSync(path.join(outDir, 'assets/smoke-assets/photos/industrial-site.jpg')), true);
@@ -285,6 +287,38 @@ test('writeReverseAuthorPackage writes semantic candidate report', () => {
         source: 'reverse-export',
         count: 1,
       },
+    ],
+  });
+});
+
+test('writeReverseAuthorPackage reports accepted partial and observed reverse labels', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-label-report-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = observedModel();
+  model.pages[0].labelStatus = 'accepted';
+  model.pages[0].items[0].labelStatus = 'partial';
+  model.pages[0].items[0].rejectionReasons = ['unknown-layout'];
+  model.pages[0].items.push({
+    id: 'foreign-item',
+    role: 'text',
+    semantic: 'unknown',
+    bounds: { x: 20, y: 140, width: 160, height: 40 },
+    styleRefs: {},
+    content: { text: '外来标签', runs: [] },
+    labelStatus: 'observed',
+    rejectionReasons: ['unknown-semantic'],
+  });
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'observation' });
+
+  const report = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/authoring-report.json'), 'utf8'));
+  assert.deepEqual(report.labels, {
+    accepted: 1,
+    partial: 1,
+    observed: 1,
+    rejections: [
+      { pageId: 'page-1', itemId: 'observed-title', reasons: ['unknown-layout'] },
+      { pageId: 'page-1', itemId: 'foreign-item', reasons: ['unknown-semantic'] },
     ],
   });
 });

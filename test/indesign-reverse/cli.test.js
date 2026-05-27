@@ -31,6 +31,18 @@ test('parseArgs accepts source root for self-contained reverse author packages',
   assert.equal(args.sourceRoot, 'source-package');
 });
 
+test('parseArgs accepts reverse asset reference options', () => {
+  const args = parseArgs([
+    '--snapshot', 'reverse.json',
+    '--out', 'out-dir',
+    '--asset-policy', 'reference',
+    '--nas-public-root', '/nas',
+  ]);
+
+  assert.equal(args.assetPolicy, 'reference');
+  assert.equal(args.nasPublicRoot, '/nas');
+});
+
 test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   const outDir = path.resolve('test/workspace/reverse-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });

@@ -180,6 +180,75 @@ test('reverseSnapshotToSemanticModel preserves observed text style per text item
   assert.equal(title.textStyle.justification, 'center');
 });
 
+test('reverseSnapshotToSemanticModel observes labels outside the active whitelist without losing visual facts', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'copied-template.indd', mode: 'structured' },
+    document: { name: 'copied-template.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'copied-title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            paragraphStyleName: '页面标题',
+            textStyle: {
+              fontFamily: 'Microsoft YaHei',
+              pointSize: 32,
+              leading: 38,
+              fillColor: '#123456',
+              tracking: 20,
+              justification: 'center',
+            },
+            text: '旧模板标题',
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'copied-title',
+                role: 'text',
+                semantic: 'foreign-slot',
+                htmlTag: 'h1',
+                className: 'old-title',
+                sourceNode: {
+                  tagName: 'h1',
+                  id: 'copied-title',
+                  classList: ['old-title'],
+                  attributes: { 'data-id-paragraph-style': 'missing-style' },
+                },
+                structure: { parentId: 'old-card', order: 1 },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  }, {
+    mode: 'structured',
+    semanticPreset: {
+      semantics: { 'page-title': { roles: ['text'] } },
+      styles: { paragraphStyles: { 'page-title': {} } },
+    },
+  });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.semantic, 'unknown');
+  assert.equal(item.labelStatus, 'observed');
+  assert.equal(item.effectiveLabel.semantic, null);
+  assert.equal(item.sourceNode, null);
+  assert.equal(item.structure, null);
+  assert.equal(item.observedLabel.semantic, 'foreign-slot');
+  assert.equal(item.observedLabel.sourceNode.tagName, 'h1');
+  assert.deepEqual(item.rejectionReasons.sort(), ['unknown-paragraph-style', 'unknown-semantic'].sort());
+  assert.equal(item.textStyle.pointSize, 32);
+  assert.equal(item.textStyle.fillColor, '#123456');
+});
+
 test('reverseSnapshotToSemanticModel preserves observed character runs per text item', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'type-runs.indd', mode: 'structured' },
