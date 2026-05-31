@@ -16,8 +16,8 @@
 - [x] 阶段 0 前置依赖检查：`rg --version`
 - [x] 阶段 0 前置依赖安装：`npm install`
 - [x] 阶段 0 前置基线测试：`npm test`，357 pass / 0 fail
-- [ ] 阶段 0：冻结现有事实源与基线测试
-- [ ] 阶段 1：实现协议字段注册表核心 API
+- [x] 阶段 0：冻结现有事实源与基线测试（implementation：`983ddb3`；spec review 通过；code quality review 通过）
+- [ ] 阶段 1：实现协议字段注册表核心 API（进行中：implementation agent）
 - [ ] 阶段 2：登记当前事实字段，不接入强门禁
 - [ ] 阶段 3：能力矩阵和生命周期策略门禁
 - [ ] 阶段 4：字段扫描和仅警告门禁
