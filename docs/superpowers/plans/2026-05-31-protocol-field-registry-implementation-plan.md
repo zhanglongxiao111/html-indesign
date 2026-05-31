@@ -1,12 +1,34 @@
 # 协议字段注册表实施计划
 
-状态：已收口，待执行
+状态：实施中（worktree：`.worktrees/protocol-field-registry`，分支：`codex/protocol-field-registry`）
 
 来源：GPT Pro 外部审查回复，经本地仓库核对后整理为正式执行版
 
 关联规格：
 
 - `docs/superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md`
+
+执行进度：
+
+- [x] 创建隔离 worktree：`.worktrees/protocol-field-registry`
+- [x] 创建执行分支：`codex/protocol-field-registry`
+- [x] 设置 worktree 本地 `core.autocrlf=false`，避免 Windows CRLF 检出破坏 LF 敏感测试
+- [x] 阶段 0 前置依赖检查：`rg --version`
+- [x] 阶段 0 前置依赖安装：`npm install`
+- [x] 阶段 0 前置基线测试：`npm test`，357 pass / 0 fail
+- [ ] 阶段 0：冻结现有事实源与基线测试
+- [ ] 阶段 1：实现协议字段注册表核心 API
+- [ ] 阶段 2：登记当前事实字段，不接入强门禁
+- [ ] 阶段 3：能力矩阵和生命周期策略门禁
+- [ ] 阶段 4：字段扫描和仅警告门禁
+- [ ] 阶段 5：接入语义模型和标签白名单
+- [ ] 阶段 6：退役字段集中登记与清理
+- [ ] 阶段 7：按域接入强校验
+- [ ] 阶段 8：目录重构为适配器 / 写出器
+- [ ] 阶段 9：拆分大文件并保持行为可验证
+- [ ] 阶段 10：PPTX 预留适配器 / 写出器契约
+- [ ] 阶段 11：字段文档生成与长期规范收口
+- [ ] 阶段 12：最终 E2E 和真实 InDesign 验证
 
 执行原则：
 
@@ -18,11 +40,12 @@
 - 计划中的伪代码和移动命令是执行依据，不是免核对复制文本；每个阶段开始前必须用当前仓库实际导出、文件名、测试命令核对一次。
 - 本仓库在 Windows / PowerShell 环境执行，门禁命令必须使用 `rg`、PowerShell 或 Node 测试；不得把 Unix `grep`、`test`、`mkdir -p`、`mv` 当作最终可运行命令。
 - `rg` 是本计划的显式执行依赖；阶段 0 前必须运行 `rg --version` 确认可用，不能把“命令不存在”误判为“没有命中”。
-- 执行过程中必须实时更新本文 checklist；每个阶段结束前必须跑该阶段验证并提交一次可回溯提交。
+- 执行必须在隔离 worktree 中完成，不能直接在 `main` 工作区改代码。
+- 执行过程中必须实时更新本文 checklist；每个阶段结束前必须在 worktree 分支跑该阶段验证并提交一次可回溯提交。
 
 ## 正式实施计划：协议字段注册表与多格式能力矩阵
 
-> **给执行 Agent：** 必须使用 `executing-plans` 按任务执行，并实时更新 checkbox。本文直接在主分支推进，不写 PR 计划；如果执行平台要求隔离工作区，只作为本地执行保护，不改变“主分支直接落地”的项目决策。
+> **给执行 Agent：** 必须先使用 `using-git-worktrees` 创建隔离工作区，再使用 `executing-plans` 按任务执行，并实时更新 checkbox。本文在 worktree 分支推进，不直接在 `main` 工作区实施；最终合并、PR 或清理分支由收尾阶段决定。
 
 **目标：** 实现协议字段注册表、多格式能力矩阵、字段生命周期门禁，并把当前 HTML / InDesign / 未来 PPTX 的转换边界重构为清晰的读取器、标准化器、语义模型、写出器、执行器架构。
 
@@ -39,6 +62,35 @@
 - 目录大重构被保留为本计划目标：`src/paged-html/` 和 `src/indesign-reverse/` 只能阶段内短暂存在，阶段 8 完成时必须删除。
 - 伪代码必须在执行阶段结合当前仓库核对后落地；如果发现函数名、导出名或文件名已经变化，优先修正计划 checklist，再改代码。
 - 长期规范与生成文档的关系必须等注册表覆盖现有字段后再切换；不得在 registry 还不完整时删除现有静态事实说明。
+
+### 0.1 Worktree 执行约定
+
+执行前必须从 `main` 创建隔离 worktree：
+
+```powershell
+git status --short
+git branch --show-current
+git check-ignore -q .worktrees
+if ($LASTEXITCODE -ne 0) { throw ".worktrees/ must be ignored before creating worktree" }
+git worktree add .worktrees\protocol-field-registry -b codex/protocol-field-registry
+Set-Location .worktrees\protocol-field-registry
+```
+
+约定：
+
+- worktree 路径：`.worktrees/protocol-field-registry`
+- 分支名：`codex/protocol-field-registry`
+- `main` 工作区只作为源基线和最终集成目标；实施代码、测试、文档生成、checklist 更新和阶段提交都在 worktree 分支完成。
+- 如果目标 worktree 或分支已存在，停止并先检查 `git worktree list --porcelain` 与 `git status --short`，不得覆盖或删除已有工作。
+- 创建 worktree 后先运行：
+
+```powershell
+rg --version
+npm install
+npm test
+```
+
+预期：`rg` 可用，依赖安装成功，`npm test` PASS。若失败，不进入阶段 0；先区分是 worktree 创建问题、依赖问题，还是 `main` 基线已经损坏。
 
 ## 1. 摘要
 
@@ -560,7 +612,7 @@ src/indesign-reverse/
   npm test
   ```
   
-  预期： PASS。若失败，不进入阶段 1；先区分是当前 main 已坏，还是测试新增错误。
+  预期： PASS。若失败，不进入阶段 1；先区分是 worktree 基线继承了 `main` 的既有问题，还是测试新增错误。
 
 - **步骤 0.6：输出字段盘点清单。**
   
@@ -611,7 +663,7 @@ src/indesign-reverse/
 
 回退 / 停止条件：
 
-- 如果阶段 0 基线失败，停止后续重构，先修复当前 main 或修正测试对当前事实的理解。
+- 如果阶段 0 基线失败，停止后续重构，先在 worktree 中修复基线问题，或回到 `main` 确认当前事实后修正测试理解。
 
 ---
 
@@ -3396,7 +3448,7 @@ rg returns no active import references
 
 ## 10. 执行时的阶段提交建议
 
-用户要求不写 PR，直接主分支执行；仍建议每个阶段形成可回滚提交点：
+用户要求在 worktree 中执行；每个阶段必须在 `codex/protocol-field-registry` 分支形成可回滚提交点：
 
 ```text
 test: capture current protocol field facts
@@ -3411,4 +3463,4 @@ feat: add pptx adapter contracts
 docs: generate protocol field registry spec
 ```
 
-每个提交前必须运行该阶段指定测试；完成整项前必须运行第 9 节全部验证命令。
+每个提交前必须运行该阶段指定测试；完成整项前必须运行第 9 节全部验证命令。最终如何集成到 `main` 不在阶段提交中假定，完成后使用收尾流程决定直接合并、创建 PR 或保留 worktree 分支。
