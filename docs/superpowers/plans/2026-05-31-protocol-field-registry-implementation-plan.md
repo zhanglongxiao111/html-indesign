@@ -19,7 +19,7 @@
 - [x] 阶段 0：冻结现有事实源与基线测试（implementation：`983ddb3`；spec review 通过；code quality review 通过）
 - [x] 阶段 1：实现协议字段注册表核心 API（implementation：`fa30750`；修复：`f13b7ae`、`e569799`、`355df73`；spec review 通过；code quality review 通过；controller 验证：protocol 24/24、npm test 381/381）
 - [x] 阶段 2：登记当前事实字段，不接入强门禁（implementation：`68cde6b`；spec fixes：`9e05f2a`、`e5ad1cd`；quality fix：`d30df31`；spec review 通过；code quality review 通过；controller 验证：protocol focused 16/16、protocol 33/33、npm test 390/390）
-- [ ] 阶段 3：能力矩阵和生命周期策略门禁（implementation：`8648f27`；spec fix：`50386a6`；进行中：spec re-review）
+- [ ] 阶段 3：能力矩阵和生命周期策略门禁（implementation：`8648f27`；spec fix：`50386a6`；spec re-review 拒绝：registry 入口仍补全畸形 capability；进行中：implementation fix）
 - [ ] 阶段 4：字段扫描和仅警告门禁
 - [ ] 阶段 5：接入语义模型和标签白名单
 - [ ] 阶段 6：退役字段集中登记与清理
