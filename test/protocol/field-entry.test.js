@@ -66,3 +66,21 @@ test('normalizeFieldEntry always includes canonicalPath in allPaths', () => {
 
   assert.deepEqual(entry.allPaths, ['document.id', 'labels.document.id']);
 });
+
+test('normalizeFieldEntry preserves explicit invalid lifecycle values and defaults only omitted lifecycle', () => {
+  const baseEntry = {
+    canonicalPath: 'document.id',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    owner: 'document',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+    },
+  };
+
+  assert.equal(normalizeFieldEntry({
+    ...baseEntry,
+    lifecycle: '',
+  }).lifecycle, '');
+  assert.equal(normalizeFieldEntry(baseEntry).lifecycle, 'active');
+});

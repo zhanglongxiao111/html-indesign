@@ -37,6 +37,16 @@ test('normalizeCapabilities fills unsupported for omitted formats and directions
   });
 });
 
+test('normalizeCapabilities preserves explicit invalid capability values for validation', () => {
+  const normalized = normalizeCapabilities({
+    html: { read: '' },
+  });
+
+  assert.equal(normalized.html.read, '');
+  assert.equal(normalized.html.write, 'unsupported');
+  assert.equal(normalized.html.persist, 'unsupported');
+});
+
 test('isCapabilityLevel accepts defined levels and rejects invalid values', () => {
   for (const level of CAPABILITY_LEVELS) {
     assert.equal(isCapabilityLevel(level), true, level);

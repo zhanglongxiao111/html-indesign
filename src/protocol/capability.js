@@ -25,7 +25,9 @@ function normalizeCapabilities(capabilities = {}) {
     normalized[format] = {};
 
     for (const direction of DIRECTIONS) {
-      normalized[format][direction] = input[direction] || 'unsupported';
+      normalized[format][direction] = Object.prototype.hasOwnProperty.call(input, direction)
+        ? input[direction]
+        : 'unsupported';
     }
 
     if (Object.prototype.hasOwnProperty.call(input, 'fallbackKind')) {

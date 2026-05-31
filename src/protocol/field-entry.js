@@ -15,8 +15,10 @@ function normalizeFieldEntry(input) {
     ...source,
     currentPaths,
     allPaths: uniquePaths([source.canonicalPath, ...currentPaths]),
-    capabilities: normalizeCapabilities(source.capabilities || {}),
-    lifecycle: source.lifecycle || 'active',
+    capabilities: normalizeCapabilities(
+      Object.prototype.hasOwnProperty.call(source, 'capabilities') ? source.capabilities : {},
+    ),
+    lifecycle: Object.prototype.hasOwnProperty.call(source, 'lifecycle') ? source.lifecycle : 'active',
   };
 }
 
