@@ -1,4 +1,10 @@
 const { normalizeFieldEntry, validateFieldEntry } = require('./field-entry');
+const {
+  assertWritable,
+  capabilityFor,
+  fieldFor,
+  lifecyclePolicyFor,
+} = require('./field-query');
 const { createFieldRegistry } = require('./registry');
 const {
   CAPABILITY_LEVELS,
@@ -35,9 +41,12 @@ const fieldEntries = fieldRegistry.entries;
 
 module.exports = Object.freeze({
   CAPABILITY_LEVELS,
+  assertWritable,
+  capabilityFor,
   createFieldRegistry,
   DIRECTIONS,
   FIELD_CLASSES,
+  fieldFor,
   fieldEntries,
   fieldRegistry,
   FORMATS,
@@ -45,6 +54,7 @@ module.exports = Object.freeze({
   isCapabilityLevel,
   isFieldClass,
   isLifecycle,
+  lifecyclePolicyFor,
   normalizeCapabilities,
   normalizeFieldEntry,
   uniquePaths,

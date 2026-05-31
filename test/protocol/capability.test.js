@@ -5,6 +5,9 @@ const {
   CAPABILITY_LEVELS,
   FORMATS,
   DIRECTIONS,
+  assertWritable,
+  capabilityFor,
+  fieldRegistry,
   validateFieldEntry,
   isCapabilityLevel,
   normalizeCapabilities,
@@ -116,4 +119,45 @@ test('capability constants are immutable and do not expose live validation state
   assert.throws(() => DIRECTIONS.push('preview'), TypeError);
   assert.equal(typeof CAPABILITY_LEVELS.add, 'undefined');
   assert.equal(isCapabilityLevel('maybe'), false);
+});
+
+test('capabilityFor returns explicit registry capability metadata for a known format', () => {
+  assert.deepEqual(
+    capabilityFor(fieldRegistry, 'items[].asset.placement.pageNumber', 'pptx'),
+    {
+      read: 'unsupported',
+      write: 'fallback',
+      persist: 'lossless',
+      fallbackKind: 'preview-image',
+      risk: 'editable-loss',
+    },
+  );
+});
+
+test('assertWritable rejects observe-only writes', () => {
+  assert.throws(
+    () => assertWritable(fieldRegistry, 'items[].sourceNode', 'indesign'),
+    /FIELD_WRITE_FORBIDDEN:indesign:items\[\]\.sourceNode:observe-only/,
+  );
+});
+
+test('assertWritable rejects unsupported writes', () => {
+  assert.throws(
+    () => assertWritable(fieldRegistry, 'items[].observedLabel', 'indesign'),
+    /FIELD_WRITE_FORBIDDEN:indesign:items\[\]\.observedLabel:unsupported/,
+  );
+});
+
+test('capabilityFor rejects unregistered fields', () => {
+  assert.throws(
+    () => capabilityFor(fieldRegistry, 'not.registered', 'html'),
+    /FIELD_NOT_REGISTERED:not\.registered/,
+  );
+});
+
+test('capabilityFor rejects unknown formats instead of manufacturing unsupported capabilities', () => {
+  assert.throws(
+    () => capabilityFor(fieldRegistry, 'items[].asset.placement.pageNumber', 'docx'),
+    /CAPABILITY_FORMAT_INVALID:docx/,
+  );
 });
