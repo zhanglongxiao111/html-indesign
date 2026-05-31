@@ -155,6 +155,34 @@ test('registry rejects incomplete explicit known format capabilities before norm
   ]), /FIELD_ENTRY_INVALID:.*CAPABILITY_DECLARATION_INVALID/);
 });
 
+test('registry rejects malformed retired html attr policies before indexing', () => {
+  const invalidPolicies = [
+    [{ name: 'data-id-page', writePolicy: 'forbidden' }],
+    [{ name: 'data-id-page', readPolicy: 'observe-only' }],
+    [{ name: 'data-id-page', readPolicy: '', writePolicy: 'forbidden' }],
+    [
+      {
+        name: 'data-id-old-a',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+      {
+        name: 'data-id-old-b',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+    ],
+  ];
+
+  for (const htmlAttrs of invalidPolicies) {
+    assert.throws(() => createFieldRegistry([
+      retiredHtmlAttrEntry({
+        retired: { htmlAttrs },
+      }),
+    ]), /FIELD_ENTRY_INVALID:.*RETIRED_POLICY_INVALID/);
+  }
+});
+
 test('registry lists fields by owner class and lifecycle', () => {
   const registry = createFieldRegistry([
     fieldEntry({

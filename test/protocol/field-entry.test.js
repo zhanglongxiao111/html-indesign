@@ -88,6 +88,73 @@ test('field entry rejects entries without explicit capabilities', () => {
   assert.match(result.errors.map((error) => error.code).join(','), /CAPABILITIES_MISSING/);
 });
 
+test('field entry rejects malformed retired html attr policy declarations', () => {
+  const invalidPolicies = [
+    [],
+    [
+      {
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+    ],
+    [
+      {
+        name: 'data-id-page',
+        writePolicy: 'forbidden',
+      },
+    ],
+    [
+      {
+        name: 'data-id-page',
+        readPolicy: 'observe-only',
+      },
+    ],
+    [
+      {
+        name: '',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+    ],
+    [
+      {
+        name: 'data-id-page',
+        readPolicy: '',
+        writePolicy: 'forbidden',
+      },
+    ],
+    [
+      {
+        name: 'data-id-page',
+        readPolicy: 'observe-only',
+        writePolicy: '',
+      },
+    ],
+    [
+      {
+        name: 'data-id-old-a',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+      {
+        name: 'data-id-old-b',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+    ],
+  ];
+
+  for (const htmlAttrs of invalidPolicies) {
+    const result = validateFieldEntry(retiredHtmlAttrEntry({ retired: { htmlAttrs } }));
+
+    assert.equal(result.valid, false);
+    assert.match(
+      result.errors.map((error) => error.code).join(','),
+      /RETIRED_POLICY_INVALID/,
+    );
+  }
+});
+
 test('normalizeFieldEntry always includes canonicalPath in allPaths', () => {
   const entry = normalizeFieldEntry({
     canonicalPath: 'document.id',
@@ -172,3 +239,26 @@ test('normalizeFieldEntry must preserve invalid currentPaths declarations for va
     /CURRENT_PATHS_INVALID/,
   );
 });
+
+function retiredHtmlAttrEntry(overrides = {}) {
+  return {
+    canonicalPath: 'retired.htmlAttrs.dataIdPage',
+    currentPaths: [],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'asset-placement',
+    capabilities: {
+      html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      htmlAttrs: [{
+        name: 'data-id-page',
+        replacedBy: 'data-id-pdf-page',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+        reason: 'ambiguous-with-page-identity',
+      }],
+    },
+    ...overrides,
+  };
+}

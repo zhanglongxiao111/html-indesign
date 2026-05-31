@@ -84,6 +84,7 @@ function validateFieldEntry(input) {
   }
 
   validateCapabilities(input.capabilities, errors);
+  validateRetiredPolicy(input, errors);
 
   return {
     valid: errors.length === 0,
@@ -138,6 +139,53 @@ function validateCapabilities(capabilities, errors) {
           message: `Invalid capability ${format}.${direction}: ${level}`,
         });
       }
+    }
+  }
+}
+
+function validateRetiredPolicy(input, errors) {
+  const retired = input.retired || {};
+  const htmlAttrs = retired.htmlAttrs;
+
+  if (input.lifecycle !== 'retired' && htmlAttrs === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(htmlAttrs) || htmlAttrs.length !== 1) {
+    errors.push({
+      code: 'RETIRED_POLICY_INVALID',
+      message: 'retired.htmlAttrs must contain exactly one retired policy record.',
+    });
+    return;
+  }
+
+  const retiredAttr = htmlAttrs[0];
+  if (!retiredAttr || typeof retiredAttr !== 'object' || Array.isArray(retiredAttr)) {
+    errors.push({
+      code: 'RETIRED_POLICY_INVALID',
+      message: 'retired.htmlAttrs record must be an object.',
+    });
+    return;
+  }
+
+  for (const key of ['name', 'readPolicy', 'writePolicy']) {
+    if (typeof retiredAttr[key] !== 'string' || retiredAttr[key].length === 0) {
+      errors.push({
+        code: 'RETIRED_POLICY_INVALID',
+        message: `retired.htmlAttrs record must include ${key}.`,
+      });
+    }
+  }
+
+  for (const key of ['replacedBy', 'reason']) {
+    if (
+      hasOwn.call(retiredAttr, key)
+      && (typeof retiredAttr[key] !== 'string' || retiredAttr[key].length === 0)
+    ) {
+      errors.push({
+        code: 'RETIRED_POLICY_INVALID',
+        message: `retired.htmlAttrs ${key} must be a non-empty string when present.`,
+      });
     }
   }
 }
