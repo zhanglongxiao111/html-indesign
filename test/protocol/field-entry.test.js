@@ -84,3 +84,23 @@ test('normalizeFieldEntry preserves explicit invalid lifecycle values and defaul
   }).lifecycle, '');
   assert.equal(normalizeFieldEntry(baseEntry).lifecycle, 'active');
 });
+
+test('normalizeFieldEntry preserves explicit invalid capabilities for validation', () => {
+  const baseEntry = {
+    canonicalPath: 'document.id',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document',
+  };
+
+  assert.equal(normalizeFieldEntry({
+    ...baseEntry,
+    capabilities: '',
+  }).capabilities, '');
+  assert.deepEqual(normalizeFieldEntry(baseEntry).capabilities.html, {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  });
+});

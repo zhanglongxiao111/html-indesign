@@ -9,36 +9,56 @@ const CAPABILITY_LEVELS = new Set([
 
 const FORMATS = ['html', 'indesign', 'pptx'];
 const DIRECTIONS = ['read', 'write', 'persist'];
+const hasOwn = Object.prototype.hasOwnProperty;
 
 function isCapabilityLevel(value) {
   return CAPABILITY_LEVELS.has(value);
 }
 
 function normalizeCapabilities(capabilities = {}) {
-  const inputCapabilities = capabilities && typeof capabilities === 'object' ? capabilities : {};
+  if (!capabilities || typeof capabilities !== 'object' || Array.isArray(capabilities)) {
+    return capabilities;
+  }
+
   const normalized = {};
 
   for (const format of FORMATS) {
-    const input = inputCapabilities[format] && typeof inputCapabilities[format] === 'object'
-      ? inputCapabilities[format]
-      : {};
+    if (!hasOwn.call(capabilities, format)) {
+      normalized[format] = unsupportedDirections();
+      continue;
+    }
+
+    const input = capabilities[format];
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      normalized[format] = input;
+      continue;
+    }
+
     normalized[format] = {};
 
     for (const direction of DIRECTIONS) {
-      normalized[format][direction] = Object.prototype.hasOwnProperty.call(input, direction)
+      normalized[format][direction] = hasOwn.call(input, direction)
         ? input[direction]
         : 'unsupported';
     }
 
-    if (Object.prototype.hasOwnProperty.call(input, 'fallbackKind')) {
+    if (hasOwn.call(input, 'fallbackKind')) {
       normalized[format].fallbackKind = input.fallbackKind;
     }
-    if (Object.prototype.hasOwnProperty.call(input, 'risk')) {
+    if (hasOwn.call(input, 'risk')) {
       normalized[format].risk = input.risk;
     }
   }
 
   return normalized;
+}
+
+function unsupportedDirections() {
+  return {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  };
 }
 
 module.exports = {

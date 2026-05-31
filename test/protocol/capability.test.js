@@ -47,6 +47,24 @@ test('normalizeCapabilities preserves explicit invalid capability values for val
   assert.equal(normalized.html.persist, 'unsupported');
 });
 
+test('normalizeCapabilities preserves explicit invalid format declarations for validation', () => {
+  const normalized = normalizeCapabilities({
+    html: '',
+  });
+
+  assert.equal(normalized.html, '');
+  assert.deepEqual(normalized.indesign, {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  });
+  assert.deepEqual(normalized.pptx, {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  });
+});
+
 test('isCapabilityLevel accepts defined levels and rejects invalid values', () => {
   for (const level of CAPABILITY_LEVELS) {
     assert.equal(isCapabilityLevel(level), true, level);
