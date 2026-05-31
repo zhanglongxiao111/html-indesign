@@ -15,7 +15,7 @@ const {
 } = require('./lifecycle');
 const { uniquePaths } = require('./path-utils');
 
-const fieldEntries = [
+const rawFieldEntries = [
   ...require('./fields/document-page'),
   ...require('./fields/styles'),
   ...require('./fields/assets'),
@@ -30,7 +30,8 @@ const fieldEntries = [
   ...require('./fields/pptx-extensions'),
 ];
 
-const fieldRegistry = createFieldRegistry(fieldEntries);
+const fieldRegistry = createFieldRegistry(rawFieldEntries);
+const fieldEntries = fieldRegistry.entries;
 
 module.exports = {
   CAPABILITY_LEVELS,

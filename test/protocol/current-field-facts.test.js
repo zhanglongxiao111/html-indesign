@@ -26,10 +26,16 @@ test('registry contains current PDF page number facts and retired data-id-page a
   assert.equal(field.fieldClass, 'canonical');
   assert.equal(field.lifecycle, 'active');
   assert.deepEqual(field.html.readAttrs, ['data-id-pdf-page']);
+  assert.equal(fieldRegistry.getByHtmlAttr('data-id-page'), null);
 
   const retired = field.html.retiredAttrs.find((item) => item.name === 'data-id-page');
   assert.equal(retired.readPolicy, 'observe-only');
   assert.equal(retired.writePolicy, 'forbidden');
+
+  const retiredLookup = fieldRegistry.getRetiredHtmlAttr('data-id-page');
+  assert.equal(retiredLookup.canonicalPath, 'items[].asset.placement.pageNumber');
+  assert.equal(retiredLookup.readPolicy, 'observe-only');
+  assert.equal(retiredLookup.writePolicy, 'forbidden');
 });
 
 test('registry contains sourceNode as sourceMetadata not canonical', () => {

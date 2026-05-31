@@ -5,17 +5,18 @@ function createFieldRegistry(entries = []) {
     throw new Error('FIELD_REGISTRY_ENTRIES_INVALID');
   }
 
-  const normalizedEntries = entries.map((entry) => {
+  const normalizedEntries = Object.freeze(entries.map((entry) => {
     const validation = validateFieldEntry(entry);
     if (!validation.valid) {
       const codes = validation.errors.map((error) => error.code).join(',');
       throw new Error(`FIELD_ENTRY_INVALID:${codes}`);
     }
     return deepFreeze(cloneValue(normalizeFieldEntry(entry)));
-  });
+  }));
 
   const byPath = new Map();
   const byHtmlAttr = new Map();
+  const byRetiredHtmlAttr = new Map();
 
   for (const entry of normalizedEntries) {
     for (const fieldPath of entry.allPaths) {
@@ -31,15 +32,27 @@ function createFieldRegistry(entries = []) {
       }
       byHtmlAttr.set(attr, entry);
     }
+
+    for (const retiredAttr of retiredHtmlAttrsFor(entry)) {
+      const attr = retiredAttr && retiredAttr.name;
+      if (!attr) continue;
+      if (byRetiredHtmlAttr.has(attr)) {
+        throw new Error(`RETIRED_HTML_ATTR_DUPLICATED:${attr}`);
+      }
+      byRetiredHtmlAttr.set(attr, retiredHtmlAttrRecord(entry, retiredAttr));
+    }
   }
 
   return {
-    entries: normalizedEntries.slice(),
+    entries: normalizedEntries,
     getByPath(fieldPath) {
       return byPath.get(fieldPath) || null;
     },
     getByHtmlAttr(attr) {
       return byHtmlAttr.get(attr) || null;
+    },
+    getRetiredHtmlAttr(attr) {
+      return byRetiredHtmlAttr.get(attr) || null;
     },
     listByOwner(owner) {
       return normalizedEntries.filter((entry) => entry.owner === owner);
@@ -58,12 +71,28 @@ function htmlAttrsFor(entry) {
   const attrs = [
     ...arrayOrEmpty(html.readAttrs),
     ...arrayOrEmpty(html.writeAttrs),
-    ...arrayOrEmpty(html.retiredAttrs)
-      .map((retiredAttr) => retiredAttr && retiredAttr.name)
-      .filter(Boolean),
+    ...arrayOrEmpty(html.persistAttrs),
   ];
 
   return Array.from(new Set(attrs));
+}
+
+function retiredHtmlAttrsFor(entry) {
+  const html = entry.html || {};
+  return arrayOrEmpty(html.retiredAttrs);
+}
+
+function retiredHtmlAttrRecord(entry, retiredAttr) {
+  return deepFreeze({
+    canonicalPath: entry.canonicalPath,
+    owner: entry.owner,
+    fieldClass: entry.fieldClass,
+    lifecycle: entry.lifecycle,
+    name: retiredAttr.name,
+    readPolicy: retiredAttr.readPolicy,
+    writePolicy: retiredAttr.writePolicy,
+    reason: retiredAttr.reason,
+  });
 }
 
 function arrayOrEmpty(value) {
