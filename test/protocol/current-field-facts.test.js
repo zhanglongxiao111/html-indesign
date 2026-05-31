@@ -20,22 +20,24 @@ test('current HTML asset placement reads data-id-pdf-page and not data-id-page',
   assert.deepEqual(placement.hiddenLayers, ['old']);
 });
 
-test('registry contains current PDF page number facts and retired data-id-page alias', () => {
+test('registry contains current PDF page number facts separate from retired data-id-page facts', () => {
   const field = fieldRegistry.getByPath('items[].asset.placement.pageNumber');
 
   assert.equal(field.fieldClass, 'canonical');
   assert.equal(field.lifecycle, 'active');
   assert.deepEqual(field.html.readAttrs, ['data-id-pdf-page']);
+  assert.equal(field.html.retiredAttrs, undefined);
   assert.equal(fieldRegistry.getByHtmlAttr('data-id-page'), null);
 
-  const retired = field.html.retiredAttrs.find((item) => item.name === 'data-id-page');
-  assert.equal(retired.readPolicy, 'observe-only');
-  assert.equal(retired.writePolicy, 'forbidden');
-
   const retiredLookup = fieldRegistry.getRetiredHtmlAttr('data-id-page');
-  assert.equal(retiredLookup.canonicalPath, 'items[].asset.placement.pageNumber');
+  assert.equal(retiredLookup.canonicalPath, 'retired.htmlAttrs.dataIdPage');
+  assert.equal(retiredLookup.fieldClass, 'observation');
+  assert.equal(retiredLookup.lifecycle, 'retired');
+  assert.equal(retiredLookup.name, 'data-id-page');
   assert.equal(retiredLookup.readPolicy, 'observe-only');
   assert.equal(retiredLookup.writePolicy, 'forbidden');
+  assert.equal(retiredLookup.replacedBy, 'data-id-pdf-page');
+  assert.equal(retiredLookup.entry, fieldRegistry.getByPath('retired.htmlAttrs.dataIdPage'));
 });
 
 test('registry contains sourceNode as sourceMetadata not canonical', () => {

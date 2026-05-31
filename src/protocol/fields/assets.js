@@ -55,12 +55,6 @@ module.exports = [
     html: {
       readAttrs: ['data-id-pdf-page'],
       writeAttrs: ['data-id-pdf-page'],
-      retiredAttrs: [{
-        name: 'data-id-page',
-        readPolicy: 'observe-only',
-        writePolicy: 'forbidden',
-        reason: 'ambiguous-with-page-identity',
-      }],
     },
     indesign: {
       snapshotPaths: ['placedAsset.placement.pageNumber', 'graphic.pdfAttributes.pageNumber'],

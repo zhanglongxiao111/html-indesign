@@ -78,8 +78,8 @@ function htmlAttrsFor(entry) {
 }
 
 function retiredHtmlAttrsFor(entry) {
-  const html = entry.html || {};
-  return arrayOrEmpty(html.retiredAttrs);
+  const retired = entry.retired || {};
+  return arrayOrEmpty(retired.htmlAttrs);
 }
 
 function retiredHtmlAttrRecord(entry, retiredAttr) {
@@ -91,7 +91,9 @@ function retiredHtmlAttrRecord(entry, retiredAttr) {
     name: retiredAttr.name,
     readPolicy: retiredAttr.readPolicy,
     writePolicy: retiredAttr.writePolicy,
+    replacedBy: retiredAttr.replacedBy,
     reason: retiredAttr.reason,
+    entry,
   });
 }
 

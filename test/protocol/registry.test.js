@@ -22,13 +22,35 @@ function fieldEntry(overrides = {}) {
   };
 }
 
+function retiredHtmlAttrEntry(overrides = {}) {
+  return {
+    canonicalPath: 'retired.htmlAttrs.dataIdPage',
+    currentPaths: [],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'asset-placement',
+    capabilities: {
+      html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      htmlAttrs: [{
+        name: 'data-id-page',
+        replacedBy: 'data-id-pdf-page',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+        reason: 'ambiguous-with-page-identity',
+      }],
+    },
+    ...overrides,
+  };
+}
+
 test('registry finds field by canonicalPath currentPath and html attr', () => {
   const registry = createFieldRegistry([
     fieldEntry({
       html: {
         readAttrs: ['data-id-pdf-page'],
         writeAttrs: ['data-id-pdf-target-page'],
-        retiredAttrs: [{ name: 'data-id-page' }],
       },
     }),
   ]);
@@ -45,22 +67,40 @@ test('registry exposes retired HTML attrs only through retired lookup metadata',
     fieldEntry({
       html: {
         readAttrs: ['data-id-pdf-page'],
-        retiredAttrs: [{
-          name: 'data-id-page',
-          readPolicy: 'observe-only',
-          writePolicy: 'forbidden',
-          reason: 'ambiguous-with-page-identity',
-        }],
       },
     }),
+    retiredHtmlAttrEntry(),
   ]);
 
   const retired = registry.getRetiredHtmlAttr('data-id-page');
 
   assert.equal(registry.getByHtmlAttr('data-id-page'), null);
-  assert.equal(retired.canonicalPath, 'items[].asset.placement.pageNumber');
+  assert.equal(retired.canonicalPath, 'retired.htmlAttrs.dataIdPage');
+  assert.equal(retired.fieldClass, 'observation');
+  assert.equal(retired.lifecycle, 'retired');
+  assert.equal(retired.name, 'data-id-page');
   assert.equal(retired.readPolicy, 'observe-only');
   assert.equal(retired.writePolicy, 'forbidden');
+  assert.equal(retired.replacedBy, 'data-id-pdf-page');
+  assert.equal(retired.entry, registry.getByPath('retired.htmlAttrs.dataIdPage'));
+});
+
+test('registry does not source retired HTML attrs from active field metadata', () => {
+  const registry = createFieldRegistry([
+    fieldEntry({
+      html: {
+        readAttrs: ['data-id-pdf-page'],
+        retiredAttrs: [{
+          name: 'data-id-page',
+          readPolicy: 'observe-only',
+          writePolicy: 'forbidden',
+        }],
+      },
+    }),
+  ]);
+
+  assert.equal(registry.getByHtmlAttr('data-id-page'), null);
+  assert.equal(registry.getRetiredHtmlAttr('data-id-page'), null);
 });
 
 test('registry rejects duplicate path ownership', () => {
