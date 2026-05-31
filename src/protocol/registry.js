@@ -43,7 +43,7 @@ function createFieldRegistry(entries = []) {
     }
   }
 
-  return {
+  return Object.freeze({
     entries: normalizedEntries,
     getByPath(fieldPath) {
       return byPath.get(fieldPath) || null;
@@ -63,7 +63,7 @@ function createFieldRegistry(entries = []) {
     listByLifecycle(lifecycle) {
       return normalizedEntries.filter((entry) => entry.lifecycle === lifecycle);
     },
-  };
+  });
 }
 
 function htmlAttrsFor(entry) {

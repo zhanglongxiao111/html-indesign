@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { createFieldRegistry, fieldEntries, fieldRegistry } = require('../../src/protocol');
+const protocol = require('../../src/protocol');
+const { createFieldRegistry, fieldEntries, fieldRegistry } = protocol;
 
 function validCapabilities() {
   return {
@@ -167,4 +168,18 @@ test('protocol index field entry exports are frozen facts', () => {
   assert.equal(fieldEntries[0].owner, firstOwner);
   assert.equal(fieldRegistry.entries[0].owner, firstOwner);
   assert.equal(fieldRegistry.getByPath(fieldEntries[0].canonicalPath).owner, firstOwner);
+});
+
+test('protocol index and registry exports cannot be rebound by consumers', () => {
+  const entryCount = protocol.fieldEntries.length;
+  const registryEntryCount = protocol.fieldRegistry.entries.length;
+
+  protocol.fieldEntries = [];
+  protocol.fieldRegistry.entries = [];
+
+  assert.equal(Object.isFrozen(protocol), true);
+  assert.equal(Object.isFrozen(protocol.fieldRegistry), true);
+  assert.equal(protocol.fieldEntries.length, entryCount);
+  assert.equal(protocol.fieldRegistry.entries.length, registryEntryCount);
+  assert.equal(protocol.fieldRegistry.getByPath(protocol.fieldEntries[0].canonicalPath), protocol.fieldEntries[0]);
 });

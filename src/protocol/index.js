@@ -33,7 +33,7 @@ const rawFieldEntries = [
 const fieldRegistry = createFieldRegistry(rawFieldEntries);
 const fieldEntries = fieldRegistry.entries;
 
-module.exports = {
+module.exports = Object.freeze({
   CAPABILITY_LEVELS,
   createFieldRegistry,
   DIRECTIONS,
@@ -49,4 +49,4 @@ module.exports = {
   normalizeFieldEntry,
   uniquePaths,
   validateFieldEntry,
-};
+});
