@@ -47,9 +47,9 @@ function normalizeKnownFormatCapabilities(input) {
   const normalized = {};
 
   for (const direction of DIRECTIONS) {
-    normalized[direction] = hasOwn.call(input, direction)
-      ? input[direction]
-      : 'unsupported';
+    if (hasOwn.call(input, direction)) {
+      normalized[direction] = input[direction];
+    }
   }
 
   if (hasOwn.call(input, 'fallbackKind')) {

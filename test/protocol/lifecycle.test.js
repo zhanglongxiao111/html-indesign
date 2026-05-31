@@ -70,3 +70,54 @@ test('lifecyclePolicyFor rejects stale retired html attr aliases', () => {
     /FIELD_NOT_REGISTERED:html\.data-id-page/,
   );
 });
+
+test('lifecyclePolicyFor rejects retired html attr policies without a name', () => {
+  const registry = fakeRetiredRegistry([{
+    readPolicy: 'observe-only',
+    writePolicy: 'forbidden',
+    replacedBy: 'data-id-pdf-page',
+  }]);
+
+  assert.throws(
+    () => lifecyclePolicyFor(registry, 'retired.bad'),
+    /LIFECYCLE_POLICY_INVALID:retired\.bad/,
+  );
+});
+
+test('lifecyclePolicyFor rejects retired entries without exactly one html attr policy', () => {
+  assert.throws(
+    () => lifecyclePolicyFor(fakeRetiredRegistry([]), 'retired.bad'),
+    /LIFECYCLE_POLICY_INVALID:retired\.bad/,
+  );
+
+  assert.throws(
+    () => lifecyclePolicyFor(fakeRetiredRegistry([
+      {
+        name: 'data-id-old-a',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+      {
+        name: 'data-id-old-b',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      },
+    ]), 'retired.bad'),
+    /LIFECYCLE_POLICY_INVALID:retired\.bad/,
+  );
+});
+
+function fakeRetiredRegistry(htmlAttrs) {
+  return {
+    getByPath(fieldPath) {
+      return fieldPath === 'retired.bad'
+        ? {
+          canonicalPath: 'retired.bad',
+          fieldClass: 'observation',
+          lifecycle: 'retired',
+          retired: { htmlAttrs },
+        }
+        : null;
+    },
+  };
+}

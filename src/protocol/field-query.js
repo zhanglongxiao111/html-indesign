@@ -64,10 +64,7 @@ function lifecyclePolicyFor(registry, fieldPath) {
     };
   }
 
-  const retiredAttr = firstRetiredHtmlAttr(field);
-  if (!retiredAttr || !retiredAttr.readPolicy || !retiredAttr.writePolicy) {
-    throw new Error(`RETIRED_POLICY_MISSING:${fieldPath}`);
-  }
+  const retiredAttr = retiredHtmlAttrPolicy(field, fieldPath);
 
   return {
     lifecycle: field.lifecycle,
@@ -80,13 +77,34 @@ function lifecyclePolicyFor(registry, fieldPath) {
   };
 }
 
-function firstRetiredHtmlAttr(field) {
+function retiredHtmlAttrPolicy(field, fieldPath) {
   const htmlAttrs = field.retired && field.retired.htmlAttrs;
-  return Array.isArray(htmlAttrs) ? htmlAttrs[0] : null;
+  if (!Array.isArray(htmlAttrs) || htmlAttrs.length !== 1) {
+    throw invalidLifecyclePolicy(fieldPath);
+  }
+
+  const retiredAttr = htmlAttrs[0];
+  if (
+    !retiredAttr
+    || typeof retiredAttr.name !== 'string'
+    || retiredAttr.name.length === 0
+    || typeof retiredAttr.readPolicy !== 'string'
+    || retiredAttr.readPolicy.length === 0
+    || typeof retiredAttr.writePolicy !== 'string'
+    || retiredAttr.writePolicy.length === 0
+  ) {
+    throw invalidLifecyclePolicy(fieldPath);
+  }
+
+  return retiredAttr;
 }
 
 function invalidCapabilityDeclaration(fieldPath, format, detail) {
   return new Error(`CAPABILITY_DECLARATION_INVALID:${fieldPath}:${format}:${detail}`);
+}
+
+function invalidLifecyclePolicy(fieldPath) {
+  return new Error(`LIFECYCLE_POLICY_INVALID:${fieldPath}`);
 }
 
 module.exports = Object.freeze({

@@ -13,10 +13,12 @@ const {
   normalizeCapabilities,
 } = require('../../src/protocol');
 
-test('normalizeCapabilities fills unsupported for omitted formats and directions and preserves fallback metadata', () => {
+test('normalizeCapabilities fills unsupported only for omitted whole formats and preserves fallback metadata', () => {
   const normalized = normalizeCapabilities({
     html: {
       read: 'native',
+      write: 'native',
+      persist: 'native',
       fallbackKind: 'raster-preview',
       risk: 'visual-only',
     },
@@ -25,8 +27,8 @@ test('normalizeCapabilities fills unsupported for omitted formats and directions
   assert.deepEqual(FORMATS, ['html', 'indesign', 'pptx']);
   assert.deepEqual(DIRECTIONS, ['read', 'write', 'persist']);
   assert.equal(normalized.html.read, 'native');
-  assert.equal(normalized.html.write, 'unsupported');
-  assert.equal(normalized.html.persist, 'unsupported');
+  assert.equal(normalized.html.write, 'native');
+  assert.equal(normalized.html.persist, 'native');
   assert.equal(normalized.html.fallbackKind, 'raster-preview');
   assert.equal(normalized.html.risk, 'visual-only');
   assert.deepEqual(normalized.indesign, {
@@ -41,14 +43,29 @@ test('normalizeCapabilities fills unsupported for omitted formats and directions
   });
 });
 
+test('normalizeCapabilities preserves missing directions on explicit known format declarations', () => {
+  const normalized = normalizeCapabilities({
+    html: { read: 'native' },
+  });
+
+  assert.equal(normalized.html.read, 'native');
+  assert.equal(Object.hasOwn(normalized.html, 'write'), false);
+  assert.equal(Object.hasOwn(normalized.html, 'persist'), false);
+  assert.deepEqual(normalized.indesign, {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  });
+});
+
 test('normalizeCapabilities preserves explicit invalid capability values for validation', () => {
   const normalized = normalizeCapabilities({
     html: { read: '' },
   });
 
   assert.equal(normalized.html.read, '');
-  assert.equal(normalized.html.write, 'unsupported');
-  assert.equal(normalized.html.persist, 'unsupported');
+  assert.equal(Object.hasOwn(normalized.html, 'write'), false);
+  assert.equal(Object.hasOwn(normalized.html, 'persist'), false);
 });
 
 test('normalizeCapabilities preserves explicit invalid format declarations for validation', () => {
@@ -71,7 +88,7 @@ test('normalizeCapabilities preserves explicit invalid format declarations for v
 
 test('normalizeCapabilities preserves unknown explicit formats for validation', () => {
   const normalized = normalizeCapabilities({
-    html: { read: 'native' },
+    html: { read: 'native', write: 'native', persist: 'native' },
     custom: { read: 'native' },
   });
 
