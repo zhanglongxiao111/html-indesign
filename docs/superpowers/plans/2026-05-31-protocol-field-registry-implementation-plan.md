@@ -1467,12 +1467,12 @@ src/indesign-reverse/
   const { fieldRegistry, lifecyclePolicyFor } = require('../../src/protocol');
   
   test('retired fields are observe-only and write-forbidden', () => {
-   const policy = lifecyclePolicyFor(fieldRegistry, 'html.data-id-page');
-  
+   const policy = lifecyclePolicyFor(fieldRegistry, 'retired.htmlAttrs.dataIdPage');
+
    assert.equal(policy.lifecycle, 'retired');
    assert.equal(policy.readPolicy, 'observe-only');
    assert.equal(policy.writePolicy, 'forbidden');
-   assert.equal(policy.replacedBy, 'html.data-id-pdf-page');
+   assert.equal(policy.replacedBy, 'data-id-pdf-page');
   });
   ```
 
@@ -1488,7 +1488,7 @@ src/indesign-reverse/
 
 - **步骤 3.7：实现 retired lifecycle 查询。**
   
-  在 `src/protocol/registry.js` 里索引 `retiredPath` 和 `html.retiredAttrs[].name`，导出 `getRetiredByPath`。在 `src/protocol/field-query.js` 增加：
+  retired lifecycle 必须以阶段 2 的 retired entry 为唯一事实源：`retired.htmlAttrs.dataIdPage`。不得重新引入 `html.data-id-page` 作为 currentPath，不得读取 active entry 上的 `html.retiredAttrs`，不得让 `data-id-page` 进入 `getByHtmlAttr()`。如需按退役 HTML 属性名查询，只能复用 `getRetiredHtmlAttr()` 这类独立 retired metadata surface。在 `src/protocol/field-query.js` 增加：
   
   ```js
   function lifecyclePolicyFor(registry, fieldPath) {
@@ -1501,9 +1501,6 @@ src/indesign-reverse/
        replacedBy: active.replacedBy || null,
      };
    }
-  
-   const retired = registry.getRetiredByPath && registry.getRetiredByPath(fieldPath);
-   if (retired) return retired;
   
    throw new Error(`FIELD_NOT_REGISTERED:${fieldPath}`);
   }
