@@ -101,3 +101,23 @@ test('registry lists fields by owner class and lifecycle', () => {
   assert.deepEqual(registry.listByClass('observation').map((entry) => entry.canonicalPath), ['observations[].label']);
   assert.deepEqual(registry.listByLifecycle('candidate').map((entry) => entry.canonicalPath), ['observations[].label']);
 });
+
+test('registry entry exposure does not allow external mutation to alter lookup state', () => {
+  const registry = createFieldRegistry([
+    fieldEntry({
+      canonicalPath: 'document.id',
+      currentPaths: [],
+      owner: 'document',
+    }),
+  ]);
+
+  assert.equal(Object.isFrozen(registry.entries[0]), true);
+  assert.equal(Object.isFrozen(registry.getByPath('document.id')), true);
+
+  registry.entries[0].owner = 'mutated';
+  registry.getByPath('document.id').owner = 'mutated';
+
+  assert.equal(registry.getByPath('document.id').owner, 'document');
+  assert.deepEqual(registry.listByOwner('document').map((entry) => entry.canonicalPath), ['document.id']);
+  assert.deepEqual(registry.listByOwner('mutated'), []);
+});

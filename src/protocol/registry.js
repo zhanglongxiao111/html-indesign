@@ -11,7 +11,7 @@ function createFieldRegistry(entries = []) {
       const codes = validation.errors.map((error) => error.code).join(',');
       throw new Error(`FIELD_ENTRY_INVALID:${codes}`);
     }
-    return normalizeFieldEntry(entry);
+    return deepFreeze(cloneValue(normalizeFieldEntry(entry)));
   });
 
   const byPath = new Map();
@@ -68,6 +68,31 @@ function htmlAttrsFor(entry) {
 
 function arrayOrEmpty(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function cloneValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneValue(item));
+  }
+  if (value && typeof value === 'object') {
+    const clone = {};
+    for (const [key, item] of Object.entries(value)) {
+      clone[key] = cloneValue(item);
+    }
+    return clone;
+  }
+  return value;
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value;
+  }
+
+  for (const item of Object.values(value)) {
+    deepFreeze(item);
+  }
+  return Object.freeze(value);
 }
 
 module.exports = {

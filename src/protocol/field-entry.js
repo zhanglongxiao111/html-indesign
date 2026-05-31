@@ -6,20 +6,30 @@ const {
 } = require('./capability');
 const { isFieldClass, isLifecycle } = require('./lifecycle');
 const { uniquePaths } = require('./path-utils');
+const hasOwn = Object.prototype.hasOwnProperty;
 
 function normalizeFieldEntry(input) {
   const source = input && typeof input === 'object' ? input : {};
-  const currentPaths = uniquePaths(Array.isArray(source.currentPaths) ? source.currentPaths : []);
+  const currentPaths = hasOwn.call(source, 'currentPaths')
+    ? normalizeCurrentPaths(source.currentPaths)
+    : [];
 
   return {
     ...source,
     currentPaths,
-    allPaths: uniquePaths([source.canonicalPath, ...currentPaths]),
+    allPaths: uniquePaths([
+      source.canonicalPath,
+      ...(Array.isArray(currentPaths) ? currentPaths : []),
+    ]),
     capabilities: normalizeCapabilities(
-      Object.prototype.hasOwnProperty.call(source, 'capabilities') ? source.capabilities : {},
+      hasOwn.call(source, 'capabilities') ? source.capabilities : {},
     ),
-    lifecycle: Object.prototype.hasOwnProperty.call(source, 'lifecycle') ? source.lifecycle : 'active',
+    lifecycle: hasOwn.call(source, 'lifecycle') ? source.lifecycle : 'active',
   };
+}
+
+function normalizeCurrentPaths(currentPaths) {
+  return Array.isArray(currentPaths) ? currentPaths.slice() : currentPaths;
 }
 
 function validateFieldEntry(input) {

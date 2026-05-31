@@ -1,4 +1,4 @@
-const CAPABILITY_LEVELS = new Set([
+const CAPABILITY_LEVELS = Object.freeze([
   'native',
   'lossless',
   'approximate',
@@ -7,47 +7,56 @@ const CAPABILITY_LEVELS = new Set([
   'unsupported',
 ]);
 
-const FORMATS = ['html', 'indesign', 'pptx'];
-const DIRECTIONS = ['read', 'write', 'persist'];
+const FORMATS = Object.freeze(['html', 'indesign', 'pptx']);
+const DIRECTIONS = Object.freeze(['read', 'write', 'persist']);
 const hasOwn = Object.prototype.hasOwnProperty;
+const capabilityLevelSet = new Set(CAPABILITY_LEVELS);
 
 function isCapabilityLevel(value) {
-  return CAPABILITY_LEVELS.has(value);
+  return capabilityLevelSet.has(value);
 }
 
-function normalizeCapabilities(capabilities = {}) {
-  if (!capabilities || typeof capabilities !== 'object' || Array.isArray(capabilities)) {
-    return capabilities;
+function normalizeCapabilities(capabilities) {
+  const inputCapabilities = arguments.length === 0 ? {} : capabilities;
+  if (!inputCapabilities || typeof inputCapabilities !== 'object' || Array.isArray(inputCapabilities)) {
+    return inputCapabilities;
   }
 
   const normalized = {};
 
+  for (const [format, formatCapabilities] of Object.entries(inputCapabilities)) {
+    normalized[format] = FORMATS.includes(format)
+      ? normalizeKnownFormatCapabilities(formatCapabilities)
+      : formatCapabilities;
+  }
+
   for (const format of FORMATS) {
-    if (!hasOwn.call(capabilities, format)) {
+    if (!hasOwn.call(inputCapabilities, format)) {
       normalized[format] = unsupportedDirections();
-      continue;
     }
+  }
 
-    const input = capabilities[format];
-    if (!input || typeof input !== 'object' || Array.isArray(input)) {
-      normalized[format] = input;
-      continue;
-    }
+  return normalized;
+}
 
-    normalized[format] = {};
+function normalizeKnownFormatCapabilities(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return input;
+  }
 
-    for (const direction of DIRECTIONS) {
-      normalized[format][direction] = hasOwn.call(input, direction)
-        ? input[direction]
-        : 'unsupported';
-    }
+  const normalized = {};
 
-    if (hasOwn.call(input, 'fallbackKind')) {
-      normalized[format].fallbackKind = input.fallbackKind;
-    }
-    if (hasOwn.call(input, 'risk')) {
-      normalized[format].risk = input.risk;
-    }
+  for (const direction of DIRECTIONS) {
+    normalized[direction] = hasOwn.call(input, direction)
+      ? input[direction]
+      : 'unsupported';
+  }
+
+  if (hasOwn.call(input, 'fallbackKind')) {
+    normalized.fallbackKind = input.fallbackKind;
+  }
+  if (hasOwn.call(input, 'risk')) {
+    normalized.risk = input.risk;
   }
 
   return normalized;

@@ -104,3 +104,35 @@ test('normalizeFieldEntry preserves explicit invalid capabilities for validation
     persist: 'unsupported',
   });
 });
+
+test('normalizeFieldEntry must preserve invalid currentPaths declarations for validation', () => {
+  const baseEntry = {
+    canonicalPath: 'document.id',
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+    },
+  };
+
+  const invalidContainer = normalizeFieldEntry({
+    ...baseEntry,
+    currentPaths: '',
+  });
+  assert.equal(invalidContainer.currentPaths, '');
+  assert.match(
+    validateFieldEntry(invalidContainer).errors.map((error) => error.code).join(','),
+    /CURRENT_PATHS_INVALID/,
+  );
+
+  const invalidPath = normalizeFieldEntry({
+    ...baseEntry,
+    currentPaths: ['items[].ok', ''],
+  });
+  assert.deepEqual(invalidPath.currentPaths, ['items[].ok', '']);
+  assert.match(
+    validateFieldEntry(invalidPath).errors.map((error) => error.code).join(','),
+    /CURRENT_PATHS_INVALID/,
+  );
+});

@@ -4,7 +4,7 @@ function uniquePaths(paths) {
   const unique = [];
 
   for (const path of list) {
-    if (typeof path !== 'string' || path.length === 0 || seen.has(path)) {
+    if (seen.has(path)) {
       continue;
     }
     seen.add(path);

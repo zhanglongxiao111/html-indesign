@@ -5,6 +5,7 @@ const {
   CAPABILITY_LEVELS,
   FORMATS,
   DIRECTIONS,
+  validateFieldEntry,
   isCapabilityLevel,
   normalizeCapabilities,
 } = require('../../src/protocol');
@@ -65,11 +66,54 @@ test('normalizeCapabilities preserves explicit invalid format declarations for v
   });
 });
 
+test('normalizeCapabilities preserves unknown explicit formats for validation', () => {
+  const normalized = normalizeCapabilities({
+    html: { read: 'native' },
+    custom: { read: 'native' },
+  });
+
+  assert.deepEqual(normalized.custom, { read: 'native' });
+  assert.equal(normalized.html.read, 'native');
+  assert.deepEqual(normalized.indesign, {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  });
+  assert.deepEqual(normalized.pptx, {
+    read: 'unsupported',
+    write: 'unsupported',
+    persist: 'unsupported',
+  });
+
+  const result = validateFieldEntry({
+    canonicalPath: 'document.id',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document',
+    capabilities: normalized,
+  });
+
+  assert.equal(result.valid, false);
+  assert.match(result.errors.map((error) => error.code).join(','), /CAPABILITY_FORMAT_INVALID/);
+});
+
 test('isCapabilityLevel accepts defined levels and rejects invalid values', () => {
   for (const level of CAPABILITY_LEVELS) {
     assert.equal(isCapabilityLevel(level), true, level);
   }
 
   assert.equal(isCapabilityLevel('legacy'), false);
+  assert.equal(isCapabilityLevel('maybe'), false);
+});
+
+test('capability constants are immutable and do not expose live validation state', () => {
+  assert.equal(Object.isFrozen(FORMATS), true);
+  assert.equal(Object.isFrozen(DIRECTIONS), true);
+  assert.equal(Object.isFrozen(CAPABILITY_LEVELS), true);
+
+  assert.throws(() => FORMATS.push('legacy'), TypeError);
+  assert.throws(() => DIRECTIONS.push('preview'), TypeError);
+  assert.equal(typeof CAPABILITY_LEVELS.add, 'undefined');
   assert.equal(isCapabilityLevel('maybe'), false);
 });
