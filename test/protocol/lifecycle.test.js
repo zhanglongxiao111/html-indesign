@@ -64,6 +64,33 @@ test('lifecyclePolicyFor returns active lifecycle without retired policy metadat
   });
 });
 
+test('lifecyclePolicyFor returns active lifecycle for active fake entries without retired metadata', () => {
+  assert.deepEqual(
+    lifecyclePolicyFor(fakeActiveRegistry(null), 'items[].bad'),
+    {
+      lifecycle: 'active',
+      fieldClass: 'canonical',
+      canonicalPath: 'items[].bad',
+      readPolicy: null,
+      writePolicy: null,
+      replacedBy: null,
+    },
+  );
+});
+
+test('lifecyclePolicyFor rejects retired html attr policies on active query entries', () => {
+  assert.throws(
+    () => lifecyclePolicyFor(fakeActiveRegistry({
+      htmlAttrs: [{
+        name: 'data-id-page',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      }],
+    }), 'items[].bad'),
+    /LIFECYCLE_POLICY_INVALID:items\[\]\.bad/,
+  );
+});
+
 test('lifecyclePolicyFor rejects stale retired html attr aliases', () => {
   assert.throws(
     () => lifecyclePolicyFor(fieldRegistry, 'html.data-id-page'),
@@ -116,6 +143,21 @@ function fakeRetiredRegistry(htmlAttrs) {
           fieldClass: 'observation',
           lifecycle: 'retired',
           retired: { htmlAttrs },
+        }
+        : null;
+    },
+  };
+}
+
+function fakeActiveRegistry(retired) {
+  return {
+    getByPath(fieldPath) {
+      return fieldPath === 'items[].bad'
+        ? {
+          canonicalPath: 'items[].bad',
+          fieldClass: 'canonical',
+          lifecycle: 'active',
+          ...(retired ? { retired } : {}),
         }
         : null;
     },

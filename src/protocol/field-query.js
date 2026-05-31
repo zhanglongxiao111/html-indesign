@@ -54,6 +54,10 @@ function lifecyclePolicyFor(registry, fieldPath) {
   const field = fieldFor(registry, fieldPath);
 
   if (field.lifecycle !== 'retired') {
+    if (hasRetiredHtmlAttrs(field)) {
+      throw invalidLifecyclePolicy(fieldPath);
+    }
+
     return {
       lifecycle: field.lifecycle,
       fieldClass: field.fieldClass,
@@ -97,6 +101,14 @@ function retiredHtmlAttrPolicy(field, fieldPath) {
   }
 
   return retiredAttr;
+}
+
+function hasRetiredHtmlAttrs(field) {
+  const retired = field.retired;
+  return retired
+    && typeof retired === 'object'
+    && !Array.isArray(retired)
+    && hasOwn.call(retired, 'htmlAttrs');
 }
 
 function invalidCapabilityDeclaration(fieldPath, format, detail) {
