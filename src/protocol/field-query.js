@@ -100,6 +100,15 @@ function retiredHtmlAttrPolicy(field, fieldPath) {
     throw invalidLifecyclePolicy(fieldPath);
   }
 
+  for (const key of ['replacedBy', 'reason']) {
+    if (
+      hasOwn.call(retiredAttr, key)
+      && (typeof retiredAttr[key] !== 'string' || retiredAttr[key].length === 0)
+    ) {
+      throw invalidLifecyclePolicy(fieldPath);
+    }
+  }
+
   return retiredAttr;
 }
 

@@ -134,6 +134,42 @@ test('lifecyclePolicyFor rejects retired entries without exactly one html attr p
   );
 });
 
+test('lifecyclePolicyFor rejects empty retired optional metadata', () => {
+  assert.throws(
+    () => lifecyclePolicyFor(fakeRetiredRegistry([{
+      name: 'data-id-page',
+      readPolicy: 'observe-only',
+      writePolicy: 'forbidden',
+      replacedBy: '',
+    }]), 'retired.bad'),
+    /LIFECYCLE_POLICY_INVALID:retired\.bad/,
+  );
+
+  assert.throws(
+    () => lifecyclePolicyFor(fakeRetiredRegistry([{
+      name: 'data-id-page',
+      readPolicy: 'observe-only',
+      writePolicy: 'forbidden',
+      reason: '',
+    }]), 'retired.bad'),
+    /LIFECYCLE_POLICY_INVALID:retired\.bad/,
+  );
+});
+
+test('lifecyclePolicyFor accepts non-empty retired optional metadata', () => {
+  const policy = lifecyclePolicyFor(fakeRetiredRegistry([{
+    name: 'data-id-page',
+    readPolicy: 'observe-only',
+    writePolicy: 'forbidden',
+    replacedBy: 'data-id-pdf-page',
+    reason: 'ambiguous-with-page-identity',
+  }]), 'retired.bad');
+
+  assert.equal(policy.replacedBy, 'data-id-pdf-page');
+  assert.equal(policy.readPolicy, 'observe-only');
+  assert.equal(policy.writePolicy, 'forbidden');
+});
+
 function fakeRetiredRegistry(htmlAttrs) {
   return {
     getByPath(fieldPath) {
