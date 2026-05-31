@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   validateInstructionFields,
   scanInstructionPaths,
+  createFieldRegistry,
   fieldRegistry,
 } = require('../../src/protocol');
 
@@ -140,6 +141,54 @@ test('validateInstructionFields reports instruction root and page unknown fields
       error.code === 'INSTRUCTION_FIELD_NOT_REGISTERED'
       && error.path === 'pages[].madeUpPage'
       && error.registryPath === 'instructions.pages[].madeUpPage'
+    )),
+    true,
+  );
+});
+
+test('validateInstructionFields rejects retired instruction paths only in strict mode', () => {
+  const registry = createFieldRegistry([{
+    canonicalPath: 'instructions.items[].retiredThing',
+    currentPaths: [],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'protocol-test',
+    type: 'string',
+    capabilities: {
+      html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      htmlAttrs: [{
+        name: 'data-id-retired-instruction-test',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      }],
+    },
+  }]);
+
+  const nonStrict = validateInstructionFields(registry, ['items[].retiredThing']);
+  assert.equal(nonStrict.valid, true);
+  assert.deepEqual(nonStrict.accepted, []);
+  assert.deepEqual(nonStrict.retired.map((item) => item.path), ['items[].retiredThing']);
+  assert.equal(nonStrict.errors.length, 0);
+  assert.equal(
+    nonStrict.warnings.some((warning) => (
+      warning.code === 'INSTRUCTION_FIELD_RETIRED'
+      && warning.path === 'items[].retiredThing'
+      && warning.registryPath === 'instructions.items[].retiredThing'
+    )),
+    true,
+  );
+
+  const strict = validateInstructionFields(registry, ['items[].retiredThing'], { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, []);
+  assert.deepEqual(strict.retired.map((item) => item.path), ['items[].retiredThing']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'INSTRUCTION_FIELD_RETIRED'
+      && error.path === 'items[].retiredThing'
+      && error.registryPath === 'instructions.items[].retiredThing'
     )),
     true,
   );

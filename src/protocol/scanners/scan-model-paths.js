@@ -57,6 +57,14 @@ const ITEM_FIELD_PATHS = Object.freeze({
   sourceRuns: 'items[].sourceRuns',
 });
 
+const EFFECTIVE_LABEL_FIELD_PATHS = Object.freeze({
+  semantic: 'items[].effectiveLabel.semantic',
+  sourceNode: 'effectiveLabel.sourceNode',
+  sourceAncestorNodes: 'effectiveLabel.sourceAncestorNodes',
+  structure: 'effectiveLabel.structure',
+  sourceRuns: 'effectiveLabel.sourceRuns',
+});
+
 const ITEM_ASSET_FIELD_PATHS = Object.freeze({
   path: 'items[].asset.path',
   pageNumber: 'items[].asset.pageNumber',
@@ -163,7 +171,16 @@ function scanItems(paths, seen, items) {
     }
 
     for (const [key, value] of Object.entries(item)) {
-      if (hasOwn.call(ITEM_FIELD_PATHS, key)) {
+      if (key === 'effectiveLabel') {
+        addPath(paths, seen, ITEM_FIELD_PATHS.effectiveLabel);
+        scanObjectSurface(
+          paths,
+          seen,
+          value,
+          EFFECTIVE_LABEL_FIELD_PATHS,
+          'items[].effectiveLabel',
+        );
+      } else if (hasOwn.call(ITEM_FIELD_PATHS, key)) {
         addPath(paths, seen, ITEM_FIELD_PATHS[key]);
       } else if (key === 'asset') {
         scanItemAsset(paths, seen, value);

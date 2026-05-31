@@ -14,6 +14,17 @@ test('scanDataIdFields returns unique data-id attributes in first-seen order', (
   );
 });
 
+test('scanDataIdFields only scans attribute names inside start tags', () => {
+  assert.deepEqual(scanDataIdFields('<div>text data-id-page after</div>'), []);
+  assert.deepEqual(scanDataIdFields('<div class="x data-id-page y"></div>'), []);
+  assert.deepEqual(scanDataIdFields('<!-- data-id-page -->'), []);
+  assert.deepEqual(scanDataIdFields('< data-id-page >'), []);
+  assert.deepEqual(
+    scanDataIdFields('<div data-id-pdf-page="2" data-id-page></div>'),
+    ['data-id-pdf-page', 'data-id-page'],
+  );
+});
+
 test('validateDataIdFields accepts active fields and reports unknown and retired fields as warnings by default', () => {
   const result = validateDataIdFields(fieldRegistry, [
     'data-id-pdf-page',
@@ -38,6 +49,34 @@ test('validateDataIdFields accepts active fields and reports unknown and retired
       warning.code === 'DATA_ID_FIELD_RETIRED'
       && warning.name === 'data-id-page'
       && warning.policy.writePolicy === 'forbidden'
+    )),
+    true,
+  );
+});
+
+test('validateDataIdFields rejects retired data-id fields only in strict mode', () => {
+  const nonStrict = validateDataIdFields(fieldRegistry, ['data-id-page']);
+  assert.equal(nonStrict.valid, true);
+  assert.deepEqual(nonStrict.accepted, []);
+  assert.deepEqual(nonStrict.retired.map((item) => item.name), ['data-id-page']);
+  assert.equal(nonStrict.errors.length, 0);
+  assert.equal(
+    nonStrict.warnings.some((warning) => (
+      warning.code === 'DATA_ID_FIELD_RETIRED'
+      && warning.name === 'data-id-page'
+    )),
+    true,
+  );
+
+  const strict = validateDataIdFields(fieldRegistry, ['data-id-page'], { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, []);
+  assert.deepEqual(strict.retired.map((item) => item.name), ['data-id-page']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'DATA_ID_FIELD_RETIRED'
+      && error.name === 'data-id-page'
+      && error.policy.writePolicy === 'forbidden'
     )),
     true,
   );

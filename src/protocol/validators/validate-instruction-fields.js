@@ -30,13 +30,17 @@ function validateInstructionFields(registry, paths, options = {}) {
         registryPath,
         field,
       });
-      warnings.push({
+      const issue = {
         code: 'INSTRUCTION_FIELD_RETIRED',
         path,
         registryPath,
         field,
         message: `Retired instruction field path must not be accepted: ${registryPath}`,
-      });
+      };
+      warnings.push(issue);
+      if (strict) {
+        errors.push({ ...issue });
+      }
       continue;
     }
 

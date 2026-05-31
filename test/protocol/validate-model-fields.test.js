@@ -120,3 +120,67 @@ test('validateModelFields reports model root unknown fields in warning-only and 
     true,
   );
 });
+
+test('validateModelFields rejects retired paths only in strict mode', () => {
+  const nonStrict = validateModelFields(fieldRegistry, ['retired.htmlAttrs.dataIdPage']);
+  assert.equal(nonStrict.valid, true);
+  assert.deepEqual(nonStrict.accepted, []);
+  assert.deepEqual(nonStrict.retired.map((item) => item.path), ['retired.htmlAttrs.dataIdPage']);
+  assert.equal(nonStrict.errors.length, 0);
+  assert.equal(
+    nonStrict.warnings.some((warning) => (
+      warning.code === 'MODEL_FIELD_RETIRED'
+      && warning.path === 'retired.htmlAttrs.dataIdPage'
+    )),
+    true,
+  );
+
+  const strict = validateModelFields(fieldRegistry, ['retired.htmlAttrs.dataIdPage'], { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, []);
+  assert.deepEqual(strict.retired.map((item) => item.path), ['retired.htmlAttrs.dataIdPage']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'MODEL_FIELD_RETIRED'
+      && error.path === 'retired.htmlAttrs.dataIdPage'
+    )),
+    true,
+  );
+});
+
+test('scanModelPaths scans effectiveLabel nested registered and unknown fields', () => {
+  const scannedPaths = scanModelPaths({
+    pages: [{
+      items: [{
+        effectiveLabel: {
+          semantic: 'figure',
+          sourceNode: {},
+          madeUp: 1,
+        },
+      }],
+    }],
+  });
+
+  assert.deepEqual(scannedPaths, [
+    'items[].effectiveLabel',
+    'items[].effectiveLabel.semantic',
+    'effectiveLabel.sourceNode',
+    'items[].effectiveLabel.madeUp',
+  ]);
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, [
+    'items[].effectiveLabel',
+    'items[].effectiveLabel.semantic',
+    'effectiveLabel.sourceNode',
+  ]);
+  assert.deepEqual(strict.unknown, ['items[].effectiveLabel.madeUp']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].effectiveLabel.madeUp'
+    )),
+    true,
+  );
+});

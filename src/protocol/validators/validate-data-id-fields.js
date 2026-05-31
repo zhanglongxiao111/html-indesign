@@ -19,12 +19,16 @@ function validateDataIdFields(registry, attrs, options = {}) {
         name: attr,
         policy: retiredPolicy,
       });
-      warnings.push({
+      const issue = {
         code: 'DATA_ID_FIELD_RETIRED',
         name: attr,
         policy: retiredPolicy,
         message: `Retired data-id field is observe-only and must not be accepted: ${attr}`,
-      });
+      };
+      warnings.push(issue);
+      if (strict) {
+        errors.push({ ...issue });
+      }
       continue;
     }
 

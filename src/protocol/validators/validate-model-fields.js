@@ -27,12 +27,16 @@ function validateModelFields(registry, paths, options = {}) {
         path,
         field,
       });
-      warnings.push({
+      const issue = {
         code: 'MODEL_FIELD_RETIRED',
         path,
         field,
         message: `Retired model field path must not be accepted: ${path}`,
-      });
+      };
+      warnings.push(issue);
+      if (strict) {
+        errors.push({ ...issue });
+      }
       continue;
     }
 
