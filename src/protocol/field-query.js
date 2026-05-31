@@ -1,4 +1,4 @@
-const { FORMATS } = require('./capability');
+const { DIRECTIONS, FORMATS, isCapabilityLevel } = require('./capability');
 
 const hasOwn = Object.prototype.hasOwnProperty;
 
@@ -16,12 +16,27 @@ function capabilityFor(registry, fieldPath, format) {
   }
 
   const field = fieldFor(registry, fieldPath);
-  const capabilities = field.capabilities || {};
-  if (!hasOwn.call(capabilities, format)) {
-    throw new Error(`CAPABILITY_MISSING:${format}:${fieldPath}`);
+  const capabilities = field.capabilities;
+  if (!capabilities || typeof capabilities !== 'object' || Array.isArray(capabilities)) {
+    throw invalidCapabilityDeclaration(fieldPath, format, 'capabilities');
   }
 
-  return capabilities[format];
+  const capability = capabilities[format];
+  if (!capability || typeof capability !== 'object' || Array.isArray(capability)) {
+    throw invalidCapabilityDeclaration(fieldPath, format, 'format');
+  }
+
+  for (const direction of DIRECTIONS) {
+    if (!hasOwn.call(capability, direction)) {
+      throw invalidCapabilityDeclaration(fieldPath, format, direction);
+    }
+    const level = capability[direction];
+    if (!isCapabilityLevel(level)) {
+      throw invalidCapabilityDeclaration(fieldPath, format, `${direction}:${level}`);
+    }
+  }
+
+  return capability;
 }
 
 function assertWritable(registry, fieldPath, format) {
@@ -68,6 +83,10 @@ function lifecyclePolicyFor(registry, fieldPath) {
 function firstRetiredHtmlAttr(field) {
   const htmlAttrs = field.retired && field.retired.htmlAttrs;
   return Array.isArray(htmlAttrs) ? htmlAttrs[0] : null;
+}
+
+function invalidCapabilityDeclaration(fieldPath, format, detail) {
+  return new Error(`CAPABILITY_DECLARATION_INVALID:${fieldPath}:${format}:${detail}`);
 }
 
 module.exports = Object.freeze({

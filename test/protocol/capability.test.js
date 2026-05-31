@@ -161,3 +161,50 @@ test('capabilityFor rejects unknown formats instead of manufacturing unsupported
     /CAPABILITY_FORMAT_INVALID:docx/,
   );
 });
+
+test('capabilityFor rejects malformed capability payloads from registry entries', () => {
+  const registry = fakeRegistryWithCapability('');
+
+  assert.throws(
+    () => capabilityFor(registry, 'field.path', 'html'),
+    /CAPABILITY_DECLARATION_INVALID:field\.path:html/,
+  );
+});
+
+test('assertWritable rejects capability payloads missing write direction', () => {
+  const registry = fakeRegistryWithCapability({
+    read: 'native',
+    persist: 'lossless',
+  });
+
+  assert.throws(
+    () => assertWritable(registry, 'field.path', 'html'),
+    /CAPABILITY_DECLARATION_INVALID:field\.path:html/,
+  );
+});
+
+test('assertWritable rejects invalid write capability levels before checking policy', () => {
+  const registry = fakeRegistryWithCapability({
+    read: 'native',
+    write: 'maybe',
+    persist: 'lossless',
+  });
+
+  assert.throws(
+    () => assertWritable(registry, 'field.path', 'html'),
+    /CAPABILITY_DECLARATION_INVALID:field\.path:html/,
+  );
+});
+
+function fakeRegistryWithCapability(capability) {
+  return {
+    getByPath(fieldPath) {
+      return fieldPath === 'field.path'
+        ? {
+          canonicalPath: 'field.path',
+          capabilities: { html: capability },
+        }
+        : null;
+    },
+  };
+}
