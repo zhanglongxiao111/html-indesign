@@ -18,21 +18,49 @@ function scanInstructionPaths(instructions) {
   const paths = [];
   const seen = new Set();
 
-  if (!isPlainObject(instructions) || !Array.isArray(instructions.pages)) {
+  if (!isPlainObject(instructions)) {
     return paths;
   }
 
-  for (const page of instructions.pages) {
-    if (!isPlainObject(page) || !Array.isArray(page.items)) {
-      continue;
-    }
-
-    for (const item of page.items) {
-      scanInstructionItem(paths, seen, item);
+  for (const [key, value] of Object.entries(instructions)) {
+    if (key === 'pages') {
+      scanInstructionPages(paths, seen, value);
+    } else if (!STRUCTURAL_KEYS.has(key)) {
+      addPath(paths, seen, key);
     }
   }
 
   return paths;
+}
+
+function scanInstructionPages(paths, seen, pages) {
+  if (!Array.isArray(pages)) {
+    return;
+  }
+
+  for (const page of pages) {
+    if (!isPlainObject(page)) {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(page)) {
+      if (key === 'items') {
+        scanInstructionItems(paths, seen, value);
+      } else if (!STRUCTURAL_KEYS.has(key)) {
+        addPath(paths, seen, `pages[].${key}`);
+      }
+    }
+  }
+}
+
+function scanInstructionItems(paths, seen, items) {
+  if (!Array.isArray(items)) {
+    return;
+  }
+
+  for (const item of items) {
+    scanInstructionItem(paths, seen, item);
+  }
 }
 
 function scanInstructionItem(paths, seen, item) {

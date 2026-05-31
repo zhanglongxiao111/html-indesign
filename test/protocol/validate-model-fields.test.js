@@ -81,3 +81,42 @@ test('validateModelFields rejects unknown model paths in strict mode', () => {
     true,
   );
 });
+
+test('validateModelFields reports model root unknown fields in warning-only and strict modes', () => {
+  const model = {
+    kind: 'DocumentModel',
+    madeUpRoot: 1,
+    pages: [{ id: 'p1', items: [] }],
+  };
+  const scannedPaths = scanModelPaths(model);
+
+  assert.deepEqual(scannedPaths, [
+    'madeUpRoot',
+    'pages[].id',
+  ]);
+
+  const nonStrict = validateModelFields(fieldRegistry, scannedPaths);
+  assert.equal(nonStrict.valid, true);
+  assert.deepEqual(nonStrict.accepted, ['pages[].id']);
+  assert.deepEqual(nonStrict.unknown, ['madeUpRoot']);
+  assert.equal(nonStrict.errors.length, 0);
+  assert.equal(
+    nonStrict.warnings.some((warning) => (
+      warning.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && warning.path === 'madeUpRoot'
+    )),
+    true,
+  );
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, ['pages[].id']);
+  assert.deepEqual(strict.unknown, ['madeUpRoot']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'madeUpRoot'
+    )),
+    true,
+  );
+});

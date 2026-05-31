@@ -113,15 +113,19 @@ function scanModelPaths(model) {
     return paths;
   }
 
-  for (const key of Object.keys(ROOT_FIELD_PATHS)) {
-    if (hasOwn.call(model, key)) {
+  for (const [key, value] of Object.entries(model)) {
+    if (hasOwn.call(ROOT_FIELD_PATHS, key)) {
       addPath(paths, seen, ROOT_FIELD_PATHS[key]);
+    } else if (key === 'assets') {
+      scanArraySurface(paths, seen, value, ASSET_FIELD_PATHS, 'assets[]');
+    } else if (key === 'labels') {
+      scanArraySurface(paths, seen, value, LABEL_FIELD_PATHS, 'labels[]');
+    } else if (key === 'pages') {
+      scanPages(paths, seen, value);
+    } else if (!STRUCTURAL_KEYS.has(key)) {
+      addPath(paths, seen, key);
     }
   }
-
-  scanArraySurface(paths, seen, model.assets, ASSET_FIELD_PATHS, 'assets[]');
-  scanArraySurface(paths, seen, model.labels, LABEL_FIELD_PATHS, 'labels[]');
-  scanPages(paths, seen, model.pages);
 
   return paths;
 }

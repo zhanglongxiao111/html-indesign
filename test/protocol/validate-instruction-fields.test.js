@@ -82,3 +82,65 @@ test('validateInstructionFields warns by default and errors in strict mode for u
     true,
   );
 });
+
+test('validateInstructionFields reports instruction root and page unknown fields', () => {
+  const scannedPaths = scanInstructionPaths({
+    madeUpRoot: 1,
+    pages: [{
+      madeUpPage: 2,
+      items: [{
+        type: 'GRAPHIC',
+        placed: { pageNumber: 2 },
+      }],
+    }],
+  });
+
+  assert.deepEqual(scannedPaths, [
+    'madeUpRoot',
+    'pages[].madeUpPage',
+    'pages[].items[].placed.pageNumber',
+  ]);
+
+  const nonStrict = validateInstructionFields(fieldRegistry, scannedPaths);
+  assert.equal(nonStrict.valid, true);
+  assert.deepEqual(nonStrict.accepted, ['pages[].items[].placed.pageNumber']);
+  assert.deepEqual(nonStrict.unknown, ['madeUpRoot', 'pages[].madeUpPage']);
+  assert.equal(nonStrict.errors.length, 0);
+  assert.equal(
+    nonStrict.warnings.some((warning) => (
+      warning.code === 'INSTRUCTION_FIELD_NOT_REGISTERED'
+      && warning.path === 'madeUpRoot'
+      && warning.registryPath === 'instructions.madeUpRoot'
+    )),
+    true,
+  );
+  assert.equal(
+    nonStrict.warnings.some((warning) => (
+      warning.code === 'INSTRUCTION_FIELD_NOT_REGISTERED'
+      && warning.path === 'pages[].madeUpPage'
+      && warning.registryPath === 'instructions.pages[].madeUpPage'
+    )),
+    true,
+  );
+
+  const strict = validateInstructionFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, ['pages[].items[].placed.pageNumber']);
+  assert.deepEqual(strict.unknown, ['madeUpRoot', 'pages[].madeUpPage']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'INSTRUCTION_FIELD_NOT_REGISTERED'
+      && error.path === 'madeUpRoot'
+      && error.registryPath === 'instructions.madeUpRoot'
+    )),
+    true,
+  );
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'INSTRUCTION_FIELD_NOT_REGISTERED'
+      && error.path === 'pages[].madeUpPage'
+      && error.registryPath === 'instructions.pages[].madeUpPage'
+    )),
+    true,
+  );
+});
