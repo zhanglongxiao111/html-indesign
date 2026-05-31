@@ -5,7 +5,13 @@ const {
   fieldFor,
   lifecyclePolicyFor,
 } = require('./field-query');
+const { scanDataIdFields } = require('./scanners/scan-data-id-fields');
+const { scanInstructionPaths } = require('./scanners/scan-instruction-paths');
+const { scanModelPaths } = require('./scanners/scan-model-paths');
 const { createFieldRegistry } = require('./registry');
+const { validateDataIdFields } = require('./validators/validate-data-id-fields');
+const { validateInstructionFields } = require('./validators/validate-instruction-fields');
+const { validateModelFields } = require('./validators/validate-model-fields');
 const {
   CAPABILITY_LEVELS,
   DIRECTIONS,
@@ -57,6 +63,12 @@ module.exports = Object.freeze({
   lifecyclePolicyFor,
   normalizeCapabilities,
   normalizeFieldEntry,
+  scanDataIdFields,
+  scanInstructionPaths,
+  scanModelPaths,
   uniquePaths,
+  validateDataIdFields,
   validateFieldEntry,
+  validateInstructionFields,
+  validateModelFields,
 });
