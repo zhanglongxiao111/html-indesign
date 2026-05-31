@@ -36,6 +36,29 @@ test('scanDataIdFields ignores pseudo tags inside raw text and RCDATA elements',
   );
 });
 
+test('scanDataIdFields requires raw text close tag name boundaries', () => {
+  assert.deepEqual(
+    scanDataIdFields('<script>const s = "</scripted><div data-id-page>";</script><div data-id-pdf-page="2"></div>'),
+    ['data-id-pdf-page'],
+  );
+  assert.deepEqual(
+    scanDataIdFields('<style>.x{content:"</stylex><div data-id-page>"}</style><div data-id-pdf-page="2"></div>'),
+    ['data-id-pdf-page'],
+  );
+  assert.deepEqual(
+    scanDataIdFields('<textarea></textareax><div data-id-page></textarea><div data-id-pdf-page="2"></div>'),
+    ['data-id-pdf-page'],
+  );
+  assert.deepEqual(
+    scanDataIdFields('<title></titlex><div data-id-page></title><div data-id-pdf-page="2"></div>'),
+    ['data-id-pdf-page'],
+  );
+  assert.deepEqual(
+    scanDataIdFields('<section data-id-asset-path="x"><script></scripted><div data-id-page></script><div data-id-pdf-page="2"></div></section>'),
+    ['data-id-asset-path', 'data-id-pdf-page'],
+  );
+});
+
 test('validateDataIdFields accepts active fields and reports unknown and retired fields as warnings by default', () => {
   const result = validateDataIdFields(fieldRegistry, [
     'data-id-pdf-page',

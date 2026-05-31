@@ -166,11 +166,27 @@ function isRawTextElement(tagName) {
 function skipRawTextElement(html, index, tagName) {
   const closePattern = `</${tagName}`;
   const lowerHtml = html.toLowerCase();
-  const closeStart = lowerHtml.indexOf(closePattern, index);
-  if (closeStart === -1) {
-    return html.length;
+  let searchFrom = index;
+
+  while (searchFrom < html.length) {
+    const closeStart = lowerHtml.indexOf(closePattern, searchFrom);
+    if (closeStart === -1) {
+      return html.length;
+    }
+
+    const boundary = html[closeStart + closePattern.length];
+    if (isRawTextCloseBoundary(boundary)) {
+      return skipTag(html, closeStart + 1);
+    }
+
+    searchFrom = closeStart + closePattern.length;
   }
-  return skipTag(html, closeStart + 1);
+
+  return html.length;
+}
+
+function isRawTextCloseBoundary(char) {
+  return !char || char === '>' || char === '/' || isWhitespace(char);
 }
 
 module.exports = Object.freeze({
