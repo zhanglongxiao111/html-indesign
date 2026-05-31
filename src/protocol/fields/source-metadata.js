@@ -1,0 +1,67 @@
+module.exports = [
+  {
+    canonicalPath: 'items[].sourceNode',
+    currentPaths: ['labels[].sourceNode', 'effectiveLabel.sourceNode'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'object',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceAncestorNodes',
+    currentPaths: ['labels[].sourceAncestorNodes', 'effectiveLabel.sourceAncestorNodes'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'array',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  },
+  {
+    canonicalPath: 'items[].effectiveLabel',
+    currentPaths: ['pages[].items[].effectiveLabel'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'label-protocol',
+    type: 'object',
+    capabilities: {
+      html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  },
+  {
+    canonicalPath: 'items[].structure',
+    currentPaths: ['labels[].structure', 'effectiveLabel.structure'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'object',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceRuns',
+    currentPaths: ['labels[].sourceRuns', 'effectiveLabel.sourceRuns'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'array',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  },
+];

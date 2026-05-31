@@ -15,11 +15,30 @@ const {
 } = require('./lifecycle');
 const { uniquePaths } = require('./path-utils');
 
+const fieldEntries = [
+  ...require('./fields/document-page'),
+  ...require('./fields/styles'),
+  ...require('./fields/assets'),
+  ...require('./fields/labels'),
+  ...require('./fields/source-metadata'),
+  ...require('./fields/visual-style'),
+  ...require('./fields/vector-geometry'),
+  ...require('./fields/text'),
+  ...require('./fields/table'),
+  ...require('./fields/observation'),
+  ...require('./fields/retired'),
+  ...require('./fields/pptx-extensions'),
+];
+
+const fieldRegistry = createFieldRegistry(fieldEntries);
+
 module.exports = {
   CAPABILITY_LEVELS,
   createFieldRegistry,
   DIRECTIONS,
   FIELD_CLASSES,
+  fieldEntries,
+  fieldRegistry,
   FORMATS,
   LIFECYCLES,
   isCapabilityLevel,

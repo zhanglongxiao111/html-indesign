@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { createFieldRegistry } = require('../../src/protocol');
+const { createFieldRegistry, fieldEntries, fieldRegistry } = require('../../src/protocol');
 
 function validCapabilities() {
   return {
@@ -120,4 +120,10 @@ test('registry entry exposure does not allow external mutation to alter lookup s
   assert.equal(registry.getByPath('document.id').owner, 'document');
   assert.deepEqual(registry.listByOwner('document').map((entry) => entry.canonicalPath), ['document.id']);
   assert.deepEqual(registry.listByOwner('mutated'), []);
+});
+
+test('protocol index exports registered field entries and default registry', () => {
+  assert.equal(Array.isArray(fieldEntries), true);
+  assert.equal(fieldEntries.length > 0, true);
+  assert.equal(fieldRegistry.entries.length, fieldEntries.length);
 });
