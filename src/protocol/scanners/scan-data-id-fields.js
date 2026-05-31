@@ -29,29 +29,34 @@ function scanDataIdFields(html) {
       continue;
     }
 
-    index = scanStartTag(html, tagStart + 1, attrs, seen);
+    const tag = scanStartTag(html, tagStart + 1, attrs, seen);
+    index = isRawTextElement(tag.name)
+      ? skipRawTextElement(html, tag.index, tag.name)
+      : tag.index;
   }
 
   return attrs;
 }
 
 function scanStartTag(html, index, attrs, seen) {
-  let cursor = skipTagName(html, index);
+  const tagNameEnd = skipTagName(html, index);
+  const tagName = html.slice(index, tagNameEnd).toLowerCase();
+  let cursor = tagNameEnd;
 
   while (cursor < html.length) {
     cursor = skipWhitespace(html, cursor);
     const char = html[cursor];
 
     if (!char) {
-      return html.length;
+      return { index: html.length, name: tagName };
     }
 
     if (char === '>') {
-      return cursor + 1;
+      return { index: cursor + 1, name: tagName };
     }
 
     if (char === '/' && html[cursor + 1] === '>') {
-      return cursor + 2;
+      return { index: cursor + 2, name: null };
     }
 
     if (char === '/') {
@@ -97,7 +102,7 @@ function scanStartTag(html, index, attrs, seen) {
     }
   }
 
-  return cursor;
+  return { index: cursor, name: tagName };
 }
 
 function skipComment(html, start) {
@@ -149,6 +154,23 @@ function isWhitespace(char) {
 
 function isTagNameStart(char) {
   return (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z');
+}
+
+function isRawTextElement(tagName) {
+  return tagName === 'script'
+    || tagName === 'style'
+    || tagName === 'textarea'
+    || tagName === 'title';
+}
+
+function skipRawTextElement(html, index, tagName) {
+  const closePattern = `</${tagName}`;
+  const lowerHtml = html.toLowerCase();
+  const closeStart = lowerHtml.indexOf(closePattern, index);
+  if (closeStart === -1) {
+    return html.length;
+  }
+  return skipTag(html, closeStart + 1);
 }
 
 module.exports = Object.freeze({
