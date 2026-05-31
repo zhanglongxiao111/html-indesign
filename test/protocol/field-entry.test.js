@@ -39,6 +39,42 @@ test('field entry rejects unknown fieldClass and capability level', () => {
   assert.match(result.errors.map((error) => error.code).join(','), /CAPABILITY_LEVEL_INVALID/);
 });
 
+test('field entry rejects explicit known format capabilities missing directions', () => {
+  const missingWrite = validateFieldEntry({
+    canonicalPath: 'items[].asset.placement.pageNumber',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'asset-placement',
+    capabilities: {
+      html: { read: 'native', persist: 'native' },
+    },
+  });
+
+  assert.equal(missingWrite.valid, false);
+  assert.match(
+    missingWrite.errors.map((error) => error.code).join(','),
+    /CAPABILITY_DECLARATION_INVALID/,
+  );
+
+  const missingPersist = validateFieldEntry({
+    canonicalPath: 'items[].asset.placement.pageNumber',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'asset-placement',
+    capabilities: {
+      html: { read: 'native', write: 'native' },
+    },
+  });
+
+  assert.equal(missingPersist.valid, false);
+  assert.match(
+    missingPersist.errors.map((error) => error.code).join(','),
+    /CAPABILITY_DECLARATION_INVALID/,
+  );
+});
+
 test('field entry rejects entries without explicit capabilities', () => {
   const result = validateFieldEntry({
     canonicalPath: 'items[].asset.placement.pageNumber',

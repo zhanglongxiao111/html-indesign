@@ -123,8 +123,16 @@ function validateCapabilities(capabilities, errors) {
     }
 
     for (const direction of DIRECTIONS) {
+      if (!hasOwn.call(formatCapabilities, direction)) {
+        errors.push({
+          code: 'CAPABILITY_DECLARATION_INVALID',
+          message: `Capability declaration for ${format} must include ${direction}.`,
+        });
+        continue;
+      }
+
       const level = formatCapabilities[direction];
-      if (level !== undefined && !isCapabilityLevel(level)) {
+      if (!isCapabilityLevel(level)) {
         errors.push({
           code: 'CAPABILITY_LEVEL_INVALID',
           message: `Invalid capability ${format}.${direction}: ${level}`,

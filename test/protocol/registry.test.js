@@ -145,6 +145,16 @@ test('registry validates entries before storing them', () => {
   ]), /FIELD_ENTRY_INVALID:CAPABILITY_LEVEL_INVALID/);
 });
 
+test('registry rejects incomplete explicit known format capabilities before normalization', () => {
+  assert.throws(() => createFieldRegistry([
+    fieldEntry({
+      capabilities: {
+        html: { read: 'native' },
+      },
+    }),
+  ]), /FIELD_ENTRY_INVALID:.*CAPABILITY_DECLARATION_INVALID/);
+});
+
 test('registry lists fields by owner class and lifecycle', () => {
   const registry = createFieldRegistry([
     fieldEntry({
