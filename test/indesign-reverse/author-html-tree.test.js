@@ -378,7 +378,7 @@ test('pageItemsToAuthorHtml restores PDF source inside an editable preview wrapp
             data: '../reference-pdfs/ice-rink-layout-reference.pdf',
             type: 'application/pdf',
             'data-id-object': '',
-            'data-id-page': '1',
+            'data-id-pdf-page': '1',
             'data-id-crop': 'media',
             'data-id-fit': 'contain',
           },
@@ -440,6 +440,344 @@ test('pageItemsToAuthorHtml renders observed placed assets as real resource elem
   assert.match(html, /data-id-asset-path="\\\\daga-nas5\\share\\图纸 A\.pdf"/);
 });
 
+test('pageItemsToAuthorHtml preserves placed image frame and content geometry for manual crops', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'cropped-image',
+        role: 'graphic',
+        semantic: 'unknown',
+        bounds: { x: 100, y: 80, width: 240, height: 160 },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\效果图 A.jpg',
+          graphicType: 'image',
+          cropped: true,
+          placement: {
+            fit: 'manual',
+            frameBounds: { x: 100, y: 80, width: 240, height: 160 },
+            contentBounds: { x: 70, y: 60, width: 320, height: 210 },
+            contentOffset: { x: -30, y: -20 },
+            contentSize: { width: 320, height: 210 },
+            contentScale: { x: 1.3333, y: 1.3125 },
+          },
+        },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['//daga-nas5/share/效果图 a.jpg', '/nas/daga-nas5/share/%E6%95%88%E6%9E%9C%E5%9B%BE%20A.jpg'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /<figure id="cropped-image"[^>]+data-id-object/);
+  assert.match(html, /data-id-asset-path="\\\\daga-nas5\\share\\效果图 A\.jpg"/);
+  assert.match(html, /data-id-fit="manual"/);
+  assert.match(html, /data-id-content-x="-30px"/);
+  assert.match(html, /data-id-content-y="-20px"/);
+  assert.match(html, /data-id-content-width="320px"/);
+  assert.match(html, /data-id-content-height="210px"/);
+  assert.match(html, /data-id-content-scale-x="1\.3333"/);
+  assert.match(html, /data-id-content-scale-y="1\.3125"/);
+  assert.match(html, /<img[^>]+class="placed-asset-content"[^>]+src="\/nas\/daga-nas5\/share\/%E6%95%88%E6%9E%9C%E5%9B%BE%20A\.jpg"/);
+  assert.match(html, /<img[^>]+data-id-ignore/);
+  assert.match(html, /style="[^"]*position:absolute[^"]*left:-30px[^"]*top:-20px[^"]*width:320px[^"]*height:210px/);
+});
+
+test('pageItemsToAuthorHtml keeps generated placed asset frames addressable in structured mode', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'cropped-image',
+        role: 'graphic',
+        semantic: 'unknown',
+        bounds: { x: 100, y: 80, width: 240, height: 160 },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\效果图 A.jpg',
+          graphicType: 'image',
+          cropped: true,
+          placement: {
+            fit: 'manual',
+            frameBounds: { x: 100, y: 80, width: 240, height: 160 },
+            contentBounds: { x: 70, y: 60, width: 320, height: 210 },
+            contentOffset: { x: -30, y: -20 },
+            contentSize: { width: 320, height: 210 },
+            contentScale: { x: 1.3333, y: 1.3125 },
+          },
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'structured' });
+
+  assert.match(html, /<figure id="cropped-image"[^>]+class="[^"]*id-object/);
+  assert.match(html, /<figure id="cropped-image"[^>]+data-id-object/);
+});
+
+test('pageItemsToAuthorHtml keeps generated placed-asset previews from being stretched by source content geometry', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'cropped-pdf',
+        role: 'graphic',
+        semantic: 'unknown',
+        bounds: { x: 100, y: 80, width: 240, height: 160 },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\图纸 A.pdf',
+          graphicType: 'PDF',
+          preview: {
+            path: 'D:\\reverse\\previews\\cropped-pdf.png',
+            relativePath: 'previews/cropped-pdf.png',
+            source: 'indesign-frame-export',
+            format: 'png',
+          },
+          placement: {
+            fit: 'manual',
+            frameBounds: { x: 100, y: 80, width: 240, height: 160 },
+            contentBounds: { x: 70, y: 60, width: 420, height: 210 },
+            contentOffset: { x: -30, y: -20 },
+            contentSize: { width: 420, height: 210 },
+            contentScale: { x: 1.75, y: 1.3125 },
+          },
+        },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['d:/reverse/previews/cropped-pdf.png', 'previews/cropped-pdf.png'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /<figure id="cropped-pdf"[^>]+data-id-content-width="420px"/);
+  assert.match(html, /<figure id="cropped-pdf"[^>]+data-id-content-height="210px"/);
+  assert.match(html, /<img[^>]+class="placed-asset-preview"[^>]+src="previews\/cropped-pdf\.png"/);
+  assert.match(html, /style="[^"]*position:absolute[^"]*left:0px[^"]*top:0px[^"]*width:100%[^"]*height:100%/);
+  assert.doesNotMatch(html, /class="placed-asset-preview"[^>]+width:420px/);
+});
+
+test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean generated preview images', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'layered-pdf',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\图纸 A.pdf',
+          graphicType: 'PDF',
+          preview: { path: 'D:\\reverse\\previews\\layered-pdf.png', relativePath: 'previews/layered-pdf.png' },
+          placement: {
+            pageNumber: 3,
+            crop: 'CROP_CONTENT_VISIBLE_LAYERS',
+            visibleLayers: ['结构', '标注'],
+            hiddenLayers: ['家具'],
+          },
+        },
+      },
+      {
+        id: 'layered-ai',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 2 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\总图.ai',
+          graphicType: 'PDF',
+          imageTypeName: 'Adobe PDF',
+          preview: { path: 'D:\\reverse\\previews\\layered-ai.png', relativePath: 'previews/layered-ai.png' },
+          placement: { pageNumber: 2, visibleLayers: ['道路'] },
+        },
+      },
+      {
+        id: 'layered-psd',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 3 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\效果图.psd',
+          graphicType: 'Image',
+          imageTypeName: 'Photoshop',
+          preview: { path: 'D:\\reverse\\previews\\layered-psd.png', relativePath: 'previews/layered-psd.png' },
+          placement: { visibleLayers: ['人物'] },
+        },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['d:/reverse/previews/layered-pdf.png', 'previews/layered-pdf.png'],
+    ['d:/reverse/previews/layered-ai.png', 'previews/layered-ai.png'],
+    ['d:/reverse/previews/layered-psd.png', 'previews/layered-psd.png'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /<img id="layered-pdf"[^>]+src="previews\/layered-pdf\.png"/);
+  assert.match(html, /data-id-asset-path="\\\\daga-nas5\\share\\图纸 A\.pdf"/);
+  assert.match(html, /data-id-asset-kind="pdf"/);
+  assert.match(html, /data-id-pdf-page="3"/);
+  assert.match(html, /data-id-crop="content"/);
+  assert.match(html, /data-id-visible-layers="结构\|标注"/);
+  assert.match(html, /data-id-hidden-layers="家具"/);
+  assert.match(html, /<img id="layered-ai"[^>]+src="previews\/layered-ai\.png"/);
+  assert.match(html, /data-id-asset-kind="ai"/);
+  assert.match(html, /data-id-artboard="2"/);
+  assert.match(html, /<img id="layered-psd"[^>]+src="previews\/layered-psd\.png"/);
+  assert.match(html, /data-id-asset-kind="psd"/);
+  assert.doesNotMatch(html, /<object/);
+});
+
+test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable svg', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'vector-1',
+        role: 'shape',
+        semantic: 'unknown',
+        bounds: { x: 100, y: 120, width: 200, height: 80 },
+        visualStyle: {
+          fillColor: '#8ca064',
+          fillOpacity: 45,
+          strokeColor: '#c8102e',
+          strokeWeight: 2,
+          strokeOpacity: 70,
+          strokeStyle: 'Dashed',
+          opacity: 90,
+        },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [
+            {
+              closed: true,
+              points: [
+                { anchor: { x: 100, y: 120 }, leftDirection: { x: 100, y: 120 }, rightDirection: { x: 100, y: 120 } },
+                { anchor: { x: 300, y: 120 }, leftDirection: { x: 300, y: 120 }, rightDirection: { x: 300, y: 120 } },
+                { anchor: { x: 300, y: 200 }, leftDirection: { x: 300, y: 200 }, rightDirection: { x: 300, y: 200 } },
+              ],
+            },
+          ],
+        },
+        labels: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.match(html, /<svg[^>]+id="vector-1"[^>]+data-id-vector="polygon"/);
+  assert.match(html, /viewBox="0 0 200 80"/);
+  assert.match(html, /<path[^>]+d="M0 0 L200 0 L200 80 Z"/);
+  assert.match(html, /fill="#8ca064"/);
+  assert.match(html, /fill-opacity="0.45"/);
+  assert.match(html, /stroke="#c8102e"/);
+  assert.match(html, /stroke-width="2"/);
+  assert.match(html, /stroke-opacity="0.7"/);
+  assert.match(html, /stroke-dasharray=/);
+  assert.doesNotMatch(html, /background-color:#8ca064/);
+});
+
+test('pageItemsToAuthorHtml maps InDesign multiply blend mode to SVG mix-blend-mode', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'program-fill',
+        role: 'shape',
+        semantic: 'unknown',
+        bounds: { x: 100, y: 120, width: 200, height: 80 },
+        visualStyle: {
+          fillColor: '#ff9339',
+          opacity: 100,
+          blendMode: 'multiply',
+        },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [
+            {
+              closed: true,
+              points: [
+                { anchor: { x: 100, y: 120 }, leftDirection: { x: 100, y: 120 }, rightDirection: { x: 100, y: 120 } },
+                { anchor: { x: 300, y: 120 }, leftDirection: { x: 300, y: 120 }, rightDirection: { x: 300, y: 120 } },
+                { anchor: { x: 300, y: 200 }, leftDirection: { x: 300, y: 200 }, rightDirection: { x: 300, y: 200 } },
+              ],
+            },
+          ],
+        },
+        labels: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.match(html, /<svg[^>]+id="program-fill"[^>]+style="[^"]*mix-blend-mode:multiply/);
+  assert.match(html, /<path[^>]+fill="#ff9339"/);
+  assert.doesNotMatch(html, /opacity:0\./);
+});
+
+test('pageItemsToAuthorHtml gives zero-height vector lines a non-zero viewBox', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'axis-line',
+        role: 'line',
+        semantic: 'unknown',
+        bounds: { x: 10, y: 20, width: 180, height: 0 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: '#c8102e',
+          strokeWeight: 2,
+        },
+        vectorGeometry: {
+          kind: 'line',
+          paths: [
+            {
+              closed: false,
+              points: [
+                { anchor: { x: 10, y: 20 }, leftDirection: { x: 10, y: 20 }, rightDirection: { x: 10, y: 20 } },
+                { anchor: { x: 190, y: 20 }, leftDirection: { x: 190, y: 20 }, rightDirection: { x: 190, y: 20 } },
+              ],
+            },
+          ],
+        },
+        labels: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.match(html, /viewBox="0 0 180 2"/);
+  assert.match(html, /<path[^>]+d="M0 1 L180 1"/);
+});
+
+test('pageItemsToAuthorHtml omits degenerate invisible vector leftovers', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'empty-vector',
+        role: 'shape',
+        bounds: { x: 10, y: 20, width: 0, height: 0 },
+        visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [
+            { closed: false, points: [{ anchor: { x: 10, y: 20 } }] },
+          ],
+        },
+        labels: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.equal(html, '');
+});
+
 test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nesting a new one', () => {
   const page = {
     id: 'drawing-page',
@@ -456,7 +794,7 @@ test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nestin
             data: '../reference-pdfs/ice-rink-layout-reference.pdf',
             type: 'application/pdf',
             'data-id-object': '',
-            'data-id-page': '1',
+            'data-id-pdf-page': '1',
           },
           previewNode: {
             tagName: 'img',
@@ -488,6 +826,92 @@ test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nestin
   assert.equal((html.match(/class="drawing-frame grid-item grid-frame"/g) || []).length, 1);
   assert.match(html, /<div class="drawing-frame grid-item grid-frame" style="--grid-col:5;--grid-span:8" data-id-ignore>\n\s+<img class="pdf-preview"/);
   assert.match(html, /<object class="pdf-source" data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
+});
+
+test('pageItemsToAuthorHtml writes PDF page numbers only through data-id-pdf-page', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'layered-pdf',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\图纸 A.pdf',
+          graphicType: 'PDF',
+          preview: { path: 'D:\\reverse\\previews\\layered-pdf.png', relativePath: 'previews/layered-pdf.png' },
+          placement: { pageNumber: 3 },
+        },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['d:/reverse/previews/layered-pdf.png', 'previews/layered-pdf.png'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /data-id-pdf-page="3"/);
+  assert.doesNotMatch(html, /data-id-page=/);
+});
+
+test('pageItemsToAuthorHtml does not invent first-page PDF previews without explicit page facts', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'untagged-pdf',
+        role: 'graphic',
+        semantic: 'unknown',
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\多页图纸.pdf',
+          graphicType: 'PDF',
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.match(html, /<object[^>]+id="untagged-pdf"/);
+  assert.doesNotMatch(html, /多页图纸-page1\.png/);
+  assert.doesNotMatch(html, /class="pdf-preview"/);
+  assert.doesNotMatch(html, /data-id-pdf-page=/);
+});
+
+test('pageItemsToAuthorHtml ignores invalid PDF page facts when deriving previews', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'invalid-page-pdf',
+        role: 'graphic',
+        semantic: 'unknown',
+        sourceNode: {
+          tagName: 'object',
+          id: 'invalid-page-pdf',
+          classList: ['pdf-source'],
+          attributes: {
+            data: '../reference-pdfs/multi-page.pdf',
+            type: 'application/pdf',
+            'data-id-pdf-page': 'abc',
+          },
+        },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '../reference-pdfs/multi-page.pdf',
+          graphicType: 'PDF',
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.doesNotMatch(html, /multi-page-pageabc\.png/);
+  assert.doesNotMatch(html, /class="pdf-preview"/);
 });
 
 test('pageItemsToAuthorHtml formats tables with editable thead and tbody', () => {

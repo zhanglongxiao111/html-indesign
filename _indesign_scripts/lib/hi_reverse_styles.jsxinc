@@ -1,13 +1,18 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 HI.reverseVisualStyle = function (item) {
-    return {
+    var out = {
         fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor")),
         strokeColor: HI.reverseColor(HI.reverseSafeProperty(item, "strokeColor")),
         strokeWeight: HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight")),
+        fillOpacity: HI.reverseFillOpacity(item),
+        strokeOpacity: HI.reverseStrokeOpacity(item),
+        strokeStyle: HI.reverseStrokeStyle(item),
         opacity: HI.reverseOpacity(item),
         cornerRadius: HI.reverseCornerRadius(item)
     };
+    if (HI.reverseExtendedVisualStyle) HI.copyObject(out, HI.reverseExtendedVisualStyle(item));
+    return out;
 };
 
 HI.reverseSafeProperty = function (target, propertyName) {
@@ -317,6 +322,7 @@ HI.numberOrNull = function (value) { var n = Number(value); return Number(n) ===
 HI.leadingOrNull = function (value) { var n = HI.numberOrNull(value); return n === 1635019116 ? null : n; };
 HI.positiveNumberOrNull = function (value) { var n = Number(value || 0); return n > 0 ? n : null; };
 HI.reverseOpacity = function (item) { try { var o = Number(item.transparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; };
+HI.reverseFillOpacity = function (item) { try { var o = Number(item.fillTransparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; }; HI.reverseStrokeOpacity = function (item) { try { var o = Number(item.strokeTransparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; }; HI.reverseStrokeStyle = function (item) { try { if (item.strokeType && item.strokeType.isValid) return String(item.strokeType.name || ""); } catch (_) {} return null; };
 HI.reverseCornerRadius = function (item) { try { var r = Number(item.topLeftCornerRadius || 0); return r > 0 && item.topLeftCornerOption !== 1852796517 ? r : null; } catch (_) {} return null; };
 HI.rgbHex = function (r, g, b) { return "#" + HI.hexByte(r) + HI.hexByte(g) + HI.hexByte(b); };
 HI.hexByte = function (value) { var n = Math.max(0, Math.min(255, Math.round(Number(value || 0)))); var h = n.toString(16); return h.length === 1 ? "0" + h : h; };
@@ -330,7 +336,4 @@ HI.isTextFrame = function (item) {
     try { return String(item.constructor && item.constructor.name || "").indexOf("TextFrame") >= 0; } catch (_) {}
     return false;
 };
-HI.hasTextFrameGeneralOptions = function (item) {
-    try { return item.enableTextFrameGeneralOptions === true; } catch (_) {}
-    return false;
-};
+HI.hasTextFrameGeneralOptions = function (item) { try { return item.enableTextFrameGeneralOptions === true; } catch (_) {} return false; };

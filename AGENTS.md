@@ -2,12 +2,13 @@
 
 ## 1. 项目定位
 
-本项目是固定语义 HTML 与 InDesign 的双向翻译库。
+本项目当前是固定语义 HTML 与 InDesign 的双向翻译库；架构上正在收敛为固定分页文档的多格式转换库。HTML 与 InDesign 是当前主线，PPTX 等后续格式只能通过统一语义模型和格式适配器接入。
 
 当前主线：
 
 - 让 Agent 写自然、可预览、可校验的 HTML。
 - 以统一语义模型和标签协议为中心，让 HTML 与 InDesign 可以双向翻译。
+- 以统一语义模型作为长期事实源，让 HTML、InDesign、未来 PPTX 等格式读写同一组 canonical 字段。
 - 把 HTML 语义、样式和资源编译成 InDesign 构建指令。
 - 在 InDesign 端生成符合排版习惯的页面、样式、图框、表格和对象。
 - 让 InDesign 输出携带 `html_indesign` 脚本标签，后续可反向导出固定语义 HTML。
@@ -30,8 +31,11 @@
 - **视觉偏差就是缺陷。** 浏览器 HTML 与 InDesign 输出不一致时，先定位丢失的语义、样式或执行能力；不得把“能跑通”当作完成。
 - **页面网格是作者契约。** 建筑汇报类页面必须声明主网格、栏间距和/或 baseline；Agent 排版应服从该网格，InDesign 输出应生成对应原生参考线，严禁把对象边缘反推线当作默认网格。
 - **标签是协议，模板是载体。** HTML 侧 `data-id-*` 与 InDesign 侧 `html_indesign` 脚本标签必须保持可回读；模板只负责批量提供标签、样式和布局约束，不能替代标签协议。
+- **协议字段必须集中登记。** 新增字段、`data-id-*`、`html_indesign` payload、语义模型路径和 instructions 派生字段必须进入协议字段注册表；注册表实现前，以当前规范文档中的静态字段表作为临时事实源。严禁在单个格式适配器、writer、executor 或 fixture 里私造同义字段。
+- **格式能力必须显式声明。** HTML、InDesign、未来 PPTX 对同一字段的支持能力必须通过能力矩阵表达；不能为了某个格式把 canonical 字段命名成格式专用字段。格式独有能力只能进入 format extension，不得污染通用模型。
 - **语义库是白名单。** 反向导出必须用当前项目语义库或标准语义库逐页、逐对象、逐字段复核标签；不在白名单内的语义、布局、样式 token 和结构关系不得参与结构化编译。
 - **混乱标签降级观察。** 人类复制模板、手工修改或跨项目粘贴造成的过期 `html_indesign` 标签可以保留为观察信息，但不能作为有效协议事实；合规字段局部保留，不合规字段降级为不起作用的观察标签，并在报告中说明原因。
+- **退役代码必须当场清除。** 一旦协议字段、标签格式、模块入口、兼容路径或命名被判定退役，必须在同一轮清掉读取、写出、测试样例、执行端默认值和文档表述；严禁用“过渡兼容”“小清理”“以后再删”为理由保留旧分支、旧字段兜底、`legacy` 命名、死代码或看似无害的双路径。旧内容若仍有追溯价值，只能进入观察信息、迁移报告或历史文档，绝不能继续进入结构化模型、编译链路、执行器或规范示例。发现退役代码仍在运行路径中生效，按严重缺陷处理，不按普通技术债处理。
 - **优先完整收口。** 如果根因在共享翻译链路，必须修链路；严禁在单个 fixture、单页模板或 JSX 末端堆局部补丁。
 - **兜底默认有害。** 兜底只能用于明确的兼容边界，必须可见、可测、可解释；严禁吞掉错误后输出看似成功的结果。
 - **样式映射必须原样负责。** `border` 应映射为描边，`background` 应映射为填充，`border-radius` 应映射为圆角，`table` 应映射为表格语义，PDF/图片外框必须保留为真实图框能力。
@@ -66,6 +70,8 @@
 | `src/paged-html/` | 浏览器快照、样式读取、语义到构建指令的编译层 |
 | `src/semantic-model/` | 计划中的统一语义模型层，承接 HTML 与 InDesign 双向事实 |
 | `src/indesign-reverse/` | 计划中的 InDesign 反向导出层 |
+| `src/protocol/` | 计划中的协议字段注册表、能力矩阵和字段生命周期管理 |
+| `src/adapters/` | 计划中的多格式适配器边界；HTML/InDesign/PPTX 等格式不得绕过语义模型互转 |
 | `src/` 根层旧模块 | blueprint、规范生成、校验、早期 builder |
 | `_indesign_scripts/` | InDesign 端执行脚本和共享 JSX 库 |
 | `test/fixtures/` | HTML、资源和语义样例 |
@@ -102,6 +108,7 @@
 | `docs/review/` | 过程目录 | 审核、对照检查、翻译准确性评估；具体报告按日期和主题增长 |
 | `docs/bugfix/` | 过程目录 | 复杂缺陷根因、修复过程和回归记录 |
 | `docs/superpowers/specs/` | 过程目录 | 方案设计和边界分析，不自动等同长期规范 |
+| `docs/superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` | 过程文档 | 协议字段注册表、多格式能力矩阵和未来 PPTX 适配架构设计 |
 | `docs/superpowers/plans/` | 过程目录 | 实施计划、阶段拆分和验证清单 |
 | `docs/legacy/` | 追溯目录 | 历史资料，只追溯，不作为当前规范 |
 
@@ -141,6 +148,7 @@
 | HTML 作者侧规则检查 | `npm run lint:authoring -- <deck.html>` |
 | 初始化项目语义库 | `npm run preset:init -- -- --package <deck.config.json>` |
 | 源码回环 diff | `npm run audit:roundtrip -- -- --source <source-author-root> --reverse <reverse-author-root> [--strict]` |
+| 反向作者包视觉几何对照 | `npm run audit:reverse-visual -- -- --reverse-html <reverse-html-dir> [--out <report.json>]` |
 | 真实 InDesign E2E | `npm run e2e:indesign` |
 | 真实 InDesign E2E + 回读 | `npm run e2e:indesign -- -- --reverse-roundtrip` |
 | 真实 InDesign E2E + 二次回环 | `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` |
@@ -165,6 +173,7 @@ Agent 新写或大改分页 HTML 后，应先跑 `npm run lint:authoring -- <dec
 | ---- | -------- |
 | 固定语义协议 | 以 `docs/规范/SEMANTIC_PROTOCOL.md` 为当前说明，行为仍以代码和测试为准 |
 | 库级架构 | 以 `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 为当前说明，触及时同步修正 |
+| 协议字段注册表与多格式扩展 | 以 `docs/superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` 为已批准设计；实现前不得删除当前规范中的静态字段表，实现后迁移为注册表集中维护或生成文档 |
 | 标签协议 | 以 `docs/规范/LABEL_PROTOCOL.md` 为当前说明，前向导出应写入可反向读取的 `html_indesign` 标签 |
 | 反向导出 | 以 `docs/规范/REVERSE_EXPORT.md` 为当前说明，先支持带标签结构化回读和未标注观察 HTML |
 | HTML 与 InDesign 视觉差异 | 进入 `docs/review/` 或缺陷记录，按可验证问题修 |

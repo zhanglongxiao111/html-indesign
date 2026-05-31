@@ -1,6 +1,6 @@
 const path = require('path');
 
-const RASTER_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp', '.bmp']);
+const RASTER_EXTENSIONS = new Set(['.jpg', '.jpeg', '.jfif', '.png', '.tif', '.tiff', '.webp', '.bmp']);
 
 function cleanKind(value) {
   const kind = String(value || '').trim().toLowerCase();
@@ -26,6 +26,8 @@ function assetSourceFromElementLike(element) {
   const style = element.computedStyle || {};
   const authoredStyle = element.authoredStyle || {};
   const explicitKind = cleanKind(attrs['data-id-asset-kind']);
+  const protocolAssetPath = attrs['data-id-asset-path'] || null;
+  if (protocolAssetPath) return { src: protocolAssetPath, explicitKind };
   if (tagName === 'IMG') return { src: attrs.src || null, explicitKind };
   if (tagName === 'OBJECT') {
     const type = String(attrs.type || '').toLowerCase();

@@ -15,7 +15,7 @@ test('parseArgs accepts mode, snapshot and out dir', () => {
   assert.equal(args.outDir, 'out-dir');
 });
 
-test('parseArgs accepts legacy blueprint input', () => {
+test('parseArgs accepts historical blueprint input', () => {
   const args = parseArgs(['--mode', 'inferred', '--blueprint', 'blueprint.json', '--out', 'out-dir']);
 
   assert.equal(args.mode, 'inferred');
@@ -75,8 +75,12 @@ test('compileReverseSnapshotToHtml writes visual HTML and author package', () =>
   assert.equal(fs.existsSync(path.join(outDir, 'author/deck.config.json')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'author/pages/01-agenda.html')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'author/deck.html')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'author/presentation.html')), true);
   assert.equal(result.files.visualHtml, path.join(outDir, 'deck.visual.html'));
   assert.equal(result.files.author.config, path.join(outDir, 'author/deck.config.json'));
+  assert.equal(result.files.author.presentation, path.join(outDir, 'author/presentation.html'));
+  assert.equal(result.report.authorAudit.ok, true);
+  assert.equal(Array.isArray(result.report.authorAudit.warnings), true);
 });
 
 test('compileReverseSnapshotToHtml forwards source root into the author package writer', () => {
@@ -102,7 +106,7 @@ test('compileReverseSnapshotToHtml forwards source root into the author package 
   );
 });
 
-test('compileReverseSnapshotToHtml writes legacy blueprint through reverse pipeline', () => {
+test('compileReverseSnapshotToHtml writes historical blueprint through reverse pipeline', () => {
   const outDir = path.resolve('test/workspace/reverse-blueprint-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });
 
@@ -113,7 +117,7 @@ test('compileReverseSnapshotToHtml writes legacy blueprint through reverse pipel
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.report.inputFormat, 'legacy-blueprint');
+  assert.equal(result.report.inputFormat, 'historical-blueprint');
   assert.equal(result.report.mode, 'inferred');
   assert.equal(fs.existsSync(path.join(outDir, 'deck.html')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'deck.inferred.html')), true);
@@ -121,8 +125,8 @@ test('compileReverseSnapshotToHtml writes legacy blueprint through reverse pipel
 
   const html = fs.readFileSync(path.join(outDir, 'deck.inferred.html'), 'utf8');
   assert.match(html, /data-id-reverse-mode="inferred"/);
-  assert.match(html, /data-id-source="legacy-blueprint"/);
-  assert.match(html, /data-id-legacy-slot="true"/);
+  assert.match(html, /data-id-source="blueprint-migration"/);
+  assert.match(html, /data-id-migration-slot="true"/);
 });
 
 function writeFixtureFile(filePath, content) {

@@ -168,5 +168,5 @@ HI.isLikelyTableHeaderCell = function (paragraphStyle, rowIndex) {
 HI.tableSpanNumber = function (value) { var n = Number(value || 1); return n > 1 ? n : 1; };
 HI.collectionLength = function (collection) { try { return Number(collection.length || 0); } catch (_) {} return 0; };
 HI.cleanReverseTableCellText = function (value) {
-    return String(value || "").replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
+    return HI.reverseTextValue(value).replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
 };

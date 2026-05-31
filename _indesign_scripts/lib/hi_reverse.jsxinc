@@ -5,12 +5,13 @@ HI.exportReverseSnapshot = function (appRef, outputPath) {
     var doc = appRef.activeDocument;
     var coordinateUnit = HI.reverseCoordinateUnit(doc);
     var oldUnits = HI.applyReverseMeasurementUnits(appRef, doc, coordinateUnit);
+    var previewContext = HI.reversePreviewContext(outputPath, report);
     var snapshot = null;
     try {
-        snapshot = { metadata: { sourceDocument: HI.documentPath(doc), exportedAt: String(new Date()), mode: "structured", coordinateUnit: coordinateUnit }, report: report };
+        snapshot = { metadata: { sourceDocument: HI.documentPath(doc), exportedAt: String(new Date()), mode: "structured", coordinateUnit: coordinateUnit, previewDirectory: previewContext.folder.fsName }, report: report };
         snapshot.document = HI.reverseDocument(doc);
-        snapshot.parentPages = HI.reverseParentPages(doc);
-        snapshot.pages = HI.reversePages(doc);
+        snapshot.parentPages = HI.reverseParentPages(doc, previewContext);
+        snapshot.pages = HI.reversePages(doc, previewContext);
         snapshot.styles = HI.reverseStyles(doc);
         snapshot.layers = HI.reverseLayers(doc);
         snapshot.assets = HI.reverseAssets(doc);
@@ -69,19 +70,46 @@ HI.reverseDocument = function (doc) {
     return { name: String(doc.name || ""), labels: HI.reverseLabels(doc) };
 };
 
-HI.reverseParentPages = function (doc) {
-    var out = [], masters = HI.collectionElements(doc.masterSpreads);
-    for (var i = 0; i < masters.length; i++) out.push({ name: String(masters[i].name || ""), labels: HI.reverseLabels(masters[i]), items: [] });
+HI.reverseParentPages = function (doc, context) {
+    var out = [], masters = HI.collectionElements(doc.masterSpreads), layerOrder = HI.reverseLayerIndexMap(doc);
+    for (var i = 0; i < masters.length; i++) {
+        out.push({
+            name: String(masters[i].name || ""),
+            labels: HI.reverseLabels(masters[i]),
+            bounds: HI.masterSpreadBounds(masters[i]),
+            items: HI.reverseParentPageItems(masters[i], layerOrder, context)
+        });
+    }
     return out;
 };
 
-HI.reversePages = function (doc) {
+HI.reverseParentPageItems = function (masterSpread, layerOrder, context) {
+    var out = [], items = HI.reverseTopLevelPageItems(masterSpread);
+    for (var i = 0; i < items.length; i++) {
+        if (HI.shouldReversePageItem(items[i])) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder, context));
+    }
+    return out;
+};
+
+HI.masterSpreadBounds = function (masterSpread) {
+    try {
+        var pages = HI.collectionElements(masterSpread.pages);
+        if (pages.length) return HI.pageBounds(pages[0]);
+    } catch (_) {}
+    try {
+        var b = masterSpread.bounds;
+        return { x: Number(b[1] || 0), y: Number(b[0] || 0), width: Number(b[3] - b[1]), height: Number(b[2] - b[0]) };
+    } catch (_) {}
+    return null;
+};
+
+HI.reversePages = function (doc, context) {
     var out = [], pages = HI.collectionElements(doc.pages), layerOrder = HI.reverseLayerIndexMap(doc);
-    for (var i = 0; i < pages.length; i++) out.push(HI.reversePage(pages[i], i, layerOrder));
+    for (var i = 0; i < pages.length; i++) out.push(HI.reversePage(pages[i], i, layerOrder, context));
     return out;
 };
 
-HI.reversePage = function (page, index, layerOrder) {
+HI.reversePage = function (page, index, layerOrder, context) {
     return {
         id: String(page.name || ("page-" + (index + 1))),
         index: index,
@@ -90,7 +118,7 @@ HI.reversePage = function (page, index, layerOrder) {
         bounds: HI.pageBounds(page),
         margins: HI.reversePageMargins(page),
         guides: HI.reverseGuides(page),
-        items: HI.reversePageItems(page, layerOrder)
+        items: HI.reversePageItems(page, layerOrder, context)
     };
 };
 
@@ -109,18 +137,50 @@ HI.reversePageMargins = function (page) {
     return { top: Number(prefs.top || 0), right: Number(prefs.right || 0), bottom: Number(prefs.bottom || 0), left: Number(prefs.left || 0) };
 };
 
-HI.reversePageItems = function (page, layerOrder) {
-    var out = [], items = HI.collectionElements(page.pageItems);
-    for (var i = 0; i < items.length; i++) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder));
+HI.reversePageItems = function (page, layerOrder, context) {
+    var out = [], items = HI.reverseTopLevelPageItems(page);
+    for (var i = 0; i < items.length; i++) {
+        if (HI.shouldReversePageItem(items[i])) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder, context));
+    }
     return out;
 };
 
-HI.reversePageItem = function (item, index, total, layerOrder) {
+HI.reverseTopLevelPageItems = function (container) {
+    var raw = [];
+    try { raw = HI.collectionElements(container.allPageItems); } catch (_) { raw = []; }
+    if (!raw.length) {
+        try { raw = HI.collectionElements(container.pageItems); } catch (_) { raw = []; }
+    }
+    var out = [], seen = {};
+    for (var i = 0; i < raw.length; i++) {
+        if (!HI.isTopLevelReverseItem(raw[i])) continue;
+        var id = "";
+        try { id = String(raw[i].id || ""); } catch (_) { id = ""; }
+        if (id && seen[id]) continue;
+        if (id) seen[id] = true;
+        out.push(raw[i]);
+    }
+    return out;
+};
+
+HI.isTopLevelReverseItem = function (item) {
+    if (!item) return false;
+    var parentName = "";
+    try { parentName = String(item.parent && item.parent.constructor && item.parent.constructor.name || ""); } catch (_) { parentName = ""; }
+    if (parentName === "Page" || parentName === "Spread" || parentName === "MasterSpread") return true;
+    if (!parentName) return true;
+    return false;
+};
+
+HI.reversePageItem = function (item, index, total, layerOrder, context) {
     return {
         id: String(item.id || ("item-" + (index + 1))),
-        type: String(item.constructor && item.constructor.name || item.constructor || ""),
+        type: HI.reverseItemType(item),
         bounds: HI.itemBounds(item),
         layerName: HI.itemLayerName(item),
+        visible: HI.reverseItemVisible(item),
+        printable: HI.reverseItemPrintable(item),
+        nonprinting: HI.reverseItemNonprinting(item),
         paragraphStyleName: HI.appliedParagraphStyleName(item),
         objectStyleName: HI.appliedObjectStyleName(item),
         visualStyle: HI.reverseVisualStyle(item),
@@ -131,12 +191,222 @@ HI.reversePageItem = function (item, index, total, layerOrder) {
         textRuns: HI.reverseTextRuns(item),
         firstLineFont: HI.reverseFirstLineFont(item),
         table: HI.reverseTableData(item),
+        vectorGeometry: HI.reverseVectorGeometry(item),
         zIndex: HI.reverseItemZIndex(item, index, total, layerOrder),
-        placedAsset: HI.reversePlacedAsset(item),
+        placedAsset: HI.reversePlacedAsset(item, context),
         text: HI.itemText(item),
         label: String(item.label || ""),
         labels: HI.reverseLabels(item)
     };
+};
+
+HI.shouldReversePageItem = function (item) {
+    try { if (item.visible === false) return false; } catch (_) {}
+    try { if (item.nonprinting === true) return false; } catch (_) {}
+    try { if (item.itemLayer && item.itemLayer.visible === false) return false; } catch (_) {}
+    try { if (item.itemLayer && item.itemLayer.printable === false) return false; } catch (_) {}
+    return true;
+};
+
+HI.reverseItemVisible = function (item) {
+    try { return item.visible !== false; } catch (_) {}
+    return true;
+};
+
+HI.reverseItemPrintable = function (item) {
+    try { return item.nonprinting !== true; } catch (_) {}
+    return true;
+};
+
+HI.reverseItemNonprinting = function (item) {
+    try { return item.nonprinting === true; } catch (_) {}
+    return false;
+};
+
+HI.reverseItemType = function (item) {
+    try { if (HI.isTextFrame(item)) return "TextFrame"; } catch (_) {}
+    try { if (item instanceof GraphicLine) return "GraphicLine"; } catch (_) {}
+    try { if (item instanceof Oval) return "Oval"; } catch (_) {}
+    try { if (item instanceof Rectangle) return "Rectangle"; } catch (_) {}
+    try { if (item instanceof Polygon) return "Polygon"; } catch (_) {}
+    try { if (HI.hasPlacedGraphics(item)) return "GraphicFrame"; } catch (_) {}
+    try { return String(item.constructor && item.constructor.name || item.constructor || ""); } catch (_) {}
+    return "";
+};
+
+HI.reverseVectorGeometry = function (item) {
+    try { if (HI.isTextFrame(item) || HI.reverseTableData(item) || HI.hasPlacedGraphics(item)) return null; } catch (_) {}
+    var paths = HI.reversePathRecords(item);
+    if (!HI.hasRenderableVectorPath(paths) && HI.reverseVectorKind(item) === "line") paths = HI.reverseLineFallbackPath(item);
+    if (!paths.length) return null;
+    return { kind: HI.reverseVectorKind(item), paths: paths };
+};
+
+HI.reverseVectorKind = function (item) {
+    var type = HI.reverseItemType(item).toLowerCase();
+    if (type.indexOf("line") >= 0) return "line";
+    if (type.indexOf("oval") >= 0) return "oval";
+    if (type.indexOf("rectangle") >= 0) return "rectangle";
+    if (type.indexOf("polygon") >= 0) return "polygon";
+    return "path";
+};
+
+HI.hasRenderableVectorPath = function (paths) {
+    for (var i = 0; i < paths.length; i++) {
+        if (paths[i] && paths[i].points && paths[i].points.length > 1) return true;
+    }
+    return false;
+};
+
+HI.reverseLineFallbackPath = function (item) {
+    try {
+        var b = HI.itemBounds(item);
+        if (Number(b.width || 0) === 0 && Number(b.height || 0) === 0) return [];
+        return [{ closed: false, points: [
+            { anchor: { x: b.x, y: b.y }, leftDirection: { x: b.x, y: b.y }, rightDirection: { x: b.x, y: b.y }, pointType: null },
+            { anchor: { x: b.x + b.width, y: b.y + b.height }, leftDirection: { x: b.x + b.width, y: b.y + b.height }, rightDirection: { x: b.x + b.width, y: b.y + b.height }, pointType: null }
+        ] }];
+    } catch (_) {}
+    return [];
+};
+
+HI.reversePathRecords = function (item) {
+    var out = [], paths = [];
+    try { paths = HI.collectionElements(item.paths); } catch (_) { paths = []; }
+    for (var i = 0; i < paths.length; i++) {
+        var points = HI.reversePathPoints(paths[i]);
+        if (points.length) out.push({ closed: HI.reversePathClosed(paths[i]), points: points });
+    }
+    return out;
+};
+
+HI.reversePathClosed = function (path) {
+    try { if (path.pathType === PathType.CLOSED_PATH) return true; } catch (_) {}
+    try { return String(path.pathType || "").toLowerCase().indexOf("closed") >= 0; } catch (_) {}
+    return false;
+};
+
+HI.reversePathPoints = function (path) {
+    var out = [], points = [];
+    try { points = HI.collectionElements(path.pathPoints); } catch (_) { points = []; }
+    for (var i = 0; i < points.length; i++) out.push(HI.reversePathPoint(points[i]));
+    return out;
+};
+
+HI.reversePathPoint = function (point) {
+    return {
+        anchor: HI.reversePathCoordinate(point, "anchor"),
+        leftDirection: HI.reversePathCoordinate(point, "leftDirection"),
+        rightDirection: HI.reversePathCoordinate(point, "rightDirection"),
+        pointType: HI.reversePathPointType(point)
+    };
+};
+
+HI.reversePathCoordinate = function (point, propertyName) {
+    try {
+        var value = point[propertyName];
+        return { x: Number(value[0] || 0), y: Number(value[1] || 0) };
+    } catch (_) {}
+    return { x: 0, y: 0 };
+};
+
+HI.reversePathPointType = function (point) {
+    try { return String(point.pointType || ""); } catch (_) {}
+    return "";
+};
+
+HI.reverseExtendedVisualStyle = function (item) {
+    var out = {}, value;
+    value = HI.reverseTint(item, "fillTint"); if (value !== null) out.fillTint = value;
+    value = HI.reverseTint(item, "strokeTint"); if (value !== null) out.strokeTint = value;
+    value = HI.reverseStrokeLineCap(item); if (value) out.strokeLineCap = value;
+    value = HI.reverseStrokeLineJoin(item); if (value) out.strokeLineJoin = value;
+    value = HI.numberOrNull(HI.reverseSafeProperty(item, "miterLimit")); if (value !== null) out.strokeMiterLimit = value;
+    value = HI.reverseStrokeAlignment(item); if (value) out.strokeAlignment = value;
+    value = HI.reverseLineMarker(item, "leftLineEnd"); if (value) out.lineStartMarker = value;
+    value = HI.reverseLineMarker(item, "rightLineEnd"); if (value) out.lineEndMarker = value;
+    value = HI.reverseBlendMode(item); if (value) out.blendMode = value;
+    return out;
+};
+
+HI.reverseTint = function (item, propertyName) {
+    var value = HI.numberOrNull(HI.reverseSafeProperty(item, propertyName));
+    return value !== null && value >= 0 && value < 100 ? value : null;
+};
+
+HI.reverseStrokeLineCap = function (item) {
+    var value = HI.reverseSafeProperty(item, "endCap"), text = String(value || "").toLowerCase();
+    try { if (value === EndCap.ROUND_END_CAP) return "round"; } catch (_) {}
+    try { if (value === EndCap.PROJECTING_END_CAP) return "square"; } catch (_) {}
+    try { if (value === EndCap.BUTT_END_CAP) return "butt"; } catch (_) {}
+    if (text.indexOf("round") >= 0) return "round";
+    if (text.indexOf("project") >= 0 || text.indexOf("square") >= 0) return "square";
+    if (text.indexOf("butt") >= 0) return "butt";
+    return null;
+};
+
+HI.reverseStrokeLineJoin = function (item) {
+    var value = HI.reverseSafeProperty(item, "endJoin"), text = String(value || "").toLowerCase();
+    try { if (value === EndJoin.ROUND_END_JOIN) return "round"; } catch (_) {}
+    try { if (value === EndJoin.BEVEL_END_JOIN) return "bevel"; } catch (_) {}
+    try { if (value === EndJoin.MITER_END_JOIN) return "miter"; } catch (_) {}
+    if (text.indexOf("round") >= 0) return "round";
+    if (text.indexOf("bevel") >= 0) return "bevel";
+    if (text.indexOf("miter") >= 0) return "miter";
+    return null;
+};
+
+HI.reverseStrokeAlignment = function (item) {
+    var value = HI.reverseSafeProperty(item, "strokeAlignment"), text = String(value || "").toLowerCase();
+    try { if (value === StrokeAlignment.INSIDE_ALIGNMENT) return "inside"; } catch (_) {}
+    try { if (value === StrokeAlignment.OUTSIDE_ALIGNMENT) return "outside"; } catch (_) {}
+    try { if (value === StrokeAlignment.CENTER_ALIGNMENT) return "center"; } catch (_) {}
+    if (text.indexOf("inside") >= 0) return "inside";
+    if (text.indexOf("outside") >= 0) return "outside";
+    if (text.indexOf("center") >= 0) return "center";
+    return null;
+};
+
+HI.reverseLineMarker = function (item, propertyName) {
+    var value = HI.reverseSafeProperty(item, propertyName), rawName = HI.reverseLineMarkerName(value);
+    var type = HI.reverseLineMarkerType(rawName);
+    return type ? { type: type, rawName: rawName } : null;
+};
+
+HI.reverseLineMarkerName = function (value) {
+    try { if (value && value.isValid && value.name) return String(value.name); } catch (_) {}
+    try { if (value && value.name) return String(value.name); } catch (_) {}
+    try { return String(value || ""); } catch (_) {}
+    return "";
+};
+
+HI.reverseLineMarkerType = function (name) {
+    var text = String(name || "").toLowerCase();
+    if (!text || text === "none" || text.indexOf("nothing") >= 0 || text.indexOf("[none]") >= 0) return null;
+    if (text.indexOf("circle") >= 0 || text.indexOf("round") >= 0 || text.indexOf("dot") >= 0) return "circle";
+    if (text.indexOf("square") >= 0 || text.indexOf("box") >= 0) return "square";
+    if (text.indexOf("diamond") >= 0) return "diamond";
+    if (text.indexOf("bar") >= 0) return "bar";
+    if (text.indexOf("arrow") >= 0 || text.indexOf("triangle") >= 0 || text.indexOf("simple") >= 0) return "arrow";
+    return "custom";
+};
+
+HI.reverseBlendMode = function (item) {
+    var value = null;
+    try { value = item.transparencySettings.blendingSettings.blendMode; } catch (_) {}
+    var text = String(value || "").toLowerCase();
+    if (!text || text.indexOf("normal") >= 0) return null;
+    if (text.indexOf("multiply") >= 0) return "multiply";
+    if (text.indexOf("screen") >= 0) return "screen";
+    if (text.indexOf("overlay") >= 0) return "overlay";
+    if (text.indexOf("darken") >= 0) return "darken";
+    if (text.indexOf("lighten") >= 0) return "lighten";
+    return text.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || null;
+};
+
+HI.hasPlacedGraphics = function (item) {
+    try { return item.allGraphics && item.allGraphics.length > 0; } catch (_) {}
+    return false;
 };
 
 HI.itemBounds = function (item) {
@@ -157,7 +427,7 @@ HI.reverseLayerIndexMap = function (doc) {
 };
 
 HI.reverseItemZIndex = function (item, index, total, layerOrder) {
-    var local = Number(index);
+    var local = Number(total - 1 - index);
     var layerName = HI.itemLayerName(item);
     var layer = layerOrder && layerOrder[layerName];
     if (!layer) return local;
@@ -175,24 +445,215 @@ HI.appliedParagraphStyleName = function (item) {
 };
 
 HI.itemText = function (item) {
-    try { return String(item.contents || ""); } catch (_) { return ""; }
+    try { return HI.reverseTextValue(item.contents); } catch (_) { return ""; }
 };
 
-HI.reversePlacedAsset = function (item) {
+HI.reversePlacedAsset = function (item, context) {
     try {
         if (!item.allGraphics || item.allGraphics.length < 1) return null;
         var graphic = item.allGraphics[0];
         var link = graphic.itemLink;
+        var assetPath = link && link.filePath ? String(link.filePath) : "";
         return {
             name: link ? String(link.name || "") : "",
-            path: link && link.filePath ? String(link.filePath) : "",
+            path: assetPath,
             status: link ? String(link.status || "") : "",
             graphicType: String(graphic.constructor && graphic.constructor.name || ""),
+            imageTypeName: HI.reverseImageTypeName(graphic),
             bounds: HI.itemBounds(graphic),
-            cropped: HI.isGraphicCropped(item, graphic)
+            cropped: HI.isGraphicCropped(item, graphic),
+            placement: HI.reverseAssetPlacement(item, graphic),
+            preview: HI.exportPlacedAssetPreview(item, graphic, assetPath, context)
         };
     } catch (_) {}
     return null;
+};
+
+HI.reversePreviewContext = function (outputPath, report) {
+    var file = File(outputPath);
+    var folder = Folder(file.parent.fsName + "/previews");
+    try { file.parent.create(); } catch (_) {}
+    try { folder.create(); } catch (error) {
+        HI.addMessage(report, "warning", "REVERSE_PREVIEW_DIR_CREATE_FAILED", String(error), { path: folder.fsName });
+    }
+    return { folder: folder, relativeRoot: "previews", report: report };
+};
+
+HI.reverseImageTypeName = function (graphic) {
+    try { return String(graphic.imageTypeName || ""); } catch (_) {}
+    return "";
+};
+
+HI.reverseAssetPlacement = function (frame, graphic) {
+    if (!graphic) { graphic = frame; frame = null; }
+    var pdf = HI.reversePdfAttributes(graphic);
+    var layerOptions = HI.reverseGraphicLayerOptions(graphic);
+    var geometry = frame ? HI.reverseAssetGeometry(frame, graphic) : null;
+    var out = {}, has = false;
+    if (pdf.pageNumber != null) { out.pageNumber = pdf.pageNumber; has = true; }
+    if (pdf.crop) { out.crop = pdf.crop; has = true; }
+    if (pdf.pdfCrop != null) { out.pdfCrop = pdf.pdfCrop; has = true; }
+    if (pdf.transparentBackground != null) { out.transparentBackground = pdf.transparentBackground; has = true; }
+    if (geometry) {
+        out.fit = "manual";
+        out.frameBounds = geometry.frameBounds;
+        out.contentBounds = geometry.contentBounds;
+        out.contentOffset = geometry.contentOffset;
+        out.contentSize = geometry.contentSize;
+        out.contentScale = geometry.contentScale;
+        has = true;
+    }
+    if (layerOptions.layers.length) {
+        out.layers = layerOptions.layers;
+        out.visibleLayers = layerOptions.visibleLayers;
+        out.hiddenLayers = layerOptions.hiddenLayers;
+        has = true;
+    }
+    return has ? out : null;
+};
+
+HI.reverseAssetGeometry = function (frame, graphic) {
+    try {
+        var frameBounds = HI.itemBounds(frame);
+        var contentBounds = HI.itemBounds(graphic);
+        var dx = contentBounds.x - frameBounds.x;
+        var dy = contentBounds.y - frameBounds.y;
+        var dw = contentBounds.width - frameBounds.width;
+        var dh = contentBounds.height - frameBounds.height;
+        if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01 && Math.abs(dw) < 0.01 && Math.abs(dh) < 0.01) return null;
+        return {
+            frameBounds: HI.reverseAssetBounds(frameBounds),
+            contentBounds: HI.reverseAssetBounds(contentBounds),
+            contentOffset: { x: HI.reverseAssetNumber(dx), y: HI.reverseAssetNumber(dy) },
+            contentSize: { width: HI.reverseAssetNumber(contentBounds.width), height: HI.reverseAssetNumber(contentBounds.height) },
+            contentScale: {
+                x: frameBounds.width ? HI.reverseAssetNumber(contentBounds.width / frameBounds.width) : null,
+                y: frameBounds.height ? HI.reverseAssetNumber(contentBounds.height / frameBounds.height) : null
+            }
+        };
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseAssetBounds = function (bounds) {
+    return {
+        x: HI.reverseAssetNumber(bounds.x),
+        y: HI.reverseAssetNumber(bounds.y),
+        width: HI.reverseAssetNumber(bounds.width),
+        height: HI.reverseAssetNumber(bounds.height)
+    };
+};
+
+HI.reverseAssetNumber = function (value) {
+    var number = Number(value);
+    if (!isFinite(number)) return null;
+    return Math.round(number * 10000) / 10000;
+};
+
+HI.reversePdfAttributes = function (graphic) {
+    var out = {};
+    try {
+        var attrs = graphic.pdfAttributes;
+        if (!attrs) return out;
+        if (attrs.pageNumber != null) {
+            out.pageNumber = Number(attrs.pageNumber);
+        }
+        out.pdfCrop = String(attrs.pdfCrop);
+        out.crop = HI.reversePdfCropName(attrs.pdfCrop);
+        out.transparentBackground = Boolean(attrs.transparentBackground);
+    } catch (_) {}
+    return out;
+};
+
+HI.reversePdfCropName = function (value) {
+    try { if (value === PDFCrop.CROP_MEDIA) return "media"; } catch (_) {}
+    try { if (value === PDFCrop.CROP_BLEED) return "bleed"; } catch (_) {}
+    try { if (value === PDFCrop.CROP_TRIM) return "trim"; } catch (_) {}
+    try { if (value === PDFCrop.CROP_ART) return "art"; } catch (_) {}
+    try { if (value === PDFCrop.CROP_CONTENT) return "content"; } catch (_) {}
+    var text = String(value || "").toLowerCase();
+    if (text.indexOf("media") >= 0) return "media";
+    if (text.indexOf("bleed") >= 0) return "bleed";
+    if (text.indexOf("trim") >= 0) return "trim";
+    if (text.indexOf("art") >= 0) return "art";
+    if (text.indexOf("content") >= 0) return "content";
+    return String(value || "");
+};
+
+HI.reverseGraphicLayerOptions = function (graphic) {
+    var out = { layers: [], visibleLayers: [], hiddenLayers: [] };
+    try {
+        if (!graphic.graphicLayerOptions) return out;
+        var layers = graphic.graphicLayerOptions.graphicLayers;
+        for (var i = 0; i < layers.length; i++) {
+            var layer = layers[i];
+            var current = Boolean(layer.currentVisibility);
+            var entry = {
+                name: String(layer.name || ""),
+                currentVisibility: current,
+                originalVisibility: Boolean(layer.originalVisibility),
+                locked: Boolean(layer.locked)
+            };
+            out.layers.push(entry);
+            if (current) out.visibleLayers.push(entry.name);
+            else out.hiddenLayers.push(entry.name);
+        }
+    } catch (_) {}
+    return out;
+};
+
+HI.exportPlacedAssetPreview = function (item, graphic, assetPath, context) {
+    if (!context || !context.folder || !HI.needsPlacedPreview(assetPath, graphic)) return null;
+    var fileName = HI.previewFileName(item, assetPath);
+    var target = File(context.folder.fsName + "/" + fileName);
+    var oldPrefs = HI.applyPreviewPngPreferences();
+    try {
+        item.exportFile(ExportFormat.PNG_FORMAT, target);
+        context.report.counts.generatedPreviews = Number(context.report.counts.generatedPreviews || 0) + 1;
+        return { path: target.fsName, relativePath: context.relativeRoot + "/" + fileName, source: "indesign-frame-export", format: "png" };
+    } catch (error) {
+        HI.addMessage(context.report, "warning", "PLACED_ASSET_PREVIEW_EXPORT_FAILED", String(error), { itemId: String(item.id || ""), path: assetPath });
+    } finally {
+        HI.restorePreviewPngPreferences(oldPrefs);
+    }
+    return null;
+};
+
+HI.needsPlacedPreview = function (assetPath, graphic) {
+    var ext = HI.fileExtension(assetPath);
+    if (ext === "pdf" || ext === "ai" || ext === "psd") return true;
+    var typeName = HI.reverseImageTypeName(graphic).toLowerCase();
+    return typeName.indexOf("photoshop") >= 0 || typeName.indexOf("adobe pdf") >= 0;
+};
+
+HI.previewFileName = function (item, assetPath) {
+    var id = String(item.id || "item").replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+    var ext = HI.fileExtension(assetPath) || "asset";
+    return id + "-" + ext + ".png";
+};
+
+HI.fileExtension = function (value) {
+    var clean = String(value || "").replace(/[?#].*$/, "");
+    var index = clean.lastIndexOf(".");
+    return index >= 0 ? clean.substring(index + 1).toLowerCase() : "";
+};
+
+HI.applyPreviewPngPreferences = function () {
+    var prefs = {};
+    try {
+        prefs.exportResolution = app.pngExportPreferences.exportResolution;
+        prefs.transparentBackground = app.pngExportPreferences.transparentBackground;
+        app.pngExportPreferences.exportResolution = 144;
+        app.pngExportPreferences.transparentBackground = true;
+    } catch (_) {}
+    return prefs;
+};
+
+HI.restorePreviewPngPreferences = function (prefs) {
+    try {
+        if (prefs && prefs.exportResolution !== undefined) app.pngExportPreferences.exportResolution = prefs.exportResolution;
+        if (prefs && prefs.transparentBackground !== undefined) app.pngExportPreferences.transparentBackground = prefs.transparentBackground;
+    } catch (_) {}
 };
 
 HI.isGraphicCropped = function (frame, graphic) {
@@ -218,8 +679,34 @@ HI.reverseGuides = function (page) {
 
 HI.reverseLayers = function (doc) {
     var out = [], layers = HI.collectionElements(doc.layers);
-    for (var i = 0; i < layers.length; i++) out.push({ name: String(layers[i].name || ""), index: i, labels: HI.reverseLabels(layers[i]) });
+    for (var i = 0; i < layers.length; i++) out.push(HI.reverseLayerRecord(layers[i], i));
     return out;
+};
+
+HI.reverseLayerRecord = function (layer, index) {
+    return {
+        name: String(layer.name || ""),
+        index: index,
+        visible: HI.reverseLayerVisible(layer),
+        printable: HI.reverseLayerPrintable(layer),
+        locked: HI.reverseLayerLocked(layer),
+        labels: HI.reverseLabels(layer)
+    };
+};
+
+HI.reverseLayerVisible = function (layer) {
+    try { return layer.visible !== false; } catch (_) {}
+    return true;
+};
+
+HI.reverseLayerPrintable = function (layer) {
+    try { return layer.printable !== false; } catch (_) {}
+    return true;
+};
+
+HI.reverseLayerLocked = function (layer) {
+    try { return layer.locked === true; } catch (_) {}
+    return false;
 };
 
 HI.reverseAssets = function (doc) {

@@ -33,6 +33,34 @@ test('writeReverseAuthorPackage splits tagged model into author source package',
   assert.equal(checkAuthorPackageEntry(path.join(outDir, 'deck.config.json')).ok, true);
 });
 
+test('writeReverseAuthorPackage writes a separate local reveal presentation without changing conversion entry', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-reveal-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const result = writeReverseAuthorPackage(taggedModel(), { outDir, mode: 'authoring' });
+
+  assert.equal(result.presentation, path.join(outDir, 'presentation.html'));
+  assert.equal(fs.existsSync(path.join(outDir, 'presentation.html')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'vendor/reveal/reveal.css')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'vendor/reveal/reveal.js')), true);
+  assert.equal(checkAuthorPackageEntry(path.join(outDir, 'deck.config.json')).ok, true);
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.equal(config.entry, 'deck.html');
+
+  const deckHtml = fs.readFileSync(path.join(outDir, 'deck.html'), 'utf8');
+  assert.doesNotMatch(deckHtml, /Reveal\.initialize|class="reveal"|vendor\/reveal/);
+  assert.match(deckHtml, /<main class="deck" data-id-document="architecture-report"/);
+
+  const presentationHtml = fs.readFileSync(path.join(outDir, 'presentation.html'), 'utf8');
+  assert.match(presentationHtml, /<link rel="stylesheet" href="vendor\/reveal\/reveal\.css">/);
+  assert.match(presentationHtml, /<script src="vendor\/reveal\/reveal\.js"><\/script>/);
+  assert.match(presentationHtml, /<div class="reveal hi-reveal" data-id-ignore="true">/);
+  assert.match(presentationHtml, /<div class="slides">/);
+  assert.match(presentationHtml, /<section[^>]+class="page"[^>]+data-page="agenda"/);
+  assert.match(presentationHtml, /Reveal\.initialize\(\{/);
+});
+
 test('writeReverseAuthorPackage still splits observation models by page', () => {
   const outDir = path.resolve('test/workspace/reverse-author-observed-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -49,8 +77,97 @@ test('writeReverseAuthorPackage still splits observation models by page', () => 
   assert.match(pageHtml, /class="observed-text id-object"/);
 
   const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
-  assert.match(overrides, /#observed-title/);
+  assert.match(overrides, /\[id="observed-title"\]/);
   assert.match(overrides, /position:absolute/);
+});
+
+test('writeReverseAuthorPackage renders applied parent page decoration without template placeholders', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-parent-page-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'parent-page-test',
+    title: 'Parent Page Test',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [
+      {
+        id: 'A-正文',
+        name: 'A-正文',
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'parent-rule',
+            role: 'line',
+            layerName: 'text',
+            sourceType: 'GraphicLine',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 40, y: 420, width: 720, height: 0 },
+            vectorGeometry: {
+              kind: 'line',
+              x1: 40,
+              y1: 420,
+              x2: 760,
+              y2: 420,
+            },
+            visualStyle: { strokeColor: '#c8102e', strokeWeight: 2 },
+          },
+          {
+            id: 'template-title',
+            role: 'text',
+            layerName: 'text',
+            sourceType: 'TextFrame',
+            semantic: 'unknown',
+            bounds: { x: 40, y: 40, width: 420, height: 40 },
+            content: { text: '中文本页标题/ English Page Title', runs: [] },
+            textStyle: { pointSize: 24, fillColor: '#123456' },
+          },
+          {
+            id: 'template-note',
+            role: 'text',
+            layerName: 'PageNotes',
+            sourceType: 'TextFrame',
+            semantic: 'unknown',
+            bounds: { x: 40, y: 80, width: 420, height: 40 },
+            content: { text: '本页一般用于放效果图', runs: [] },
+          },
+          {
+            id: 'image-placeholder-frame',
+            role: 'graphic',
+            layerName: '图片',
+            sourceType: 'Rectangle',
+            semantic: 'unknown',
+            bounds: { x: 120, y: 120, width: 240, height: 160 },
+            visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+          },
+        ],
+      },
+    ],
+    pages: [
+      {
+        id: 'page-1',
+        semantic: 'page-1',
+        parentPageName: 'A-正文',
+        width: 800,
+        height: 450,
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const html = fs.readFileSync(path.join(outDir, 'pages/00-page-1.html'), 'utf8');
+  assert.match(html, /id="page-1-parent-rule"/);
+  assert.match(html, /data-id-parent-page-item="A-正文"/);
+  assert.match(html, /data-id-parent-page-source-id="parent-rule"/);
+  assert.match(html, /class="[^"]*id-parent-page-object/);
+  assert.doesNotMatch(html, /中文本页标题/);
+  assert.doesNotMatch(html, /English Page Title/);
+  assert.doesNotMatch(html, /本页一般用于/);
+  assert.doesNotMatch(html, /image-placeholder-frame/);
 });
 
 test('writeReverseAuthorPackage restores source resource tags instead of div placeholders', () => {

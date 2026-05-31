@@ -124,7 +124,7 @@ function instructionItemFor(modelItem, assets, page, layout, options) {
   if (base.role === 'graphic') {
     const asset = assetForItem(item, assets);
     const placement = asset ? placementForItem(item, asset) : null;
-    const contentBounds = graphicContentBounds(item, base.bounds, layout);
+    const contentBounds = graphicContentBounds(item, base.bounds, layout, placement);
     return {
       ...base,
       type: 'GRAPHIC',
@@ -139,6 +139,8 @@ function instructionItemFor(modelItem, assets, page, layout, options) {
         crop: placement.crop,
         artboard: placement.artboard,
         layerComp: placement.layerComp,
+        visibleLayers: placement.visibleLayers,
+        hiddenLayers: placement.hiddenLayers,
         preserveVector: placement.preserveVector,
         contentBounds,
       } : null,
@@ -576,10 +578,39 @@ function paddingForItem(item, layout) {
   };
 }
 
-function graphicContentBounds(item, bounds, layout) {
+function graphicContentBounds(item, bounds, layout, placement = null) {
+  const explicit = explicitGraphicContentBounds(bounds, placement, layout);
+  if (explicit) return explicit;
   const padding = paddingForItem(item, layout);
   if (!padding.top && !padding.right && !padding.bottom && !padding.left) return null;
   return insetBounds(bounds, padding);
+}
+
+function explicitGraphicContentBounds(bounds, placement, layout) {
+  if (!placement) return null;
+  if (placement.contentBox) {
+    const box = placement.contentBox;
+    return {
+      x: round(bounds.x + cssLengthToTarget(box.x, layout), 2),
+      y: round(bounds.y + cssLengthToTarget(box.y, layout), 2),
+      width: round(cssLengthToTarget(box.width, layout), 2),
+      height: round(cssLengthToTarget(box.height, layout), 2),
+    };
+  }
+  if (placement.contentBounds) {
+    const box = placement.contentBounds;
+    return {
+      x: round(numberOrCssLength(box.x, layout), 2),
+      y: round(numberOrCssLength(box.y, layout), 2),
+      width: round(numberOrCssLength(box.width, layout), 2),
+      height: round(numberOrCssLength(box.height, layout), 2),
+    };
+  }
+  return null;
+}
+
+function numberOrCssLength(value, layout) {
+  return typeof value === 'number' ? value : cssLengthToTarget(value, layout);
 }
 
 function insetBounds(bounds, padding) {
@@ -630,14 +661,19 @@ function assetForItem(item, assets) {
 function placementForItem(item, asset) {
   const itemPlacement = placementFromAttributes(item.attributes || {}, item.computedStyle || {});
   const assetPlacement = asset.placement || {};
+  const sameSource = asset.sourceSelector && item.sourceSelector && asset.sourceSelector === item.sourceSelector;
   return {
     fit: itemPlacement.fit || assetPlacement.fit || 'fill',
     position: itemPlacement.position || assetPlacement.position || '50% 50%',
-    pageNumber: itemPlacement.pageNumber,
-    crop: itemPlacement.crop,
-    artboard: itemPlacement.artboard,
-    layerComp: itemPlacement.layerComp,
-    preserveVector: itemPlacement.preserveVector,
+    pageNumber: itemPlacement.pageNumber || (sameSource ? assetPlacement.pageNumber : undefined),
+    crop: itemPlacement.crop || (sameSource ? assetPlacement.crop : undefined),
+    artboard: itemPlacement.artboard || (sameSource ? assetPlacement.artboard : undefined),
+    layerComp: itemPlacement.layerComp || (sameSource ? assetPlacement.layerComp : undefined),
+    visibleLayers: itemPlacement.visibleLayers || (sameSource ? assetPlacement.visibleLayers : undefined),
+    hiddenLayers: itemPlacement.hiddenLayers || (sameSource ? assetPlacement.hiddenLayers : undefined),
+    preserveVector: itemPlacement.preserveVector || (sameSource ? assetPlacement.preserveVector : undefined),
+    contentBox: itemPlacement.contentBox || (sameSource ? assetPlacement.contentBox : undefined),
+    contentBounds: itemPlacement.contentBounds || (sameSource ? assetPlacement.contentBounds : undefined),
   };
 }
 

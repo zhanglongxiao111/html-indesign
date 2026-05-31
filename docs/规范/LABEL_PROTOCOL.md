@@ -12,6 +12,8 @@ HTML data-id-* 标签
 
 模板不是协议本身。模板只是批量提供标签、样式和布局约束的载体。
 
+标签字段最终必须来自协议字段注册表。注册表实现前，本文中的字段表是当前 `html_indesign` payload 的事实源；注册表实现后，本文应只保留标签载体、写入位置和校验规则，字段清单由注册表集中维护或生成。
+
 ## 2. 标签键
 
 新协议统一使用 InDesign 脚本标签键：
@@ -22,13 +24,13 @@ html_indesign
 
 值必须是 JSON 字符串。
 
-兼容读取：
+历史/观察读取：
 
 | 来源 | 处理 |
 | ---- | ---- |
-| `pageItem.label` 中的 `html-indesign:id=...` | 旧调试标签，作为对象 ID、role、type 的兜底 |
-| `html_indesign_guide` | 旧参考线标签，继续读取为 guide 标签 |
-| 母版对象 `label` | 旧 blueprint 槽位标签，读取为 `legacySlotLabel` |
+| `pageItem.label` 中的 `html-indesign:id=...` | 旧调试标签，只能作为观察线索；通过白名单复核前不得成为协议事实 |
+| `html_indesign_guide` | 旧参考线标签，读取为观察线索；能确定为网格参考线时才进入模型 |
+| 母版对象 `label` | 历史 blueprint 槽位标签，读取为迁移线索 |
 | `build_last_result` | 构建报告，不作为语义标签 |
 
 ## 3. 通用字段
@@ -51,7 +53,7 @@ html_indesign
 | `version` | 标签协议版本 |
 | `kind` | `document`、`page`、`parentPage`、`item`、`style`、`layer`、`guide` |
 | `id` | 稳定 ID，同一作用域内唯一 |
-| `source` | `html-to-indesign`、`manual-tagged`、`legacy-blueprint`、`agent-semanticized` |
+| `source` | `html-to-indesign`、`manual-tagged`、`blueprint-migration`、`agent-semanticized` |
 
 命名规则：
 
@@ -182,6 +184,8 @@ html_indesign
 
 不应为“左文右图”“四图矩阵”“单图页”等页面结构模板批量创建 InDesign 母版。
 
+母版对象标签不得把空占位框伪装成内容对象。没有实际置入资源、没有白名单语义、仅用于人类选择模板版式的空图片框、空 PDF 框或空文本框，应作为观察线索或布局候选记录，而不是有效 `kind=item` 内容事实。若要表达“这里是可用布局区域”，应使用页面结构模板、区域约束或后续明确的 `region` 语义，而不是创建可见母版对象。
+
 ## 7. 样式标签
 
 目标对象：
@@ -290,6 +294,8 @@ html_indesign
 }
 ```
 
+PDF 置入页码必须写入 `asset.pageNumber`，HTML 侧对应 `data-id-pdf-page`。旧字段 `data-id-page` 只能作为无效观察字段或迁移问题记录，不能作为新写出的协议字段，也不能作为读取兜底。反向导出从 InDesign 读取 `graphic.pdfAttributes.pageNumber`；再次导回 InDesign 时，执行器必须把该值写入 PDF 置入偏好，避免多页 PDF 静默回退第一页。
+
 ### 表格对象扩展
 
 ```json
@@ -355,6 +361,6 @@ HTML -> InDesign 前向导出时，必须写入：
 - 参考线标签。
 - 页面对象标签。
 
-紧凑 `pageItem.label` 只用于人类面板和旧调试兼容，不能替代 `html_indesign` JSON 标签。
+紧凑 `pageItem.label` 只用于人类面板和旧调试观察，不能替代 `html_indesign` JSON 标签。
 
-前向 instructions 必须显式携带这些标签，或携带足以由 executor 确定性合成相同标签的稳定字段。关键标签写入失败必须进入 error 并阻止假成功；非关键兼容标签写入失败至少进入 warning 和执行报告。
+前向 instructions 必须显式携带这些标签，或携带足以由 executor 确定性合成相同标签的稳定字段。关键标签写入失败必须进入 error 并阻止假成功；历史观察标签写入失败至少进入 warning 和执行报告。

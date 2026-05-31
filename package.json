@@ -10,6 +10,7 @@
     "lint:authoring": "node scripts/lint-authoring.js",
     "preset:init": "node scripts/preset-init.js",
     "reverse:indesign": "node scripts/indesign-reverse-export.js",
+    "audit:reverse-visual": "node scripts/audit-reverse-visual.js",
     "test": "node --test \"test/**/*.test.js\""
   },
   "keywords": [],
@@ -17,7 +18,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "cheerio": "^1.1.2"
+    "cheerio": "^1.1.2",
+    "reveal.js": "^6.0.1"
   },
   "devDependencies": {
     "playwright": "^1.56.0"

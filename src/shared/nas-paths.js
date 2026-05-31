@@ -4,7 +4,7 @@ function uncToNasUrl(value, options = {}) {
   const input = String(value || '').trim();
   const nasRoot = String(options.nasRoot || '/nas').replace(/\/+$/g, '') || '/nas';
   if (!input) return '';
-  if (input === nasRoot || input.startsWith(`${nasRoot}/`)) return input;
+  if (input === nasRoot || input.startsWith(`${nasRoot}/`)) return canonicalNasPath(input, nasRoot);
 
   const fileParts = fileUrlParts(input);
   if (fileParts) return nasUrl(fileParts.host, fileParts.parts, nasRoot);
@@ -47,7 +47,16 @@ function fileUrlParts(value) {
 
 function nasUrl(host, parts, nasRoot) {
   const encoded = parts.map((part) => encodeURIComponent(safeDecode(part)));
-  return `${nasRoot}/${host}/${encoded.join('/')}`;
+  return `${nasRoot}/${String(host || '').toLowerCase()}/${encoded.join('/')}`;
+}
+
+function canonicalNasPath(input, nasRoot) {
+  const path = String(input || '');
+  if (path === nasRoot) return path;
+  const parts = path.slice(nasRoot.length + 1).split('/');
+  if (!parts.length || !parts[0]) return path;
+  parts[0] = safeDecode(parts[0]).toLowerCase();
+  return `${nasRoot}/${parts.join('/')}`;
 }
 
 function safeDecode(value) {

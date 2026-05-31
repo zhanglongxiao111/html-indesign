@@ -55,6 +55,70 @@ test('snapshotToSemanticModel preserves page layout and parent page metadata', (
   assert.deepEqual(model.pages[0].margins, { top: 14, right: 14, bottom: 14, left: 14 });
 });
 
+test('snapshotToSemanticModel does not infer page semantic from data-page', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'sheet-01',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'cover' },
+      computedStyle: {},
+      items: [],
+    }],
+    assets: [],
+  }, { unitMode: 'print' });
+
+  assert.equal(model.pages[0].pageToken, 'cover');
+  assert.equal(model.pages[0].semantic, null);
+  assert.equal(model.pages[0].labels[0].semantic, null);
+});
+
+test('snapshotToSemanticModel does not infer item semantic from style tokens', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'title',
+          role: 'text',
+          tagName: 'h1',
+          classList: ['page-title'],
+          attributes: { 'data-id-paragraph-style': 'page-title' },
+          sourceNode: { tagName: 'h1', id: 'title', classList: ['page-title'], attributes: { 'data-id-paragraph-style': 'page-title' } },
+          rectPx: { x: 10, y: 10, width: 40, height: 10 },
+          text: '标题',
+          runs: [],
+        },
+        {
+          id: 'card',
+          role: 'shape',
+          tagName: 'div',
+          classList: ['chapter-card'],
+          attributes: { 'data-id-object-style': 'chapter-card' },
+          sourceNode: { tagName: 'div', id: 'card', classList: ['chapter-card'], attributes: { 'data-id-object-style': 'chapter-card' } },
+          rectPx: { x: 10, y: 30, width: 40, height: 20 },
+          text: '',
+          runs: [],
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'print' });
+
+  assert.deepEqual(model.pages[0].items.map((item) => item.semantic), [null, null]);
+  assert.deepEqual(model.pages[0].items.map((item) => item.labels[0].semantic), [null, null]);
+});
+
 test('snapshotToSemanticModel accepts alternate parent page display-name metadata', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },

@@ -8,6 +8,7 @@ const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
 const { collectSemanticCandidates } = require('./semantic-candidates');
 const { loadStandardSemanticPreset } = require('../semantic-preset');
+const { writeRevealPresentation } = require('./reveal-presentation-writer');
 
 function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
@@ -20,8 +21,11 @@ function writeReverseAuthorPackage(model, options = {}) {
   fs.mkdirSync(path.join(outDir, 'styles'), { recursive: true });
   fs.mkdirSync(path.join(outDir, 'reports'), { recursive: true });
 
-  const pages = pageEntries(model);
-  const generatedCss = writeAuthorCssFiles(model);
+  const pages = pageEntries(model).map((page) => ({
+    ...page,
+    authorPage: pageWithAppliedParentItems(page.modelPage, model.parentPages || []),
+  }));
+  const generatedCss = writeAuthorCssFiles({ ...model, pages: pages.map((page) => page.authorPage) });
   const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
   const styleFiles = authorStyleFiles({ sourceCss, generatedCss, sourceRoot });
   const assetCopy = prepareAuthorAssets(model, {
@@ -47,7 +51,7 @@ function writeReverseAuthorPackage(model, options = {}) {
   }
   copySourceCssFiles(outDir, sourceCss);
   for (const page of pages) {
-    writeText(outDir, page.file, pageHtml(page.modelPage, page.file, renderOptions));
+    writeText(outDir, page.file, pageHtml(page.authorPage, page.file, renderOptions));
   }
 
   const report = authoringReport(model, pages, options, {
@@ -59,15 +63,25 @@ function writeReverseAuthorPackage(model, options = {}) {
   fs.writeFileSync(path.join(outDir, 'reports/inference-report.json'), JSON.stringify(report.inference, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/semantic-candidates.json'), JSON.stringify(semanticCandidates, null, 2), 'utf8');
   writeAuthorPackageEntry(path.join(outDir, 'deck.config.json'));
+  const presentation = writeRevealPresentation(path.join(outDir, 'deck.config.json'), firstPageSize(pages));
 
   return {
     ok: true,
     outDir,
     configPath: path.join(outDir, 'deck.config.json'),
     entryPath: path.join(outDir, 'deck.html'),
+    presentation: presentation.path,
     pages: pages.map((page) => page.file),
     report,
     semanticCandidates,
+  };
+}
+
+function firstPageSize(pages) {
+  const page = pages && pages[0] && pages[0].authorPage;
+  return {
+    width: page && page.width,
+    height: page && page.height,
   };
 }
 
@@ -124,6 +138,94 @@ function pageEntries(model) {
       modelPage: page,
     };
   });
+}
+
+function pageWithAppliedParentItems(page, parentPages = []) {
+  const parentPage = appliedParentPageFor(page, parentPages);
+  const parentItems = parentPage && Array.isArray(parentPage.items)
+    ? parentPage.items.filter(shouldWriteParentPageItem)
+    : [];
+  if (!parentItems.length) return page;
+  return {
+    ...page,
+    items: [
+      ...parentItems.map((item, index) => parentPageItemForPage(item, parentPage, page, index)),
+      ...(page.items || []),
+    ],
+  };
+}
+
+function shouldWriteParentPageItem(item) {
+  if (!item) return false;
+  if (isTemplateNotesLayer(item)) return false;
+  if (item.role === 'text') return hasExplicitParentTextSemantic(item);
+  if (isUnplacedTemplateFrame(item)) return false;
+  return isVisibleParentDecoration(item);
+}
+
+function isTemplateNotesLayer(item) {
+  return /pagenotes|说明|注释/i.test(layerNameFor(item));
+}
+
+function hasExplicitParentTextSemantic(item) {
+  const semantic = String(item.semantic || '').trim();
+  if (['page-number', 'folio', 'running-header', 'running-footer', 'chapter-marker', 'section-marker'].includes(semantic)) return true;
+  return (item.labels || []).some((label) => {
+    const values = [label && label.semantic, label && label.role, label && label.token, label && label.type]
+      .map((value) => String(value || '').trim());
+    return values.some((value) => ['page-number', 'folio', 'running-header', 'running-footer', 'chapter-marker', 'section-marker'].includes(value));
+  });
+}
+
+function isUnplacedTemplateFrame(item) {
+  const role = String(item.role || '').toLowerCase();
+  if (role !== 'graphic' && role !== 'image' && role !== 'frame') return false;
+  if (item.asset || item.sourceAsset || item.placedAsset) return false;
+  return !isVisibleParentDecoration(item);
+}
+
+function isVisibleParentDecoration(item) {
+  const visual = item.visualStyle || {};
+  const hasStroke = Boolean(visual.strokeColor) && Number(visual.strokeWeight) > 0;
+  const hasFill = Boolean(visual.fillColor) && !/^\[?(none|无)\]?$/i.test(String(visual.fillColor));
+  const hasVector = Boolean(item.vectorGeometry);
+  const role = String(item.role || '').toLowerCase();
+  if (role === 'line' && hasStroke) return true;
+  if (/装饰|rule|line/i.test(layerNameFor(item)) && (hasStroke || hasFill || hasVector)) return true;
+  if (hasVector && (hasStroke || hasFill)) return true;
+  return hasStroke || hasFill;
+}
+
+function layerNameFor(item) {
+  return String(item && (item.layerName || item.layer || '') || '');
+}
+
+function appliedParentPageFor(page, parentPages = []) {
+  const keys = new Set([page && page.parentPageId, page && page.parentPageName].filter(Boolean).map(String));
+  if (!keys.size) return null;
+  return (parentPages || []).find((parentPage) => {
+    return [parentPage.id, parentPage.name, parentPage.semantic].some((value) => value != null && keys.has(String(value)));
+  }) || null;
+}
+
+function parentPageItemForPage(item, parentPage, page, index) {
+  const sourceId = String(item.id || `parent-item-${index + 1}`);
+  return {
+    ...item,
+    id: `${safeDomId(page.id || page.semantic || 'page')}-${safeDomId(sourceId)}`,
+    parentPageItem: true,
+    parentPageId: parentPage.id || null,
+    parentPageName: parentPage.name || parentPage.id || null,
+    parentPageSourceId: sourceId,
+    structure: null,
+  };
+}
+
+function safeDomId(value) {
+  return String(value || 'item')
+    .trim()
+    .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'item';
 }
 
 function pageHtml(page, sourceFile, options) {

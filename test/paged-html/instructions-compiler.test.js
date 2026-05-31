@@ -292,7 +292,7 @@ function graphicItem(id, src, pageNumber) {
     attributes: {
       data: src,
       type: 'application/pdf',
-      'data-id-page': String(pageNumber),
+      'data-id-pdf-page': String(pageNumber),
       'data-id-crop': pageNumber === 1 ? 'trim' : 'media',
       'data-id-fit': 'contain',
     },

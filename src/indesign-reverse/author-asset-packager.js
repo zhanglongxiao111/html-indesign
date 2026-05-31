@@ -27,7 +27,7 @@ function copyAuthorAssets(model, { outDir, sourceRoot, assetRoot }) {
     addPathMap(pathMap, record.value, relativePath);
     addPathMap(pathMap, resolved, relativePath);
     for (const alias of record.aliases || []) addPathMap(pathMap, alias, relativePath);
-    copyPdfPreviewAsset(record.value, resolved, relativePath, { outDir, pathMap });
+    copyPdfPreviewAsset(record, resolved, relativePath, { outDir, pathMap });
   }
   return {
     pathMap,
@@ -47,7 +47,13 @@ function collectAssetReferences(model) {
   }
   for (const asset of model.assets || []) {
     const value = asset && asset.path;
-    if (value) pushAssetRecord(records, seen, { value, fallback: value });
+    if (value) {
+      pushAssetRecord(records, seen, {
+        value,
+        fallback: value,
+        pdfPageNumber: pdfPageNumberForAsset(asset, {}),
+      });
+    }
   }
   return records;
 }
@@ -57,12 +63,14 @@ function collectAssetReferencesForItem(item, records, seen) {
   const attrs = sourceNode.attributes || {};
   const asset = item.sourceAsset || item.asset || item.placedAsset || {};
   const assetPath = asset.path || '';
+  const pdfPageNumber = pdfPageNumberForAsset(asset, attrs);
   for (const name of ['src', 'data', 'href', 'data-id-source-csv', 'data-id-source-xml']) {
     if (!attrs[name]) continue;
     pushAssetRecord(records, seen, {
       value: attrs[name],
       fallback: assetPath,
       aliases: assetPath ? [assetPath] : [],
+      pdfPageNumber,
     });
   }
   if (sourceNode.previewNode && sourceNode.previewNode.attributes && sourceNode.previewNode.attributes.src) {
@@ -72,7 +80,7 @@ function collectAssetReferencesForItem(item, records, seen) {
     });
   }
   if (assetPath) {
-    pushAssetRecord(records, seen, { value: assetPath, fallback: assetPath });
+    pushAssetRecord(records, seen, { value: assetPath, fallback: assetPath, pdfPageNumber });
   }
 }
 
@@ -126,12 +134,14 @@ function assetSubPath(value, resolvedPath, assetRoot) {
   return sanitizeRelative(path.basename(resolvedPath));
 }
 
-function copyPdfPreviewAsset(originalValue, resolvedPath, relativePath, { outDir, pathMap }) {
+function copyPdfPreviewAsset(record, resolvedPath, relativePath, { outDir, pathMap }) {
   if (!/\.pdf$/i.test(resolvedPath)) return;
-  const originalPreview = pdfPreviewPath(originalValue, 1);
-  const sourcePreview = resolvedPath.replace(/\.pdf$/i, '-page1.png');
+  const pageNumber = normalizePositiveInteger(record.pdfPageNumber);
+  if (pageNumber == null) return;
+  const originalPreview = pdfPreviewPath(record.value, pageNumber);
+  const sourcePreview = resolvedPath.replace(/\.pdf$/i, `-page${pageNumber}.png`);
   if (!fs.existsSync(sourcePreview)) return;
-  const targetRelative = relativePath.replace(/\.pdf$/i, '-page1.png');
+  const targetRelative = relativePath.replace(/\.pdf$/i, `-page${pageNumber}.png`);
   const target = path.join(outDir, targetRelative);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(sourcePreview, target);
@@ -141,8 +151,10 @@ function copyPdfPreviewAsset(originalValue, resolvedPath, relativePath, { outDir
 
 function pdfPreviewPath(pdfPath, page) {
   const value = String(pdfPath || '');
+  const pageNumber = normalizePositiveInteger(page);
+  if (pageNumber == null) return '';
   if (!/\.pdf(?:[?#].*)?$/i.test(value)) return '';
-  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${page || 1}.png`);
+  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${pageNumber}.png`);
 }
 
 function addPathMap(pathMap, from, to) {
@@ -176,6 +188,21 @@ function slash(value) {
 
 function unique(values) {
   return Array.from(new Set(values.filter((value) => value != null && value !== '')));
+}
+
+function pdfPageNumberForAsset(asset = {}, attrs = {}) {
+  return normalizePositiveInteger(
+    attrs['data-id-pdf-page']
+      ?? (asset.placement && asset.placement.pageNumber)
+      ?? asset.pageNumber
+  );
+}
+
+function normalizePositiveInteger(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1) return null;
+  return number;
 }
 
 module.exports = {

@@ -6,9 +6,10 @@ const {
   readReverseSnapshot,
   reverseSnapshotToSemanticModel,
   semanticModelToHtml,
-  legacyBlueprintToSemanticModel,
+  blueprintMigrationToSemanticModel,
   writeReverseAuthorPackage,
 } = require('../src/indesign-reverse');
+const { auditReverseAuthorPackage } = require('../src/indesign-reverse/author-audit');
 
 function parseArgs(argv) {
   const out = {
@@ -72,9 +73,9 @@ function parseArgs(argv) {
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
 
-  const inputFormat = options.blueprintPath ? 'legacy-blueprint' : 'reverse-snapshot';
+  const inputFormat = options.blueprintPath ? 'historical-blueprint' : 'reverse-snapshot';
   const model = options.blueprintPath
-    ? legacyBlueprintToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
+    ? blueprintMigrationToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
     : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), { mode: options.mode });
   const outDir = path.resolve(options.outDir);
   const visualHtml = semanticModelToHtml(model, { outputDir: outDir });
@@ -90,13 +91,15 @@ function compileReverseSnapshotToHtml(options) {
     assetPolicy: options.assetPolicy || 'reference',
     nasPublicRoot: options.nasPublicRoot || '/nas',
   });
+  const authorAudit = auditReverseAuthorPackage(authorResult.outDir, { model });
 
   fs.writeFileSync(path.join(outDir, 'deck.visual.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, modeHtmlName), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'deck.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
-  fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2), 'utf8');
-  fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(report, null, 2), 'utf8');
+  const finalReport = { ...report, authorAudit };
+  fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(finalReport, null, 2), 'utf8');
+  fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(finalReport, null, 2), 'utf8');
 
   return {
     ok: true,
@@ -111,11 +114,12 @@ function compileReverseSnapshotToHtml(options) {
       author: {
         config: authorResult.configPath,
         entry: authorResult.entryPath,
+        presentation: authorResult.presentation,
         outDir: authorResult.outDir,
         pages: authorResult.pages,
       },
     },
-    report,
+    report: finalReport,
   };
 }
 
@@ -179,7 +183,7 @@ function readValue(argv, index, flag) {
 }
 
 function usage() {
-  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <legacy-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas]';
+  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <historical-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas]';
 }
 
 if (require.main === module) {

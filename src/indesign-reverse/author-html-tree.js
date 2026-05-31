@@ -1,5 +1,6 @@
 const { mergeAttributes, attrsToHtml, isVoidTag, escapeHtml } = require('./author-attribute-writer');
-const { authorInlineStyleForItem, authorClassesForItem, mergeCss } = require('./author-style-attrs');
+const { authorInlineStyleForItem, authorClassesForItem, blendModeCss, mergeCss } = require('./author-style-attrs');
+const { hasVectorPaths, isDegenerateInvisibleVector, vectorPathElements, vectorViewBox } = require('./vector-svg');
 
 const SAFE_TAGS = new Set([
   'section', 'article', 'header', 'footer', 'main', 'aside', 'nav',
@@ -51,7 +52,11 @@ function buildAuthorTree(page) {
 function renderNode(node, options, depth) {
   const item = node.item;
   const sourceNode = sourceNodeForItem(item);
+  if (shouldRenderVectorSvg(item, sourceNode, options)) return renderVectorSvgNode(node, options, depth);
   const tag = safeTag(sourceNode.tagName || tagForAsset(item) || item.tagName || tagForRole(item.role));
+  if (shouldRenderPlacedAssetFrame(item, sourceNode, options, tag)) {
+    return renderPlacedAssetFrameNode(node, options, depth);
+  }
   if (isPdfObjectItem(item, sourceNode, tag)) {
     return renderPdfObjectNode(node, options, depth);
   }
@@ -66,9 +71,124 @@ function renderNode(node, options, depth) {
   return `${indent(depth)}${open}${own}</${tag}>`;
 }
 
+function renderVectorSvgNode(node, options, depth) {
+  const item = node.item;
+  const sourceNode = sourceNodeForItem(item);
+  const attrs = vectorAttrsForItem(item, sourceNode, options);
+  const children = vectorPathElements(item, depth + 2);
+  return `${indent(depth)}<svg ${attrs}>\n${children}\n${indent(depth)}</svg>`;
+}
+
+function shouldRenderPlacedAssetFrame(item, sourceNode, options, tag) {
+  if (!item || item.role !== 'graphic') return false;
+  if (tag !== 'img') return false;
+  if (!assetContentGeometry(item)) return false;
+  if (shouldPreserveTrustedSource(item, sourceNode, options)) return false;
+  return true;
+}
+
+function renderPlacedAssetFrameNode(node, options, depth) {
+  const item = node.item;
+  const sourceNode = sourceNodeForItem(item);
+  const frameSource = placedAssetFrameSourceNode(sourceNode);
+  const attrs = attrsForItem(item, frameSource, options);
+  const childAttrs = placedAssetContentAttrs(item, sourceNode, options);
+  const children = node.children.map((child) => renderNode(child, options, depth + 2)).join('\n');
+  const body = [
+    childAttrs ? `${indent(depth + 2)}<img ${childAttrs}>` : null,
+    children || null,
+  ].filter(Boolean).join('\n');
+  return `${indent(depth)}<figure ${attrs}>\n${body}\n${indent(depth)}</figure>`;
+}
+
+function placedAssetFrameSourceNode(sourceNode) {
+  const attrs = mergeAttributes(sourceNode && sourceNode.attributes);
+  delete attrs.src;
+  delete attrs.data;
+  delete attrs.href;
+  delete attrs.type;
+  delete attrs.alt;
+  return {
+    ...sourceNode,
+    tagName: 'figure',
+    attributes: attrs,
+    generatedFrame: true,
+  };
+}
+
+function placedAssetContentAttrs(item, sourceNode, options) {
+  const asset = item.sourceAsset || item.asset || {};
+  if (!asset.path) return '';
+  const previewPath = assetPreviewPath(asset);
+  const src = shouldUsePreviewImage(asset) && previewPath ? previewPath : asset.path;
+  const attrs = {
+    class: usesGeneratedFramePreview(asset) ? 'placed-asset-preview' : 'placed-asset-content',
+    src,
+    alt: (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path),
+    'data-id-ignore': '',
+    style: placedAssetContentStyle(item, asset),
+  };
+  rewriteResourceAttrs(attrs, options);
+  return attrsToHtml(orderAttrs(attrs));
+}
+
+function placedAssetContentStyle(item, asset) {
+  if (usesGeneratedFramePreview(asset)) return placedAssetPreviewStyle();
+  const geometry = assetContentGeometry(item);
+  return mergeCss([
+    'position:absolute',
+    `left:${px(geometry.x)}`,
+    `top:${px(geometry.y)}`,
+    `width:${px(geometry.width)}`,
+    `height:${px(geometry.height)}`,
+    'max-width:none',
+    'max-height:none',
+    'object-fit:fill',
+  ]);
+}
+
+function placedAssetPreviewStyle() {
+  return mergeCss([
+    'position:absolute',
+    'left:0px',
+    'top:0px',
+    'width:100%',
+    'height:100%',
+    'max-width:none',
+    'max-height:none',
+    'object-fit:fill',
+  ]);
+}
+
+function vectorAttrsForItem(item, sourceNode, options) {
+  const attrs = mergeAttributes(sourceNode.attributes);
+  rewriteResourceAttrs(attrs, options);
+  if (sourceNode.id) attrs.id = sourceNode.id;
+  else attrs.id = item.id;
+  attrs.viewBox = vectorViewBox(item);
+  attrs.preserveAspectRatio = 'none';
+  attrs['data-id-vector'] = item.vectorGeometry && item.vectorGeometry.kind || 'path';
+  const classes = new Set(authorClassesForItem(item, sourceNode.classList || [], attrs));
+  if (!hasSourceNode(sourceNode) && item.role !== 'text' && !item.virtual) classes.add('id-object');
+  if (options.mode === 'observation') classes.add('id-object');
+  if (item.parentPageItem) {
+    classes.add('id-parent-page-object');
+    addParentPageAttrs(attrs, item);
+  }
+  if (options.mode === 'observation') attrs['data-id-object'] = '';
+  if (isUsefulSemantic(item.semantic)) attrs['data-id-semantic'] = item.semantic;
+  addObservedLabelAttrs(attrs, item);
+  const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
+  const style = mergeCss([sourceStyle, 'overflow:visible', blendModeCss(item.visualStyle && item.visualStyle.blendMode), zIndexStyle(item.zIndex)]);
+  if (style) attrs.style = style;
+  if (classes.size) attrs.class = Array.from(classes).join(' ');
+  return svgAttrsToHtml(orderAttrs(attrs));
+}
+
 function attrsForItem(item, sourceNode, options) {
   const tag = safeTag(sourceNode.tagName || tagForAsset(item) || item.tagName || tagForRole(item.role));
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, tag));
+  sanitizeRetiredAssetAttrs(attrs, item);
   rewriteResourceAttrs(attrs, options);
   const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
   if (sourceNode.id) {
@@ -79,8 +199,13 @@ function attrsForItem(item, sourceNode, options) {
   const classes = new Set(preserveTrustedSource
     ? (sourceNode.classList || [])
     : authorClassesForItem(item, sourceNode.classList || [], attrs));
+  if (!hasSourceNode(sourceNode) && item.role !== 'text' && !item.virtual) classes.add('id-object');
   if (options.mode === 'observation' && item.role === 'text') classes.add('observed-text');
   if (options.mode === 'observation') classes.add('id-object');
+  if (item.parentPageItem) {
+    classes.add('id-parent-page-object');
+    addParentPageAttrs(attrs, item);
+  }
   if (!classes.size && !hasSourceNode(sourceNode)) classes.add(classForRole(item.role));
   const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
   const mergedStyle = preserveTrustedSource ? sourceStyle : authorInlineStyleForItem(item, sourceStyle);
@@ -92,6 +217,12 @@ function attrsForItem(item, sourceNode, options) {
   if (isUsefulSemantic(item.semantic)) attrs['data-id-semantic'] = item.semantic;
   if (!preserveTrustedSource) addObservedLabelAttrs(attrs, item);
   return attrsToHtml(orderAttrs(attrs));
+}
+
+function addParentPageAttrs(attrs, item) {
+  const parentName = item.parentPageName || item.parentPageId || '';
+  if (parentName) attrs['data-id-parent-page-item'] = parentName;
+  if (item.parentPageSourceId) attrs['data-id-parent-page-source-id'] = item.parentPageSourceId;
 }
 
 function objectAttrsForPdf(item, sourceNode, options) {
@@ -118,9 +249,10 @@ function wrapperAttrsForPdf(item, sourceNode) {
 
 function previewAttrsForPdf(item, sourceNode, options = {}) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, 'object'));
+  sanitizeRetiredAssetAttrs(attrs, item);
   rewriteResourceAttrs(attrs, options);
   const pdfPath = attrs.data || attrs.src || (item.asset && item.asset.path) || '';
-  const page = attrs['data-id-page'] || attrs['data-id-pdf-page'] || '1';
+  const page = positiveIntegerOrNull(attrs['data-id-pdf-page'] ?? assetPdfPageNumber(item.asset));
   if (sourceNode.previewNode) {
     const previewAttrs = mergeAttributes(sourceNode.previewNode.attributes);
     rewriteResourceAttrs(previewAttrs, options);
@@ -256,7 +388,7 @@ function renderPdfObjectContents(node, options, depth) {
 
 function rewriteResourceAttrs(attrs, options = {}) {
   if (!attrs || !options.assetPathMap) return attrs;
-  for (const name of ['src', 'data', 'href', 'data-id-source-csv', 'data-id-source-xml']) {
+  for (const name of ['src', 'data', 'href', 'data-id-preview-src', 'data-id-source-csv', 'data-id-source-xml']) {
     if (!attrs[name]) continue;
     const rewritten = lookupAssetPath(options.assetPathMap, attrs[name]);
     if (rewritten) attrs[name] = rewritten;
@@ -288,11 +420,15 @@ function assetAttributes(item, tagName) {
   const asset = item.sourceAsset || item.asset || {};
   const tag = String(tagName || item.sourceNode && item.sourceNode.tagName || '').toLowerCase();
   const out = {};
-  if (tag === 'img' && !nodeAttrs.src && asset.path) out.src = asset.path;
+  const previewPath = assetPreviewPath(asset);
+  if (tag === 'img' && !nodeAttrs.src && asset.path) out.src = shouldUsePreviewImage(asset) && previewPath ? previewPath : asset.path;
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.data && asset.path) out.data = asset.path;
-  if ((tag === 'object' || tag === 'embed') && !nodeAttrs.type && asset.graphicType === 'pdf') out.type = 'application/pdf';
+  const kind = assetKind(asset);
+  if ((tag === 'object' || tag === 'embed') && !nodeAttrs.type && kind === 'pdf') out.type = 'application/pdf';
   if (asset.path && !nodeAttrs['data-id-asset-path']) out['data-id-asset-path'] = asset.path;
-  if (asset.graphicType && !nodeAttrs['data-id-asset-kind']) out['data-id-asset-kind'] = asset.graphicType;
+  if (kind && !nodeAttrs['data-id-asset-kind']) out['data-id-asset-kind'] = kind;
+  if (previewPath && !nodeAttrs['data-id-preview-src']) out['data-id-preview-src'] = previewPath;
+  addAssetPlacementAttrs(out, nodeAttrs, asset, item);
   if (tag === 'img' && !nodeAttrs.alt && asset.path) out.alt = fileStem(asset.path);
   return out;
 }
@@ -300,12 +436,130 @@ function assetAttributes(item, tagName) {
 function tagForAsset(item) {
   const asset = item && (item.sourceAsset || item.asset || item.placedAsset);
   if (!asset || !asset.path) return '';
-  const kind = String(asset.graphicType || asset.kind || '').toLowerCase();
+  const kind = assetKind(asset);
   const ext = fileExtension(asset.path);
+  if (shouldUsePreviewImage(asset)) return 'img';
   if (kind === 'pdf' || ext === 'pdf') return 'object';
   if (kind === 'svg' || ext === 'svg') return 'img';
-  if (kind === 'image' || kind === 'raster' || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'].includes(ext)) return 'img';
+  if (kind === 'image' || kind === 'raster' || ['png', 'jpg', 'jpeg', 'jfif', 'gif', 'webp', 'bmp', 'tif', 'tiff'].includes(ext)) return 'img';
   return 'object';
+}
+
+function assetKind(asset) {
+  const ext = fileExtension(asset && asset.path);
+  if (ext === 'pdf' || ext === 'ai' || ext === 'psd' || ext === 'svg') return ext;
+  const raw = String(asset && (asset.kind || asset.graphicType || asset.imageTypeName) || '').toLowerCase();
+  if (raw === 'pdf' || raw.includes('adobe pdf')) return 'pdf';
+  if (raw === 'psd' || raw.includes('photoshop')) return 'psd';
+  if (raw === 'ai' || raw.includes('illustrator')) return 'ai';
+  if (raw === 'image') return 'image';
+  if (raw === 'raster') return 'raster';
+  return raw || '';
+}
+
+function shouldUsePreviewImage(asset) {
+  if (!assetPreviewPath(asset)) return false;
+  return ['pdf', 'ai', 'psd'].includes(assetKind(asset));
+}
+
+function usesGeneratedFramePreview(asset) {
+  const preview = asset && asset.preview;
+  return shouldUsePreviewImage(asset) && preview && typeof preview === 'object' && preview.source === 'indesign-frame-export';
+}
+
+function assetPreviewPath(asset) {
+  const preview = asset && asset.preview;
+  if (!preview) return '';
+  if (typeof preview === 'string') return preview;
+  return preview.path || preview.htmlPath || preview.relativePath || '';
+}
+
+function addAssetPlacementAttrs(out, nodeAttrs, asset, item) {
+  const placement = asset && asset.placement || {};
+  const kind = assetKind(asset);
+  const pageNumber = kind === 'pdf' ? assetPdfPageNumber(asset) : (placement.pageNumber || asset.pageNumber || null);
+  if (kind === 'pdf' && pageNumber != null && !nodeAttrs['data-id-pdf-page']) out['data-id-pdf-page'] = String(pageNumber);
+  if (kind === 'ai') {
+    const artboard = placement.artboard || asset.artboard || placement.pageNumber || asset.pageNumber || null;
+    if (artboard != null && !nodeAttrs['data-id-artboard']) out['data-id-artboard'] = String(artboard);
+  }
+  const crop = placement.crop || placement.pdfCropName || asset.crop || null;
+  if (crop && !nodeAttrs['data-id-crop']) out['data-id-crop'] = normalizeCropToken(crop);
+  const visibleLayers = layerListAttr(placement.visibleLayers);
+  if (visibleLayers && !nodeAttrs['data-id-visible-layers']) out['data-id-visible-layers'] = visibleLayers;
+  const hiddenLayers = layerListAttr(placement.hiddenLayers);
+  if (hiddenLayers && !nodeAttrs['data-id-hidden-layers']) out['data-id-hidden-layers'] = hiddenLayers;
+  const geometry = assetContentGeometry(item || { asset });
+  if (geometry) {
+    if (!nodeAttrs['data-id-fit']) out['data-id-fit'] = 'manual';
+    if (!nodeAttrs['data-id-content-x']) out['data-id-content-x'] = px(geometry.x);
+    if (!nodeAttrs['data-id-content-y']) out['data-id-content-y'] = px(geometry.y);
+    if (!nodeAttrs['data-id-content-width']) out['data-id-content-width'] = px(geometry.width);
+    if (!nodeAttrs['data-id-content-height']) out['data-id-content-height'] = px(geometry.height);
+    if (geometry.scaleX != null && !nodeAttrs['data-id-content-scale-x']) out['data-id-content-scale-x'] = formatNumber(geometry.scaleX);
+    if (geometry.scaleY != null && !nodeAttrs['data-id-content-scale-y']) out['data-id-content-scale-y'] = formatNumber(geometry.scaleY);
+  }
+}
+
+function sanitizeRetiredAssetAttrs(attrs, item) {
+  const asset = item && (item.sourceAsset || item.asset || item.placedAsset) || {};
+  const kind = assetKind(asset);
+  if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];
+  if (kind === 'pdf' && attrs['data-id-pdf-page'] != null && positiveIntegerOrNull(attrs['data-id-pdf-page']) == null) {
+    delete attrs['data-id-pdf-page'];
+  }
+}
+
+function assetPdfPageNumber(asset) {
+  const kind = assetKind(asset);
+  if (kind !== 'pdf') return null;
+  const placement = asset && asset.placement || {};
+  return positiveIntegerOrNull(placement.pageNumber ?? asset.pageNumber);
+}
+
+function assetContentGeometry(item) {
+  const asset = item && (item.sourceAsset || item.asset || item.placedAsset) || {};
+  const placement = asset.placement || {};
+  let offset = placement.contentOffset || null;
+  let size = placement.contentSize || null;
+  const frameBounds = placement.frameBounds || item && item.bounds || null;
+  const contentBounds = placement.contentBounds || null;
+  if ((!offset || !size) && contentBounds && frameBounds) {
+    offset = offset || {
+      x: Number(contentBounds.x || 0) - Number(frameBounds.x || 0),
+      y: Number(contentBounds.y || 0) - Number(frameBounds.y || 0),
+    };
+    size = size || {
+      width: Number(contentBounds.width || 0),
+      height: Number(contentBounds.height || 0),
+    };
+  }
+  if (!offset || !size) return null;
+  const width = Number(size.width);
+  const height = Number(size.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return {
+    x: numberOrZero(offset.x),
+    y: numberOrZero(offset.y),
+    width,
+    height,
+    scaleX: finiteOrNull(placement.contentScale && placement.contentScale.x),
+    scaleY: finiteOrNull(placement.contentScale && placement.contentScale.y),
+  };
+}
+
+function normalizeCropToken(value) {
+  const text = String(value || '').trim();
+  const key = text.toLowerCase();
+  for (const token of ['media', 'bleed', 'trim', 'art', 'content']) {
+    if (key === token || key.includes(token)) return token;
+  }
+  return text;
+}
+
+function layerListAttr(value) {
+  if (!Array.isArray(value)) return '';
+  return value.map((item) => String(item || '').trim()).filter(Boolean).join('|');
 }
 
 function fileExtension(value) {
@@ -374,6 +628,23 @@ function richTextContent(item) {
   return html;
 }
 
+function shouldRenderVectorSvg(item, sourceNode, options = {}) {
+  if (!hasVectorPaths(item)) return false;
+  if (item.asset || item.table) return false;
+  if (item.role === 'text' || item.role === 'graphic' || item.role === 'table') return false;
+  return !hasSourceNode(sourceNode) || options.mode === 'observation';
+}
+
+function svgAttrsToHtml(attrs) {
+  return attrsToHtml(attrs)
+    .replace(/\bviewbox=/g, 'viewBox=')
+    .replace(/\bpreserveaspectratio=/g, 'preserveAspectRatio=');
+}
+
+function zIndexStyle(zIndex) {
+  return Number.isFinite(Number(zIndex)) ? `z-index:${formatNumber(zIndex)}` : '';
+}
+
 function renderInlineRun(run) {
   if (!hasRichRunMarkup(run)) return plainTextContent(run.text);
   const tag = safeInlineTag(run.tagName);
@@ -421,6 +692,7 @@ function companionTextBaseId(item, itemIds) {
 
 function shouldOmitAuthorItem(item) {
   if (!item) return true;
+  if (isDegenerateInvisibleVector(item)) return true;
   if (isGeneratedLabel(item)) return true;
   const id = String(item.id || '');
   if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
@@ -442,7 +714,9 @@ function isPdfObjectItem(item, sourceNode, tag) {
 function pdfPreviewPath(pdfPath, page) {
   const value = String(pdfPath || '');
   if (!/\.pdf(?:[?#].*)?$/i.test(value)) return '';
-  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${page || 1}.png`);
+  const pageNumber = positiveIntegerOrNull(page);
+  if (pageNumber == null) return '';
+  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${pageNumber}.png`);
 }
 
 function fileStem(filePath) {
@@ -456,7 +730,7 @@ function safeInlineTag(value) {
 }
 
 function hasSourceNode(sourceNode) {
-  return Boolean(sourceNode && sourceNode.tagName);
+  return Boolean(sourceNode && sourceNode.tagName && !sourceNode.generatedFrame);
 }
 
 function isUsefulCharacterStyle(value) {
@@ -467,6 +741,13 @@ function isUsefulCharacterStyle(value) {
 function isUsefulSemantic(value) {
   const semantic = String(value || '').trim();
   return Boolean(semantic && semantic !== 'unknown');
+}
+
+function positiveIntegerOrNull(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1) return null;
+  return number;
 }
 
 function orderAttrs(attrs) {
@@ -511,6 +792,26 @@ function tagForRole(role) {
 
 function classForRole(role) {
   return role === 'graphic' ? 'graphic-object' : 'id-object';
+}
+
+function formatNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return String(Math.round(number * 10000) / 10000);
+}
+
+function px(value) {
+  return `${formatNumber(value)}px`;
+}
+
+function numberOrZero(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function indent(spaces) {

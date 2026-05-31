@@ -5,22 +5,23 @@ const {
   parseSlotType,
 } = require('../shared/labels');
 
-const LEGACY_SOURCE = 'legacy-blueprint';
-const LEGACY_LAYOUT = 'legacy-template';
+const HISTORICAL_BLUEPRINT_INPUT = 'historical-blueprint';
+const BLUEPRINT_MIGRATION_SOURCE = 'blueprint-migration';
+const BLUEPRINT_MIGRATION_LAYOUT = 'blueprint-migration';
 const SLOT_CONFIDENCE = 0.85;
 const OBSERVATION_CONFIDENCE = 0.65;
 
-function legacyBlueprintToSemanticModel(blueprint, options = {}) {
+function blueprintMigrationToSemanticModel(blueprint, options = {}) {
   assertBlueprint(blueprint);
   const mode = options.mode || 'observation';
   if (mode === 'authoring') {
-    throw new Error('Legacy blueprint input cannot be exported in authoring mode without source-structure labels.');
+    throw new Error('Historical blueprint input cannot be exported in authoring mode without source-structure labels.');
   }
 
-  const documentName = (blueprint.metadata && blueprint.metadata.documentName) || 'legacy-blueprint';
+  const documentName = (blueprint.metadata && blueprint.metadata.documentName) || HISTORICAL_BLUEPRINT_INPUT;
   const documentId = documentIdFromName(documentName);
   const pages = Object.entries(blueprint.masters || {}).map(([masterName, master], index) => (
-    legacyMasterToPage(masterName, master, index, blueprint)
+    blueprintMasterToPage(masterName, master, index, blueprint)
   ));
   const assets = collectAssets(pages);
 
@@ -29,7 +30,7 @@ function legacyBlueprintToSemanticModel(blueprint, options = {}) {
     id: documentId,
     title: documentName,
     source: documentName,
-    profile: LEGACY_SOURCE,
+    profile: BLUEPRINT_MIGRATION_SOURCE,
     unitMode: 'print',
     coordinateUnit: 'mm',
     labels: [],
@@ -37,9 +38,9 @@ function legacyBlueprintToSemanticModel(blueprint, options = {}) {
     pages,
     layers: [],
     styles: {
-      paragraphStyles: legacyStyleCollection(blueprint.paragraphStyles || blueprint.styles || {}),
-      characterStyles: legacyStyleCollection(blueprint.characterStyles || {}),
-      objectStyles: legacyStyleCollection(blueprint.objectStyles || {}),
+      paragraphStyles: blueprintStyleCollection(blueprint.paragraphStyles || blueprint.styles || {}),
+      characterStyles: blueprintStyleCollection(blueprint.characterStyles || {}),
+      objectStyles: blueprintStyleCollection(blueprint.objectStyles || {}),
       frameStyles: {},
       tableStyles: {},
       cellStyles: {},
@@ -47,22 +48,22 @@ function legacyBlueprintToSemanticModel(blueprint, options = {}) {
     assets,
     warnings: [],
     report: {
-      inputFormat: LEGACY_SOURCE,
+      inputFormat: HISTORICAL_BLUEPRINT_INPUT,
       mode,
       inference: {
-        source: LEGACY_SOURCE,
+        source: BLUEPRINT_MIGRATION_SOURCE,
         confidence: mode === 'inferred' ? SLOT_CONFIDENCE : OBSERVATION_CONFIDENCE,
-        evidence: ['legacy-master', 'legacy-slot-label', 'geometric-bounds', 'style-css'],
+        evidence: ['blueprint-master', 'blueprint-slot-label', 'geometric-bounds', 'style-css'],
       },
     },
     reverseMode: mode,
   };
 }
 
-function legacyMasterToPage(masterName, master, index, blueprint) {
+function blueprintMasterToPage(masterName, master, index, blueprint) {
   const items = [];
   for (const item of master.staticItems || []) {
-    items.push(legacyItemToModel(item, {
+    items.push(blueprintItemToModel(item, {
       blueprint,
       masterName,
       isSlot: false,
@@ -70,7 +71,7 @@ function legacyMasterToPage(masterName, master, index, blueprint) {
     }));
   }
   for (const [label, item] of Object.entries(master.slots || {})) {
-    items.push(legacyItemToModel({ label, ...item }, {
+    items.push(blueprintItemToModel({ label, ...item }, {
       blueprint,
       masterName,
       isSlot: true,
@@ -90,38 +91,38 @@ function legacyMasterToPage(masterName, master, index, blueprint) {
     semantic: masterName,
     parentPageId: null,
     parentPageName: null,
-    layout: LEGACY_LAYOUT,
-    width: requiredNumber(master.width, `Legacy master ${masterName} is missing width`),
-    height: requiredNumber(master.height, `Legacy master ${masterName} is missing height`),
+    layout: BLUEPRINT_MIGRATION_LAYOUT,
+    width: requiredNumber(master.width, `Historical blueprint master ${masterName} is missing width`),
+    height: requiredNumber(master.height, `Historical blueprint master ${masterName} is missing height`),
     margins: null,
     guides: [],
     labels: [],
-    source: LEGACY_SOURCE,
-    legacy: {
-      source: LEGACY_SOURCE,
+    source: BLUEPRINT_MIGRATION_SOURCE,
+    migration: {
+      source: BLUEPRINT_MIGRATION_SOURCE,
       masterName,
     },
     items,
   };
 }
 
-function legacyItemToModel(item, context) {
-  const legacyType = String(item.type || '').toUpperCase();
+function blueprintItemToModel(item, context) {
+  const blueprintType = String(item.type || '').toUpperCase();
   const label = item.label || context.sourceKey || '';
   const segments = parseLabeledSegments(label);
   const slotName = context.isSlot ? parseSlotName(label) : null;
   const slotType = context.isSlot ? parseSlotType(label) : null;
-  const role = roleFromLegacyType(legacyType, slotType);
+  const role = roleFromBlueprintType(blueprintType, slotType);
   const id = String(item.id || `${context.masterName}-${role}-${context.isSlot ? slotName : 'static'}`);
   const zIndex = Number(item.zIndex);
-  const inlineStyle = legacyInlineStyle(item, context.blueprint);
+  const inlineStyle = blueprintInlineStyle(item, context.blueprint);
 
   return {
     id,
     role,
     semantic: context.isSlot ? slotName : semanticForStaticItem(item, role),
-    tagName: tagForLegacyRole(role),
-    htmlClass: htmlClassForLegacyItem({ isSlot: context.isSlot, role, slotName }),
+    tagName: tagForBlueprintRole(role),
+    htmlClass: htmlClassForBlueprintItem({ isSlot: context.isSlot, role, slotName }),
     bounds: normalizeBounds(item.bounds, id),
     layerName: null,
     styleRefs: {
@@ -131,24 +132,24 @@ function legacyItemToModel(item, context) {
     },
     content: { text: normalizeText(item.content || '') },
     labels: [],
-    source: LEGACY_SOURCE,
+    source: BLUEPRINT_MIGRATION_SOURCE,
     zIndex: Number.isFinite(zIndex) ? zIndex : null,
     inlineStyle,
-    asset: legacyAsset(item),
-    legacy: {
-      source: LEGACY_SOURCE,
+    asset: blueprintAsset(item),
+    migration: {
+      source: BLUEPRINT_MIGRATION_SOURCE,
       isSlot: Boolean(context.isSlot),
       label: label || null,
       slotName,
       slotType,
       description: segmentValue(segments, ['说明', 'description', 'desc']),
       confidence: context.isSlot ? SLOT_CONFIDENCE : OBSERVATION_CONFIDENCE,
-      evidence: legacyEvidence(context.isSlot, item),
+      evidence: blueprintEvidence(context.isSlot, item),
     },
   };
 }
 
-function legacyInlineStyle(item, blueprint) {
+function blueprintInlineStyle(item, blueprint) {
   const parts = [];
   const objectStyle = styleCss(blueprint.objectStyles, item.appliedObjectStyle);
   const paragraphStyle = styleCss(blueprint.paragraphStyles || blueprint.styles, item.appliedParagraphStyle);
@@ -159,14 +160,14 @@ function legacyInlineStyle(item, blueprint) {
   return parts.filter(Boolean).join('; ');
 }
 
-function legacyAsset(item) {
+function blueprintAsset(item) {
   if (!item.imagePath) return null;
   return {
     id: assetIdFromPath(item.imagePath),
     path: item.imagePath,
     cropped: Boolean(item.imageCropped),
     imageSize: item.imageSize || null,
-    source: LEGACY_SOURCE,
+    source: BLUEPRINT_MIGRATION_SOURCE,
   };
 }
 
@@ -183,7 +184,7 @@ function collectAssets(pages) {
   return Array.from(seen.values());
 }
 
-function legacyStyleCollection(styles) {
+function blueprintStyleCollection(styles) {
   const out = {};
   for (const [name, style] of Object.entries(styles || {})) {
     const token = style.name || name;
@@ -193,9 +194,9 @@ function legacyStyleCollection(styles) {
       displayName: style.name || name,
       safeName: style.safeName || null,
       css: style.css || '',
-      source: LEGACY_SOURCE,
+      source: BLUEPRINT_MIGRATION_SOURCE,
       labels: [],
-      legacy: omitUndefined({
+      indesignFeatures: omitUndefined({
         dropCap: style.dropCap,
         list: style.list,
         grepStyles: style.grepStyles,
@@ -207,7 +208,7 @@ function legacyStyleCollection(styles) {
   return out;
 }
 
-function roleFromLegacyType(type, slotType) {
+function roleFromBlueprintType(type, slotType) {
   if (slotType === 'IMAGE') return 'graphic';
   if (type === 'TEXT') return 'text';
   if (type === 'IMAGE') return 'graphic';
@@ -216,18 +217,18 @@ function roleFromLegacyType(type, slotType) {
   return 'graphic';
 }
 
-function tagForLegacyRole(role) {
+function tagForBlueprintRole(role) {
   if (role === 'text') return 'div';
   if (role === 'graphic') return 'figure';
   return 'div';
 }
 
-function htmlClassForLegacyItem(item) {
+function htmlClassForBlueprintItem(item) {
   return [
     'id-object',
-    'legacy-item',
-    item.isSlot ? 'legacy-slot' : 'legacy-static',
-    `legacy-${item.role}`,
+    'migration-item',
+    item.isSlot ? 'migration-slot' : 'migration-static',
+    `migration-${item.role}`,
     item.slotName ? `slot-${safeClassToken(item.slotName)}` : null,
   ].filter(Boolean).join(' ');
 }
@@ -239,10 +240,10 @@ function semanticForStaticItem(item, role) {
   if (item.appliedParagraphStyle && !String(item.appliedParagraphStyle).startsWith('[')) {
     return item.appliedParagraphStyle;
   }
-  return `legacy-${role}`;
+  return `blueprint-${role}`;
 }
 
-function legacyEvidence(isSlot, item) {
+function blueprintEvidence(isSlot, item) {
   const evidence = ['geometric-bounds'];
   if (isSlot) evidence.push('slot-label');
   if (item.appliedObjectStyle) evidence.push('object-style');
@@ -253,12 +254,12 @@ function legacyEvidence(isSlot, item) {
 }
 
 function normalizeBounds(bounds, itemId) {
-  if (!bounds) throw new Error(`Legacy item ${itemId} is missing bounds`);
+  if (!bounds) throw new Error(`Historical blueprint item ${itemId} is missing bounds`);
   return {
-    x: requiredNumber(bounds.x, `Legacy item ${itemId} bounds is missing x`),
-    y: requiredNumber(bounds.y, `Legacy item ${itemId} bounds is missing y`),
-    width: requiredNumber(bounds.width, `Legacy item ${itemId} bounds is missing width`),
-    height: requiredNumber(bounds.height, `Legacy item ${itemId} bounds is missing height`),
+    x: requiredNumber(bounds.x, `Historical blueprint item ${itemId} bounds is missing x`),
+    y: requiredNumber(bounds.y, `Historical blueprint item ${itemId} bounds is missing y`),
+    width: requiredNumber(bounds.width, `Historical blueprint item ${itemId} bounds is missing width`),
+    height: requiredNumber(bounds.height, `Historical blueprint item ${itemId} bounds is missing height`),
   };
 }
 
@@ -280,8 +281,8 @@ function segmentValue(segments, keys) {
 }
 
 function documentIdFromName(name) {
-  const parsed = path.parse(String(name || 'legacy-blueprint'));
-  return parsed.name || 'legacy-blueprint';
+  const parsed = path.parse(String(name || HISTORICAL_BLUEPRINT_INPUT));
+  return parsed.name || HISTORICAL_BLUEPRINT_INPUT;
 }
 
 function assetIdFromPath(value) {
@@ -309,10 +310,10 @@ function requiredNumber(value, message) {
 
 function assertBlueprint(blueprint) {
   if (!blueprint || typeof blueprint !== 'object') {
-    throw new Error('legacyBlueprintToSemanticModel requires a blueprint object');
+    throw new Error('blueprintMigrationToSemanticModel requires a blueprint object');
   }
   if (!blueprint.masters || typeof blueprint.masters !== 'object') {
-    throw new Error('legacy blueprint is missing masters');
+    throw new Error('historical blueprint is missing masters');
   }
 }
 
@@ -325,5 +326,5 @@ function omitUndefined(value) {
 }
 
 module.exports = {
-  legacyBlueprintToSemanticModel,
+  blueprintMigrationToSemanticModel,
 };

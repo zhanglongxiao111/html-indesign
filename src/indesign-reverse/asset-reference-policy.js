@@ -31,9 +31,22 @@ function referenceAuthorAssets(model, options = {}) {
   const entries = [];
   const seen = new Set();
   const copied = [];
+  const generated = [];
+  const missing = [];
   const copiedBySource = new Map();
   const used = new Map();
   for (const record of records) {
+    if (record.kind === 'generated-preview') {
+      copyGeneratedPreview(record, {
+        outDir: options.outDir,
+        pathMap,
+        generated,
+        missing,
+        copiedBySource,
+        used,
+      });
+      continue;
+    }
     let htmlPath = toBrowserAssetPath(record.value, { nasRoot: options.nasPublicRoot || '/nas' });
     let reason = reasonForReference(record.value, htmlPath);
     if (shouldCopyLocalReference(record.value, htmlPath, options)) {
@@ -69,8 +82,9 @@ function referenceAuthorAssets(model, options = {}) {
       referenced: entries.length,
       copied: copied.length,
       copiedFiles: copied.map((entry) => entry.path),
-      generated: 0,
-      missing: [],
+      generated: generated.length,
+      generatedFiles: generated.map((entry) => entry.path),
+      missing,
       entries,
     },
   };
@@ -102,7 +116,69 @@ function copyLocalReference(record, context) {
   addPathMap(context.pathMap, record.value, relativePath);
   addPathMap(context.pathMap, resolved, relativePath);
   for (const alias of record.aliases || []) addPathMap(context.pathMap, alias, relativePath);
-  copyLocalPdfPreview(record.value, resolved, relativePath, context);
+  copyLocalPdfPreview(record, resolved, relativePath, context);
+  return relativePath;
+}
+
+function copyGeneratedPreview(record, context) {
+  if (!context.outDir) return '';
+  const resolved = resolveGeneratedPreview(record);
+  const aliases = [record.value, record.fallback, ...(record.aliases || [])].filter(Boolean);
+  if (!resolved) {
+    context.missing.push({ path: record.value, reason: 'generated-preview-missing' });
+    for (const alias of aliases) {
+      if (record.relativePath) addPathMap(context.pathMap, alias, record.relativePath);
+    }
+    return '';
+  }
+  const sourceKey = sourceFileKey(resolved);
+  let relativePath = context.copiedBySource.get(sourceKey);
+  if (!relativePath) {
+    relativePath = previewPackagePath(record, resolved, context.used);
+    const target = path.join(context.outDir, relativePath);
+    if (path.resolve(resolved) !== path.resolve(target)) {
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(resolved, target);
+    }
+    context.copiedBySource.set(sourceKey, relativePath);
+    context.generated.push({ source: resolved, path: relativePath });
+  }
+  for (const alias of aliases) addPathMap(context.pathMap, alias, relativePath);
+  addPathMap(context.pathMap, resolved, relativePath);
+  addPathMap(context.pathMap, relativePath, relativePath);
+  return relativePath;
+}
+
+function resolveGeneratedPreview(record) {
+  for (const value of [record.value, record.fallback, ...(record.aliases || [])]) {
+    if (!shouldConsiderGeneratedPreviewPath(value)) continue;
+    const candidate = path.isAbsolute(value) ? path.resolve(value) : path.resolve(value);
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return '';
+}
+
+function shouldConsiderGeneratedPreviewPath(value) {
+  if (!value) return false;
+  return !isRemoteReference(value);
+}
+
+function previewPackagePath(record, resolvedPath, used) {
+  const root = 'previews';
+  const preferred = record.relativePath && /^previews\//i.test(slash(record.relativePath))
+    ? sanitizeRelative(record.relativePath)
+    : slash(path.posix.join(root, sanitizeRelative(path.basename(resolvedPath))));
+  let relativePath = preferred;
+  const existing = used.get(relativePath);
+  if (existing && path.resolve(existing) !== path.resolve(resolvedPath)) {
+    const parsed = path.posix.parse(relativePath);
+    let index = 2;
+    do {
+      relativePath = slash(path.posix.join(parsed.dir, `${parsed.name}-${index}${parsed.ext}`));
+      index += 1;
+    } while (used.has(relativePath));
+  }
+  used.set(relativePath, resolvedPath);
   return relativePath;
 }
 
@@ -147,12 +223,14 @@ function assetSubPath(value, resolvedPath, assetRoot) {
   return sanitizeRelative(path.basename(resolvedPath));
 }
 
-function copyLocalPdfPreview(originalValue, resolvedPath, relativePath, context) {
+function copyLocalPdfPreview(record, resolvedPath, relativePath, context) {
   if (!/\.pdf$/i.test(resolvedPath)) return;
-  const originalPreview = pdfPreviewPath(originalValue, 1);
-  const sourcePreview = resolvedPath.replace(/\.pdf$/i, '-page1.png');
+  const pageNumber = normalizePositiveInteger(record.pdfPageNumber);
+  if (pageNumber == null) return;
+  const originalPreview = pdfPreviewPath(record.value, pageNumber);
+  const sourcePreview = resolvedPath.replace(/\.pdf$/i, `-page${pageNumber}.png`);
   if (!fs.existsSync(sourcePreview)) return;
-  const targetRelative = relativePath.replace(/\.pdf$/i, '-page1.png');
+  const targetRelative = relativePath.replace(/\.pdf$/i, `-page${pageNumber}.png`);
   const target = path.join(context.outDir, targetRelative);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(sourcePreview, target);
@@ -162,8 +240,10 @@ function copyLocalPdfPreview(originalValue, resolvedPath, relativePath, context)
 
 function pdfPreviewPath(pdfPath, page) {
   const value = String(pdfPath || '');
+  const pageNumber = normalizePositiveInteger(page);
+  if (pageNumber == null) return '';
   if (!/\.pdf(?:[?#].*)?$/i.test(value)) return '';
-  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${page || 1}.png`);
+  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${pageNumber}.png`);
 }
 
 function collectAssetReferences(model) {
@@ -174,7 +254,13 @@ function collectAssetReferences(model) {
   }
   for (const asset of model && model.assets || []) {
     const value = asset && asset.path;
-    if (value) pushAssetRecord(records, seen, { value, fallback: value });
+    if (value) {
+      pushAssetRecord(records, seen, {
+        value,
+        fallback: value,
+        pdfPageNumber: pdfPageNumberForAsset(asset, {}),
+      });
+    }
   }
   return records;
 }
@@ -184,12 +270,14 @@ function collectAssetReferencesForItem(item, records, seen) {
   const attrs = sourceNode.attributes || {};
   const asset = item.sourceAsset || item.asset || item.placedAsset || {};
   const assetPath = asset.path || '';
+  const pdfPageNumber = pdfPageNumberForAsset(asset, attrs);
   for (const name of ['src', 'data', 'href', 'data-id-source-csv', 'data-id-source-xml']) {
     if (!attrs[name]) continue;
     pushAssetRecord(records, seen, {
       value: attrs[name],
       fallback: assetPath,
       aliases: assetPath ? [assetPath] : [],
+      pdfPageNumber,
     });
   }
   if (sourceNode.previewNode && sourceNode.previewNode.attributes && sourceNode.previewNode.attributes.src) {
@@ -198,7 +286,20 @@ function collectAssetReferencesForItem(item, records, seen) {
       fallback: sourceNode.previewNode.attributes.src,
     });
   }
-  if (assetPath) pushAssetRecord(records, seen, { value: assetPath, fallback: assetPath });
+  if (asset.preview) {
+    const preview = typeof asset.preview === 'string' ? { path: asset.preview } : asset.preview;
+    const previewValue = preview.path || preview.htmlPath || preview.relativePath || '';
+    if (previewValue) {
+      pushAssetRecord(records, seen, {
+        kind: 'generated-preview',
+        value: previewValue,
+        fallback: preview.relativePath || preview.htmlPath || preview.path || previewValue,
+        aliases: [preview.path, preview.relativePath, preview.htmlPath].filter(Boolean),
+        relativePath: preview.relativePath || null,
+      });
+    }
+  }
+  if (assetPath) pushAssetRecord(records, seen, { value: assetPath, fallback: assetPath, pdfPageNumber });
 }
 
 function pushAssetRecord(records, seen, record) {
@@ -260,8 +361,24 @@ function unique(values) {
   return Array.from(new Set(values.filter((value) => value != null && value !== '')));
 }
 
+function pdfPageNumberForAsset(asset = {}, attrs = {}) {
+  return normalizePositiveInteger(
+    attrs['data-id-pdf-page']
+      ?? (asset.placement && asset.placement.pageNumber)
+      ?? asset.pageNumber
+  );
+}
+
+function normalizePositiveInteger(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1) return null;
+  return number;
+}
+
 module.exports = {
   prepareAuthorAssets,
   referenceAuthorAssets,
   collectAssetReferences,
+  shouldConsiderGeneratedPreviewPath,
 };

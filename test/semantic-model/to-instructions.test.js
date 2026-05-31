@@ -106,3 +106,187 @@ test('semanticModelToInstructions emits parent pages and page parent references'
   assert.equal(instructions.pages[0].parentPageId, 'report-parent');
   assert.equal(instructions.pages[0].layout, 'contents-grid');
 });
+
+test('semanticModelToInstructions carries placed PDF page crop and layer visibility options', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [
+      {
+        id: 'p1',
+        index: 0,
+        width: 800,
+        height: 450,
+        margins: null,
+        guides: [],
+        labels: [],
+        items: [
+          {
+            id: 'layered-pdf',
+            role: 'graphic',
+            bounds: { x: 10, y: 20, width: 300, height: 200 },
+            zIndex: 1,
+            layer: 'drawing',
+            sourceSelector: '#layered-pdf',
+            styleRefs: {},
+            attributes: {
+              src: 'previews/layered-pdf.png',
+              'data-id-asset-path': './assets/layered.pdf',
+              'data-id-asset-kind': 'pdf',
+              'data-id-pdf-page': '5',
+              'data-id-crop': 'trim',
+              'data-id-visible-layers': '结构|标注',
+              'data-id-hidden-layers': '家具',
+            },
+            computedStyle: { objectFit: 'contain', objectPosition: '50% 50%' },
+          },
+        ],
+      },
+    ],
+    styles: {},
+    assets: [
+      {
+        id: 'asset-layered-pdf',
+        src: './assets/layered.pdf',
+        kind: 'pdf',
+        sourceSelector: '#layered-pdf',
+        placement: {
+          pageNumber: 5,
+          crop: 'trim',
+          visibleLayers: ['结构', '标注'],
+          hiddenLayers: ['家具'],
+        },
+      },
+    ],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const placed = instructions.pages[0].items.find((item) => item.id === 'layered-pdf').placed;
+
+  assert.equal(placed.assetId, 'asset-layered-pdf');
+  assert.equal(placed.pageNumber, 5);
+  assert.equal(placed.crop, 'trim');
+  assert.deepEqual(placed.visibleLayers, ['结构', '标注']);
+  assert.deepEqual(placed.hiddenLayers, ['家具']);
+});
+
+test('semanticModelToInstructions does not compile retired data-id-page as a PDF page number', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [
+      {
+        id: 'p1',
+        index: 0,
+        width: 800,
+        height: 450,
+        margins: null,
+        guides: [],
+        labels: [],
+        items: [
+          {
+            id: 'retired-page-field-pdf',
+            role: 'graphic',
+            bounds: { x: 10, y: 20, width: 300, height: 200 },
+            zIndex: 1,
+            layer: 'drawing',
+            sourceSelector: '#retired-page-field-pdf',
+            styleRefs: {},
+            attributes: {
+              data: './assets/layered.pdf',
+              type: 'application/pdf',
+              'data-id-asset-kind': 'pdf',
+              'data-id-page': '5',
+            },
+            computedStyle: { objectFit: 'contain', objectPosition: '50% 50%' },
+          },
+        ],
+      },
+    ],
+    styles: {},
+    assets: [
+      {
+        id: 'asset-layered-pdf',
+        src: './assets/layered.pdf',
+        kind: 'pdf',
+        sourceSelector: '#retired-page-field-pdf',
+        placement: {},
+      },
+    ],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const placed = instructions.pages[0].items.find((item) => item.id === 'retired-page-field-pdf').placed;
+
+  assert.equal(placed.pageNumber, undefined);
+});
+
+test('semanticModelToInstructions converts manual placed content geometry to absolute content bounds', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [
+      {
+        id: 'p1',
+        index: 0,
+        width: 800,
+        height: 450,
+        margins: null,
+        guides: [],
+        labels: [],
+        items: [
+          {
+            id: 'manual-crop',
+            role: 'graphic',
+            bounds: { x: 100, y: 80, width: 240, height: 160 },
+            zIndex: 1,
+            layer: 'image',
+            sourceSelector: '#manual-crop',
+            styleRefs: {},
+            attributes: {
+              'data-id-asset-path': './assets/render.jpg',
+              'data-id-asset-kind': 'raster',
+              'data-id-fit': 'manual',
+              'data-id-content-x': '-30px',
+              'data-id-content-y': '-20px',
+              'data-id-content-width': '320px',
+              'data-id-content-height': '210px',
+              'data-id-content-scale-x': '1.3333',
+              'data-id-content-scale-y': '1.3125',
+            },
+            computedStyle: { objectFit: 'fill', objectPosition: '50% 50%' },
+          },
+        ],
+      },
+    ],
+    styles: {},
+    assets: [
+      {
+        id: 'asset-render-jpg',
+        src: './assets/render.jpg',
+        kind: 'raster',
+        sourceSelector: '#manual-crop',
+        placement: {},
+      },
+    ],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const graphic = instructions.pages[0].items.find((item) => item.id === 'manual-crop');
+
+  assert.equal(graphic.placed.fit, 'manual');
+  assert.deepEqual(graphic.placed.contentBounds, { x: 70, y: 60, width: 320, height: 210 });
+  assert.deepEqual(graphic.contentBounds, { x: 70, y: 60, width: 320, height: 210 });
+});

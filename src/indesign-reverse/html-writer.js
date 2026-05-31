@@ -1,6 +1,8 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { fileURLToPath, pathToFileURL } = require('node:url');
+const { blendModeCss } = require('./css-blend-mode');
+const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-svg');
 
 const SAFE_TAGS = new Set([
   'article',
@@ -83,6 +85,7 @@ function pageToHtml(page, model, options) {
 
 function itemToHtml(item, model, options) {
   const itemId = requiredString(item.id, 'Item is missing id');
+  if (shouldRenderVectorSvg(item)) return vectorItemToHtml(item, model);
   const tag = safeTagName(containerTagForItem(item));
   const classes = itemClasses(item, model).join(' ');
   const inlineStyle = itemInlineStyle(item);
@@ -104,12 +107,13 @@ function itemToHtml(item, model, options) {
       ? `data-id-frame-style="${attr(item.styleRefs.frameStyle)}"`
       : null,
     tableStyleName(item) ? `data-id-table-style="${attr(tableStyleName(item))}"` : null,
-    item.legacy && item.legacy.isSlot ? 'data-id-legacy-slot="true"' : null,
-    item.legacy && item.legacy.slotName ? `data-id-slot-name="${attr(item.legacy.slotName)}"` : null,
-    item.legacy && item.legacy.slotType ? `data-id-slot-type="${attr(item.legacy.slotType)}"` : null,
-    item.legacy && item.legacy.confidence != null ? `data-id-confidence="${attr(item.legacy.confidence)}"` : null,
+    item.migration && item.migration.isSlot ? 'data-id-migration-slot="true"' : null,
+    item.migration && item.migration.slotName ? `data-id-slot-name="${attr(item.migration.slotName)}"` : null,
+    item.migration && item.migration.slotType ? `data-id-slot-type="${attr(item.migration.slotType)}"` : null,
+    item.migration && item.migration.confidence != null ? `data-id-confidence="${attr(item.migration.confidence)}"` : null,
     item.asset && item.asset.path ? `data-id-asset-path="${attr(item.asset.path)}"` : null,
     item.asset && item.asset.cropped ? 'data-id-image-cropped="true"' : null,
+    ...assetPlacementAttrs(item.asset),
     `style="${attr(boundsStyle(itemId, item.bounds, inlineStyle))}"`,
   ].filter(Boolean);
 
@@ -124,6 +128,52 @@ function itemToHtml(item, model, options) {
   return `    <${tag} ${attrs.join(' ')}>${renderTextContent(item, model)}</${tag}>`;
 }
 
+function shouldRenderVectorSvg(item) {
+  if (!hasVectorPaths(item)) return false;
+  if (item.asset || item.table) return false;
+  return item.role !== 'text' && item.role !== 'graphic' && item.role !== 'table';
+}
+
+function vectorItemToHtml(item, model) {
+  const itemId = requiredString(item.id, 'Item is missing id');
+  const classes = itemClasses(item, model).join(' ');
+  const attrs = [
+    `id="${attr(itemId)}"`,
+    `class="${attr(classes)}"`,
+    `data-id-object="${attr(itemId)}"`,
+    item.role ? `data-id-role="${attr(item.role)}"` : null,
+    item.semantic ? `data-id-semantic="${attr(item.semantic)}"` : null,
+    item.layerName ? `data-id-layer="${attr(item.layerName)}"` : null,
+    item.styleRefs && item.styleRefs.objectStyle
+      ? `data-id-object-style="${attr(item.styleRefs.objectStyle)}"`
+      : null,
+    `data-id-vector="${attr(item.vectorGeometry && item.vectorGeometry.kind || 'path')}"`,
+    `preserveAspectRatio="none"`,
+    `viewBox="${attr(vectorViewBox(item))}"`,
+    `style="${attr(boundsStyle(itemId, item.bounds, vectorInlineStyle(item)))}"`,
+  ].filter(Boolean);
+  return `    <svg ${attrs.join(' ')}>\n${vectorPathElements(item, 6)}\n    </svg>`;
+}
+
+function vectorInlineStyle(item) {
+  return [
+    vectorMinSizeCss(item),
+    'overflow:visible',
+    blendModeCss(item.visualStyle && item.visualStyle.blendMode),
+    zIndexCss(item.zIndex),
+  ].filter(Boolean).join(';');
+}
+
+function vectorMinSizeCss(item) {
+  if (!item || !item.bounds || !item.visualStyle) return '';
+  const stroke = Number(item.visualStyle.strokeWeight);
+  if (!Number.isFinite(stroke) || stroke <= 0) return '';
+  const styles = [];
+  if (Number(item.bounds.width || 0) <= 0) styles.push(`min-width:${formatPx(stroke)}`);
+  if (Number(item.bounds.height || 0) <= 0) styles.push(`min-height:${formatPx(stroke)}`);
+  return styles.join(';');
+}
+
 function baseCss(model) {
   const firstPage = model.pages[0];
   const width = requiredNumber(firstPage.width, `Page ${firstPage.id} is missing width`);
@@ -133,7 +183,7 @@ function baseCss(model) {
     '    * { box-sizing: border-box; }',
     '    body { margin: 0; background: #f3f5f6; color: #14324a; font-family: Arial, "Microsoft YaHei", sans-serif; }',
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
-    `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; }`,
+    `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; isolation: isolate; }`,
     '    .id-object { position: absolute; margin: 0; overflow: hidden; }',
     '    .id-object[data-id-role="text"] { overflow: visible; }',
     '    .id-object[data-id-role="table"] { border-collapse: collapse; table-layout: fixed; }',
@@ -191,10 +241,11 @@ function itemClasses(item, model) {
   const paragraphStyle = styleByName(model, 'paragraphStyles', item.styleRefs && item.styleRefs.paragraphStyle);
   const objectStyle = styleByName(model, 'objectStyles', item.styleRefs && item.styleRefs.objectStyle);
   if (paragraphStyle) {
+    const features = indesignFeatures(paragraphStyle);
     classes.push(`pstyle-${styleClassToken(paragraphStyle)}`);
-    if (paragraphStyle.legacy && paragraphStyle.legacy.dropCap) classes.push('has-dropcap');
-    if (paragraphStyle.legacy && paragraphStyle.legacy.list && paragraphStyle.legacy.list.type === 'bullet') classes.push('has-bullet-list');
-    if (paragraphStyle.legacy && paragraphStyle.legacy.list && paragraphStyle.legacy.list.type === 'numbered') classes.push('has-numbered-list');
+    if (features.dropCap) classes.push('has-dropcap');
+    if (features.list && features.list.type === 'bullet') classes.push('has-bullet-list');
+    if (features.list && features.list.type === 'numbered') classes.push('has-numbered-list');
   }
   if (objectStyle) classes.push(`ostyle-${styleClassToken(objectStyle)}`);
   return uniqueWords(classes.join(' '));
@@ -210,6 +261,8 @@ function visualStyleCss(visualStyle) {
   if (Number(visualStyle.cornerRadius) > 0) {
     styles.push(`border-radius:${formatPx(visualStyle.cornerRadius)}`);
   }
+  const blendMode = blendModeCss(visualStyle.blendMode);
+  if (blendMode) styles.push(blendMode);
   const opacity = Number(visualStyle.opacity);
   if (Number.isFinite(opacity) && opacity >= 0 && opacity < 100) {
     styles.push(`opacity:${formatNumber(opacity / 100)}`);
@@ -261,26 +314,134 @@ function assetHtml(item, options) {
   const label = asset.name || item.semantic || item.id;
   const extension = String(asset.name || asset.path).toLowerCase();
   const fit = asset.cropped ? 'cover' : 'contain';
-  if (/\.(png|jpe?g|gif|webp|svg)$/.test(extension)) {
-    return `<img src="${attr(url)}" alt="${attr(label)}" style="object-fit:${fit}">`;
+  const geometry = assetContentGeometry(asset);
+  const previewPath = placedPreviewPath(asset);
+  const kind = assetKind(asset);
+  const framePreview = previewPath && usesGeneratedFramePreview(asset);
+  const geometryAttrs = assetGeometryAttrs(asset, geometry, framePreview);
+  const fallbackFitStyle = geometryAttrs ? '' : ` style="object-fit:${fit}"`;
+  if (previewPath && ['pdf', 'ai', 'psd'].includes(kind)) {
+    return `<img src="${attr(assetUrl(previewPath, options))}"${geometryAttrs} alt="${attr(label)}" data-id-preview-kind="${attr(kind)}" data-id-preview-asset-path="${attr(previewPath)}"${fallbackFitStyle}>`;
+  }
+  if (kind === 'image' || kind === 'raster' || /\.(png|jpe?g|jfif|gif|webp|svg|bmp|tiff?)$/.test(extension)) {
+    return `<img src="${attr(url)}"${geometryAttrs} alt="${attr(label)}"${fallbackFitStyle}>`;
   }
   if (/\.pdf$/.test(extension)) {
-    const previewPath = pdfPreviewPath(asset);
+    const previewPath = placedPreviewPath(asset);
     if (previewPath) {
-      return `<img src="${attr(assetUrl(previewPath, options))}" alt="${attr(label)}" data-id-preview-kind="pdf" data-id-preview-asset-path="${attr(previewPath)}" style="object-fit:${fit}">`;
+      const pdfFramePreview = usesGeneratedFramePreview(asset);
+      const pdfGeometryAttrs = assetGeometryAttrs(asset, geometry, pdfFramePreview);
+      const pdfFallbackFitStyle = pdfGeometryAttrs ? '' : ` style="object-fit:${fit}"`;
+      return `<img src="${attr(assetUrl(previewPath, options))}"${pdfGeometryAttrs} alt="${attr(label)}" data-id-preview-kind="pdf" data-id-preview-asset-path="${attr(previewPath)}"${pdfFallbackFitStyle}>`;
     }
-    return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}" style="object-fit:${fit}"></object>`;
+    return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}"${geometry ? ` style="${attr(placedAssetContentStyle(geometry))}"` : ` style="object-fit:${fit}"`}></object>`;
   }
   return `<span class="id-asset-placeholder">${escapeHtml(label)}</span>`;
 }
 
-function pdfPreviewPath(asset) {
-  const explicit = asset.previewPath || asset.preview || asset.previewAssetPath;
-  if (explicit && fileExists(explicit)) return explicit;
+function assetGeometryAttrs(asset, geometry, framePreview) {
+  if (framePreview) return ` class="placed-asset-preview" style="${attr(placedAssetPreviewStyle())}"`;
+  if (!geometry) return '';
+  return ` class="placed-asset-content" style="${attr(placedAssetContentStyle(geometry))}"`;
+}
+
+function assetPlacementAttrs(asset = {}) {
+  asset = asset || {};
+  const geometry = assetContentGeometry(asset);
+  const out = [];
+  const pdfPageNumber = assetPdfPageNumber(asset);
+  if (pdfPageNumber != null) out.push(`data-id-pdf-page="${attr(pdfPageNumber)}"`);
+  if (assetKind(asset) === 'ai') {
+    const placement = asset.placement || {};
+    const artboard = placement.artboard || asset.artboard || placement.pageNumber || asset.pageNumber || null;
+    if (artboard != null) out.push(`data-id-artboard="${attr(artboard)}"`);
+  }
+  if (geometry) {
+    out.push(
+      'data-id-fit="manual"',
+      `data-id-content-x="${attr(formatPx(geometry.x))}"`,
+      `data-id-content-y="${attr(formatPx(geometry.y))}"`,
+      `data-id-content-width="${attr(formatPx(geometry.width))}"`,
+      `data-id-content-height="${attr(formatPx(geometry.height))}"`,
+    );
+    if (geometry.scaleX != null) out.push(`data-id-content-scale-x="${attr(formatNumber(geometry.scaleX))}"`);
+    if (geometry.scaleY != null) out.push(`data-id-content-scale-y="${attr(formatNumber(geometry.scaleY))}"`);
+  }
+  return out;
+}
+
+function assetPdfPageNumber(asset = {}) {
+  if (assetKind(asset) !== 'pdf') return null;
+  const placement = asset.placement || {};
+  return placement.pageNumber || asset.pageNumber || null;
+}
+
+function assetContentGeometry(asset = {}) {
+  asset = asset || {};
+  const placement = asset.placement || {};
+  let offset = placement.contentOffset || null;
+  let size = placement.contentSize || null;
+  const frameBounds = placement.frameBounds || null;
+  const contentBounds = placement.contentBounds || null;
+  if ((!offset || !size) && frameBounds && contentBounds) {
+    offset = offset || {
+      x: Number(contentBounds.x || 0) - Number(frameBounds.x || 0),
+      y: Number(contentBounds.y || 0) - Number(frameBounds.y || 0),
+    };
+    size = size || {
+      width: Number(contentBounds.width || 0),
+      height: Number(contentBounds.height || 0),
+    };
+  }
+  if (!offset || !size) return null;
+  const width = Number(size.width);
+  const height = Number(size.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return {
+    x: finiteOrZero(offset.x),
+    y: finiteOrZero(offset.y),
+    width,
+    height,
+    scaleX: finiteOrNull(placement.contentScale && placement.contentScale.x),
+    scaleY: finiteOrNull(placement.contentScale && placement.contentScale.y),
+  };
+}
+
+function placedAssetContentStyle(geometry) {
+  return [
+    'position:absolute',
+    `left:${formatPx(geometry.x)}`,
+    `top:${formatPx(geometry.y)}`,
+    `width:${formatPx(geometry.width)}`,
+    `height:${formatPx(geometry.height)}`,
+    'max-width:none',
+    'max-height:none',
+    'object-fit:fill',
+  ].join(';');
+}
+
+function placedAssetPreviewStyle() {
+  return [
+    'position:absolute',
+    'left:0px',
+    'top:0px',
+    'width:100%',
+    'height:100%',
+    'max-width:none',
+    'max-height:none',
+    'object-fit:fill',
+  ].join(';');
+}
+
+function placedPreviewPath(asset) {
+  const explicit = asset.previewPath || previewValue(asset.preview) || asset.previewAssetPath;
+  if (explicit) return explicit;
   const rawPath = String(asset.path || '');
   if (!rawPath || !path.isAbsolute(rawPath)) return null;
+  const pageNumber = assetPdfPageNumber(asset);
+  if (pageNumber == null) return null;
   const parsed = path.parse(rawPath);
-  const page = Number(asset.pageNumber || asset.page || 1);
+  const page = Number(pageNumber);
   const candidates = [
     path.join(parsed.dir, `${parsed.name}-page${page}.png`),
     path.join(parsed.dir, `${parsed.name}-page-${page}.png`),
@@ -288,6 +449,27 @@ function pdfPreviewPath(asset) {
     path.join(parsed.dir, `${parsed.name}.png`),
   ];
   return candidates.find(fileExists) || null;
+}
+
+function usesGeneratedFramePreview(asset) {
+  const preview = asset && asset.preview;
+  return preview && typeof preview === 'object' && preview.source === 'indesign-frame-export';
+}
+
+function previewValue(preview) {
+  if (!preview) return '';
+  if (typeof preview === 'string') return preview;
+  return preview.path || preview.htmlPath || preview.relativePath || '';
+}
+
+function assetKind(asset) {
+  const ext = path.extname(String(asset.path || '')).toLowerCase().replace(/^\./, '');
+  if (['pdf', 'ai', 'psd', 'svg'].includes(ext)) return ext;
+  const raw = String(asset.kind || asset.graphicType || asset.imageTypeName || '').toLowerCase();
+  if (raw === 'pdf' || raw.includes('adobe pdf')) return 'pdf';
+  if (raw === 'psd' || raw.includes('photoshop')) return 'psd';
+  if (raw === 'ai' || raw.includes('illustrator')) return 'ai';
+  return raw;
 }
 
 function fileExists(filePath) {
@@ -319,8 +501,9 @@ function compositeFontCss(paragraphStyles = {}, compositeFonts = {}) {
   const lines = [];
   for (const style of Object.values(paragraphStyles || {})) {
     if (!style || !style.css) continue;
-    const compositeName = style.legacy && style.legacy.compositeFont
-      ? style.legacy.compositeFont
+    const features = indesignFeatures(style);
+    const compositeName = features.compositeFont
+      ? features.compositeFont
       : fontFamilyFromCss(style.css);
     const composite = compositeName && compositeFonts ? compositeFonts[compositeName] : null;
     if (!composite) continue;
@@ -339,12 +522,12 @@ function renderTextContent(item, model) {
   const runs = contentRuns(item);
   if (runs.length) return renderRichTextRuns(runs, model);
   const paragraphStyle = styleByName(model, 'paragraphStyles', item.styleRefs && item.styleRefs.paragraphStyle);
-  const legacy = (paragraphStyle && paragraphStyle.legacy) || {};
+  const features = indesignFeatures(paragraphStyle);
   const usesComposite = usesCompositeFont(paragraphStyle, model, item.firstLineFont);
 
-  if (legacy.list) return renderListText(text, legacy.list, usesComposite);
-  if (legacy.dropCap) return renderDropCapText(text, legacy.dropCap, usesComposite);
-  if (legacy.grepStyles && legacy.grepStyles.length) return renderGrepText(text, legacy.grepStyles, usesComposite, item, model);
+  if (features.list) return renderListText(text, features.list, usesComposite);
+  if (features.dropCap) return renderDropCapText(text, features.dropCap, usesComposite);
+  if (features.grepStyles && features.grepStyles.length) return renderGrepText(text, features.grepStyles, usesComposite, item, model);
   return renderPlainText(text, usesComposite);
 }
 
@@ -673,10 +856,15 @@ function usesCompositeFont(paragraphStyle, model, firstLineFont) {
   const compositeFonts = (model.styles && model.styles.compositeFonts) || {};
   if (firstLineFont && compositeFonts[firstLineFont]) return true;
   if (!paragraphStyle) return false;
-  const compositeName = paragraphStyle.legacy && paragraphStyle.legacy.compositeFont
-    ? paragraphStyle.legacy.compositeFont
+  const features = indesignFeatures(paragraphStyle);
+  const compositeName = features.compositeFont
+    ? features.compositeFont
     : fontFamilyFromCss(paragraphStyle.css);
   return Boolean(compositeName && compositeFonts[compositeName]);
+}
+
+function indesignFeatures(style) {
+  return style && style.indesignFeatures || {};
 }
 
 function wrapEnglishText(value) {
@@ -721,7 +909,17 @@ function formatPx(value) {
 function formatNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '0';
-  return String(Math.round(number * 1000) / 1000);
+  return String(Math.round(number * 10000) / 10000);
+}
+
+function finiteOrZero(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function finiteOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function escapeHtml(value) {

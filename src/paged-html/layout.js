@@ -120,7 +120,7 @@ function pageGuides(page, dimensions, margins, layout) {
 }
 
 function usesUsedSnapGuides(attrs) {
-  const mode = String(attrs['data-id-guide-mode'] || attrs['data-id-guides-mode'] || '').trim().toLowerCase();
+  const mode = String(attrs['data-id-guide-mode'] || '').trim().toLowerCase();
   return mode === 'used-snap' || mode === 'snap-used' || mode === 'used';
 }
 
@@ -169,7 +169,7 @@ function coversWholePage(bounds, page, layout) {
 }
 
 function semanticGridSpec(attrs) {
-  const raw = attrs['data-id-grid'] || attrs['data-id-guides'];
+  const raw = attrs['data-id-grid'];
   if (!raw) return null;
   const match = String(raw).trim().match(/^(\d+)(?:\s*[xX*]\s*(\d+))?$/);
   if (!match) return null;
@@ -182,21 +182,15 @@ function semanticGridSpec(attrs) {
 function semanticGridGuides(spec, attrs, style, dimensions, margins, layout) {
   const columnGap = pageStyleLength(
     attrs['data-id-column-gutter']
-      || attrs['data-id-column-gap']
-      || attrs['data-id-gutter']
-      || attrs['data-id-gap']
       || style.columnGap,
     layout
   );
   const rowGap = pageStyleLength(
     attrs['data-id-row-gutter']
-      || attrs['data-id-row-gap']
-      || attrs['data-id-gutter']
-      || attrs['data-id-gap']
       || style.rowGap,
     layout
   );
-  const baseline = pageStyleLength(attrs['data-id-baseline'] || attrs['data-id-baseline-grid'], layout);
+  const baseline = pageStyleLength(attrs['data-id-baseline'], layout);
   const baselineGuides = String(attrs['data-id-baseline-guides'] || '').trim().toLowerCase();
   const horizontal = baseline > 0 && baselineGuides === 'all'
     ? baselineGridGuides(margins.top, dimensions.height - margins.bottom, baseline)

@@ -7,7 +7,8 @@ test('validateAuthoringRules accepts aligned semantic grid authored pages', () =
     attributes: {
       'data-id-margin': '10mm',
       'data-id-grid': '4x2',
-      'data-id-gutter': '2mm',
+      'data-id-column-gutter': '2mm',
+      'data-id-row-gutter': '2mm',
     },
     items: [{
       id: 'title',
@@ -24,6 +25,23 @@ test('validateAuthoringRules accepts aligned semantic grid authored pages', () =
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
   assert.equal(result.warnings.some((warning) => warning.code === 'GRID_ALIGNMENT_OFF'), false);
+});
+
+test('validateAuthoringRules rejects retired grid alias fields as active page grid rules', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-guides': '4x2',
+      'data-id-gutter': '2mm',
+      'data-id-baseline-grid': '5mm',
+    },
+    items: [],
+  });
+
+  const result = validateAuthoringRules(snapshot);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((entry) => entry.code === 'PAGE_GRID_RULE_MISSING'), true);
 });
 
 test('validateAuthoringRules treats baseline as text rhythm when a row grid is declared', () => {

@@ -24,11 +24,20 @@ HI.reverseTextRuns = function (item) {
 
 HI.reverseCharacterContents = function (character) {
     try {
-        var value = String(character.contents || "");
-        if (value === "FORCED_LINE_BREAK" || value === "PARAGRAPH_BREAK") return "\n";
-        return value;
+        return HI.reverseTextValue(character.contents);
     } catch (_) {}
     return "";
+};
+
+HI.reverseTextValue = function (value) {
+    var text = String(value || "");
+    if (text === "FORCED_LINE_BREAK" || text === "PARAGRAPH_BREAK") return "\n";
+    return text
+        .replace(/DOUBLE_LEFT_QUOTE/g, "\u201c")
+        .replace(/DOUBLE_RIGHT_QUOTE/g, "\u201d")
+        .replace(/SINGLE_LEFT_QUOTE/g, "\u2018")
+        .replace(/SINGLE_RIGHT_QUOTE/g, "\u2019")
+        .replace(/FORCED_LINE_BREAK|PARAGRAPH_BREAK/g, "\n");
 };
 
 HI.reverseCharacterRun = function (character) {

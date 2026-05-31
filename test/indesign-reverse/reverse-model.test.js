@@ -26,6 +26,55 @@ test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel',
   assert.equal(model.pages[0].items[0].structure.parentId, 'agenda-page');
 });
 
+test('reverseSnapshotToSemanticModel preserves parent page decorative items', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'parent.indd', mode: 'structured' },
+    document: { name: 'parent.indd', labels: [] },
+    parentPages: [
+      {
+        name: 'A-正文',
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'parent-rule',
+            type: 'GraphicLine',
+            bounds: { x: 40, y: 420, width: 720, height: 0 },
+            layerName: '母版装饰',
+            vectorGeometry: {
+              kind: 'line',
+              x1: 40,
+              y1: 420,
+              x2: 760,
+              y2: 420,
+            },
+            visualStyle: {
+              strokeColor: '#c8102e',
+              strokeWeight: 2,
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        appliedParentPageName: 'A-正文',
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.equal(model.parentPages[0].bounds.width, 800);
+  assert.equal(model.parentPages[0].items.length, 1);
+  assert.equal(model.parentPages[0].items[0].role, 'line');
+  assert.equal(model.pages[0].parentPageName, 'A-正文');
+});
+
 test('reverseSnapshotToSemanticModel preserves observed visual style and placed asset per item', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'visual.indd', mode: 'structured' },
@@ -89,6 +138,62 @@ test('reverseSnapshotToSemanticModel preserves observed visual style and placed 
   assert.equal(hero.role, 'graphic');
   assert.equal(hero.asset.path, 'D:\\assets\\hero.png');
   assert.equal(hero.asset.cropped, true);
+});
+
+test('reverseSnapshotToSemanticModel preserves placed asset preview page and layer visibility facts', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'placed.indd', mode: 'structured' },
+    document: { name: 'placed.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'linked-pdf',
+            type: 'Rectangle',
+            bounds: { x: 80, y: 40, width: 500, height: 300 },
+            placedAsset: {
+              name: 'drawing.pdf',
+              path: '\\\\daga-nas5\\share\\drawing.pdf',
+              status: 'NORMAL',
+              graphicType: 'PDF',
+              imageTypeName: 'Adobe PDF',
+              cropped: false,
+              placement: {
+                pageNumber: 3,
+                crop: 'trim',
+                transparentBackground: true,
+                visibleLayers: ['结构', '标注'],
+                hiddenLayers: ['家具'],
+                layers: [
+                  { name: '结构', currentVisibility: true, originalVisibility: true, locked: false },
+                  { name: '家具', currentVisibility: false, originalVisibility: true, locked: false },
+                ],
+              },
+              preview: {
+                path: 'D:\\tmp\\reverse-previews\\linked-pdf.png',
+                relativePath: 'previews/linked-pdf.png',
+                source: 'indesign-frame-export',
+                format: 'png',
+              },
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.role, 'graphic');
+  assert.equal(item.asset.preview.relativePath, 'previews/linked-pdf.png');
+  assert.equal(item.asset.placement.pageNumber, 3);
+  assert.equal(item.asset.placement.crop, 'trim');
+  assert.deepEqual(item.asset.placement.visibleLayers, ['结构', '标注']);
+  assert.deepEqual(item.asset.placement.hiddenLayers, ['家具']);
 });
 
 test('reverseSnapshotToSemanticModel preserves observed item effects', () => {
@@ -178,6 +283,153 @@ test('reverseSnapshotToSemanticModel preserves observed text style per text item
   assert.equal(title.textStyle.fillColor, '#123456');
   assert.equal(title.textStyle.tracking, 20);
   assert.equal(title.textStyle.justification, 'center');
+});
+
+test('reverseSnapshotToSemanticModel infers generic PageItem with text as text instead of graphic', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'generic-page-item.indd', mode: 'structured' },
+    document: { name: 'generic-page-item.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'generic-title',
+            type: 'PageItem',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            paragraphStyleName: '页面标题',
+            textStyle: { pointSize: 32, fillColor: '#123456' },
+            text: '真实标题',
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const title = model.pages[0].items[0];
+  assert.equal(title.role, 'text');
+  assert.equal(title.tagName, 'p');
+  assert.equal(title.content.text, '真实标题');
+});
+
+test('reverseSnapshotToSemanticModel decodes InDesign special character tokens in observed text', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'special-text.indd', mode: 'structured' },
+    document: { name: 'special-text.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'quote-note',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: '整体观感DOUBLE_LEFT_QUOTE偏冰冷DOUBLE_RIGHT_QUOTE',
+            textRuns: [
+              { text: '整体观感DOUBLE_LEFT_QUOTE偏冰冷DOUBLE_RIGHT_QUOTE', characterStyle: null },
+            ],
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  const note = model.pages[0].items[0];
+  assert.equal(note.content.text, '整体观感“偏冰冷”');
+  assert.deepEqual(note.content.runs.map((run) => run.text), ['整体观感“偏冰冷”']);
+});
+
+test('reverseSnapshotToSemanticModel omits observed items from hidden InDesign layers', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'hidden-layers.indd', mode: 'structured' },
+    document: { name: 'hidden-layers.indd', labels: [] },
+    layers: [
+      { name: 'Comments', visible: false, printable: true },
+      { name: 'text', visible: true, printable: true },
+    ],
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'hidden-comment',
+            type: 'TextFrame',
+            layerName: 'Comments',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'UPDATE RENDER',
+            labels: [],
+          },
+          {
+            id: 'visible-title',
+            type: 'TextFrame',
+            layerName: 'text',
+            bounds: { x: 40, y: 140, width: 360, height: 72 },
+            text: '真实标题',
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  assert.deepEqual(model.layers.map((layer) => [layer.name, layer.visible]), [['Comments', false], ['text', true]]);
+  assert.deepEqual(model.pages[0].items.map((item) => item.id), ['visible-title']);
+});
+
+test('reverseSnapshotToSemanticModel preserves vector path geometry and line role', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'vectors.indd' },
+    document: { name: 'vectors.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        bounds: { x: 0, y: 0, width: 400, height: 240 },
+        labels: [],
+        items: [
+          {
+            id: 'line-1',
+            type: 'GraphicLine',
+            bounds: { x: 10, y: 20, width: 180, height: 0 },
+            visualStyle: { strokeColor: '#c8102e', strokeWeight: 2, strokeOpacity: 65 },
+            vectorGeometry: {
+              kind: 'line',
+              paths: [
+                {
+                  closed: false,
+                  points: [
+                    { anchor: { x: 10, y: 20 }, leftDirection: { x: 10, y: 20 }, rightDirection: { x: 10, y: 20 } },
+                    { anchor: { x: 190, y: 20 }, leftDirection: { x: 190, y: 20 }, rightDirection: { x: 190, y: 20 } },
+                  ],
+                },
+              ],
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+    styles: {},
+    layers: [],
+    assets: [],
+  }, { mode: 'observation' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.role, 'line');
+  assert.equal(item.vectorGeometry.kind, 'line');
+  assert.equal(item.vectorGeometry.paths[0].points[1].anchor.x, 190);
+  assert.equal(item.visualStyle.strokeOpacity, 65);
 });
 
 test('reverseSnapshotToSemanticModel observes labels outside the active whitelist without losing visual facts', () => {
@@ -527,9 +779,10 @@ test('reverseSnapshotToSemanticModel preserves reverse style resources composite
   assert.equal(model.styles.compositeFonts['建筑复合字体'].romanWeight, '400');
   assert.equal(model.styles.paragraphStyles['正文列表'].css, 'font-size:12pt; color:#123456');
   assert.equal(model.styles.paragraphStyles['正文列表'].safeName, 'body-list');
-  assert.equal(model.styles.paragraphStyles['正文列表'].legacy.list.isCircle, true);
-  assert.equal(model.styles.paragraphStyles['正文列表'].legacy.dropCap.lines, 2);
-  assert.equal(model.styles.paragraphStyles['正文列表'].legacy.grepStyles[0].charStyleCSS, 'font-weight:bold');
+  assert.equal(model.styles.paragraphStyles['正文列表'].indesignFeatures.list.isCircle, true);
+  assert.equal(model.styles.paragraphStyles['正文列表'].indesignFeatures.dropCap.lines, 2);
+  assert.equal(model.styles.paragraphStyles['正文列表'].indesignFeatures.grepStyles[0].charStyleCSS, 'font-weight:bold');
+  assert.equal(model.styles.paragraphStyles['正文列表'].indesignFeatures.list.type, 'numbered');
   assert.equal(model.styles.characterStyles['强调'].css, 'color:#c8102e; font-weight:bold');
   assert.equal(model.styles.objectStyles['图片框'].css, 'border:1pt solid #aeb8b8');
 

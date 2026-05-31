@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  legacyBlueprintToSemanticModel,
+  blueprintMigrationToSemanticModel,
   semanticModelToHtml,
 } = require('../../src/indesign-reverse');
 
@@ -67,8 +67,8 @@ function sampleBlueprint() {
   };
 }
 
-test('legacyBlueprintToSemanticModel imports legacy blueprint as inferred reverse model', () => {
-  const model = legacyBlueprintToSemanticModel(sampleBlueprint(), { mode: 'inferred' });
+test('blueprintMigrationToSemanticModel imports historical blueprint as inferred reverse model', () => {
+  const model = blueprintMigrationToSemanticModel(sampleBlueprint(), { mode: 'inferred' });
 
   assert.equal(model.kind, 'DocumentModel');
   assert.equal(model.id, '旧模板');
@@ -76,18 +76,19 @@ test('legacyBlueprintToSemanticModel imports legacy blueprint as inferred revers
   assert.equal(model.coordinateUnit, 'mm');
   assert.equal(model.pages.length, 1);
   assert.equal(model.pages[0].id, 'A-封面');
-  assert.equal(model.pages[0].layout, 'legacy-template');
+  assert.equal(model.pages[0].layout, 'blueprint-migration');
   assert.equal(model.pages[0].items.length, 3);
   assert.equal(model.styles.paragraphStyles['页面标题'].css.includes('font-size:24pt'), true);
 
   const title = model.pages[0].items.find((item) => item.id === 'slot-title');
   assert.equal(title.role, 'text');
   assert.equal(title.semantic, '项目中文名');
-  assert.equal(title.htmlClass.includes('legacy-slot'), true);
-  assert.equal(title.legacy.isSlot, true);
-  assert.equal(title.legacy.slotName, '项目中文名');
-  assert.equal(title.legacy.slotType, 'TEXT');
-  assert.equal(title.legacy.confidence, 0.85);
+  assert.equal(title.htmlClass.includes('migration-slot'), true);
+  assert.equal(title.migration.isSlot, true);
+  assert.equal(title.migration.slotName, '项目中文名');
+  assert.equal(title.migration.slotType, 'TEXT');
+  assert.equal(title.migration.confidence, 0.85);
+  assert.equal(title.migration.source, 'blueprint-migration');
   assert.match(title.inlineStyle, /font-size:24pt/);
   assert.match(title.inlineStyle, /border:2pt solid #c8102e/);
 
@@ -97,13 +98,13 @@ test('legacyBlueprintToSemanticModel imports legacy blueprint as inferred revers
   assert.equal(image.asset.cropped, true);
 });
 
-test('semanticModelToHtml writes inferred legacy metadata, slot names, assets and visual CSS', () => {
-  const model = legacyBlueprintToSemanticModel(sampleBlueprint(), { mode: 'inferred' });
+test('semanticModelToHtml writes inferred migration metadata, slot names, assets and visual CSS', () => {
+  const model = blueprintMigrationToSemanticModel(sampleBlueprint(), { mode: 'inferred' });
   const html = semanticModelToHtml(model);
 
   assert.match(html, /data-id-reverse-mode="inferred"/);
-  assert.match(html, /data-id-source="legacy-blueprint"/);
-  assert.match(html, /data-id-legacy-slot="true"/);
+  assert.match(html, /data-id-source="blueprint-migration"/);
+  assert.match(html, /data-id-migration-slot="true"/);
   assert.match(html, /data-id-slot-name="项目中文名"/);
   assert.match(html, /data-id-confidence="0\.85"/);
   assert.match(html, /data-id-asset-path="D:\\assets\\cover\.pdf"/);

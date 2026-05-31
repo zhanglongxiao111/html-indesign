@@ -1,3 +1,5 @@
+const { isDegenerateInvisibleVector } = require('./vector-svg');
+
 function writeAuthorCssFiles(model) {
   return {
     'styles/tokens.css': tokensCss(model),
@@ -24,9 +26,12 @@ function layoutCss(model) {
     '* { box-sizing: border-box; }',
     'body { margin: 0; background: #f3f5f6; color: var(--id-text); font-family: Arial, "Microsoft YaHei", sans-serif; }',
     '.deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
-    `.page { width: ${px(first.width || 0)}; height: ${px(first.height || 0)}; background: var(--id-page-bg); overflow: hidden; position: relative; display: grid; grid-template-columns: repeat(var(--id-grid-columns, 12), minmax(0, 1fr)); grid-template-rows: repeat(var(--id-grid-rows, 8), minmax(0, 1fr)); column-gap: var(--id-column-gutter, 0px); row-gap: var(--id-row-gutter, 0px); padding: var(--id-margin-top, 0px) var(--id-margin-right, 0px) var(--id-margin-bottom, 0px) var(--id-margin-left, 0px); }`,
+    `.page { width: ${px(first.width || 0)}; height: ${px(first.height || 0)}; background: var(--id-page-bg); overflow: hidden; position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--id-grid-columns, 12), minmax(0, 1fr)); grid-template-rows: repeat(var(--id-grid-rows, 8), minmax(0, 1fr)); column-gap: var(--id-column-gutter, 0px); row-gap: var(--id-row-gutter, 0px); padding: var(--id-margin-top, 0px) var(--id-margin-right, 0px) var(--id-margin-bottom, 0px) var(--id-margin-left, 0px); }`,
+    '.page :where(p, h1, h2, h3, h4, h5, h6, figure, figcaption, ul, ol) { margin: 0; }',
     '.grid-item { grid-column: var(--grid-col) / span var(--grid-span, 1); grid-row: var(--grid-row) / span var(--grid-row-span, 1); min-width: 0; min-height: 0; }',
     '.id-object { margin: 0; overflow: hidden; }',
+    '.observed-text.id-object { overflow: visible; }',
+    '.id-parent-page-object { pointer-events: none; }',
     '',
   ].join('\n');
 }
@@ -59,7 +64,17 @@ function reverseOverridesCss(model) {
       if (shouldOmitAuthorOverride(item, itemIds)) continue;
       if (item.layout && item.layout.grid) continue;
       if (!item.bounds) continue;
-      lines.push(`#${cssId(item.id)} { position:absolute; left:${px(item.bounds.x)}; top:${px(item.bounds.y)}; width:${px(item.bounds.width)}; height:${px(item.bounds.height)}; }`);
+      const declarations = [
+        'position:absolute',
+        `left:${px(item.bounds.x)}`,
+        `top:${px(item.bounds.y)}`,
+        `width:${px(item.bounds.width)}`,
+        `height:${px(item.bounds.height)}`,
+      ];
+      const minHeight = textMinHeight(item);
+      if (minHeight != null && minHeight > Number(item.bounds.height || 0)) declarations.push(`min-height:${px(minHeight)}`);
+      for (const minDeclaration of vectorMinSizeDeclarations(item)) declarations.push(minDeclaration);
+      lines.push(`[id="${cssString(item.id)}"] { ${declarations.join('; ')}; }`);
     }
   }
   lines.push('');
@@ -68,6 +83,7 @@ function reverseOverridesCss(model) {
 
 function shouldOmitAuthorOverride(item, itemIds) {
   if (!item) return true;
+  if (isDegenerateInvisibleVector(item)) return true;
   if (item.sourceNode) return true;
   if (isGeneratedLabel(item)) return true;
   const id = String(item.id || '');
@@ -81,6 +97,33 @@ function isGeneratedLabel(item) {
   return (item.labels || []).some((label) => label && (label.generated === true || label.kind === 'generated'));
 }
 
+function textMinHeight(item) {
+  if (!item || item.role !== 'text') return null;
+  const textStyle = item.textStyle || {};
+  const leading = Number(textStyle.leading);
+  const pointSize = Number(textStyle.pointSize);
+  const lineHeight = Number.isFinite(leading) && leading > 0
+    ? leading
+    : Number.isFinite(pointSize) && pointSize > 0
+      ? pointSize * 1.2
+      : null;
+  if (!lineHeight) return null;
+  const text = item.content && typeof item.content.text === 'string' ? item.content.text : '';
+  const lines = Math.max(1, String(text).split(/\r\n|\r|\n/).length);
+  return lineHeight * lines;
+}
+
+function vectorMinSizeDeclarations(item) {
+  if (!item || !item.bounds || !item.visualStyle) return [];
+  if (!item.vectorGeometry && item.role !== 'line') return [];
+  const stroke = Number(item.visualStyle.strokeWeight);
+  if (!Number.isFinite(stroke) || stroke <= 0) return [];
+  const declarations = [];
+  if (Number(item.bounds.width || 0) <= 0) declarations.push(`min-width:${px(stroke)}`);
+  if (Number(item.bounds.height || 0) <= 0) declarations.push(`min-height:${px(stroke)}`);
+  return declarations;
+}
+
 function styleCollectionCss(collection, prefix) {
   return Object.values(collection || {}).filter((style) => style && style.css).map((style) => {
     return `.${prefix}-${safeClass(style.safeName || style.token || style.name)} { ${String(style.css).replace(/pt\b/g, 'px')} }`;
@@ -92,7 +135,7 @@ function px(value) {
   return `${Number.isFinite(number) ? Math.round(number * 1000) / 1000 : 0}px`;
 }
 
-function cssId(value) {
+function cssString(value) {
   return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 

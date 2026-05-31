@@ -5,7 +5,9 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
   const styleMaps = reverseStyleNameMaps(snapshot.styles || {});
   const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options);
-  const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, { semanticPreset }));
+  const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
+  const context = { semanticPreset, layerVisibility };
+  const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, context));
   return {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
@@ -16,7 +18,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     coordinateUnit: documentLabel.coordinateUnit || 'pt',
     labels: (snapshot.document && snapshot.document.labels) || [],
     sourcePackage: documentLabel.sourcePackage || null,
-    parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps, { semanticPreset })),
+    parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps, context)),
     pages,
     layers: (snapshot.layers || []).map(reverseLayer),
     styles: reverseStyles(snapshot.styles || {}),
@@ -53,7 +55,7 @@ function reversePage(page, styleMaps, context = {}) {
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
     labels: page.labels || [],
-    items: (page.items || []).map((item) => reverseItem(item, styleMaps, context)),
+    items: (page.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, context)),
   };
 }
 
@@ -64,9 +66,11 @@ function reverseItem(item, styleMaps = {}, context = {}) {
   const observed = observedLabelWithReasons(validation);
   const role = label.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
+  const vectorGeometry = reverseVectorGeometry(item.vectorGeometry);
   return {
     id: label.id || item.id,
     role,
+    sourceType: item.type || null,
     semantic: effective.semantic || 'unknown',
     tagName: effective.htmlTag || htmlTagForRole(role),
     htmlClass: effective.className || null,
@@ -80,6 +84,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     },
     content: contentForReverseItem(role, item, effective, styleMaps),
     table,
+    vectorGeometry,
     visualStyle: item.visualStyle || null,
     effects: item.effects || null,
     textStyle: item.textStyle || null,
@@ -109,8 +114,9 @@ function reverseParentPage(parentPage, styleMaps, context = {}) {
     name: label.name || label.displayName || parentPage.name,
     semantic: label.semantic || label.id || parentPage.name,
     provides: label.provides || [],
+    bounds: parentPage.bounds || null,
     labels: parentPage.labels || [],
-    items: (parentPage.items || []).map((item) => reverseItem(item, styleMaps, context)),
+    items: (parentPage.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, context)),
   };
 }
 
@@ -120,8 +126,27 @@ function reverseLayer(layer) {
     token: label.token || layer.name,
     displayName: label.displayName || layer.name,
     name: layer.name,
+    visible: typeof layer.visible === 'boolean' ? layer.visible : undefined,
+    printable: typeof layer.printable === 'boolean' ? layer.printable : undefined,
+    locked: typeof layer.locked === 'boolean' ? layer.locked : undefined,
     labels: layer.labels || [],
   };
+}
+
+function reverseLayerVisibility(layers = []) {
+  const hidden = new Set();
+  for (const layer of layers || []) {
+    if (!layer || !layer.name) continue;
+    if (layer.visible === false || layer.printable === false) hidden.add(String(layer.name));
+  }
+  return { hidden };
+}
+
+function shouldKeepReverseItem(item = {}, context = {}) {
+  if (item.visible === false || item.printable === false || item.nonprinting === true) return false;
+  const layerName = item.layerName || '';
+  if (layerName && context.layerVisibility && context.layerVisibility.hidden.has(String(layerName))) return false;
+  return true;
 }
 
 function reverseStyles(styles) {
@@ -173,7 +198,7 @@ function mapStyleName(styleMaps, kind, value) {
 }
 
 function contentForReverseItem(role, item, label, styleMaps) {
-  const rawText = role === 'table' && item.table ? '' : String(item.text || '');
+  const rawText = role === 'table' && item.table ? '' : normalizeReverseText(item.text || '');
   const sourceText = typeof label.sourceText === 'string' ? label.sourceText : null;
   if (sourceText != null && sourceTextMatchesCurrentText(sourceText, rawText)) {
     return {
@@ -217,6 +242,7 @@ function sourceRunsFromLabel(label, styleMaps) {
 function reverseTextRuns(runs, styleMaps) {
   return (runs || []).map((run) => ({
     ...run,
+    text: normalizeReverseText(run.text || ''),
     characterStyle: mapStyleName(styleMaps, 'characterStyles', run.characterStyle),
   }));
 }
@@ -230,12 +256,22 @@ function reverseTable(table, styleMaps) {
       ...row,
       cells: (row.cells || []).map((cell) => ({
         ...cell,
+        text: normalizeReverseText(cell.text || ''),
         paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', cell.paragraphStyle),
         cellStyle: mapStyleName(styleMaps, 'cellStyles', cell.cellStyle),
         runs: reverseTextRuns(cell.runs || [], styleMaps),
       })),
     })),
   };
+}
+
+function normalizeReverseText(value) {
+  return String(value || '')
+    .replace(/DOUBLE_LEFT_QUOTE/g, '“')
+    .replace(/DOUBLE_RIGHT_QUOTE/g, '”')
+    .replace(/SINGLE_LEFT_QUOTE/g, '‘')
+    .replace(/SINGLE_RIGHT_QUOTE/g, '’')
+    .replace(/FORCED_LINE_BREAK|PARAGRAPH_BREAK/g, '\n');
 }
 
 function reverseStyleCollection(items) {
@@ -250,19 +286,19 @@ function reverseStyleCollection(items) {
       safeName: item.safeName || label.safeName || null,
       css: item.css || '',
       source: item.source || null,
-      legacy: reverseStyleLegacy(item),
+      indesignFeatures: reverseStyleIndesignFeatures(item),
       labels: item.labels || [],
     };
   }
   return out;
 }
 
-function reverseStyleLegacy(item) {
-  const legacy = {};
+function reverseStyleIndesignFeatures(item) {
+  const features = {};
   for (const key of ['compositeFont', 'dropCap', 'list', 'grepStyles', 'nestedStyles']) {
-    if (item[key] != null) legacy[key] = item[key];
+    if (item[key] != null) features[key] = item[key];
   }
-  return Object.keys(legacy).length ? legacy : null;
+  return Object.keys(features).length ? features : null;
 }
 
 function reverseCompositeFonts(items) {
@@ -314,12 +350,51 @@ function firstLabel(labels, kind) {
 function roleFromInDesignType(type, item = {}) {
   if (item.table) return 'table';
   if (item.placedAsset) return 'graphic';
+  if (hasTextFacts(item)) return 'text';
+  if (item.vectorGeometry && String(item.vectorGeometry.kind || '').toLowerCase() === 'line') return 'line';
   const raw = String(type || '').toLowerCase();
   if (raw.includes('text')) return 'text';
   if (raw.includes('table')) return 'table';
   if (raw.includes('line')) return 'line';
   if (raw.includes('rectangle') || raw.includes('oval') || raw.includes('polygon')) return 'shape';
-  return 'graphic';
+  return 'shape';
+}
+
+function reverseVectorGeometry(vectorGeometry) {
+  if (!vectorGeometry || !Array.isArray(vectorGeometry.paths)) return null;
+  return {
+    kind: vectorGeometry.kind || 'path',
+    paths: vectorGeometry.paths.map((path) => ({
+      closed: Boolean(path && path.closed),
+      points: (path && Array.isArray(path.points) ? path.points : []).map(reverseVectorPoint),
+    })).filter((path) => path.points.length),
+  };
+}
+
+function reverseVectorPoint(point = {}) {
+  return {
+    anchor: reverseVectorCoordinate(point.anchor),
+    leftDirection: reverseVectorCoordinate(point.leftDirection || point.anchor),
+    rightDirection: reverseVectorCoordinate(point.rightDirection || point.anchor),
+    pointType: point.pointType || null,
+  };
+}
+
+function reverseVectorCoordinate(value = {}) {
+  return {
+    x: numberOrNull(value.x) || 0,
+    y: numberOrNull(value.y) || 0,
+  };
+}
+
+function hasTextFacts(item = {}) {
+  if (typeof item.text === 'string' && item.text.length > 0) return true;
+  if (Array.isArray(item.textRuns) && item.textRuns.length > 0) return true;
+  if (item.textStyle && Object.keys(item.textStyle).length > 0) return true;
+  if (item.textFrameStyle && Object.keys(item.textFrameStyle).length > 0) return true;
+  if (item.paragraphStyleName) return true;
+  if (item.firstLineFont) return true;
+  return false;
 }
 
 function htmlTagForRole(role) {

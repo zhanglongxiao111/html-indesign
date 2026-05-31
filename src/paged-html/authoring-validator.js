@@ -129,7 +129,7 @@ function resolvePageMargins(page) {
 function resolvePageGrid(page, margins) {
   const attrs = attributesFor(page);
   const style = page && page.computedStyle || {};
-  const semantic = attributeValue(attrs, 'data-id-grid') || attributeValue(attrs, 'data-id-guides');
+  const semantic = attributeValue(attrs, 'data-id-grid');
   const snap = snapGridSpec(page, margins, attrs);
   if (snap.present && !snap.valid) {
     return {
@@ -149,9 +149,6 @@ function resolvePageGrid(page, margins) {
     }
     const columnGap = lengthToMm(
       attributeValue(attrs, 'data-id-column-gutter')
-        || attributeValue(attrs, 'data-id-column-gap')
-        || attributeValue(attrs, 'data-id-gutter')
-        || attributeValue(attrs, 'data-id-gap')
         || style.columnGap
         || style.gap,
       page,
@@ -159,16 +156,13 @@ function resolvePageGrid(page, margins) {
     );
     const rowGap = lengthToMm(
       attributeValue(attrs, 'data-id-row-gutter')
-        || attributeValue(attrs, 'data-id-row-gap')
-        || attributeValue(attrs, 'data-id-gutter')
-        || attributeValue(attrs, 'data-id-gap')
         || style.rowGap
         || style.gap,
       page,
       'y'
     );
     const baseline = lengthToMm(
-      attributeValue(attrs, 'data-id-baseline') || attributeValue(attrs, 'data-id-baseline-grid'),
+      attributeValue(attrs, 'data-id-baseline'),
       page,
       'y'
     );
@@ -458,7 +452,7 @@ function hasStableSemanticToken(item) {
     'data-id-placement',
     'data-id-fit',
     'data-id-pdf-page',
-    'data-id-ai-artboard',
+    'data-id-artboard',
   ].some((name) => {
     const value = attributeValue(attrs, name);
     return value != null && String(value).trim() !== '';

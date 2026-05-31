@@ -686,7 +686,7 @@ function styleDisplayAttributes(kind) {
     frameStyles: ['data-id-frame-style-name', 'data-id-style-name'],
     tableStyles: ['data-id-table-style-name', 'data-id-style-name'],
   };
-  return byKind[kind] || ['data-id-style-name'];
+  return byKind[kind] || [];
 }
 
 function styleTokenAttributes(kind) {
@@ -697,7 +697,7 @@ function styleTokenAttributes(kind) {
     frameStyles: ['data-id-frame-style'],
     tableStyles: ['data-id-table-style'],
   };
-  return byKind[kind] || ['data-id-style'];
+  return byKind[kind] || [];
 }
 
 function styleLengthToPt(style, prop, options) {

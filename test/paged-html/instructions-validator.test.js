@@ -151,6 +151,34 @@ test('validateInstructions rejects graphic instructions without a placed asset r
   assert.equal(result.errors.some((error) => error.code === 'GRAPHIC_ASSET_MISSING'), true);
 });
 
+test('validateInstructions rejects PDF placed assets without an explicit PDF page number', () => {
+  const result = validateInstructions({
+    metadata: {},
+    document: { pages: [{ id: 'page-1', width: 100, height: 100 }] },
+    styles: {
+      paragraphStyles: {},
+      characterStyles: {},
+      objectStyles: {},
+      frameStyles: {},
+      tableStyles: {},
+    },
+    assets: [{ id: 'asset-plan', src: './plan.pdf', kind: 'pdf' }],
+    layers: [],
+    pages: [{
+      id: 'page-1',
+      items: [{
+        id: 'plan-frame',
+        type: 'GRAPHIC',
+        bounds: { x: 0, y: 0, width: 40, height: 30 },
+        placed: { assetId: 'asset-plan', fit: 'contain' },
+      }],
+    }],
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((error) => error.code === 'PDF_PAGE_NUMBER_MISSING'), true);
+});
+
 test('validateInstructions rejects mixed page sizes until executor supports per-page geometry', () => {
   const result = validateInstructions({
     metadata: {},

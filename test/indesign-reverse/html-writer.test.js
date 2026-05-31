@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('path');
 const { readReverseSnapshot, reverseSnapshotToSemanticModel, semanticModelToHtml } = require('../../src/indesign-reverse');
 
@@ -83,6 +85,331 @@ test('semanticModelToHtml renders observed shapes and placed image assets', () =
   assert.match(html, /<figure[^>]+id="hero-image"[^>]+data-id-asset-path="D:\\assets\\hero\.png"/);
   assert.match(html, /<img src="file:\/\/\/D:\/assets\/hero\.png"/);
   assert.match(html, /data-id-image-cropped="true"/);
+});
+
+test('semanticModelToHtml renders placed image content geometry inside the visible frame', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'visual-crop-reverse',
+    title: 'visual-crop-reverse',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'crop-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'cropped-image',
+            role: 'graphic',
+            semantic: 'unknown',
+            tagName: 'figure',
+            bounds: { x: 100, y: 80, width: 240, height: 160 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'hero.png',
+              path: 'D:\\assets\\hero.png',
+              cropped: true,
+              placement: {
+                fit: 'manual',
+                contentOffset: { x: -30, y: -20 },
+                contentSize: { width: 320, height: 210 },
+                contentScale: { x: 1.3333, y: 1.3125 },
+              },
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<figure[^>]+id="cropped-image"[^>]+data-id-fit="manual"/);
+  assert.match(html, /data-id-content-x="-30px"/);
+  assert.match(html, /data-id-content-y="-20px"/);
+  assert.match(html, /data-id-content-width="320px"/);
+  assert.match(html, /data-id-content-height="210px"/);
+  assert.match(html, /<img src="file:\/\/\/D:\/assets\/hero\.png"[^>]+class="placed-asset-content"/);
+  assert.match(html, /style="[^"]*position:absolute[^"]*left:-30px[^"]*top:-20px[^"]*width:320px[^"]*height:210px/);
+});
+
+test('semanticModelToHtml keeps generated placed-asset previews from being stretched by source content geometry', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'visual-preview-crop-reverse',
+    title: 'visual-preview-crop-reverse',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'preview-crop-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'cropped-pdf',
+            role: 'graphic',
+            semantic: 'unknown',
+            tagName: 'figure',
+            bounds: { x: 100, y: 80, width: 240, height: 160 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'drawing.pdf',
+              path: 'D:\\assets\\drawing.pdf',
+              preview: {
+                path: 'D:\\reverse\\previews\\cropped-pdf.png',
+                relativePath: 'previews/cropped-pdf.png',
+                source: 'indesign-frame-export',
+                format: 'png',
+              },
+              placement: {
+                fit: 'manual',
+                contentOffset: { x: -30, y: -20 },
+                contentSize: { width: 420, height: 210 },
+                contentScale: { x: 1.75, y: 1.3125 },
+              },
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<figure[^>]+id="cropped-pdf"[^>]+data-id-content-width="420px"[^>]+data-id-content-height="210px"/);
+  assert.match(html, /<img src="file:\/\/\/D:\/reverse\/previews\/cropped-pdf\.png"[^>]+class="placed-asset-preview"/);
+  assert.match(html, /style="[^"]*position:absolute[^"]*left:0px[^"]*top:0px[^"]*width:100%[^"]*height:100%/);
+  assert.doesNotMatch(html, /class="placed-asset-preview"[^>]+width:420px/);
+});
+
+test('semanticModelToHtml treats JFIF links as raster images', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'visual-jfif-reverse',
+    title: 'visual-jfif-reverse',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'jfif-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'jfif-image',
+            role: 'graphic',
+            semantic: 'unknown',
+            tagName: 'figure',
+            bounds: { x: 0, y: 0, width: 240, height: 160 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'material.jfif',
+              path: 'D:\\assets\\material.jfif',
+              graphicType: 'Image',
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<figure[^>]+id="jfif-image"/);
+  assert.match(html, /<img src="file:\/\/\/D:\/assets\/material\.jfif"/);
+  assert.doesNotMatch(html, /<span class="id-asset-placeholder">/);
+});
+
+test('semanticModelToHtml renders observed vector paths as SVG instead of rectangular fallbacks', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'visual-vector-reverse',
+    title: 'visual-vector-reverse',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'vector-page',
+        width: 400,
+        height: 240,
+        items: [
+          {
+            id: 'axis-line',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 10, y: 20, width: 180, height: 0 },
+            visualStyle: {
+              fillColor: null,
+              strokeColor: '#c8102e',
+              strokeWeight: 2,
+              strokeOpacity: 65,
+              strokeStyle: '虚线（3 和 2）',
+            },
+            vectorGeometry: {
+              kind: 'line',
+              paths: [
+                {
+                  closed: false,
+                  points: [
+                    { anchor: { x: 10, y: 20 }, leftDirection: { x: 10, y: 20 }, rightDirection: { x: 10, y: 20 } },
+                    { anchor: { x: 190, y: 20 }, leftDirection: { x: 190, y: 20 }, rightDirection: { x: 190, y: 20 } },
+                  ],
+                },
+              ],
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<svg[^>]+id="axis-line"[^>]+data-id-vector="line"/);
+  assert.match(html, /viewBox="0 0 180 2"/);
+  assert.match(html, /style="[^"]*height:0px[^"]*min-height:2px/);
+  assert.match(html, /<path[^>]+d="M0 1 L180 1"/);
+  assert.match(html, /stroke="#c8102e"/);
+  assert.match(html, /stroke-width="2"/);
+  assert.match(html, /stroke-opacity="0.65"/);
+  assert.match(html, /stroke-dasharray=/);
+  assert.doesNotMatch(html, /id="axis-line"[^>]+border:2px solid #c8102e/);
+});
+
+test('semanticModelToHtml renders vector arrow markers and extended stroke fields', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'vector-marker-reverse',
+    title: 'vector-marker-reverse',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'vector-page',
+        width: 400,
+        height: 240,
+        items: [
+          {
+            id: 'route-arrow',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 40, y: 60, width: 180, height: 80 },
+            visualStyle: {
+              fillColor: null,
+              strokeColor: '#c8102e',
+              strokeWeight: 4,
+              strokeOpacity: 75,
+              strokeLineCap: 'round',
+              strokeLineJoin: 'bevel',
+              strokeMiterLimit: 6,
+              lineStartMarker: { type: 'circle', rawName: 'Circle' },
+              lineEndMarker: { type: 'arrow', rawName: 'Simple Arrow' },
+            },
+            vectorGeometry: {
+              kind: 'path',
+              paths: [
+                {
+                  closed: false,
+                  points: [
+                    { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 } },
+                    { anchor: { x: 220, y: 140 }, leftDirection: { x: 220, y: 140 }, rightDirection: { x: 220, y: 140 } },
+                  ],
+                },
+              ],
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
+          {
+            id: 'zone-fill',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 240, y: 60, width: 80, height: 60 },
+            visualStyle: {
+              fillColor: '#ff9339',
+              fillOpacity: 42,
+              strokeColor: null,
+              strokeWeight: null,
+            },
+            vectorGeometry: {
+              kind: 'path',
+              paths: [
+                {
+                  closed: true,
+                  points: [
+                    { anchor: { x: 240, y: 60 }, leftDirection: { x: 240, y: 60 }, rightDirection: { x: 240, y: 60 } },
+                    { anchor: { x: 320, y: 60 }, leftDirection: { x: 320, y: 60 }, rightDirection: { x: 320, y: 60 } },
+                    { anchor: { x: 320, y: 120 }, leftDirection: { x: 320, y: 120 }, rightDirection: { x: 320, y: 120 } },
+                    { anchor: { x: 240, y: 120 }, leftDirection: { x: 240, y: 120 }, rightDirection: { x: 240, y: 120 } },
+                  ],
+                },
+              ],
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /<defs>[\s\S]*id="route-arrow-marker-start"[\s\S]*id="route-arrow-marker-end"[\s\S]*<\/defs>/);
+  assert.match(html, /<circle[^>]+fill="#c8102e"/);
+  assert.match(html, /<path[^>]+fill="#c8102e"[^>]+d="M0 0 L10 5 L0 10 Z"/);
+  assert.match(html, /<path[^>]+marker-start="url\(#route-arrow-marker-start\)"[^>]+marker-end="url\(#route-arrow-marker-end\)"/);
+  assert.match(html, /stroke-linecap="round"/);
+  assert.match(html, /stroke-linejoin="bevel"/);
+  assert.match(html, /stroke-miterlimit="6"/);
+  assert.match(html, /stroke-opacity="0.75"/);
+  assert.match(html, /id="zone-fill"[\s\S]*fill="#ff9339"[^>]+fill-opacity="0.42"/);
+});
+
+test('semanticModelToHtml maps reverse blend modes without faking opacity', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'blend-mode-reverse',
+    title: 'blend-mode-reverse',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'blend-page',
+        width: 400,
+        height: 240,
+        items: [
+          {
+            id: 'multiply-fill',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 40, y: 60, width: 180, height: 80 },
+            visualStyle: {
+              fillColor: '#ff9339',
+              opacity: 100,
+              blendMode: 'multiply',
+            },
+            vectorGeometry: {
+              kind: 'polygon',
+              paths: [
+                {
+                  closed: true,
+                  points: [
+                    { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 } },
+                    { anchor: { x: 220, y: 60 }, leftDirection: { x: 220, y: 60 }, rightDirection: { x: 220, y: 60 } },
+                    { anchor: { x: 220, y: 140 }, leftDirection: { x: 220, y: 140 }, rightDirection: { x: 220, y: 140 } },
+                  ],
+                },
+              ],
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /\.page \{[^}]*isolation: isolate/);
+  assert.match(html, /<svg[^>]+id="multiply-fill"[^>]+style="[^"]*mix-blend-mode:multiply/);
+  assert.match(html, /<path[^>]+fill="#ff9339"/);
+  assert.doesNotMatch(html, /opacity:0\./);
 });
 
 test('semanticModelToHtml renders source img graphic items through a frame container', () => {
@@ -203,6 +530,7 @@ test('semanticModelToHtml renders placed PDFs through image previews when availa
               path: pdfPath,
               cropped: false,
               graphicType: 'PDF',
+              placement: { pageNumber: 1 },
             },
           },
         ],
@@ -214,6 +542,92 @@ test('semanticModelToHtml renders placed PDFs through image previews when availa
   assert.match(html, /<figure[^>]+data-id-asset-path="/);
   assert.match(html, new RegExp(`<img src="${escapeRegExp(expectedUrl)}"`));
   assert.match(html, /data-id-preview-asset-path=/);
+  assert.doesNotMatch(html, /<object[^>]+type="application\/pdf"/);
+});
+
+test('semanticModelToHtml does not invent first-page PDF previews without explicit page facts', () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-indesign-pdf-no-page-'));
+  const pdfPath = path.join(outputDir, 'drawing.pdf');
+  const previewPath = path.join(outputDir, 'drawing-page1.png');
+  fs.writeFileSync(pdfPath, 'dummy pdf placeholder');
+  fs.writeFileSync(previewPath, 'dummy preview placeholder');
+
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'pdf-no-page-preview-reverse',
+    title: 'pdf-no-page-preview-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'pdf-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'placed-pdf-no-page',
+            role: 'graphic',
+            semantic: 'drawing-frame-object',
+            tagName: 'figure',
+            bounds: { x: 80, y: 40, width: 500, height: 300 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'drawing.pdf',
+              path: pdfPath,
+              graphicType: 'PDF',
+            },
+          },
+        ],
+      },
+    ],
+  }, { outputDir });
+
+  assert.doesNotMatch(html, /drawing-page1\.png/);
+  assert.doesNotMatch(html, /data-id-preview-asset-path=/);
+  assert.doesNotMatch(html, /data-id-pdf-page=/);
+});
+
+test('semanticModelToHtml uses placement page number for PDF preview fallback', () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-indesign-pdf-page-'));
+  const pdfPath = path.join(outputDir, 'drawing.pdf');
+  const previewPath = path.join(outputDir, 'drawing-page3.png');
+  fs.writeFileSync(pdfPath, 'dummy pdf placeholder');
+  fs.writeFileSync(previewPath, 'dummy preview placeholder');
+
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'pdf-page-preview-reverse',
+    title: 'pdf-page-preview-reverse',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'pdf-page',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'placed-pdf-page3',
+            role: 'graphic',
+            semantic: 'drawing-frame-object',
+            tagName: 'figure',
+            bounds: { x: 80, y: 40, width: 500, height: 300 },
+            styleRefs: {},
+            content: { text: '' },
+            asset: {
+              name: 'drawing.pdf',
+              path: pdfPath,
+              graphicType: 'PDF',
+              placement: { pageNumber: 3 },
+            },
+          },
+        ],
+      },
+    ],
+  }, { outputDir });
+
+  assert.match(html, /data-id-pdf-page="3"/);
+  assert.match(html, /<img src="drawing-page3\.png"/);
+  assert.doesNotMatch(html, /data-id-page=/);
   assert.doesNotMatch(html, /<object[^>]+type="application\/pdf"/);
 });
 
@@ -473,7 +887,7 @@ test('semanticModelToHtml renders reverse style classes composite text features 
           token: '正文列表',
           safeName: 'body-list',
           css: "font-family:'建筑复合字体',sans-serif; font-size:12pt; color:#123456",
-          legacy: {
+          indesignFeatures: {
             list: { type: 'numbered', isCircle: true, charStyleCSS: 'color:#c8102e' },
           },
         },
@@ -482,7 +896,7 @@ test('semanticModelToHtml renders reverse style classes composite text features 
           token: '首字下沉',
           safeName: 'drop-cap',
           css: 'font-size:14pt',
-          legacy: {
+          indesignFeatures: {
             dropCap: { chars: 1, lines: 2, styleCSS: 'color:#c8102e' },
           },
         },
@@ -491,7 +905,7 @@ test('semanticModelToHtml renders reverse style classes composite text features 
           token: '首行强调',
           safeName: 'first-line',
           css: 'font-size:12pt',
-          legacy: {
+          indesignFeatures: {
             grepStyles: [{ pattern: '^.+?(?=\\n|\\r)', charStyleCSS: 'font-weight:bold; color:#c8102e' }],
           },
         },

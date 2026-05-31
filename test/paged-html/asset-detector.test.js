@@ -26,6 +26,86 @@ test('renderSnapshot detects raster pdf psd and ai placed assets', async () => {
   assert.equal(ai.placement.artboard, '2');
 });
 
+test('detectAssetsFromItems preserves PDF and AI layer visibility metadata', () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const assets = detectAssetsFromItems([{
+    id: 'layered-pdf',
+    tagName: 'img',
+    attributes: {
+      src: './previews/layered-pdf.png',
+      'data-id-asset-path': './assets/layered.pdf',
+      'data-id-asset-kind': 'pdf',
+      'data-id-pdf-page': '7',
+      'data-id-crop': 'trim',
+      'data-id-visible-layers': '结构|标注',
+      'data-id-hidden-layers': '家具',
+      'data-id-preserve-vector': 'true',
+    },
+    computedStyle: {
+      objectFit: 'contain',
+      objectPosition: '50% 50%',
+    },
+    sourceSelector: '#layered-pdf',
+  }], htmlPath);
+
+  assert.equal(assets.length, 1);
+  assert.equal(assets[0].src, './assets/layered.pdf');
+  assert.equal(assets[0].kind, 'pdf');
+  assert.equal(assets[0].placement.pageNumber, 7);
+  assert.equal(assets[0].placement.crop, 'trim');
+  assert.deepEqual(assets[0].placement.visibleLayers, ['结构', '标注']);
+  assert.deepEqual(assets[0].placement.hiddenLayers, ['家具']);
+  assert.equal(assets[0].placement.preserveVector, true);
+});
+
+test('detectAssetsFromItems treats retired data-id-page as an invalid PDF page field', () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const assets = detectAssetsFromItems([{
+    id: 'retired-page-field-pdf',
+    tagName: 'object',
+    attributes: {
+      data: './assets/site-plan.pdf',
+      type: 'application/pdf',
+      'data-id-object': '',
+      'data-id-asset-kind': 'pdf',
+      'data-id-page': '7',
+    },
+    computedStyle: {
+      objectFit: 'contain',
+      objectPosition: '50% 50%',
+    },
+    sourceSelector: '#retired-page-field-pdf',
+  }], htmlPath);
+
+  assert.equal(assets.length, 1);
+  assert.equal(assets[0].placement.pageNumber, undefined);
+});
+
+test('detectAssetsFromItems ignores invalid data-id-pdf-page values', () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const items = ['abc', '0', '-2'].map((page, index) => ({
+    id: `invalid-page-${index}`,
+    tagName: 'object',
+    attributes: {
+      data: `./assets/site-plan-${index}.pdf`,
+      type: 'application/pdf',
+      'data-id-object': '',
+      'data-id-asset-kind': 'pdf',
+      'data-id-pdf-page': page,
+    },
+    computedStyle: {
+      objectFit: 'contain',
+      objectPosition: '50% 50%',
+    },
+    sourceSelector: `#invalid-page-${index}`,
+  }));
+
+  const assets = detectAssetsFromItems(items, htmlPath);
+
+  assert.equal(assets.length, 3);
+  assert.deepEqual(assets.map((asset) => asset.placement.pageNumber), [undefined, undefined, undefined]);
+});
+
 test('renderSnapshot inherits semantic frame attributes from ignored asset wrappers', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

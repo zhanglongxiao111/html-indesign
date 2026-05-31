@@ -83,17 +83,65 @@ function placementFromAttributes(attributes, computedStyle) {
     attributes,
     computedStyle,
   }).src;
+  const contentBox = contentBoxFromAttributes(attributes);
   return {
-    fit: attributes['data-id-fit'] || (hasBackgroundSource ? fitFromBackgroundSize(computedStyle.backgroundSize) : computedStyle.objectFit) || 'fill',
+    fit: attributes['data-id-fit'] || (contentBox ? 'manual' : null) || (hasBackgroundSource ? fitFromBackgroundSize(computedStyle.backgroundSize) : computedStyle.objectFit) || 'fill',
     position: hasBackgroundSource
       ? normalizePosition(computedStyle.backgroundPosition)
       : normalizePosition(computedStyle.objectPosition) || '50% 50%',
-    pageNumber: attributes['data-id-page'] ? Number(attributes['data-id-page']) : undefined,
+    pageNumber: positiveIntegerOrUndefined(attributes['data-id-pdf-page']),
     crop: attributes['data-id-crop'] || undefined,
     artboard: attributes['data-id-artboard'] || undefined,
     layerComp: attributes['data-id-layer-comp'] || undefined,
+    visibleLayers: layerListFromAttribute(attributes['data-id-visible-layers'] || attributes['data-id-pdf-visible-layers']),
+    hiddenLayers: layerListFromAttribute(attributes['data-id-hidden-layers'] || attributes['data-id-pdf-hidden-layers']),
     preserveVector: attributes['data-id-preserve-vector'] === 'true',
+    contentBox,
   };
+}
+
+function contentBoxFromAttributes(attributes) {
+  const x = attributes['data-id-content-x'];
+  const y = attributes['data-id-content-y'];
+  const width = attributes['data-id-content-width'];
+  const height = attributes['data-id-content-height'];
+  if (x == null && y == null && width == null && height == null) return undefined;
+  if (x == null || y == null || width == null || height == null) return undefined;
+  return {
+    x,
+    y,
+    width,
+    height,
+    scaleX: numberOrUndefined(attributes['data-id-content-scale-x']),
+    scaleY: numberOrUndefined(attributes['data-id-content-scale-y']),
+  };
+}
+
+function numberOrUndefined(value) {
+  if (value == null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function positiveIntegerOrUndefined(value) {
+  if (value == null || value === '') return undefined;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1) return undefined;
+  return number;
+}
+
+function layerListFromAttribute(value) {
+  if (!value) return undefined;
+  const raw = String(value).trim();
+  if (!raw) return undefined;
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
+    } catch (_error) {}
+  }
+  const parts = raw.split(/[|,]/).map((item) => item.trim()).filter(Boolean);
+  return parts.length ? parts : undefined;
 }
 
 function fitFromBackgroundSize(value) {

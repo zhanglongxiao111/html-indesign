@@ -179,7 +179,7 @@ test('asset helper resolves placed files and applies fitting preferences', () =>
     'HI.findAssetById',
     'frame.place(file)',
     'app.pdfPlacePreferences.pageNumber',
-    'Number(pageNumber || 1)',
+    'PDF_PAGE_NUMBER_MISSING',
     'HI.pdfCropFor',
     'FitOptions.PROPORTIONALLY',
     'HI.boundsToGeometricBounds(placed.contentBounds)',
@@ -189,6 +189,7 @@ test('asset helper resolves placed files and applies fitting preferences', () =>
   ]) {
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+  assert.doesNotMatch(source, /Number\(pageNumber \|\| 1\)/);
 });
 
 test('item helper creates text graphic shape items and applies z order', () => {
@@ -230,9 +231,15 @@ test('asset helper does not silently ignore advanced placement options', () => {
   for (const token of [
     'placed.artboard',
     'placed.layerComp',
+    'placed.visibleLayers',
+    'placed.hiddenLayers',
+    'HI.applyPlacedGraphicLayerOptions',
+    'graphicLayerOptions',
+    'currentVisibility',
     'placed.preserveVector',
     'AI_ARTBOARD_APPLY_FAILED',
     'PSD_LAYER_COMP_UNSUPPORTED',
+    'PLACED_ASSET_LAYER_VISIBILITY_APPLY_FAILED',
     'PRESERVE_VECTOR_UNSUPPORTED',
   ]) {
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
@@ -287,10 +294,21 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /snapshot\.layers/);
   assert.match(source, /snapshot\.assets/);
   assert.match(source, /HI\.reverseVisualStyle/);
+  assert.match(source, /HI\.reverseItemType/);
+  assert.match(source, /HI\.reverseVectorGeometry/);
+  assert.match(source, /pathPoints/);
+  assert.match(source, /leftDirection/);
+  assert.match(source, /rightDirection/);
   assert.match(source, /HI\.reversePlacedAsset/);
+  assert.match(source, /HI\.reversePdfAttributes/);
+  assert.match(source, /HI\.reverseGraphicLayerOptions/);
+  assert.match(source, /HI\.exportPlacedAssetPreview/);
+  assert.match(source, /ExportFormat\.PNG_FORMAT/);
   assert.match(source, /HI\.reverseTextStyle/);
   assert.match(source, /HI\.reverseTextRuns/);
   assert.match(source, /HI\.reverseCharacterTextStyle/);
+  assert.match(source, /HI\.reverseTextValue/);
+  assert.match(source, /DOUBLE_LEFT_QUOTE/);
   assert.match(source, /FORCED_LINE_BREAK/);
   assert.match(source, /HI\.reverseEffects/);
   assert.match(source, /fillTransparencySettings/);
@@ -306,6 +324,18 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /allGraphics/);
   assert.match(source, /fillColor/);
   assert.match(source, /strokeColor/);
+  assert.match(source, /fillOpacity/);
+  assert.match(source, /strokeOpacity/);
+  assert.match(source, /strokeType/);
+  assert.match(source, /leftLineEnd/);
+  assert.match(source, /rightLineEnd/);
+  assert.match(source, /endCap/);
+  assert.match(source, /endJoin/);
+  assert.match(source, /miterLimit/);
+  assert.match(source, /strokeAlignment/);
+  assert.match(source, /fillTint/);
+  assert.match(source, /strokeTint/);
+  assert.match(source, /blendMode/);
   assert.match(source, /pointSize/);
   assert.match(source, /appliedFont/);
   assert.match(source, /HI\.reverseCompositeFonts/);
@@ -319,17 +349,52 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(tableSource.split(/\r?\n/).length <= 240, 'hi_reverse_tables.jsxinc should stay focused');
 });
 
-test('reverse snapshot derives HTML z order from InDesign layer order', () => {
+test('reverse snapshot derives HTML z order from InDesign layer and front-to-back item order', () => {
   const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
 
   assert.match(source, /HI\.reverseLayerIndexMap/);
+  assert.match(source, /HI\.reverseTopLevelPageItems/);
+  assert.match(source, /allPageItems/);
+  assert.match(source, /HI\.isTopLevelReverseItem/);
   assert.match(source, /HI\.reverseItemZIndex/);
   assert.match(source, /itemLayer/);
   assert.match(source, /layerBase/);
-  assert.match(source, /var local = Number\(index\)/);
-  assert.doesNotMatch(source, /total\s*-\s*1\s*-\s*index/);
+  assert.match(source, /var local = Number\(total\s*-\s*1\s*-\s*index\)/);
   assert.match(source, /layer\.count\s*-\s*1\s*-\s*layer\.index/);
   assert.match(source, /zIndex:\s*HI\.reverseItemZIndex\(item,\s*index,\s*total,\s*layerOrder\)/);
+});
+
+test('reverse snapshot records and respects InDesign layer and item visibility', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(source, /HI\.shouldReversePageItem/);
+  assert.match(source, /item\.visible/);
+  assert.match(source, /item\.nonprinting/);
+  assert.match(source, /item\.itemLayer\.visible/);
+  assert.match(source, /item\.itemLayer\.printable/);
+  assert.match(source, /visible:\s*HI\.reverseLayerVisible/);
+  assert.match(source, /printable:\s*HI\.reverseLayerPrintable/);
+});
+
+test('reverse snapshot extracts parent page items instead of dropping master decoration', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(source, /HI\.reverseParentPageItems/);
+  assert.match(source, /HI\.reverseTopLevelPageItems\(masterSpread\)/);
+  assert.match(source, /container\.pageItems/);
+  assert.match(source, /HI\.reversePageItem\(items\[i\]/);
+});
+
+test('reverse snapshot records placed asset frame and content geometry', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(source, /HI\.reverseAssetGeometry/);
+  assert.match(source, /frameBounds/);
+  assert.match(source, /contentBounds/);
+  assert.match(source, /contentOffset/);
+  assert.match(source, /contentSize/);
+  assert.match(source, /contentScale/);
+  assert.match(source, /out\.fit\s*=\s*"manual"/);
 });
 
 test('reverse snapshot reads bounds in document coordinate units and restores preferences', () => {

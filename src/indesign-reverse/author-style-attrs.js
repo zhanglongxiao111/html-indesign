@@ -1,5 +1,7 @@
 'use strict';
 
+const { blendModeCss } = require('./css-blend-mode');
+
 function authorInlineStyleForItem(item, sourceStyle) {
   return mergeCss([
     sourceStyle,
@@ -37,6 +39,8 @@ function visualStyleCss(visualStyle) {
     styles.push(`border:${px(visualStyle.strokeWeight)} solid ${visualStyle.strokeColor}`);
   }
   if (Number(visualStyle.cornerRadius) > 0) styles.push(`border-radius:${px(visualStyle.cornerRadius)}`);
+  const blendMode = blendModeCss(visualStyle.blendMode);
+  if (blendMode) styles.push(blendMode);
   const opacity = Number(visualStyle.opacity);
   if (Number.isFinite(opacity) && opacity >= 0 && opacity < 100) styles.push(`opacity:${formatNumber(opacity / 100)}`);
   return styles.join(';');
@@ -122,6 +126,7 @@ function safeClass(value) {
 module.exports = {
   authorInlineStyleForItem,
   authorClassesForItem,
+  blendModeCss,
   mergeCss,
   textStyleCss,
   textFrameStyleCss,

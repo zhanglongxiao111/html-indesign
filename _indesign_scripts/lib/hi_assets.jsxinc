@@ -23,9 +23,11 @@ HI.placeAssetInFrame = function (doc, frame, asset, placed, baseFolder, report) 
         return false;
     }
 
-    HI.configurePlacePreferences(asset, placed || asset.placement || {}, report);
+    var placement = placed || asset.placement || {};
+    if (!HI.configurePlacePreferences(asset, placement, report)) return false;
     var outerBounds = null;
     var fittedBounds = null;
+    var manualContentBounds = placed && placed.contentBounds && String(placed.fit || "").toLowerCase() === "manual";
     try {
         if (placed && placed.contentBounds) {
             outerBounds = frame.geometricBounds;
@@ -33,7 +35,12 @@ HI.placeAssetInFrame = function (doc, frame, asset, placed, baseFolder, report) 
         }
         frame.place(file);
         report.counts.placedAssets += 1;
-        HI.applyFitting(frame, (placed && placed.fit) || (asset.placement && asset.placement.fit), (placed && placed.position) || (asset.placement && asset.placement.position));
+        HI.applyPlacedGraphicLayerOptions(frame, placement, report, asset);
+        if (manualContentBounds) {
+            try { frame.fit(FitOptions.CONTENT_TO_FRAME); } catch (_) {}
+        } else {
+            HI.applyFitting(frame, (placed && placed.fit) || (asset.placement && asset.placement.fit), (placed && placed.position) || (asset.placement && asset.placement.position));
+        }
         try {
             if (outerBounds && frame.allGraphics && frame.allGraphics.length) fittedBounds = frame.allGraphics[0].geometricBounds;
             if (outerBounds) frame.geometricBounds = outerBounds;
@@ -50,9 +57,14 @@ HI.placeAssetInFrame = function (doc, frame, asset, placed, baseFolder, report) 
 HI.configurePlacePreferences = function (asset, placed, report) {
     var kind = String(asset.kind || "").toLowerCase();
     if (kind === "pdf" || kind === "ai") {
+        var pageNumber = placed.pageNumber || (kind === "ai" ? placed.artboard : null);
+        var pageNumberValue = Number(pageNumber);
+        if (!isFinite(pageNumberValue) || pageNumberValue < 1) {
+            HI.addMessage(report, "error", kind === "ai" ? "AI_ARTBOARD_MISSING" : "PDF_PAGE_NUMBER_MISSING", kind === "ai" ? "AI placement is missing an explicit artboard." : "PDF placement is missing an explicit page number.", { assetId: asset.id, pageNumber: placed.pageNumber, artboard: placed.artboard });
+            return false;
+        }
         try {
-            var pageNumber = placed.pageNumber || (kind === "ai" ? placed.artboard : null);
-            app.pdfPlacePreferences.pageNumber = Number(pageNumber || 1);
+            app.pdfPlacePreferences.pageNumber = pageNumberValue;
         } catch (error) {
             HI.addMessage(report, "warning", kind === "ai" ? "AI_ARTBOARD_APPLY_FAILED" : "PDF_PAGE_APPLY_FAILED", String(error), { pageNumber: placed.pageNumber, artboard: placed.artboard });
         }
@@ -69,6 +81,39 @@ HI.configurePlacePreferences = function (asset, placed, report) {
     if (placed.preserveVector) {
         HI.addMessage(report, "warning", "PRESERVE_VECTOR_UNSUPPORTED", "Preserve-vector placement preference is recorded but not applied by this executor yet", { assetId: asset.id });
     }
+    return true;
+};
+
+HI.applyPlacedGraphicLayerOptions = function (frame, placed, report, asset) {
+    var visible = HI.layerNameSet(placed.visibleLayers || placed.pdfVisibleLayers);
+    var hidden = HI.layerNameSet(placed.hiddenLayers || placed.pdfHiddenLayers);
+    if (!visible && !hidden) return;
+    try {
+        var graphic = frame.allGraphics && frame.allGraphics.length ? frame.allGraphics[0] : null;
+        if (!graphic || !graphic.graphicLayerOptions) return;
+        var layers = graphic.graphicLayerOptions.graphicLayers;
+        for (var i = 0; i < layers.length; i++) {
+            var layer = layers[i];
+            var name = String(layer.name || "");
+            if (visible && visible[name]) layer.currentVisibility = true;
+            if (hidden && hidden[name]) layer.currentVisibility = false;
+        }
+    } catch (error) {
+        HI.addMessage(report, "warning", "PLACED_ASSET_LAYER_VISIBILITY_APPLY_FAILED", String(error), { assetId: asset && asset.id, visibleLayers: placed.visibleLayers, hiddenLayers: placed.hiddenLayers });
+    }
+};
+
+HI.layerNameSet = function (value) {
+    if (!value) return null;
+    var items = value;
+    if (typeof value === "string") items = value.split(/[|,]/);
+    if (!items || typeof items.length !== "number" || !items.length) return null;
+    var out = {};
+    for (var i = 0; i < items.length; i++) {
+        var name = String(items[i] || "").replace(/^\s+|\s+$/g, "");
+        if (name) out[name] = true;
+    }
+    return out;
 };
 
 HI.pdfCropFor = function (value) {

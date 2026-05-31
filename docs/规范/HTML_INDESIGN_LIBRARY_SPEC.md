@@ -2,7 +2,7 @@
 
 ## 1. 项目目标
 
-`html-indesign` 是一个分页 HTML 与 Adobe InDesign 双向转换库。
+`html-indesign` 当前是一个分页 HTML 与 Adobe InDesign 双向转换库；架构目标是固定分页文档的多格式翻译库。HTML 与 InDesign 是当前产品化主线，PPTX 等后续格式必须通过统一语义模型和格式适配器接入，不能另起一套两两互转链路。
 
 长期目标：
 
@@ -153,7 +153,30 @@ InDesign -> Semantic Model -> Paged HTML
 
 `Build Instructions` 只是 InDesign 执行器消费的命令格式，不是长期事实模型。反向导出、回环校验、模板/母版保真都必须以 `Semantic Model` 和标签协议为依据。
 
-### 3.1 模块职责
+### 3.1 多格式演进和字段注册表
+
+未来 PPTX、PDF 页面包或其他分页文档格式只能作为格式适配器接入：
+
+```text
+HTML Adapter <-> Semantic Model <-> InDesign Adapter
+PPTX Adapter <-> Semantic Model <-> HTML/InDesign Adapter
+```
+
+字段边界必须由协议字段注册表统一管理。注册表实现前，本文的 Canonical Mapping Model、`SEMANTIC_PROTOCOL.md`、`LABEL_PROTOCOL.md` 和 `REVERSE_EXPORT.md` 中的静态字段表仍是当前行为事实源；注册表实现后，重复字段表应迁移为注册表集中维护或生成文档。
+
+新增字段必须先确认属于哪一类：
+
+| 字段类别 | 说明 |
+| -------- | ---- |
+| canonical field | HTML、InDesign、未来 PPTX 都应理解的通用分页文档事实 |
+| source metadata | 作者源码包、原始 DOM、InDesign 对象 ID 等来源追踪信息 |
+| format extension | 仅某个格式原生拥有的能力，如 InDesign PDF place preference、PPTX placeholder |
+| observation field | 反向导出看到但未通过白名单复核的线索 |
+| retired field | 已退役字段，只能进入观察、迁移报告或历史文档 |
+
+格式能力差异必须进入能力矩阵表达为 `native`、`lossless`、`approximate`、`fallback`、`observe-only` 或 `unsupported`。不得因为 InDesign 或 PPTX 某个格式缺能力，就把 canonical 字段改名、拆散或静默丢弃。
+
+### 3.2 模块职责
 
 | 层级 | 职责 | 典型模块 |
 | ---- | ---- | -------- |
@@ -189,6 +212,8 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 内部语义模型必须把“文档、页面、母版、样式、资源、框架、置入内容、标签”拆开。HTML -> InDesign 和 InDesign -> HTML 必须使用同一组语义字段。
 
 模型不是 InDesign build instructions。instructions 可以从模型派生，但不能反过来成为唯一事实来源。
+
+本章字段表描述当前模型边界。字段注册表实现后，本章应引用注册表生成结果或只保留模型结构说明，避免字段定义在多个文档里分叉。
 
 ### 5.1 DocumentModel
 
@@ -245,6 +270,18 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 “左文右图”“四图矩阵”“指标卡片区”等页面结构模板属于 HTML/Agent 侧布局约束，记录在 PageModel 的 `layout`，不默认导出为 InDesign 母版。
 
+反向导出时不得把 InDesign 母版对象机械等同为 HTML 模板内容。母版对象按用途分层处理：
+
+| 母版对象类型 | HTML/模型处理 |
+| ------------ | ------------- |
+| 稳定重复且可见的内容，如页码、页眉页脚、章节标识、固定装饰线、重复背景 | 进入 `ParentPageModel.items`，作者包目标结构中应写入 `templates/*.html`，页面通过 `parentPageId` 引用 |
+| 页面参考线、边距、主网格 | 进入 `PageModel.guides`、`margins`、`grid` 或母版 guide，不生成可打印对象 |
+| 只用于人类套模板的空图片框、空 PDF 框、空版式框 | 不作为可见 HTML 内容输出；可作为观察到的布局候选、区域线索或报告项保留 |
+| “右侧大图区域”“卡片区”“双图区”等可重复页面区域 | 作为 HTML/Agent 侧布局约束或 `layout` 语义处理，不默认成为 InDesign 母版可见对象 |
+| 实际置入了图片、PDF、PSD、AI、SVG 的图框 | 作为页面内容处理；只有同一资源和同一位置跨页稳定重复时，才可提升为母版内容 |
+
+换言之，模板只承载稳定重复层；页面结构模板负责约束 Agent 可以在何处组织内容；空占位框默认只是线索，不是内容。
+
 ### 5.4 StyleModel
 
 | 字段 | InDesign 目标 | 说明 |
@@ -293,7 +330,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `tableStyle` | 表格样式引用 |
 | `cellStyle` | 单元格样式引用 |
 
-样式引用必须能区分稳定 token 和 InDesign 显示名。推荐结构为 `{ "token": "page-title", "displayName": "页面标题" }`；仅写字符串属于 legacy 简写，只能作为 token 或显示名的兼容输入，不能作为双向协议的唯一表达。
+样式引用必须能区分稳定 token 和 InDesign 显示名。推荐结构为 `{ "token": "page-title", "displayName": "页面标题" }`；仅写字符串属于历史简写，只能作为迁移输入，不能作为双向协议的唯一表达。
 
 ### 5.7 AssetModel
 
@@ -344,7 +381,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `version` | number | 标签协议版本 |
 | `kind` | string | `document`、`page`、`parentPage`、`item`、`style`、`layer`、`guide` |
 | `id` | string | 稳定 ID |
-| `source` | string | `html-to-indesign`、`manual-tagged`、`legacy-blueprint`、`agent-semanticized` |
+| `source` | string | `html-to-indesign`、`manual-tagged`、`blueprint-migration`、`agent-semanticized` |
 | `payload` | object | kind 特定字段 |
 
 ## 6. 输入约束
@@ -369,7 +406,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `data-id-grid="12x6"` | 描述 12 列、6 个粗行模块主网格，适合建筑汇报默认参考线 |
 | `data-id-grid="12"` | 只描述 12 列主网格，不生成粗行参考线 |
 | `data-id-grid="12x9"` | 描述 12 列、9 行主网格，生成带 gutter 的 InDesign 页面参考线 |
-| `data-id-column-gutter` / `data-id-row-gutter` | 声明主网格栏间距和行间距；兼容 `data-id-column-gap` / `data-id-row-gap` |
+| `data-id-column-gutter` / `data-id-row-gutter` | 声明主网格栏间距和行间距；这是协议字段，`data-id-column-gap` / `data-id-row-gap` 不再作为等价别名读取 |
 | `data-id-baseline="4mm"` | 声明作者侧 baseline / 模数行，用于 HTML 排版与校验；默认不全量生成可见参考线 |
 | `data-id-baseline-guides="all"` | 显式要求把每条 baseline 也输出为 InDesign 可见参考线，通常只用于调试 |
 | `data-id-snap-grid="2mm"` | 描述次级微调模数；不能单独满足页面主网格规则 |
@@ -445,7 +482,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `data-id-fit` | `cover`、`contain`、`fill`、`none` |
 | `data-id-preserve-vector` | 是否优先保留矢量 |
 
-历史字段 `data-id-page` 曾被用作 PDF 页码。新 HTML 必须使用 `data-id-pdf-page`，读取层可以兼容旧字段并报告迁移 warning，避免和页面容器标记 `data-page` 混淆。
+历史字段 `data-id-page` 曾被用作 PDF 页码。新 HTML 必须使用 `data-id-pdf-page`；读取层不得把 `data-id-page` 当作 PDF 页码参与编译，只能把它记录为无效观察字段或迁移问题，避免和页面容器标记 `data-page` 混淆。
 
 ### 6.4 CSS 支持范围
 
@@ -600,7 +637,7 @@ CSS 到段落样式的核心映射：
 | 来源 | 样式名 |
 | ---- | ------ |
 | `.page-title` | `page-title` |
-| `[data-id-style="hero-title"]` | `hero-title` |
+| `[data-id-paragraph-style="hero-title"]` | `hero-title` |
 | 无 class 但样式重复 | `auto-paragraph-<hash>` |
 
 ### 8.4 字符样式 Character Styles
@@ -654,7 +691,7 @@ CSS 到对象样式的核心映射：
 | `overflow: hidden` | clipping frame |
 | `clip-path` | vector clip or fallback |
 
-对象样式命名与段落样式相同，优先使用 class 或 `data-id-style`。
+对象样式命名与段落样式相同，优先使用 class 或 `data-id-object-style`。`data-id-style` 只允许在编译层已经确定样式种类的上下文中作为简写，不能作为未知类型样式的通用兜底。
 
 ### 8.6 框架样式 Frame Styles
 
@@ -733,6 +770,8 @@ HTML table 应优先映射为 InDesign table。
 | Canvas | `canvas` | raster fallback | rendered bitmap、bounds、warning | editable reconstruction |
 
 PDF 图纸必须作为一等资源处理。它不是“图片截图”，默认应作为 linked PDF 置入，并保留页码、crop box、矢量属性和 link。
+
+InDesign 反向导出 PDF/AI 置入资源时，必须读取实际图形对象的置入页码、crop box、图层显隐和内容裁切几何。生成 HTML 预览图时，优先由 InDesign 导出当前图框的实际可见结果，因此预览必须反映该链接在 InDesign 中指定的页码、crop box、图层显隐、缩放和裁切。作者 HTML 必须写出 `data-id-pdf-page`，反向再导出 InDesign 时必须把该值恢复为 PDF place preference；历史 `data-id-page` 只作无效观察字段或迁移问题，不作为读取兜底。
 
 PSD 和 AI 也应优先保留为 linked placed asset。只有在 InDesign 置入失败、浏览器效果无法表达或用户选择 `fidelity-first` 局部栅格化时，才生成 fallback。
 
@@ -1182,16 +1221,16 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | 当前文件 | 新角色 |
 | -------- | ------ |
 | `src/paged-html/` | HTML Adapter 的现有实现：浏览器快照、样式读取、HTML -> instructions |
-| `src/generator.js` | 旧 blueprint -> 模板预览 HTML，可作为 legacy reference writer |
+| `src/generator.js` | 历史 blueprint -> 模板预览 HTML，只作为迁移参考 |
 | `src/spec-generator.js` | Agent 可读规范生成器，后续从 style model 生成 |
-| `src/validator.js` | legacy template validator，保留兼容 |
-| `src/builder.js` | legacy template builder，保留兼容 |
+| `src/validator.js` | 历史模板 validator，保留给旧测试和迁移对照 |
+| `src/builder.js` | 历史模板 builder，保留给旧测试和迁移对照 |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
-| `_indesign_scripts/extract_blueprint.jsx` | legacy blueprint 抽取；其输出通过 `src/indesign-reverse/legacy-blueprint.js` 归一化为 reverse model |
+| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/indesign-reverse/blueprint-migration.js` 归一化为 reverse model |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
-第一阶段实现保留现有 legacy template 文件的位置，并通过 `src/legacy-template/*` wrappers 对外暴露。新的浏览器驱动转换代码放在 `src/paged-html/*` 下，可复用工具放在 `src/shared/*` 下。这样既保留当前模板驱动工作流，又把 paged HTML 工作流作为独立路径引入。
+第一阶段实现保留现有历史模板能力，并通过 `src/historical-template/*` wrappers 对外暴露给迁移测试。新的浏览器驱动转换代码放在 `src/paged-html/*` 下，可复用工具放在 `src/shared/*` 下；新功能不得继续扩展历史模板路径。
 
 新模块建议：
 
@@ -1213,7 +1252,7 @@ src/
     snapshot-reader.js
     label-protocol.js
     reverse-model.js
-    legacy-blueprint.js
+    blueprint-migration.js
     html-writer.js
     asset-exporter.js
     report.js

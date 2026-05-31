@@ -65,7 +65,7 @@ function pageModelFor(page, layout) {
   const margins = pageMargins(page, layout);
   const attrs = page.attributes || {};
   const pageId = page.id || attrs['data-page'] || `page-${Number(page.index || 0) + 1}`;
-  const semantic = attrs['data-id-semantic'] || attrs['data-page'] || null;
+  const semantic = attrs['data-id-semantic'] || null;
   const parentPageId = attrs['data-id-parent-page'] || null;
   const parentPageName = attrs['data-id-parent-page-name'] || attrs['data-id-parent-page-display-name'] || null;
   const layoutToken = attrs['data-id-layout'] || null;
@@ -125,7 +125,7 @@ function parentPagesFor(pages) {
 
 function itemModelFor(item, page, layout) {
   const attrs = item.attributes || {};
-  const semantic = attrs['data-id-semantic'] || attrs['data-id-object-style'] || attrs['data-id-paragraph-style'] || null;
+  const semantic = attrs['data-id-semantic'] || null;
   const sourceFile = attrs['data-id-source-file']
     || page.sourceFile
     || (page.attributes && page.attributes['data-id-source-file'])

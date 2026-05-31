@@ -8,6 +8,7 @@ const {
 
 test('inferAssetKind maps architecture presentation asset extensions', () => {
   assert.equal(inferAssetKind('render.jpg'), 'raster');
+  assert.equal(inferAssetKind('render.jfif'), 'raster');
   assert.equal(inferAssetKind('render.PNG'), 'raster');
   assert.equal(inferAssetKind('drawing.pdf'), 'pdf');
   assert.equal(inferAssetKind('lobby.psd'), 'psd');
@@ -26,6 +27,17 @@ test('assetSourceFromElementLike reads img src object data and explicit kind', (
     tagName: 'OBJECT',
     attributes: { data: 'plan.pdf', type: 'application/pdf' },
   }), { src: 'plan.pdf', explicitKind: 'pdf' });
+});
+
+test('assetSourceFromElementLike uses original asset path instead of generated preview source', () => {
+  assert.deepEqual(assetSourceFromElementLike({
+    tagName: 'IMG',
+    attributes: {
+      src: 'previews/item-42.png',
+      'data-id-asset-path': '\\\\daga-nas5\\share\\drawing.pdf',
+      'data-id-asset-kind': 'pdf',
+    },
+  }), { src: '\\\\daga-nas5\\share\\drawing.pdf', explicitKind: 'pdf' });
 });
 
 test('createAssetId is stable and filename based', () => {

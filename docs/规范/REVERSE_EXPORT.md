@@ -19,6 +19,8 @@
 
 反向导出每次都必须按当前项目语义库复核 `html_indesign` 标签。符合白名单的字段进入有效标签；不符合白名单的字段只能作为观察标签保留，不参与后续 HTML-to-InDesign 编译。
 
+反向模型字段必须与统一语义模型和协议字段注册表保持一致。注册表实现前，以当前规范中的静态字段表作为事实源；注册表实现后，反向导出新增字段必须先在注册表登记能力、生命周期和写回策略，不能只在 writer 或 JSX 快照里临时增加。
+
 ## 2. 导出模式
 
 ### 2.1 `structured`
@@ -109,7 +111,7 @@
 | 人工 InDesign，按协议打标签 | 有规范脚本标签 | 高 | 正式支持 |
 | 人工 InDesign，只使用模板但无标签 | 有母版和样式，语义不完整 | 中 | 输出观察 HTML 和模板线索 |
 | 普通未标注 InDesign | 只有视觉对象 | 低 | 输出观察 HTML，等待 Agent 语义化 |
-| 旧 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `legacyBlueprintToSemanticModel` 进入 `indesign-reverse`，输出 inferred/observation HTML |
+| 历史 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `blueprintMigrationToSemanticModel` 进入 `indesign-reverse`，输出 inferred/observation HTML |
 
 首次来自人类用户的 InDesign 文档通常语义混乱，可能混入旧模板、复制来的脚本标签或不符合本项目协议的自定义标签。反向导出不得信任这些标签的存在本身，只能信任通过当前语义库白名单复核的字段。Agent 拿到观察 HTML 后，应根据页面视觉、图层、样式、资源和用户意图重建符合白名单的语义，再导回结构化 InDesign。
 
@@ -128,6 +130,8 @@ reverse-export-<timestamp>/
   author/
     deck.config.json
     deck.html                # generated from author source package
+    templates/               # parent-page templates when repeatable parent content exists
+      parent-page.html
     styles/
       tokens.css
       layout.css
@@ -150,6 +154,61 @@ reverse-export-<timestamp>/
 `author/deck.html` 是可编辑作者源码包的组装结果。Agent 和人类后续维护应优先修改 `author/pages/*.html` 与 `author/styles/*.css`，再由组装器重建 `author/deck.html`。
 
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
+
+### 4.1.1 母版、页面模板和占位框
+
+反向作者包必须区分三类信息：
+
+| 信息类型 | 写出位置 | 规则 |
+| -------- | -------- | ---- |
+| 跨页稳定重复内容 | `author/templates/*.html`，并由页面通过 `data-id-parent-page` 引用 | 包括页码、页眉页脚、章节标识、固定装饰线、重复背景和参考线 |
+| 页面结构模板 | `deck.config.json`、页面 `data-id-layout`、样式和可选区域元数据 | 包括左文右图、四图矩阵、指标卡片区、右侧主图区域等布局约束，不作为可见母版对象 |
+| InDesign 模板空框 | 报告或观察元数据 | 没有实际置入内容、没有白名单语义标签的空图片框、空 PDF 框、空版式框不得写成可见 HTML 元素 |
+
+如果当前写出器尚不能生成 `templates/*.html`，允许把稳定可见母版对象展开到页面作为兼容输出，但必须视为降级路径；后续导回 InDesign 时不能把页面结构模板误判为母版内容。
+
+实际置入了图片、PDF、PSD、AI、SVG 的图框属于页面内容，默认写入对应 `author/pages/*.html`。只有当同一资源、同一位置和同一显示参数跨页稳定重复，且符合母版语义时，才应提升为 HTML 模板内容。
+
+### 4.1.2 PDF/AI/PSD 预览和置入参数
+
+PDF、AI、PSD 这类浏览器无法直接干净显示或无法反映 InDesign 图层显隐的资源，作者包应使用 InDesign 当前图框导出的 PNG 作为预览，同时保留原始 linked asset 路径。预览图是浏览器显示辅助，不替代原始资源。
+
+PDF 反向导出必须保留：
+
+- 原始 PDF 链接路径。
+- InDesign 当前指定的 PDF 页码，写入 `data-id-pdf-page`。
+- crop box，写入 `data-id-crop`。
+- PDF/AI 图层显隐，写入 `data-id-visible-layers` / `data-id-hidden-layers`。
+- 图框 bounds、内容 bounds、缩放和偏移，写入 `data-id-fit="manual"` 及内容几何字段。
+
+反向生成预览图时，应导出 InDesign 图框当前可见结果，因此预览图必须对应实际页码、crop box、图层显隐和裁切状态。若只能按文件名旁路寻找 `*-pageN.png` 之类缓存，必须先拿到 `data-id-pdf-page` / 模型 `placement.pageNumber`；没有页码事实时不得静默回退第一页。
+
+再次 HTML -> InDesign 时，编译层必须读取 `data-id-pdf-page`，并把值传入 InDesign 执行器的 PDF 置入页码设置。旧 `data-id-page` 只能进入观察报告或迁移清单，不能作为页码读取兜底。
+
+### 4.1.3 矢量外观字段
+
+反向导出的矢量对象分为两组字段：
+
+| 字段组 | 位置 | 含义 |
+| ------ | ---- | ---- |
+| `vectorGeometry` | item 顶层 | 路径类型、闭合状态、锚点、左右控制点，只描述几何 |
+| `visualStyle` | item 顶层 | 填充、描边、透明度、线端、线连接和混合外观 |
+
+`visualStyle` 中的矢量扩展字段使用以下规范名：
+
+| 字段 | 值 | 说明 |
+| ---- | -- | ---- |
+| `lineStartMarker` / `lineEndMarker` | `{ "type": "...", "rawName": "..." }` | 线头/线尾标记；`type` 为标准归一类型，`rawName` 只用于追溯 InDesign 原始名称 |
+| `strokeLineCap` | `butt` / `round` / `square` | 描边端帽 |
+| `strokeLineJoin` | `miter` / `round` / `bevel` | 描边连接 |
+| `strokeMiterLimit` | number | 斜接限制 |
+| `strokeAlignment` | `center` / `inside` / `outside` | 描边对齐 |
+| `fillTint` / `strokeTint` | 0-100 number | InDesign 色调，不替代颜色字段 |
+| `blendMode` | kebab-case string | 非 normal 混合模式 |
+
+`lineStartMarker.type` / `lineEndMarker.type` 当前标准值为 `arrow`、`circle`、`square`、`diamond`、`bar`、`custom`。新增类型必须先扩展规范和测试，不能直接把 InDesign 原始枚举名写成协议主字段。
+
+如果路径点无法提取，导出器只能在确认对象确实是线条时根据几何边界生成开放线段；其他对象不得静默伪装成矢量路径，必须进入观察报告或降级规则。
 
 结构化模式输出固定语义 HTML：
 
@@ -324,7 +383,7 @@ src/indesign-reverse/
   snapshot-reader.js
   label-protocol.js
   reverse-model.js
-  legacy-blueprint.js
+  blueprint-migration.js
   html-writer.js
   asset-exporter.js
   report.js
@@ -367,7 +426,7 @@ indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 
 ```text
 read blueprint.json
--> legacyBlueprintToSemanticModel
+-> blueprintMigrationToSemanticModel
 -> semanticModelToHtml
 -> write deck.html / deck.inferred.html / reverse-model.json / report.json / inferred-report.json
 ```

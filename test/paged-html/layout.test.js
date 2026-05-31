@@ -41,6 +41,22 @@ test('pageGuides creates gutter-aware grid guides', () => {
   assert.deepEqual(guides.filter((guide) => guide.orientation === 'horizontal').map((guide) => guide.position), [27, 33]);
 });
 
+test('pageGuides ignores retired semantic grid alias fields', () => {
+  const layout = { unitMode: 'print', targetUnit: 'mm', scale: 1 };
+  const guides = pageGuides({
+    attributes: {
+      'data-id-guides': '4x2',
+      'data-id-column-gap': '4mm',
+      'data-id-row-gap': '6mm',
+      'data-id-baseline-grid': '4mm',
+    },
+    computedStyle: {},
+    items: [],
+  }, { width: 100, height: 60 }, { top: 10, right: 10, bottom: 10, left: 10 }, layout);
+
+  assert.deepEqual(guides, []);
+});
+
 test('itemBounds converts browser pixels in presentation mode', () => {
   const bounds = itemBounds({
     rectPx: { x: 110, y: 70, width: 200, height: 80 },

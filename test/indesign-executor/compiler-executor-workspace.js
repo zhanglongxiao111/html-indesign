@@ -121,7 +121,7 @@ function compilerE2eHtml() {
             data-id-object
             data-id-layer="graphics"
             data-id-asset-kind="pdf"
-            data-id-page="1"
+            data-id-pdf-page="1"
             data-id-crop="trim"
             data-id-fit="contain"
             data-id-object-style="drawing-frame-object"

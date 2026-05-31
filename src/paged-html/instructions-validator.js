@@ -8,7 +8,9 @@ function validateInstructions(instructions, options = {}) {
     ? instructions.document.pages
     : [];
   const pageIds = new Set(documentPages.map((page) => page.id));
-  const assetIds = new Set((instructions.assets || []).map((asset) => asset.id));
+  const assets = instructions.assets || [];
+  const assetIds = new Set(assets.map((asset) => asset.id));
+  const assetById = new Map(assets.map((asset) => [asset.id, asset]));
 
   if (documentPages.length === 0) {
     errors.push({
@@ -33,7 +35,7 @@ function validateInstructions(instructions, options = {}) {
     for (const item of page.items || []) {
       validateBounds(item, errors);
       validateStyleRefs(item, styles, errors);
-      validatePlacedAsset(item, assetIds, errors);
+      validatePlacedAsset(item, assetIds, assetById, errors);
     }
   }
 
@@ -166,7 +168,7 @@ function validateTableCellStyleRefs(item, styles, errors) {
   }
 }
 
-function validatePlacedAsset(item, assetIds, errors) {
+function validatePlacedAsset(item, assetIds, assetById, errors) {
   if (item.type !== 'GRAPHIC') return;
   if (!item.placed || !item.placed.assetId) {
     errors.push({
@@ -183,7 +185,23 @@ function validatePlacedAsset(item, assetIds, errors) {
       itemId: item.id,
       assetId: item.placed.assetId,
     });
+    return;
   }
+  const asset = assetById.get(item.placed.assetId) || {};
+  if (isPdfAsset(asset) && !Number.isFinite(Number(item.placed.pageNumber))) {
+    errors.push({
+      code: 'PDF_PAGE_NUMBER_MISSING',
+      message: `PDF graphic item '${item.id}' is missing an explicit PDF page number.`,
+      itemId: item.id,
+      assetId: item.placed.assetId,
+    });
+  }
+}
+
+function isPdfAsset(asset) {
+  const kind = String(asset && asset.kind || '').toLowerCase();
+  const src = String(asset && (asset.src || asset.resolvedPath || asset.fileName) || '').toLowerCase();
+  return kind === 'pdf' || /\.pdf(?:[?#].*)?$/.test(src);
 }
 
 function validateProtocolLabels(instructions, options, errors) {
