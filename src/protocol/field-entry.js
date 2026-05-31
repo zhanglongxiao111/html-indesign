@@ -144,12 +144,23 @@ function validateCapabilities(capabilities, errors) {
 }
 
 function validateRetiredPolicy(input, errors) {
-  const retired = input.retired || {};
-  const htmlAttrs = retired.htmlAttrs;
+  const retired = input.retired;
+  const hasRetiredHtmlAttrs = retired
+    && typeof retired === 'object'
+    && !Array.isArray(retired)
+    && hasOwn.call(retired, 'htmlAttrs');
 
-  if (input.lifecycle !== 'retired' && htmlAttrs === undefined) {
+  if (input.lifecycle !== 'retired') {
+    if (hasRetiredHtmlAttrs) {
+      errors.push({
+        code: 'RETIRED_POLICY_INVALID',
+        message: 'retired.htmlAttrs may only be declared by retired lifecycle entries.',
+      });
+    }
     return;
   }
+
+  const htmlAttrs = hasRetiredHtmlAttrs ? retired.htmlAttrs : undefined;
 
   if (!Array.isArray(htmlAttrs) || htmlAttrs.length !== 1) {
     errors.push({

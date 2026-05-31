@@ -183,6 +183,20 @@ test('registry rejects malformed retired html attr policies before indexing', ()
   }
 });
 
+test('registry rejects retired html attr policies declared by active entries', () => {
+  assert.throws(() => createFieldRegistry([
+    fieldEntry({
+      retired: {
+        htmlAttrs: [{
+          name: 'data-id-page',
+          readPolicy: 'observe-only',
+          writePolicy: 'forbidden',
+        }],
+      },
+    }),
+  ]), /FIELD_ENTRY_INVALID:.*RETIRED_POLICY_INVALID/);
+});
+
 test('registry lists fields by owner class and lifecycle', () => {
   const registry = createFieldRegistry([
     fieldEntry({

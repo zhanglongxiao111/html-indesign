@@ -78,6 +78,10 @@ function htmlAttrsFor(entry) {
 }
 
 function retiredHtmlAttrsFor(entry) {
+  if (entry.lifecycle !== 'retired') {
+    return [];
+  }
+
   const retired = entry.retired || {};
   return arrayOrEmpty(retired.htmlAttrs);
 }

@@ -155,6 +155,16 @@ test('field entry rejects malformed retired html attr policy declarations', () =
   }
 });
 
+test('field entry rejects retired html attr policies on active entries', () => {
+  const result = validateFieldEntry(activeEntryWithRetiredHtmlAttrs());
+
+  assert.equal(result.valid, false);
+  assert.match(
+    result.errors.map((error) => error.code).join(','),
+    /RETIRED_POLICY_INVALID/,
+  );
+});
+
 test('normalizeFieldEntry always includes canonicalPath in allPaths', () => {
   const entry = normalizeFieldEntry({
     canonicalPath: 'document.id',
@@ -260,5 +270,25 @@ function retiredHtmlAttrEntry(overrides = {}) {
       }],
     },
     ...overrides,
+  };
+}
+
+function activeEntryWithRetiredHtmlAttrs() {
+  return {
+    canonicalPath: 'items[].asset.placement.pageNumber',
+    currentPaths: ['items[].asset.pageNumber'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'asset-placement',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+    },
+    retired: {
+      htmlAttrs: [{
+        name: 'data-id-page',
+        readPolicy: 'observe-only',
+        writePolicy: 'forbidden',
+      }],
+    },
   };
 }
