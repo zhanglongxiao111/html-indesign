@@ -13,3 +13,4 @@
 | `2026-05-26-authoring-source-package-design.md` | 作者源码包、组装入口和反向多文件源码导出设计 |
 | `2026-05-26-semantic-preset-snapshot-design.md` | 标准语义库、项目语义库和 snapshot 覆盖模式设计 |
 | `2026-05-27-indesign-cli-plugin-integration-design.md` | html-indesign 作为 indesign-cli 插件和可选发行包的集成设计 |
+| `2026-05-31-protocol-field-registry-architecture-design.md` | 协议字段注册表、多格式能力矩阵和未来 PPTX 适配架构设计 |
