@@ -4,13 +4,14 @@
 
 这里的文档用于指导后续实现。方案落地后，如果规则会长期存在，应从 `superpowers/` 或 `review/` 同步沉淀到这里。
 
-字段注册表实现前，本目录中的静态字段表仍记录当前行为边界。字段注册表和能力矩阵落地后，重复字段表应迁移为注册表集中维护或生成文档，不能继续各文档各写一份。
+协议字段事实源是 `PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry。规范文档只保留长期原则、边界、流程和关键示例，不继续维护重复静态字段表。
 
 当前文档：
 
 | 文档 | 用途 |
 | ---- | ---- |
 | `HTML_INDESIGN_LIBRARY_SPEC.md` | 库级目标、边界和转换架构 |
+| `PROTOCOL_FIELD_REGISTRY.md` | 由 registry 生成的协议字段清单和 HTML/InDesign/PPTX 能力矩阵 |
 | `SEMANTIC_PROTOCOL.md` | 固定语义 HTML 协议 |
 | `LABEL_PROTOCOL.md` | HTML `data-id-*` 与 InDesign `html_indesign` 脚本标签协议 |
 | `REVERSE_EXPORT.md` | InDesign 反向导出、观察模式和语义化迁移规范 |

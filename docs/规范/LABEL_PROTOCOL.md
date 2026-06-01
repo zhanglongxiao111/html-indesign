@@ -12,7 +12,7 @@ HTML data-id-* 标签
 
 模板不是协议本身。模板只是批量提供标签、样式和布局约束的载体。
 
-标签字段最终必须来自协议字段注册表。注册表实现前，本文中的字段表是当前 `html_indesign` payload 的事实源；注册表实现后，本文应只保留标签载体、写入位置和校验规则，字段清单由注册表集中维护或生成。
+标签字段必须来自协议字段注册表。当前 `html_indesign` payload 字段事实源是 `PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry；本文只保留标签载体、写入位置、校验错误和关键示例。
 
 ## 2. 标签键
 
@@ -33,7 +33,7 @@ html_indesign
 | 母版对象 `label` | 历史 blueprint 槽位标签，读取为迁移线索 |
 | `build_last_result` | 构建报告，不作为语义标签 |
 
-## 3. 通用字段
+## 3. 通用标签示例
 
 所有 `html_indesign` 标签必须包含：
 
@@ -47,13 +47,7 @@ html_indesign
 }
 ```
 
-| 字段 | 含义 |
-| ---- | ---- |
-| `protocol` | 固定为 `html-indesign` |
-| `version` | 标签协议版本 |
-| `kind` | `document`、`page`、`parentPage`、`item`、`style`、`layer`、`guide` |
-| `id` | 稳定 ID，同一作用域内唯一 |
-| `source` | `html-to-indesign`、`manual-tagged`、`blueprint-migration`、`agent-semanticized` |
+上例只展示标签外形，不是 payload 字段清单。字段路径、生命周期、当前路径和格式读写能力以 `PROTOCOL_FIELD_REGISTRY.md` 为准。
 
 命名规则：
 

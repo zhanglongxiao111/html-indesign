@@ -19,6 +19,7 @@
 | 文档 | 用途 |
 | ---- | ---- |
 | `规范/HTML_INDESIGN_LIBRARY_SPEC.md` | 库级目标、边界和转换架构 |
+| `规范/PROTOCOL_FIELD_REGISTRY.md` | 由 registry 生成的协议字段清单和格式能力矩阵 |
 | `规范/SEMANTIC_PROTOCOL.md` | 固定语义 HTML 协议 |
 | `规范/LABEL_PROTOCOL.md` | HTML 与 InDesign 双向标签协议 |
 | `规范/REVERSE_EXPORT.md` | InDesign 反向导出和语义化迁移规范 |
@@ -33,5 +34,5 @@
 - 长期约束沉淀到规范文档，不藏在计划或审核里。
 - `docs/` 根目录不新增专题文档。
 - 方案落地后，如产生长期规则，同步更新 `AGENTS.md` 或对应规范文档。
-- 协议字段注册表落地前，规范文档里的静态字段表仍是当前行为事实源；注册表实现后，应把重复字段表迁移为注册表集中维护或生成文档。
+- 协议字段事实源是 `规范/PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry；长期规范只保留原则、边界和关键示例。
 - 文档与代码不一致时，以代码和可复现实测为准，并顺手修正文档。

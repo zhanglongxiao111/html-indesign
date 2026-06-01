@@ -162,7 +162,7 @@ HTML Adapter <-> Semantic Model <-> InDesign Adapter
 PPTX Adapter <-> Semantic Model <-> HTML/InDesign Adapter
 ```
 
-字段边界必须由协议字段注册表统一管理。注册表实现前，本文的 Canonical Mapping Model、`SEMANTIC_PROTOCOL.md`、`LABEL_PROTOCOL.md` 和 `REVERSE_EXPORT.md` 中的静态字段表仍是当前行为事实源；注册表实现后，重复字段表应迁移为注册表集中维护或生成文档。
+字段边界必须由协议字段注册表统一管理。当前字段事实源是 `PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry；本文、`SEMANTIC_PROTOCOL.md`、`LABEL_PROTOCOL.md` 和 `REVERSE_EXPORT.md` 只保留原则、边界和关键示例，不维护重复静态字段表。
 
 新增字段必须先确认属于哪一类：
 
@@ -213,58 +213,22 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 模型不是 InDesign build instructions。instructions 可以从模型派生，但不能反过来成为唯一事实来源。
 
-本章字段表描述当前模型边界。字段注册表实现后，本章应引用注册表生成结果或只保留模型结构说明，避免字段定义在多个文档里分叉。
+完整字段清单、当前路径、生命周期和 HTML/InDesign/PPTX 读写持久化能力由 `PROTOCOL_FIELD_REGISTRY.md` 生成并维护。本章只描述模型边界和关键结构规则，不能作为第二份字段事实源。
 
-### 5.1 DocumentModel
+### 5.1 模型域
 
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 文档 ID |
-| `title` | string | 文档标题 |
-| `pageSize.widthMm` | number | 页面宽度 |
-| `pageSize.heightMm` | number | 页面高度 |
-| `facingPages` | boolean | 是否对页 |
-| `bleed` | `{top,right,bottom,left}` | 出血，单位 mm |
-| `colorIntent` | enum: `rgb`, `cmyk`, `mixed` | 颜色策略 |
-| `unitMode` | enum: `print`, `presentation` | 坐标和页面尺寸策略 |
-| `coordinateUnit` | enum: `pt`, `mm` | 语义模型和标签中裸数字几何值的统一单位；`presentation` 默认 `pt`，`print` 默认 `mm` |
-| `labels` | `LabelModel[]` | 文档级协议标签 |
-| `parentPages` | `ParentPageModel[]` | InDesign 母版页 / HTML 跨页重复模板 |
-| `pages` | `PageModel[]` | 页面列表 |
-| `layers` | `LayerModel[]` | 层列表 |
-| `styles` | `StyleModel` | 样式资源 |
-| `assets` | `AssetModel[]` | 外部资源 |
+| 模型域 | 职责 |
+| ------ | ---- |
+| Document / Page | 文档级设置、页面顺序、页面尺寸、单位策略、页面标签、边距和参考线 |
+| ParentPage | InDesign 母版页与 HTML 跨页重复模板，不承载页面结构模板 |
+| Style | 色板、字体、段落样式、字符样式、对象样式、框架样式、表格样式和单元格样式 |
+| Asset | 原始资源、可置入路径、资源类型、链接状态和资源级诊断 |
+| PageItem | 文本、图框、形状、线、表格、组和 fallback 对象 |
+| Label | HTML `data-id-*` 与 InDesign `html_indesign` 标签的可回读协议事实 |
 
-### 5.2 PageModel
+字段新增、改名、退役和格式能力变更必须先进入 registry，再由 `PROTOCOL_FIELD_REGISTRY.md` 反映到规范读者可见的字段清单。
 
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 页面 ID |
-| `index` | number | 页面顺序 |
-| `label` | string | 页面标签 |
-| `semantic` | string | 页面语义 |
-| `parentPageId` | string | 应用的 InDesign 母版页稳定 ID |
-| `parentPageName` | string | 应用的 InDesign 母版页显示名 |
-| `layout` | string | HTML/Agent 侧页面结构模板稳定 token，不自动对应 InDesign 母版 |
-| `widthMm` | number | 页面宽度 |
-| `heightMm` | number | 页面高度 |
-| `rectPx` | `RectPx` | 浏览器页面 box |
-| `mmPerPxX` | number | X 方向单位换算 |
-| `mmPerPxY` | number | Y 方向单位换算 |
-| `margins` | `{top,right,bottom,left}` | 页边距；来自 `.page` padding 或 `data-id-margin` |
-| `guides` | `GuideModel[]` | 页面参考线；当前主要来自页面级网格 |
-| `items` | `PageItemModel[]` | 页面对象 |
-
-### 5.3 ParentPageModel
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 母版页 ID |
-| `name` | string | InDesign 母版页名称 |
-| `semantic` | string | 母版语义 |
-| `provides` | string[] | 提供的跨页重复结构，如 `folio`、`header-line` |
-| `items` | `PageItemModel[]` | 母版页对象 |
-| `labels` | `LabelModel[]` | 母版标签 |
+### 5.2 页面和母版边界
 
 母版页只承载跨页重复结构：页码、页眉页脚、章节标识、固定装饰线、永远重复的背景元素和页面参考线。
 
@@ -282,107 +246,19 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 换言之，模板只承载稳定重复层；页面结构模板负责约束 Agent 可以在何处组织内容；空占位框默认只是线索，不是内容。
 
-### 5.4 StyleModel
-
-| 字段 | InDesign 目标 | 说明 |
-| ---- | ------------- | ---- |
-| `swatches` | Swatches | 颜色资源 |
-| `fonts` | Fonts | 字体引用和 fallback |
-| `compositeFonts` | Composite Fonts | 中英混排复合字体 |
-| `paragraphStyles` | Paragraph Styles | 块级文本样式 |
-| `characterStyles` | Character Styles | 局部文字样式 |
-| `objectStyles` | Object Styles | 框、形状、图片框样式 |
-| `frameStyles` | TextFrame/Graphic fitting preferences | 语义层框架样式 |
-| `tableStyles` | Table Styles | 表格样式 |
-| `cellStyles` | Cell Styles | 单元格样式 |
-
-每个样式资源应能携带稳定 token 和 InDesign 显示名。token 用于 HTML/Agent 协议，显示名用于 InDesign 面板。
-
-### 5.5 PageItemModel
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 稳定对象 ID |
-| `role` | enum: `text`, `graphic`, `shape`, `line`, `table`, `group`, `fallback` | 对象角色 |
-| `sourceSelector` | string | HTML 来源选择器 |
-| `tagName` | string | HTML 标签名 |
-| `semantic` | string | 稳定语义 token |
-| `htmlClass` | string | HTML class |
-| `boundsMm` | `RectMm` | 页面内几何位置 |
-| `zIndex` | number | 页面内叠放顺序 |
-| `layer` | string | 目标层 |
-| `styleRefs` | `StyleRefs` | 样式引用 |
-| `transform` | `TransformModel` | transform 信息 |
-| `opacity` | number | 透明度 |
-| `content` | object | 文本、资源、表格等内容 |
-| `labels` | `LabelModel[]` | InDesign/HTML 双向标签 |
-| `fallback` | `FallbackModel` | fallback 信息 |
-
-### 5.6 StyleRefs
-
-| 字段 | 含义 |
-| ---- | ---- |
-| `swatch` | 主色板引用 |
-| `paragraphStyle` | 段落样式引用 |
-| `characterStyles` | 字符样式引用列表 |
-| `objectStyle` | 对象样式引用 |
-| `frameStyle` | 框架样式引用 |
-| `tableStyle` | 表格样式引用 |
-| `cellStyle` | 单元格样式引用 |
+### 5.3 样式引用
 
 样式引用必须能区分稳定 token 和 InDesign 显示名。推荐结构为 `{ "token": "page-title", "displayName": "页面标题" }`；仅写字符串属于历史简写，只能作为迁移输入，不能作为双向协议的唯一表达。
 
-### 5.7 AssetModel
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 资源 ID |
-| `src` | string | 原始路径或 URL |
-| `resolvedPath` | string | 本地可置入路径 |
-| `kind` | enum: `raster`, `pdf`, `psd`, `ai`, `svg`, `vector`, `fallback`, `unknown` | 资源类型 |
-| `mimeType` | string | MIME 类型 |
-| `fileName` | string | 文件名 |
-| `linked` | boolean | 是否作为 InDesign link 保留 |
-| `naturalWidthPx` | number | 浏览器自然宽度 |
-| `naturalHeightPx` | number | 浏览器自然高度 |
-| `pageCount` | number | PDF/AI 页数或画板数 |
-| `colorProfile` | string | 色彩配置 |
-| `transparent` | boolean | 是否含透明通道 |
-| `warnings` | string[] | 资源级 warning |
-
-### 5.8 GraphicFrameModel 与 PlacedGraphicModel
+### 5.4 GraphicFrameModel 与 PlacedGraphicModel
 
 图形框和置入内容必须分开建模。InDesign 中 frame bounds 和 graphic content transform 是两个不同层级。
 
-| 模型 | 字段 | 含义 |
-| ---- | ---- | ---- |
-| `GraphicFrameModel` | `boundsMm` | 图片框/图纸框位置和大小 |
-| `GraphicFrameModel` | `objectStyle` | 框自身样式 |
-| `GraphicFrameModel` | `frameStyle` | fitting、clip、inset 等框架设置 |
-| `PlacedGraphicModel` | `assetId` | 被置入资源 |
-| `PlacedGraphicModel` | `fit` | `cover`、`contain`、`fill`、`none` |
-| `PlacedGraphicModel` | `position` | `center`、`top-left` 等 |
-| `PlacedGraphicModel` | `crop` | 裁切框信息 |
-| `PlacedGraphicModel` | `scaleX` / `scaleY` | 内容缩放 |
-| `PlacedGraphicModel` | `offsetX` / `offsetY` | 内容在框内偏移 |
-| `PlacedGraphicModel` | `rotation` | 内容旋转 |
-| `PlacedGraphicModel` | `pageNumber` | PDF 页码 |
-| `PlacedGraphicModel` | `artboard` | AI/SVG 画板或导入区域 |
-| `PlacedGraphicModel` | `layerComp` | PSD layer comp |
-| `PlacedGraphicModel` | `preserveVector` | 是否优先保留矢量 |
+图形框负责页面内位置、框自身样式、裁切和 fitting 策略；置入内容负责资源引用、PDF 页码、AI/SVG 画板、PSD layer comp、内容缩放、偏移和旋转。`data-id-pdf-page`、`asset.placement.pageNumber`、InDesign PDF place preference 之间的字段事实和格式能力以 `PROTOCOL_FIELD_REGISTRY.md` 为准。
 
-### 5.9 LabelModel
+### 5.5 LabelModel
 
 标签协议详见 `LABEL_PROTOCOL.md`。模型层只要求标签可序列化、可验证、可回写。
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `protocol` | string | 固定为 `html-indesign` |
-| `version` | number | 标签协议版本 |
-| `kind` | string | `document`、`page`、`parentPage`、`item`、`style`、`layer`、`guide` |
-| `id` | string | 稳定 ID |
-| `source` | string | `html-to-indesign`、`manual-tagged`、`blueprint-migration`、`agent-semanticized` |
-| `payload` | object | kind 特定字段 |
 
 ## 6. 输入约束
 
