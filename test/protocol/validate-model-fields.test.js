@@ -304,3 +304,37 @@ test('scanModelPaths scans effectiveLabel nested registered and unknown fields',
     true,
   );
 });
+
+test('scanModelPaths maps effectiveLabel style refs while preserving nested unknowns', () => {
+  const scannedPaths = scanModelPaths({
+    pages: [{
+      items: [{
+        effectiveLabel: {
+          styleRefs: {
+            paragraphStyle: 'body-copy',
+            objectStyleToken: 'card-frame',
+            ghost: true,
+          },
+        },
+      }],
+    }],
+  });
+
+  assert.deepEqual(scannedPaths, [
+    'items[].effectiveLabel',
+    'items[].effectiveLabel.styleRefs',
+    'items[].styleRefs.paragraphStyle',
+    'items[].styleRefs.objectStyle',
+    'items[].effectiveLabel.styleRefs.ghost',
+  ]);
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.accepted, [
+    'items[].effectiveLabel',
+    'items[].effectiveLabel.styleRefs',
+    'items[].styleRefs.paragraphStyle',
+    'items[].styleRefs.objectStyle',
+  ]);
+  assert.deepEqual(strict.unknown, ['items[].effectiveLabel.styleRefs.ghost']);
+});

@@ -77,6 +77,39 @@ const OBSERVED_LABEL_FIELD_PATHS = Object.freeze({
   rejectionReasons: 'items[].observedLabel.rejectionReasons',
 });
 
+const ITEM_EFFECTIVE_LABEL_FIELD_PATHS = Object.freeze({
+  role: 'items[].effectiveLabel.role',
+  semantic: 'items[].effectiveLabel.semantic',
+  layout: 'items[].effectiveLabel.layout',
+  styleRefs: 'items[].effectiveLabel.styleRefs',
+  sourceNode: 'effectiveLabel.sourceNode',
+  sourceAncestorNodes: 'effectiveLabel.sourceAncestorNodes',
+  sourceFile: 'effectiveLabel.sourceFile',
+  sourceText: 'effectiveLabel.sourceText',
+  sourceHtml: 'effectiveLabel.sourceHtml',
+  htmlTag: 'effectiveLabel.htmlTag',
+  className: 'effectiveLabel.className',
+  structure: 'effectiveLabel.structure',
+  sourceRuns: 'effectiveLabel.sourceRuns',
+});
+
+const ITEM_EFFECTIVE_LABEL_STYLE_REFS_FIELD_PATHS = Object.freeze({
+  paragraphStyle: 'items[].styleRefs.paragraphStyle',
+  paragraphStyleToken: 'items[].styleRefs.paragraphStyle',
+  characterStyle: 'items[].styleRefs.characterStyle',
+  characterStyleToken: 'items[].styleRefs.characterStyle',
+  objectStyle: 'items[].styleRefs.objectStyle',
+  objectStyleToken: 'items[].styleRefs.objectStyle',
+  frameStyle: 'items[].styleRefs.frameStyle',
+  frameStyleToken: 'items[].styleRefs.frameStyle',
+  tableStyle: 'items[].styleRefs.tableStyle',
+  tableStyleToken: 'items[].styleRefs.tableStyle',
+  cellStyle: 'items[].styleRefs.cellStyle',
+  cellStyleToken: 'items[].styleRefs.cellStyle',
+  layer: 'items[].styleRefs.layer',
+  layerToken: 'items[].styleRefs.layer',
+});
+
 const STYLE_COLLECTION_KEYS = new Set([
   'paragraphStyles',
   'characterStyles',
@@ -129,6 +162,29 @@ function scanPageObservedLabel(paths, seen, value) {
 
 function scanItemObservedLabel(paths, seen, value) {
   scanObjectSurface(paths, seen, value, OBSERVED_LABEL_FIELD_PATHS, 'items[].observedLabel');
+}
+
+function scanItemEffectiveLabel(paths, seen, value) {
+  if (!isPlainObject(value)) {
+    return;
+  }
+
+  for (const [key, item] of Object.entries(value)) {
+    if (key === 'styleRefs') {
+      addPath(paths, seen, ITEM_EFFECTIVE_LABEL_FIELD_PATHS.styleRefs);
+      scanObjectSurface(
+        paths,
+        seen,
+        item,
+        ITEM_EFFECTIVE_LABEL_STYLE_REFS_FIELD_PATHS,
+        'items[].effectiveLabel.styleRefs',
+      );
+    } else if (hasOwn.call(ITEM_EFFECTIVE_LABEL_FIELD_PATHS, key)) {
+      addPath(paths, seen, ITEM_EFFECTIVE_LABEL_FIELD_PATHS[key]);
+    } else if (!STRUCTURAL_KEYS.has(key)) {
+      addPath(paths, seen, `items[].effectiveLabel.${key}`);
+    }
+  }
 }
 
 function scanParentPages(paths, seen, parentPages, scanLabelArray, scanParentPageItems) {
@@ -311,6 +367,7 @@ function isPlainObject(value) {
 }
 
 module.exports = Object.freeze({
+  scanItemEffectiveLabel,
   scanItemObservedLabel,
   scanLayerArray,
   scanPageEffectiveLabel,

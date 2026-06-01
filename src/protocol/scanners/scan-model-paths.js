@@ -1,5 +1,6 @@
 const hasOwn = Object.prototype.hasOwnProperty;
 const {
+  scanItemEffectiveLabel,
   scanItemObservedLabel,
   scanLayerArray,
   scanPageEffectiveLabel,
@@ -56,6 +57,11 @@ const LABEL_FIELD_PATHS = Object.freeze({
   version: 'labels[].version',
   kind: 'labels[].kind',
   id: 'labels[].id',
+  name: 'labels[].name',
+  token: 'labels[].token',
+  displayName: 'labels[].displayName',
+  styleKind: 'labels[].styleKind',
+  htmlClass: 'labels[].htmlClass',
   title: 'document.title',
   source: 'labels[].source',
   unitMode: 'document.unitMode',
@@ -125,21 +131,6 @@ const ITEM_FIELD_PATHS = Object.freeze({
   labelStatus: 'pages[].items[].labelStatus',
   rejectedFields: 'pages[].items[].rejectedFields',
   rejectionReasons: 'pages[].items[].rejectionReasons',
-});
-
-const EFFECTIVE_LABEL_FIELD_PATHS = Object.freeze({
-  role: 'items[].effectiveLabel.role',
-  semantic: 'items[].effectiveLabel.semantic',
-  layout: 'items[].effectiveLabel.layout',
-  sourceNode: 'effectiveLabel.sourceNode',
-  sourceAncestorNodes: 'effectiveLabel.sourceAncestorNodes',
-  sourceFile: 'effectiveLabel.sourceFile',
-  sourceText: 'effectiveLabel.sourceText',
-  sourceHtml: 'effectiveLabel.sourceHtml',
-  htmlTag: 'effectiveLabel.htmlTag',
-  className: 'effectiveLabel.className',
-  structure: 'effectiveLabel.structure',
-  sourceRuns: 'effectiveLabel.sourceRuns',
 });
 
 const ITEM_ASSET_FIELD_PATHS = Object.freeze({
@@ -309,13 +300,7 @@ function scanItems(paths, seen, items, unknownPrefix) {
     for (const [key, value] of Object.entries(item)) {
       if (key === 'effectiveLabel') {
         addPath(paths, seen, ITEM_FIELD_PATHS.effectiveLabel);
-        scanObjectSurface(
-          paths,
-          seen,
-          value,
-          EFFECTIVE_LABEL_FIELD_PATHS,
-          'items[].effectiveLabel',
-        );
+        scanItemEffectiveLabel(paths, seen, value);
       } else if (key === 'observedLabel') {
         addPath(paths, seen, ITEM_FIELD_PATHS.observedLabel);
         scanItemObservedLabel(paths, seen, value);

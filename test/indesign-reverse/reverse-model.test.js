@@ -27,6 +27,36 @@ test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel',
   assert.equal(model.pages[0].items[0].structure.parentId, 'agenda-page');
 });
 
+test('reverseSnapshotToSemanticModel tagged fixture output is strict-valid as a semantic model', () => {
+  const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true });
+
+  assert.equal(model.valid, true);
+
+  const strict = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strict.valid, true);
+  assert.deepEqual(strict.fieldValidation.unknown, []);
+});
+
+test('validateSemanticModel rejects nested unknown effectiveLabel style refs', () => {
+  const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true });
+  const item = model.pages
+    .flatMap((page) => page.items || [])
+    .find((candidate) => candidate.effectiveLabel && candidate.effectiveLabel.styleRefs);
+
+  assert.ok(item, 'fixture should retain effectiveLabel styleRefs');
+
+  item.effectiveLabel.styleRefs.ghost = true;
+
+  const strict = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strict.valid, false);
+  assert.equal(
+    strict.fieldValidation.unknown.includes('items[].effectiveLabel.styleRefs.ghost'),
+    true,
+  );
+});
+
 test('reverseSnapshotToSemanticModel preserves parent page decorative items', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'parent.indd', mode: 'structured' },

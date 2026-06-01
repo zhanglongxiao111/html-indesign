@@ -48,6 +48,22 @@ test('registry contains sourceNode as sourceMetadata not canonical', () => {
   assert.equal(field.capabilities.indesign.write, 'observe-only');
 });
 
+test('registry keeps retained raw label payload fields as source metadata', () => {
+  for (const path of [
+    'labels[].name',
+    'labels[].token',
+    'labels[].displayName',
+    'labels[].styleKind',
+    'labels[].htmlClass',
+  ]) {
+    const field = fieldRegistry.getByPath(path);
+
+    assert.ok(field, `${path} should be registered`);
+    assert.equal(field.fieldClass, 'sourceMetadata', `${path} should not be canonical`);
+    assert.notEqual(field.fieldClass, 'canonical', `${path} should not be canonical`);
+  }
+});
+
 test('registry contains effectiveLabel and observedLabel observation boundaries', () => {
   assert.equal(fieldRegistry.getByPath('items[].effectiveLabel').fieldClass, 'sourceMetadata');
   assert.equal(fieldRegistry.getByPath('items[].observedLabel').fieldClass, 'observation');

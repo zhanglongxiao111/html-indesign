@@ -1,4 +1,30 @@
+const LABEL_PAYLOAD_METADATA_CAPABILITIES = Object.freeze({
+  html: { read: 'native', write: 'observe-only', persist: 'lossless' },
+  indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+});
+
+function labelPayloadMetadata(canonicalPath, type = 'string') {
+  return {
+    canonicalPath,
+    currentPaths: [],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'label-protocol',
+    type,
+    capabilities: LABEL_PAYLOAD_METADATA_CAPABILITIES,
+    indesign: {
+      labelPaths: [canonicalPath.slice('labels[].'.length)],
+    },
+  };
+}
+
 module.exports = [
+  labelPayloadMetadata('labels[].name'),
+  labelPayloadMetadata('labels[].token'),
+  labelPayloadMetadata('labels[].displayName'),
+  labelPayloadMetadata('labels[].styleKind'),
+  labelPayloadMetadata('labels[].htmlClass'),
   {
     canonicalPath: 'labels[].protocol',
     currentPaths: [],
@@ -144,7 +170,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].styleRefs',
-    currentPaths: ['labels[].styleRefs'],
+    currentPaths: ['labels[].styleRefs', 'items[].effectiveLabel.styleRefs'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'style-refs',

@@ -12,6 +12,11 @@ test('validateLabelFields accepts registered common label payload fields', () =>
     version: 1,
     kind: 'item',
     id: 'title',
+    name: 'Title Frame',
+    token: 'title-frame',
+    displayName: 'Title Frame',
+    styleKind: 'paragraph',
+    htmlClass: 'page-title',
     source: 'reverse-export',
     semantic: 'page-title',
     layout: 'cover-grid',
@@ -34,6 +39,9 @@ test('validateLabelFields accepts registered common label payload fields', () =>
   assert.equal(result.valid, true);
   assert.deepEqual(result.unknown, []);
   assert.equal(result.errors.length, 0);
+  for (const path of ['name', 'token', 'displayName', 'styleKind', 'htmlClass']) {
+    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+  }
 });
 
 test('validateLabelFields rejects unknown label payload fields in strict mode', () => {

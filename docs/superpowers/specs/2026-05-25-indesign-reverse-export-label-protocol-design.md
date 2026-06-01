@@ -157,7 +157,7 @@ data-id-layer
 data-id-grid
 ```
 
-约定：`data-page` 是页面容器标记；`data-id-*` 用于语义、样式、网格和资源参数。PDF 置入页码使用 `data-id-pdf-page`，旧 `data-id-page` 只作为 PDF 页码兼容字段读取。
+约定：`data-page` 是页面容器标记；`data-id-*` 用于语义、样式、网格和资源参数。PDF 置入页码只使用 `data-id-pdf-page`；旧 `data-id-page` 只能作为退役或观察信息记录，不得作为有效读取字段。
 
 InDesign 侧标签应是脚本标签：
 
