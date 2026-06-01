@@ -68,6 +68,7 @@
   - 2026-06-02 长期规范路径纠偏：controller 已将 `AGENTS.md` 仓库地图、`docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 模块职责/当前实现关系/模块布局、`docs/规范/REVERSE_EXPORT.md` Node 侧反向编译器模块示例从旧 `src/paged-html`、`src/indesign-reverse` 更新为当前 `src/adapters/html`、`src/writers/indesign`、`src/adapters/indesign`、`src/writers/html` 边界；历史 review / AI 协作过程材料保留旧路径作为追溯信息，不作为当前规范。下一步：运行文档纠偏验证、提交，并进入最终 completion verification。
   - 2026-06-02 长期规范路径纠偏复审：docs re-review agent `019e848d-99cd-75a1-a9e4-af8c6bc3f07b` BLOCKED（gpt-5.4 xhigh）。已确认 `AGENTS.md`、`HTML_INDESIGN_LIBRARY_SPEC.md`、`REVERSE_EXPORT.md` 的旧路径修正方向正确，但 `docs/规范/SEMANTIC_PROTOCOL.md` 仍用 `paged-html` / `indesign-reverse` 模块名描述当前主线或 blueprint 迁移链路：第 19、107 行应改为经 `blueprintMigrationToSemanticModel` 进入 `src/adapters/indesign` 归一化并由 `src/writers/html` 输出 inferred/observation HTML；第 157 行应改为 `src/adapters/html` 负责 HTML snapshot/read、`src/writers/indesign` 负责 semantic model -> instructions。下一步：派 gpt-5.5 xhigh docs fix agent 做最小长期规范收口。
   - 2026-06-02 长期规范旧路径 blocker 修复：docs blocker fix agent DONE（gpt-5.5 xhigh）。结果：`docs/规范/SEMANTIC_PROTOCOL.md` 的 blueprint migration 与 HTML-to-InDesign 主线边界已改为当前 `src/adapters/*` / `src/writers/*` 架构；同步清理 `docs/规范/REVERSE_EXPORT.md` 来源策略表中同一 current fact 的旧 `indesign-reverse` 路径命中；未修改历史过程材料或实现代码。
+  - 2026-06-02 长期规范旧路径 blocker 复审：docs blocker re-review agent 待启动（gpt-5.4 xhigh）。范围：复核 commit `50ebfab` 是否关闭 `SEMANTIC_PROTOCOL.md` / `REVERSE_EXPORT.md` 当前规范事实中的退役模块名描述，且不误改历史过程材料或实现代码。
 
 执行原则：
 
