@@ -4,9 +4,18 @@ const path = require('path');
 const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/indesign-reverse');
 const { validateSemanticModel } = require('../../src/semantic-model');
 
+function captureThrow(fn) {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  assert.fail('Expected function to throw');
+}
+
 test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
-  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured' });
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', profile: 'architecture-report' });
 
   assert.equal(model.kind, 'DocumentModel');
   assert.equal(model.id, 'architecture-report');
@@ -29,7 +38,7 @@ test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel',
 
 test('reverseSnapshotToSemanticModel tagged fixture output is strict-valid as a semantic model', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
-  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true });
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });
 
   assert.equal(model.valid, true);
 
@@ -40,7 +49,7 @@ test('reverseSnapshotToSemanticModel tagged fixture output is strict-valid as a 
 
 test('validateSemanticModel rejects nested unknown effectiveLabel style refs', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
-  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true });
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });
   const item = model.pages
     .flatMap((page) => page.items || [])
     .find((candidate) => candidate.effectiveLabel && candidate.effectiveLabel.styleRefs);
@@ -74,6 +83,46 @@ test('reverseSnapshotToSemanticModel fails visibly when an explicit semantic pro
     }, { strictFields: true }),
     /SEMANTIC_PRESET_LOAD_FAILED:missing-profile/,
   );
+});
+
+test('reverseSnapshotToSemanticModel fails visibly when structured reverse has no semantic preset source', () => {
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'missing-profile-source.indd', mode: 'structured' },
+    document: { name: 'missing-profile-source.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'structured', strictFields: true }));
+
+  assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+  assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:profile-required/);
+});
+
+test('reverseSnapshotToSemanticModel rejects an explicit empty semantic preset instead of loading fallback profile', () => {
+  for (const semanticPreset of [null, {}]) {
+    const error = captureThrow(() => reverseSnapshotToSemanticModel({
+      metadata: { sourceDocument: 'empty-preset.indd', mode: 'structured', profile: 'architecture-report' },
+      document: { name: 'empty-preset.indd', labels: [] },
+      pages: [
+        {
+          id: '1',
+          index: 0,
+          labels: [],
+          bounds: { x: 0, y: 0, width: 800, height: 450 },
+          items: [],
+        },
+      ],
+    }, { mode: 'structured', strictFields: true, semanticPreset }));
+
+    assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+    assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:semanticPreset/);
+  }
 });
 
 test('reverseSnapshotToSemanticModel preserves parent page decorative items', () => {
@@ -375,7 +424,7 @@ test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => 
         ],
       },
     ],
-  }, { strictFields: true });
+  }, { strictFields: true, profile: 'architecture-report' });
 
   assert.equal(model.valid, false);
   assert.equal(model.errors.length, 1);
@@ -415,7 +464,7 @@ test('reverseSnapshotToSemanticModel accepts registered page parent label fields
         items: [],
       },
     ],
-  }, { strictFields: true });
+  }, { strictFields: true, profile: 'architecture-report' });
 
   assert.equal(model.valid, true);
   assert.equal(model.errors.length, 0);
@@ -475,7 +524,7 @@ test('reverseSnapshotToSemanticModel preserves observed visual style and placed 
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const card = model.pages[0].items.find((item) => item.id === 'card-frame');
   assert.equal(card.role, 'shape');
@@ -536,7 +585,7 @@ test('reverseSnapshotToSemanticModel preserves placed asset preview page and lay
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const item = model.pages[0].items[0];
   assert.equal(item.role, 'graphic');
@@ -582,7 +631,7 @@ test('reverseSnapshotToSemanticModel preserves observed item effects', () => {
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const veil = model.pages[0].items[0];
   assert.equal(veil.effects.gradientFeather.scope, 'fill');
@@ -623,7 +672,7 @@ test('reverseSnapshotToSemanticModel preserves observed text style per text item
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const title = model.pages[0].items[0];
   assert.equal(title.role, 'text');
@@ -659,7 +708,7 @@ test('reverseSnapshotToSemanticModel infers generic PageItem with text as text i
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const title = model.pages[0].items[0];
   assert.equal(title.role, 'text');
@@ -691,7 +740,7 @@ test('reverseSnapshotToSemanticModel decodes InDesign special character tokens i
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const note = model.pages[0].items[0];
   assert.equal(note.content.text, '整体观感“偏冰冷”');
@@ -732,7 +781,7 @@ test('reverseSnapshotToSemanticModel omits observed items from hidden InDesign l
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   assert.deepEqual(model.layers.map((layer) => [layer.name, layer.visible]), [['Comments', false], ['text', true]]);
   assert.deepEqual(model.pages[0].items.map((item) => item.id), ['visible-title']);
@@ -891,7 +940,7 @@ test('reverseSnapshotToSemanticModel preserves observed character runs per text 
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const title = model.pages[0].items[0];
   assert.equal(title.content.text, '冰球场首层平面\n排布汇报');
@@ -974,7 +1023,7 @@ test('reverseSnapshotToSemanticModel maps InDesign display style names back to s
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const copy = model.pages[0].items[0];
   const table = model.pages[0].items[1];
@@ -1062,7 +1111,7 @@ test('reverseSnapshotToSemanticModel preserves native InDesign table structure',
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const table = model.pages[0].items[0];
   assert.equal(table.role, 'table');
@@ -1132,7 +1181,7 @@ test('reverseSnapshotToSemanticModel preserves reverse style resources composite
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   assert.equal(model.styles.compositeFonts['建筑复合字体'].romanWeight, '400');
   assert.equal(model.styles.paragraphStyles['正文列表'].css, 'font-size:12pt; color:#123456');

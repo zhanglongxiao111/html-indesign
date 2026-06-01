@@ -5,9 +5,9 @@ const { validateReverseLabel } = require('./label-whitelist');
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
   const styleMaps = reverseStyleNameMaps(snapshot.styles || {});
+  const reverseMode = options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured';
   const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options);
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
-  const reverseMode = options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured';
   const diagnostics = createLabelDiagnostics();
   const context = {
     semanticPreset,
@@ -423,26 +423,45 @@ function reverseCompositeFonts(items) {
 }
 
 function activeSemanticPreset(snapshot, documentLabel, options = {}) {
-  if (options.semanticPreset) return options.semanticPreset;
+  if (Object.prototype.hasOwnProperty.call(options, 'semanticPreset')) {
+    if (isNonEmptyObject(options.semanticPreset)) return options.semanticPreset;
+    throw semanticPresetLoadFailed(
+      'semanticPreset',
+      'semanticPreset must be a non-empty object when provided',
+    );
+  }
   const sourcePackage = documentLabel && documentLabel.sourcePackage || {};
-  const explicitProfile = firstProfile([
+  const profile = firstProfile([
+    options.profile,
     documentLabel && documentLabel.profile,
     sourcePackage.profile,
     snapshot && snapshot.metadata && snapshot.metadata.profile,
   ]);
-  const profile = explicitProfile || 'architecture-report';
+  const mode = options.mode || (snapshot && snapshot.metadata && snapshot.metadata.mode) || 'structured';
+  if (!profile) {
+    if (mode === 'observation') return {};
+    throw semanticPresetLoadFailed(
+      'profile-required',
+      'Structured reverse requires an explicit semanticPreset or profile',
+    );
+  }
   try {
     return loadStandardSemanticPreset(profile).preset;
   } catch (error) {
-    if (explicitProfile) {
-      const wrapped = new Error(`SEMANTIC_PRESET_LOAD_FAILED:${profile}:${error.message}`);
-      wrapped.code = 'SEMANTIC_PRESET_LOAD_FAILED';
-      wrapped.profile = profile;
-      wrapped.cause = error;
-      throw wrapped;
-    }
-    throw error;
+    throw semanticPresetLoadFailed(profile, error.message, error);
   }
+}
+
+function isNonEmptyObject(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length);
+}
+
+function semanticPresetLoadFailed(profile, message, cause) {
+  const error = new Error(`SEMANTIC_PRESET_LOAD_FAILED:${profile}:${message}`);
+  error.code = 'SEMANTIC_PRESET_LOAD_FAILED';
+  error.profile = profile;
+  if (cause) error.cause = cause;
+  return error;
 }
 
 function firstProfile(values) {
