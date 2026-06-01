@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { writeReverseAuthorPackage } = require('../../src/indesign-reverse');
+const { reverseSnapshotToSemanticModel, writeReverseAuthorPackage } = require('../../src/indesign-reverse');
 const { checkAuthorPackageEntry } = require('../../src/authoring');
 
 function captureThrow(fn) {
@@ -356,6 +356,57 @@ test('writeReverseAuthorPackage writes clean structured author markup', () => {
   assert.doesNotMatch(pageHtml, /data-id-semantic="unknown"/);
   assert.match(pageHtml, /\sdata-id-object(\s|>)/);
   assert.doesNotMatch(pageHtml, /data-id-object=""/);
+});
+
+test('writeReverseAuthorPackage accepts model profile sourced only from reverse options', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-option-profile-chain-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'option-profile.indd', mode: 'structured' },
+    document: {
+      name: 'option-profile.indd',
+      labels: [
+        {
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'document',
+          id: 'option-profile',
+          title: 'Option Profile',
+          sourcePackage: {
+            schemaVersion: 1,
+            config: 'deck.config.json',
+            entry: 'deck.html',
+          },
+        },
+      ],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [
+          {
+            protocol: 'html-indesign',
+            version: 1,
+            kind: 'page',
+            id: 'page-1',
+          },
+        ],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'structured', profile: 'architecture-report' });
+
+  assert.equal(model.profile, 'architecture-report');
+  assert.equal(model.sourcePackage.profile, 'architecture-report');
+
+  const result = writeReverseAuthorPackage(model, { outDir, mode: 'structured' });
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+
+  assert.equal(result.ok, true);
+  assert.equal(config.profile, 'architecture-report');
+  assert.equal(checkAuthorPackageEntry(path.join(outDir, 'deck.config.json')).ok, true);
 });
 
 test('writeReverseAuthorPackage writes semantic candidate report', () => {

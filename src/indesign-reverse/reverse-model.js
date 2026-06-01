@@ -6,7 +6,8 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
   const styleMaps = reverseStyleNameMaps(snapshot.styles || {});
   const reverseMode = options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured';
-  const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options);
+  const semanticProfile = activeSemanticProfile(snapshot, documentLabel, options);
+  const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options, semanticProfile);
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
   const diagnostics = createLabelDiagnostics();
   const context = {
@@ -25,12 +26,12 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
     title: documentLabel.title || (documentLabel.sourcePackage && documentLabel.sourcePackage.title) || (snapshot.document && snapshot.document.name) || documentLabel.id || 'indesign-document',
-    profile: documentLabel.profile || (documentLabel.sourcePackage && documentLabel.sourcePackage.profile) || null,
+    profile: semanticProfile,
     source: snapshot.metadata && snapshot.metadata.sourceDocument,
     unitMode: documentLabel.unitMode || 'presentation',
     coordinateUnit: documentLabel.coordinateUnit || 'pt',
     labels: (snapshot.document && snapshot.document.labels) || [],
-    sourcePackage: documentLabel.sourcePackage || null,
+    sourcePackage: sourcePackageFor(documentLabel, semanticProfile),
     parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps, context)),
     pages,
     layers: (snapshot.layers || []).map(reverseLayer),
@@ -422,7 +423,7 @@ function reverseCompositeFonts(items) {
   return out;
 }
 
-function activeSemanticPreset(snapshot, documentLabel, options = {}) {
+function activeSemanticPreset(snapshot, documentLabel, options = {}, semanticProfile = activeSemanticProfile(snapshot, documentLabel, options)) {
   if (Object.prototype.hasOwnProperty.call(options, 'semanticPreset')) {
     if (isNonEmptyObject(options.semanticPreset)) return options.semanticPreset;
     throw semanticPresetLoadFailed(
@@ -430,15 +431,8 @@ function activeSemanticPreset(snapshot, documentLabel, options = {}) {
       'semanticPreset must be a non-empty object when provided',
     );
   }
-  const sourcePackage = documentLabel && documentLabel.sourcePackage || {};
-  const profile = firstProfile([
-    options.profile,
-    documentLabel && documentLabel.profile,
-    sourcePackage.profile,
-    snapshot && snapshot.metadata && snapshot.metadata.profile,
-  ]);
   const mode = options.mode || (snapshot && snapshot.metadata && snapshot.metadata.mode) || 'structured';
-  if (!profile) {
+  if (!semanticProfile) {
     if (mode === 'observation') return {};
     throw semanticPresetLoadFailed(
       'profile-required',
@@ -446,14 +440,35 @@ function activeSemanticPreset(snapshot, documentLabel, options = {}) {
     );
   }
   try {
-    return loadStandardSemanticPreset(profile).preset;
+    return loadStandardSemanticPreset(semanticProfile).preset;
   } catch (error) {
-    throw semanticPresetLoadFailed(profile, error.message, error);
+    throw semanticPresetLoadFailed(semanticProfile, error.message, error);
   }
+}
+
+function activeSemanticProfile(snapshot, documentLabel, options = {}) {
+  const sourcePackage = documentLabel && documentLabel.sourcePackage || {};
+  return firstProfile([
+    options.profile,
+    documentLabel && documentLabel.profile,
+    sourcePackage.profile,
+    snapshot && snapshot.metadata && snapshot.metadata.profile,
+  ]);
+}
+
+function sourcePackageFor(documentLabel, semanticProfile) {
+  if (!documentLabel || !isPlainObject(documentLabel.sourcePackage)) return null;
+  const sourcePackage = { ...documentLabel.sourcePackage };
+  if (semanticProfile) sourcePackage.profile = semanticProfile;
+  return sourcePackage;
 }
 
 function isNonEmptyObject(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length);
+}
+
+function isPlainObject(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 function semanticPresetLoadFailed(profile, message, cause) {

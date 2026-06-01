@@ -442,6 +442,79 @@ test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => 
   );
 });
 
+test('reverseSnapshotToSemanticModel surfaces structured label field warnings by default', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'structured-label-warning.indd', mode: 'structured' },
+    document: { name: 'structured-label-warning.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Title',
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'title',
+                role: 'text',
+                semantic: 'page-title',
+                unknownPayload: 'bad',
+                parentPageId: 'report-parent',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured', profile: 'architecture-report' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(model.valid, true);
+  assert.equal(model.errors.length, 0);
+  assert.equal(model.report.warningCount, 2);
+  assert.equal(model.report.errorCount, 0);
+  assert.equal(item.semantic, 'page-title');
+  assert.equal(item.labelStatus, 'partial');
+  assert.equal(item.effectiveLabel.unknownPayload, undefined);
+  assert.equal(item.effectiveLabel.parentPageId, undefined);
+  assert.equal(item.observedLabel.unknownPayload, 'bad');
+  assert.equal(item.observedLabel.parentPageId, 'report-parent');
+  assert.equal(item.rejectedFields.unknownPayload, 'label-field-not-registered');
+  assert.equal(item.rejectedFields.parentPageId, 'label-field-kind-not-allowed');
+  assert.equal(
+    model.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && warning.path === 'unknownPayload'
+      && warning.labelKind === 'item'
+    )),
+    true,
+  );
+  assert.equal(
+    model.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
+      && warning.path === 'parentPageId'
+      && warning.labelKind === 'item'
+    )),
+    true,
+  );
+  assert.equal(
+    model.fieldValidation.some((validation) => (
+      validation.labelKind === 'item'
+      && validation.unknown.includes('unknownPayload')
+      && validation.disallowed.some((entry) => entry.path === 'parentPageId')
+    )),
+    true,
+  );
+});
+
 test('reverseSnapshotToSemanticModel accepts registered page parent label fields through effective label', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'parent-label.indd', mode: 'structured' },

@@ -92,6 +92,56 @@ test('validateReverseLabel reports unknown payload fields without making them ef
   );
 });
 
+test('validateReverseLabel reports unknown payload fields in structured mode by default', () => {
+  const result = validateReverseLabel({
+    semantic: 'page-title',
+    role: 'text',
+    madeUpField: 'copied-template-value',
+  }, { preset, mode: 'structured' });
+
+  assert.equal(result.status, 'partial');
+  assert.equal(result.valid, true);
+  assert.equal(result.effective.semantic, 'page-title');
+  assert.equal(result.effective.madeUpField, undefined);
+  assert.equal(result.observed.madeUpField, 'copied-template-value');
+  assert.equal(result.rejectedFields.madeUpField, 'label-field-not-registered');
+  assert.equal(result.fieldValidation.unknown.includes('madeUpField'), true);
+  assert.equal(
+    result.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && warning.path === 'madeUpField'
+    )),
+    true,
+  );
+});
+
+test('validateReverseLabel reports page-only fields on item labels in structured mode by default', () => {
+  const result = validateReverseLabel({
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'title',
+    semantic: 'page-title',
+    role: 'text',
+    parentPageId: 'report-parent',
+  }, { preset, mode: 'structured', kind: 'item' });
+
+  assert.equal(result.status, 'partial');
+  assert.equal(result.valid, true);
+  assert.equal(result.effective.semantic, 'page-title');
+  assert.equal(result.effective.parentPageId, undefined);
+  assert.equal(result.observed.parentPageId, 'report-parent');
+  assert.equal(result.rejectedFields.parentPageId, 'label-field-kind-not-allowed');
+  assert.equal(
+    result.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
+      && warning.path === 'parentPageId'
+      && warning.labelKind === 'item'
+    )),
+    true,
+  );
+});
+
 test('validateReverseLabel accepts registered common and nested payload fields in field strict mode', () => {
   const result = validateReverseLabel({
     protocol: 'html-indesign',

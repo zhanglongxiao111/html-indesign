@@ -17,6 +17,7 @@ function validateReverseLabel(label = {}, options = {}) {
     fieldValidation = validateLabelFields(fieldRegistry, label, {
       strict: options.strictFields === true,
       mode: options.mode,
+      kind: options.kind,
     });
     warnings.push(...fieldValidation.warnings);
     errors.push(...fieldValidation.errors);
@@ -44,7 +45,8 @@ function validateReverseLabel(label = {}, options = {}) {
 function shouldValidateFields(options) {
   return options.strictFields === true
     || options.warnFields === true
-    || options.mode === 'observation';
+    || options.mode === 'observation'
+    || options.mode === 'structured';
 }
 
 function applyFieldValidation(label, validation, observed, rejectedFields, reasons) {
