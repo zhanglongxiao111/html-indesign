@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const api = require('../index');
 
 test('public API exposes protocol adapters semanticModel writers and historical-template entry points', () => {
@@ -33,4 +35,18 @@ test('public API does not expose retired stage 8 facades or semantic-model conve
   assert.deepEqual(Object.keys(api.semanticModel), ['validateSemanticModel']);
   assert.equal(api.semanticModel.snapshotToSemanticModel, undefined);
   assert.equal(api.semanticModel.semanticModelToInstructions, undefined);
+});
+
+test('PPTX public API is exported with explicit keys instead of silent object-spread merge', () => {
+  const publicEntrySource = fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8');
+
+  assert.deepEqual(Object.keys(api.adapters.pptx).sort(), [
+    'PPTX_FORMAT_EXTENSIONS',
+    'PPTX_RESOURCE_FALLBACKS',
+    'PptxContractCapabilities',
+    'PptxReaderContract',
+    'PptxWriterContract',
+  ].sort());
+  assert.doesNotMatch(publicEntrySource, /\.{3}pptxContracts\b/);
+  assert.doesNotMatch(publicEntrySource, /\.{3}pptxCapabilities\b/);
 });

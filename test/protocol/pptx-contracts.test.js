@@ -29,6 +29,19 @@ const forbiddenImplementationNames = [
   'pptxToIndesign',
 ];
 
+const forbiddenActivePptxTokens = [
+  ...forbiddenImplementationNames,
+  'parsePptxPackage',
+  'serializePptxPackage',
+  'JSZip',
+  'OpenXML',
+  'pptxgen',
+  'pptxgenjs',
+  'adm-zip',
+  'yauzl',
+  'unzip',
+];
+
 function pptxAdapter() {
   assert.notEqual(api.adapters.pptx, undefined, 'api.adapters.pptx must expose the Stage 10 contract-only surface');
   return api.adapters.pptx;
@@ -128,10 +141,16 @@ test('PPTX contract capabilities describe custom data and explicit fallback reso
     ai: { visualOutput: 'preview-image', metadataPersistence: 'pptx-custom-data', fidelity: 'lossless-metadata' },
     psd: { visualOutput: 'preview-image', metadataPersistence: 'pptx-custom-data', fidelity: 'lossless-metadata' },
   });
+  assert.equal(
+    Object.hasOwn(PptxContractCapabilities, 'fieldStrategies'),
+    false,
+    'field-level PPTX capabilities must come from the protocol registry, not a local adapter mirror',
+  );
 });
 
-test('PPTX page-number asset placement contract is fallback write with lossless custom-data persistence', () => {
+test('PPTX page-number asset placement facts are owned by the protocol registry', () => {
   const { PptxContractCapabilities } = pptxAdapter();
+  const field = fieldRegistry.getByPath('items[].asset.placement.pageNumber');
 
   assert.deepEqual(
     capabilityFor(fieldRegistry, 'items[].asset.placement.pageNumber', 'pptx'),
@@ -143,15 +162,30 @@ test('PPTX page-number asset placement contract is fallback write with lossless 
       risk: 'editable-loss',
     },
   );
+  assert.deepEqual(field.pptx.customDataPaths, ['htmlIndesign.items[].asset.placement.pageNumber']);
+  assert.equal(Object.hasOwn(PptxContractCapabilities, 'fieldStrategies'), false);
+});
 
-  assert.deepEqual(PptxContractCapabilities.fieldStrategies['items[].asset.placement.pageNumber'], {
-    write: 'fallback',
-    persist: 'lossless',
-    fallbackKind: 'preview-image',
-    customDataCarrier: 'pptx-custom-data',
-    customDataPath: 'htmlIndesign.items[].asset.placement.pageNumber',
-    risk: 'editable-loss',
-  });
+test('active runtime and package files do not implement PPTX package I/O or pairwise converters', () => {
+  const files = activePptxGuardFiles();
+  assert.ok(files.includes('index.js'), 'active scan must include the public entry point');
+  assert.ok(files.includes('package.json'), 'active scan must include package.json');
+  assert.ok(
+    files.includes('src/adapters/pptx/contracts.js'),
+    'active scan must include PPTX contract runtime files',
+  );
+
+  const hits = [];
+  for (const file of files) {
+    const source = fs.readFileSync(path.join(__dirname, '../..', file), 'utf8');
+    for (const token of forbiddenActivePptxTokens) {
+      if (forbiddenActivePptxPattern(token).test(source)) {
+        hits.push(`${file}: ${token}`);
+      }
+    }
+  }
+
+  assert.deepEqual(hits, []);
 });
 
 test('PPTX README states the Stage 10 contract boundary and no package I/O implementation', () => {
@@ -166,3 +200,44 @@ test('PPTX README states the Stage 10 contract boundary and no package I/O imple
   assert.match(readme, /PDF\/AI\/PSD/);
   assert.match(readme, /metadata persists losslessly through custom data/i);
 });
+
+function activePptxGuardFiles() {
+  const repoRoot = path.join(__dirname, '../..');
+  const files = [];
+  collectRuntimeFiles(path.join(repoRoot, 'src'), files);
+
+  for (const rootFile of ['index.js', 'package.json', 'package-lock.json']) {
+    if (fs.existsSync(path.join(repoRoot, rootFile))) {
+      files.push(rootFile);
+    }
+  }
+
+  return Array.from(new Set(files)).sort();
+}
+
+function collectRuntimeFiles(directory, files) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      collectRuntimeFiles(fullPath, files);
+      continue;
+    }
+
+    if (!entry.isFile()) continue;
+    if (!['.js', '.json'].includes(path.extname(entry.name))) continue;
+    files.push(path.relative(path.join(__dirname, '../..'), fullPath).replace(/\\/g, '/'));
+  }
+}
+
+function forbiddenActivePptxPattern(token) {
+  if (token === 'adm-zip') {
+    return /\badm-zip\b/i;
+  }
+  if (token === 'pptxgen' || token === 'pptxgenjs') {
+    return new RegExp(`\\b${token}\\b`, 'i');
+  }
+  if (['JSZip', 'OpenXML', 'unzip'].includes(token)) {
+    return new RegExp(`\\b${token}\\b`, 'i');
+  }
+  return new RegExp(`\\b${token}\\b`);
+}

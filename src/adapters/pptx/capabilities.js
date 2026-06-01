@@ -26,16 +26,6 @@ const PptxContractCapabilities = Object.freeze({
   customDataCarrier: PptxWriterContract.customDataCarrier,
   fallbackStrategies: PptxWriterContract.fallbackStrategies,
   resourceStrategy: PPTX_RESOURCE_FALLBACKS,
-  fieldStrategies: Object.freeze({
-    'items[].asset.placement.pageNumber': Object.freeze({
-      write: 'fallback',
-      persist: 'lossless',
-      fallbackKind: 'preview-image',
-      customDataCarrier: 'pptx-custom-data',
-      customDataPath: 'htmlIndesign.items[].asset.placement.pageNumber',
-      risk: 'editable-loss',
-    }),
-  }),
 });
 
 module.exports = Object.freeze({

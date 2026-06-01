@@ -5,8 +5,11 @@ const adapters = {
   html: require('./src/adapters/html'),
   indesign: require('./src/adapters/indesign'),
   pptx: Object.freeze({
-    ...pptxContracts,
-    ...pptxCapabilities,
+    PPTX_FORMAT_EXTENSIONS: pptxContracts.PPTX_FORMAT_EXTENSIONS,
+    PptxReaderContract: pptxContracts.PptxReaderContract,
+    PptxWriterContract: pptxContracts.PptxWriterContract,
+    PPTX_RESOURCE_FALLBACKS: pptxCapabilities.PPTX_RESOURCE_FALLBACKS,
+    PptxContractCapabilities: pptxCapabilities.PptxContractCapabilities,
   }),
 };
 const semanticModel = require('./src/semantic-model');

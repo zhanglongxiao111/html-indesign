@@ -8,6 +8,6 @@ The current contract reserves:
 
 - `PptxReaderContract`: accepts a `pptx-package`, produces a `pptx-raw-snapshot`, and normalizes into the Semantic Model.
 - `PptxWriterContract`: accepts the Semantic Model, produces a future `pptx-package`, and persists roundtrip metadata through `pptx-custom-data`.
-- `PptxContractCapabilities`: documents fallback/resource strategy for fields that PPTX cannot edit natively.
+- `PptxContractCapabilities`: documents non-field-level contract metadata and resource fallback strategy. Field-level read/write/persist capability facts remain in the protocol registry.
 
 PDF/AI/PSD assets are fallback visual outputs in PPTX. Their visual output may be a preview image, but metadata persists losslessly through custom data so later adapters can roundtrip the original semantic facts.
