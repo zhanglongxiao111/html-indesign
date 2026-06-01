@@ -21,12 +21,10 @@ async function renderSnapshot(options) {
     await waitForPageAssets(page);
     await installBrowserSnapshotScripts(page);
 
-    const raw = await page.evaluate((selector) => {
-      return window.htmlIndesignBrowserSnapshotCapture.collectBrowserSnapshot(selector);
-    }, pageSelector);
-
-    const rawPages = Array.isArray(raw) ? raw : raw.pages || [];
-    const sourcePackageInput = Array.isArray(raw) ? null : raw.sourcePackageInput || null;
+    const raw = await evaluateBrowserSnapshotCapture(page, pageSelector, htmlPath);
+    const capture = browserSnapshotCapturePayload(raw, { htmlPath, pageSelector });
+    const rawPages = capture.pages;
+    const sourcePackageInput = capture.sourcePackageInput;
     const pages = rawPages.map((pageInfo) => pageSnapshotToModel(pageInfo));
 
     const warnings = [];
@@ -48,6 +46,35 @@ async function renderSnapshot(options) {
   } finally {
     await browser.close();
   }
+}
+
+async function evaluateBrowserSnapshotCapture(page, pageSelector, htmlPath) {
+  try {
+    return await page.evaluate((selector) => {
+      return window.htmlIndesignBrowserSnapshotCapture.collectBrowserSnapshot(selector);
+    }, pageSelector);
+  } catch (error) {
+    const wrapped = new Error(`Browser snapshot capture failed for selector "${pageSelector}" from "${htmlPath}": ${error.message}`);
+    wrapped.cause = error;
+    throw wrapped;
+  }
+}
+
+function browserSnapshotCapturePayload(raw, context) {
+  const { htmlPath, pageSelector } = context;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error(`Browser snapshot capture returned invalid payload shape for selector "${pageSelector}" from "${htmlPath}": expected object with pages array and sourcePackageInput object.`);
+  }
+  if (!Array.isArray(raw.pages)) {
+    throw new Error(`Browser snapshot capture returned invalid payload shape for selector "${pageSelector}" from "${htmlPath}": pages must be an array.`);
+  }
+  if (!raw.sourcePackageInput || typeof raw.sourcePackageInput !== 'object' || Array.isArray(raw.sourcePackageInput)) {
+    throw new Error(`Browser snapshot capture returned invalid payload shape for selector "${pageSelector}" from "${htmlPath}": sourcePackageInput must be an object.`);
+  }
+  if (raw.pages.length === 0) {
+    throw new Error(`No pages captured for selector "${pageSelector}" from "${htmlPath}".`);
+  }
+  return raw;
 }
 
 async function waitForPageAssets(page) {

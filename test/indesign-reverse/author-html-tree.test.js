@@ -955,6 +955,45 @@ test('pageItemsToAuthorHtml formats tables with editable thead and tbody', () =>
   assert.match(html, /<td data-id-paragraph-style="表格正文">243\.75m<\/td>/);
 });
 
+test('pageItemsToAuthorHtml preserves merged table cells and inline cell markup', () => {
+  const page = {
+    id: 'table-page',
+    items: [
+      {
+        id: 'metrics-table',
+        role: 'table',
+        sourceNode: { tagName: 'table', id: 'metrics-table', classList: ['metrics-table'], attributes: {} },
+        structure: { parentId: 'table-page', order: 1 },
+        table: {
+          rows: [
+            {
+              cells: [
+                {
+                  text: 'Merged Cells',
+                  paragraphStyle: 'body',
+                  rowSpan: 2,
+                  colSpan: 3,
+                  runs: [
+                    { text: 'Merged', characterStyle: 'cell-emphasis' },
+                    { text: 'Cells', tagName: 'strong', classList: ['value'], attributes: { 'data-id-character-style': 'value' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<td[^>]*rowspan="2"[^>]*>/);
+  assert.match(html, /<td[^>]*colspan="3"[^>]*>/);
+  assert.match(html, /<td[^>]*data-id-paragraph-style="body"[^>]*>/);
+  assert.match(html, /<span data-id-character-style="cell-emphasis">Merged<\/span> <strong class="value" data-id-character-style="value">Cells<\/strong>/);
+});
+
 test('pageItemsToAuthorHtml folds generated text companions back into sourced annotation objects', () => {
   const page = {
     id: 'drawing-page',

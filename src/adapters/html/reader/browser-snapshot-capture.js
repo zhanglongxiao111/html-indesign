@@ -13,6 +13,9 @@
 
   function collectBrowserSnapshot(selector) {
     const pageEls = Array.from(document.querySelectorAll(selector));
+    if (pageEls.length === 0) {
+      throw new Error(`No pages captured for selector "${selector}" in browser document "${document.location.href}"`);
+    }
     const styleRules = styleApi().collectStyleRules();
     return {
       sourcePackageInput: collectSourcePackageInput(pageEls),
