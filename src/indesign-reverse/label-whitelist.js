@@ -48,11 +48,16 @@ function shouldValidateFields(options) {
 }
 
 function applyFieldValidation(label, validation, observed, rejectedFields, reasons) {
-  for (const path of [...validation.unknown, ...validation.retired.map((entry) => entry.path)]) {
+  const rejectedPaths = [
+    ...validation.unknown.map((path) => ({ path, reason: 'label-field-not-registered' })),
+    ...validation.retired.map((entry) => ({ path: entry.path, reason: 'label-field-not-registered' })),
+    ...(validation.disallowed || []).map((entry) => ({ path: entry.path, reason: 'label-field-kind-not-allowed' })),
+  ];
+  for (const { path, reason } of rejectedPaths) {
     observeRejectedPayloadPath(label, path, observed);
-    rejectedFields[path] = 'label-field-not-registered';
-    if (!reasons.includes('label-field-not-registered')) {
-      reasons.push('label-field-not-registered');
+    rejectedFields[path] = reason;
+    if (!reasons.includes(reason)) {
+      reasons.push(reason);
     }
   }
 }

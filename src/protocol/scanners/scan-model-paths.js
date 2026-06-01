@@ -63,10 +63,12 @@ const LABEL_FIELD_PATHS = Object.freeze({
   styleKind: 'labels[].styleKind',
   htmlClass: 'labels[].htmlClass',
   title: 'document.title',
+  profile: 'document.profile',
   source: 'labels[].source',
   unitMode: 'document.unitMode',
   coordinateUnit: 'document.coordinateUnit',
   sourcePackage: 'document.sourcePackage',
+  provides: 'parentPages[].provides',
   grid: 'labels[].grid',
   semantic: 'labels[].semantic',
   layout: 'labels[].layout',
@@ -211,10 +213,41 @@ const ITEM_CONTENT_RUN_FIELD_PATHS = Object.freeze({
 const ITEM_TABLE_FIELD_PATHS = Object.freeze({
   rows: 'items[].table.rows',
   tableStyle: 'items[].table.tableStyle',
+  rowCount: 'items[].table.rowCount',
+  columnCount: 'items[].table.columnCount',
+  columnWidths: 'items[].table.columnWidths',
+  rowHeights: 'items[].table.rowHeights',
 });
 
 const ITEM_TABLE_ROW_FIELD_PATHS = Object.freeze({
+  index: 'items[].table.rows[].index',
   cells: 'items[].table.rows[].cells',
+});
+
+const ITEM_TABLE_CELL_FIELD_PATHS = Object.freeze({
+  index: 'items[].table.rows[].cells[].index',
+  text: 'items[].table.rows[].cells[].text',
+  header: 'items[].table.rows[].cells[].header',
+  rowSpan: 'items[].table.rows[].cells[].rowSpan',
+  colSpan: 'items[].table.rows[].cells[].colSpan',
+  paragraphStyle: 'items[].table.rows[].cells[].paragraphStyle',
+  cellStyle: 'items[].table.rows[].cells[].cellStyle',
+  fillColor: 'items[].table.rows[].cells[].fillColor',
+  textColor: 'items[].table.rows[].cells[].textColor',
+  pointSize: 'items[].table.rows[].cells[].pointSize',
+  leading: 'items[].table.rows[].cells[].leading',
+  textAlign: 'items[].table.rows[].cells[].textAlign',
+  padding: 'items[].table.rows[].cells[].padding',
+  borders: 'items[].table.rows[].cells[].borders',
+  runs: 'items[].table.rows[].cells[].runs',
+});
+
+const ITEM_TABLE_CELL_RUN_FIELD_PATHS = Object.freeze({
+  text: 'items[].table.rows[].cells[].runs[].text',
+  tagName: 'items[].table.rows[].cells[].runs[].tagName',
+  classList: 'items[].table.rows[].cells[].runs[].classList',
+  attributes: 'items[].table.rows[].cells[].runs[].attributes',
+  characterStyle: 'items[].table.rows[].cells[].runs[].characterStyle',
 });
 
 const STRUCTURAL_KEYS = new Set(['id', 'kind', 'type']);
@@ -407,17 +440,63 @@ function scanItemTable(paths, seen, table) {
   for (const [key, value] of Object.entries(table)) {
     if (key === 'rows') {
       addPath(paths, seen, ITEM_TABLE_FIELD_PATHS.rows);
-      scanArraySurface(
-        paths,
-        seen,
-        value,
-        ITEM_TABLE_ROW_FIELD_PATHS,
-        'items[].table.rows[]',
-      );
+      scanItemTableRows(paths, seen, value);
     } else if (hasOwn.call(ITEM_TABLE_FIELD_PATHS, key)) {
       addPath(paths, seen, ITEM_TABLE_FIELD_PATHS[key]);
     } else if (!STRUCTURAL_KEYS.has(key)) {
       addPath(paths, seen, `items[].table.${key}`);
+    }
+  }
+}
+
+function scanItemTableRows(paths, seen, rows) {
+  if (!Array.isArray(rows)) {
+    return;
+  }
+
+  for (const row of rows) {
+    if (!isPlainObject(row)) {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(row)) {
+      if (key === 'cells') {
+        addPath(paths, seen, ITEM_TABLE_ROW_FIELD_PATHS.cells);
+        scanItemTableCells(paths, seen, value);
+      } else if (hasOwn.call(ITEM_TABLE_ROW_FIELD_PATHS, key)) {
+        addPath(paths, seen, ITEM_TABLE_ROW_FIELD_PATHS[key]);
+      } else if (!STRUCTURAL_KEYS.has(key)) {
+        addPath(paths, seen, `items[].table.rows[].${key}`);
+      }
+    }
+  }
+}
+
+function scanItemTableCells(paths, seen, cells) {
+  if (!Array.isArray(cells)) {
+    return;
+  }
+
+  for (const cell of cells) {
+    if (!isPlainObject(cell)) {
+      continue;
+    }
+
+    for (const [key, value] of Object.entries(cell)) {
+      if (key === 'runs') {
+        addPath(paths, seen, ITEM_TABLE_CELL_FIELD_PATHS.runs);
+        scanArraySurface(
+          paths,
+          seen,
+          value,
+          ITEM_TABLE_CELL_RUN_FIELD_PATHS,
+          'items[].table.rows[].cells[].runs[]',
+        );
+      } else if (hasOwn.call(ITEM_TABLE_CELL_FIELD_PATHS, key)) {
+        addPath(paths, seen, ITEM_TABLE_CELL_FIELD_PATHS[key]);
+      } else if (!STRUCTURAL_KEYS.has(key)) {
+        addPath(paths, seen, `items[].table.rows[].cells[].${key}`);
+      }
     }
   }
 }

@@ -17,6 +17,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.paragraphStyle', 'styleRefs.paragraphStyleToken'],
+      labelKinds: ['item'],
       instructionPaths: ['paragraphStyle'],
     },
     pptx: {
@@ -46,6 +47,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.characterStyle', 'styleRefs.characterStyleToken'],
+      labelKinds: ['item'],
       instructionPaths: ['characterStyle'],
     },
     pptx: {
@@ -70,6 +72,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.objectStyle', 'styleRefs.objectStyleToken'],
+      labelKinds: ['item'],
       instructionPaths: ['objectStyle'],
     },
     pptx: {
@@ -94,6 +97,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.tableStyle', 'styleRefs.tableStyleToken'],
+      labelKinds: ['item'],
       instructionPaths: ['tableStyle'],
     },
     pptx: {
@@ -118,6 +122,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.layer', 'styleRefs.layerToken', 'layer', 'layerToken'],
+      labelKinds: ['item'],
       instructionPaths: ['layer'],
     },
     pptx: {
@@ -142,6 +147,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.frameStyle', 'styleRefs.frameStyleToken'],
+      labelKinds: ['item'],
       instructionPaths: ['frameStyle'],
     },
     pptx: {
@@ -166,6 +172,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs.cellStyle', 'styleRefs.cellStyleToken'],
+      labelKinds: ['item'],
       instructionPaths: ['cellStyle'],
     },
     pptx: {

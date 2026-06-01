@@ -4,7 +4,13 @@ const LABEL_PAYLOAD_METADATA_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
 });
 
-function labelPayloadMetadata(canonicalPath, type = 'string') {
+const ALL_LABEL_KINDS = Object.freeze(['document', 'page', 'item', 'style', 'layer', 'parentPage']);
+const STYLE_LABEL_KINDS = Object.freeze(['style']);
+const STYLE_AND_LAYER_LABEL_KINDS = Object.freeze(['style', 'layer']);
+const PAGE_AND_ITEM_LABEL_KINDS = Object.freeze(['page', 'item']);
+const SEMANTIC_LABEL_KINDS = Object.freeze(['page', 'item', 'parentPage']);
+
+function labelPayloadMetadata(canonicalPath, type = 'string', labelKinds = ALL_LABEL_KINDS) {
   return {
     canonicalPath,
     currentPaths: [],
@@ -15,16 +21,17 @@ function labelPayloadMetadata(canonicalPath, type = 'string') {
     capabilities: LABEL_PAYLOAD_METADATA_CAPABILITIES,
     indesign: {
       labelPaths: [canonicalPath.slice('labels[].'.length)],
+      labelKinds,
     },
   };
 }
 
 module.exports = [
-  labelPayloadMetadata('labels[].name'),
-  labelPayloadMetadata('labels[].token'),
-  labelPayloadMetadata('labels[].displayName'),
-  labelPayloadMetadata('labels[].styleKind'),
-  labelPayloadMetadata('labels[].htmlClass'),
+  labelPayloadMetadata('labels[].name', 'string', ['parentPage']),
+  labelPayloadMetadata('labels[].token', 'string', STYLE_AND_LAYER_LABEL_KINDS),
+  labelPayloadMetadata('labels[].displayName', 'string', ['style', 'layer', 'parentPage']),
+  labelPayloadMetadata('labels[].styleKind', 'string', STYLE_LABEL_KINDS),
+  labelPayloadMetadata('labels[].htmlClass', 'string', STYLE_LABEL_KINDS),
   {
     canonicalPath: 'labels[].protocol',
     currentPaths: [],
@@ -39,6 +46,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['protocol'],
+      labelKinds: ALL_LABEL_KINDS,
     },
   },
   {
@@ -55,6 +63,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['version'],
+      labelKinds: ALL_LABEL_KINDS,
     },
   },
   {
@@ -71,6 +80,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['kind'],
+      labelKinds: ALL_LABEL_KINDS,
     },
   },
   {
@@ -87,6 +97,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['id'],
+      labelKinds: ALL_LABEL_KINDS,
     },
   },
   {
@@ -103,6 +114,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['source'],
+      labelKinds: ALL_LABEL_KINDS,
     },
   },
   {
@@ -123,6 +135,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['semantic'],
+      labelKinds: SEMANTIC_LABEL_KINDS,
     },
     pptx: {
       customDataPaths: ['htmlIndesign.items[].semantic'],
@@ -142,6 +155,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['layout'],
+      labelKinds: ['item'],
     },
   },
   {
@@ -162,6 +176,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['role'],
+      labelKinds: ['item'],
       instructionPaths: ['role'],
     },
     pptx: {
@@ -182,6 +197,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['styleRefs'],
+      labelKinds: ['item'],
     },
   },
 ];

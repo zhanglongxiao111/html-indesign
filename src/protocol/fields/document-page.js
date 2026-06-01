@@ -17,6 +17,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['document.id'],
+      labelKinds: ['document'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.document.id'],
@@ -39,7 +40,8 @@ module.exports = [
       writeAttrs: ['data-id-profile'],
     },
     indesign: {
-      labelPaths: ['document.profile'],
+      labelPaths: ['document.profile', 'profile'],
+      labelKinds: ['document'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.document.profile'],
@@ -63,6 +65,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['page.id'],
+      labelKinds: ['page'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.pages[].id'],
@@ -86,6 +89,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['page.layout', 'layout'],
+      labelKinds: ['page'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.pages[].layout'],
@@ -105,6 +109,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['parentPage'],
+      labelKinds: ['page'],
     },
   },
   {
@@ -121,6 +126,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['parentPageId'],
+      labelKinds: ['page'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.pages[].parentPageId'],
@@ -140,6 +146,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['parentPageName'],
+      labelKinds: ['page'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.pages[].parentPageName'],
@@ -159,6 +166,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['margins'],
+      labelKinds: ['page'],
     },
   },
   {
@@ -179,6 +187,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['page.grid'],
+      labelKinds: ['page'],
       instructionPaths: ['guides.grid'],
     },
     pptx: {

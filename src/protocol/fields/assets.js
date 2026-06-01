@@ -66,6 +66,7 @@ module.exports = [
     indesign: {
       snapshotPaths: ['placedAsset.path', 'asset.path'],
       labelPaths: ['asset.path'],
+      labelKinds: ['item'],
       instructionPaths: ['placed.assetId'],
     },
     pptx: {
@@ -101,6 +102,7 @@ module.exports = [
     indesign: {
       snapshotPaths: ['placedAsset.placement.pageNumber', 'graphic.pdfAttributes.pageNumber'],
       labelPaths: ['asset.pageNumber'],
+      labelKinds: ['item'],
       instructionPaths: ['placed.pageNumber'],
     },
     pptx: {

@@ -50,6 +50,38 @@ test('validateModelFields accepts registered model paths and warns for unknown p
   );
 });
 
+test('scanModelPaths maps legal document and parent page label metadata paths', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{
+      protocol: 'html-indesign',
+      version: 1,
+      kind: 'document',
+      id: 'doc',
+      profile: 'architecture-report',
+    }],
+    parentPages: [{
+      id: 'parent-a',
+      labels: [{
+        protocol: 'html-indesign',
+        version: 1,
+        kind: 'parentPage',
+        id: 'parent-a',
+        provides: ['grid'],
+      }],
+    }],
+    pages: [{ id: 'p1' }],
+  });
+
+  assert.equal(scannedPaths.includes('document.profile'), true);
+  assert.equal(scannedPaths.includes('parentPages[].provides'), true);
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, true);
+  assert.deepEqual(strict.unknown, []);
+});
+
 test('validateModelFields rejects unknown model paths in strict mode', () => {
   const model = {
     kind: 'DocumentModel',
@@ -174,6 +206,73 @@ test('validateModelFields rejects unknown parent page item fields in strict mode
     )),
     true,
   );
+});
+
+test('validateModelFields scans table cell surfaces and rejects unknown cell fields in strict mode', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    id: 'doc',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'area-table',
+        table: {
+          rowCount: 1,
+          columnCount: 1,
+          columnWidths: [260],
+          rowHeights: [32],
+          rows: [{
+            index: 0,
+            cells: [{
+              index: 0,
+              text: 'Space',
+              header: true,
+              rowSpan: 1,
+              colSpan: 1,
+              paragraphStyle: 'table-body',
+              cellStyle: 'table-cell',
+              padding: { top: 8, right: 10, bottom: 8, left: 10 },
+              borders: { left: { color: '#cfd6d2', borderWeight: 1 } },
+              ghost: true,
+            }],
+          }],
+        },
+      }],
+    }],
+  });
+
+  for (const path of [
+    'items[].table.rowCount',
+    'items[].table.columnCount',
+    'items[].table.columnWidths',
+    'items[].table.rowHeights',
+    'items[].table.rows[].index',
+    'items[].table.rows[].cells[].index',
+    'items[].table.rows[].cells[].text',
+    'items[].table.rows[].cells[].header',
+    'items[].table.rows[].cells[].rowSpan',
+    'items[].table.rows[].cells[].colSpan',
+    'items[].table.rows[].cells[].paragraphStyle',
+    'items[].table.rows[].cells[].cellStyle',
+    'items[].table.rows[].cells[].padding',
+    'items[].table.rows[].cells[].borders',
+    'items[].table.rows[].cells[].ghost',
+  ]) {
+    assert.equal(scannedPaths.includes(path), true, `${path} should be scanned`);
+  }
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.equal(strict.unknown.includes('items[].table.rows[].cells[].ghost'), true);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].table.rows[].cells[].ghost'
+    )),
+    true,
+  );
+  assert.equal(strict.unknown.includes('items[].table.rows[].cells[].text'), false);
+  assert.equal(strict.unknown.includes('items[].table.rows[].cells[].borders'), false);
 });
 
 test('validateModelFields rejects unknown style collection fields in strict mode', () => {

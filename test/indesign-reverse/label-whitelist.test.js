@@ -114,7 +114,7 @@ test('validateReverseLabel accepts registered common and nested payload fields i
   assert.deepEqual(result.fieldValidation.unknown, []);
 });
 
-test('validateReverseLabel does not make page-only label fields effective for items', () => {
+test('validateReverseLabel rejects page-only label fields on items in field strict mode', () => {
   const result = validateReverseLabel({
     protocol: 'html-indesign',
     version: 1,
@@ -128,10 +128,24 @@ test('validateReverseLabel does not make page-only label fields effective for it
     margins: { top: 32, right: 32, bottom: 32, left: 32 },
   }, { preset, strictFields: true, kind: 'item' });
 
-  assert.equal(result.valid, true);
+  assert.equal(result.valid, false);
   assert.equal(result.effective.semantic, 'page-title');
   assert.equal(result.effective.parentPageId, undefined);
   assert.equal(result.effective.parentPageName, undefined);
   assert.equal(result.effective.grid, undefined);
   assert.equal(result.effective.margins, undefined);
+  assert.equal(result.observed.parentPageId, 'report-parent');
+  assert.equal(result.observed.parentPageName, '汇报母版');
+  assert.deepEqual(result.observed.grid, { columns: 12 });
+  assert.deepEqual(result.observed.margins, { top: 32, right: 32, bottom: 32, left: 32 });
+  assert.equal(result.rejectedFields.parentPageId, 'label-field-kind-not-allowed');
+  assert.equal(result.rejectionReasons.includes('label-field-kind-not-allowed'), true);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
+      && error.path === 'parentPageId'
+      && error.labelKind === 'item'
+    )),
+    true,
+  );
 });

@@ -9,13 +9,15 @@ function validateLabelFields(registry, label, options = {}) {
   const accepted = [];
   const unknown = [];
   const retired = [];
+  const disallowed = [];
   const observed = [];
   const warnings = [];
   const errors = [];
+  const labelKind = cleanLabelKind(options.kind || label.kind);
 
   for (const path of uniqueStrings(paths)) {
-    const field = labelFields.get(path);
-    if (!field) {
+    const record = labelFields.get(path);
+    if (!record) {
       unknown.push(path);
       observed.push(path);
       const issue = {
@@ -28,7 +30,9 @@ function validateLabelFields(registry, label, options = {}) {
       continue;
     }
 
-    if (field.lifecycle === 'retired') {
+    const activeEntries = record.entries.filter((entry) => entry.field.lifecycle !== 'retired');
+    if (!activeEntries.length) {
+      const field = record.entries[0].field;
       retired.push({ path, field });
       observed.push(path);
       const issue = {
@@ -36,6 +40,28 @@ function validateLabelFields(registry, label, options = {}) {
         path,
         field,
         message: `Retired InDesign label payload field must not be accepted: ${path}`,
+      };
+      warnings.push(issue);
+      if (strict) errors.push({ ...issue });
+      continue;
+    }
+
+    const allowedEntries = activeEntries.filter((entry) => labelKindAllowed(entry, labelKind));
+    if (!allowedEntries.length) {
+      disallowed.push({
+        path,
+        labelKind,
+        allowedLabelKinds: allowedLabelKindsFor(activeEntries),
+        field: activeEntries[0].field,
+      });
+      observed.push(path);
+      const issue = {
+        code: 'LABEL_FIELD_KIND_NOT_ALLOWED',
+        path,
+        labelKind,
+        allowedLabelKinds: allowedLabelKindsFor(activeEntries),
+        field: activeEntries[0].field,
+        message: `InDesign label payload field is not allowed on ${labelKind || 'unknown'} labels: ${path}`,
       };
       warnings.push(issue);
       if (strict) errors.push({ ...issue });
@@ -50,6 +76,7 @@ function validateLabelFields(registry, label, options = {}) {
     accepted,
     unknown,
     retired,
+    disallowed,
     observed,
     warnings,
     errors,
@@ -81,10 +108,16 @@ function scanNestedObject(paths, seen, value, prefix) {
 function labelFieldMap(registry) {
   const map = new Map();
   for (const entry of registry.entries) {
-    for (const path of labelPathsForEntry(entry)) {
-      if (!map.has(path) || map.get(path).lifecycle === 'retired') {
-        map.set(path, entry);
+    for (const labelPath of labelPathsForEntry(entry)) {
+      const record = map.get(labelPath.path) || { entries: [] };
+      if (!record.entries.some((item) => item.field === entry)) {
+        record.entries.push({
+          path: labelPath.path,
+          field: entry,
+          labelKinds: labelPath.labelKinds,
+        });
       }
+      map.set(labelPath.path, record);
     }
   }
   return map;
@@ -93,14 +126,15 @@ function labelFieldMap(registry) {
 function labelPathsForEntry(entry) {
   const paths = [];
   const indesign = entry.indesign || {};
+  const labelKinds = normalizeLabelKinds(indesign.labelKinds);
   for (const path of arrayOrEmpty(indesign.labelPaths)) {
-    paths.push(path);
+    paths.push({ path, labelKinds });
   }
   for (const path of entry.allPaths || []) {
     const labelPath = labelPayloadPathFromRegisteredPath(path);
-    if (labelPath) paths.push(labelPath);
+    if (labelPath) paths.push({ path: labelPath, labelKinds });
   }
-  return uniqueStrings(paths);
+  return uniqueLabelPathRecords(paths);
 }
 
 function labelPayloadPathFromRegisteredPath(path) {
@@ -129,6 +163,45 @@ function uniqueStrings(values) {
   }
 
   return unique;
+}
+
+function uniqueLabelPathRecords(records) {
+  const seen = new Set();
+  const unique = [];
+  for (const record of records) {
+    if (!record || typeof record.path !== 'string' || record.path.length === 0) continue;
+    const key = `${record.path}\0${record.labelKinds.join('\0')}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(record);
+  }
+  return unique;
+}
+
+function labelKindAllowed(entry, labelKind) {
+  if (!labelKind) return false;
+  return entry.labelKinds.includes(labelKind);
+}
+
+function allowedLabelKindsFor(entries) {
+  const seen = new Set();
+  const out = [];
+  for (const entry of entries) {
+    for (const kind of entry.labelKinds) {
+      if (seen.has(kind)) continue;
+      seen.add(kind);
+      out.push(kind);
+    }
+  }
+  return out;
+}
+
+function normalizeLabelKinds(value) {
+  return uniqueStrings(value).map(cleanLabelKind).filter(Boolean);
+}
+
+function cleanLabelKind(value) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function addPath(paths, seen, path) {

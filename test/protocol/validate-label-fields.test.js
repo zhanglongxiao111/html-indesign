@@ -12,11 +12,6 @@ test('validateLabelFields accepts registered common label payload fields', () =>
     version: 1,
     kind: 'item',
     id: 'title',
-    name: 'Title Frame',
-    token: 'title-frame',
-    displayName: 'Title Frame',
-    styleKind: 'paragraph',
-    htmlClass: 'page-title',
     source: 'reverse-export',
     semantic: 'page-title',
     layout: 'cover-grid',
@@ -39,9 +34,71 @@ test('validateLabelFields accepts registered common label payload fields', () =>
   assert.equal(result.valid, true);
   assert.deepEqual(result.unknown, []);
   assert.equal(result.errors.length, 0);
-  for (const path of ['name', 'token', 'displayName', 'styleKind', 'htmlClass']) {
-    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+});
+
+test('label identity payload fields remain source metadata fields', () => {
+  for (const path of ['labels[].name', 'labels[].token', 'labels[].displayName', 'labels[].styleKind', 'labels[].htmlClass']) {
+    const field = fieldRegistry.getByPath(path);
+    assert.ok(field, `${path} should be registered`);
+    assert.equal(field.fieldClass, 'sourceMetadata');
   }
+});
+
+test('validateLabelFields rejects page document style and layer fields on item labels in strict mode', () => {
+  const result = validateLabelFields(fieldRegistry, {
+    kind: 'item',
+    id: 'title',
+    semantic: 'page-title',
+    role: 'text',
+    parentPageId: 'report-parent',
+    parentPageName: '汇报母版',
+    grid: { columns: 12 },
+    margins: { top: 32, right: 32, bottom: 32, left: 32 },
+    title: 'Document Title',
+    sourcePackage: { config: 'deck.config.json' },
+    name: 'Title Frame',
+    token: 'title-frame',
+    displayName: 'Title Frame',
+    styleKind: 'paragraph',
+    htmlClass: 'page-title',
+  }, { strict: true });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.accepted, ['kind', 'id', 'semantic', 'role']);
+  assert.deepEqual((result.disallowed || []).map((entry) => entry.path), [
+    'parentPageId',
+    'parentPageName',
+    'grid',
+    'margins',
+    'title',
+    'sourcePackage',
+    'name',
+    'token',
+    'displayName',
+    'styleKind',
+    'htmlClass',
+  ]);
+  assert.deepEqual(result.observed, [
+    'parentPageId',
+    'parentPageName',
+    'grid',
+    'margins',
+    'title',
+    'sourcePackage',
+    'name',
+    'token',
+    'displayName',
+    'styleKind',
+    'htmlClass',
+  ]);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
+      && error.path === 'parentPageId'
+      && error.labelKind === 'item'
+    )),
+    true,
+  );
 });
 
 test('validateLabelFields rejects unknown label payload fields in strict mode', () => {
@@ -86,6 +143,7 @@ test('validateLabelFields reports unknown fields in observation mode without acc
 
 test('validateLabelFields accepts registered nested style refs and source metadata', () => {
   const result = validateLabelFields(fieldRegistry, {
+    kind: 'item',
     styleRefs: {
       paragraphStyle: 'body',
       paragraphStyleToken: 'body-token',
@@ -104,7 +162,7 @@ test('validateLabelFields accepts registered nested style refs and source metada
   assert.deepEqual(result.unknown, []);
 });
 
-test('validateLabelFields accepts registered parent page label fields', () => {
+test('validateLabelFields accepts registered page label fields', () => {
   const result = validateLabelFields(fieldRegistry, {
     protocol: 'html-indesign',
     version: 1,
@@ -112,10 +170,67 @@ test('validateLabelFields accepts registered parent page label fields', () => {
     id: 'page-1',
     parentPageId: 'report-parent',
     parentPageName: '汇报母版',
+    grid: { columns: 12 },
+    margins: { top: 32, right: 32, bottom: 32, left: 32 },
   }, { strict: true });
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.unknown, []);
   assert.equal(result.accepted.includes('parentPageId'), true);
   assert.equal(result.accepted.includes('parentPageName'), true);
+  assert.equal(result.accepted.includes('grid'), true);
+  assert.equal(result.accepted.includes('margins'), true);
+});
+
+test('validateLabelFields accepts legal document style layer and parent page payloads in strict mode', () => {
+  const document = validateLabelFields(fieldRegistry, {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'document',
+    id: 'doc',
+    title: 'Report',
+    profile: 'architecture-report',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    sourcePackage: { config: 'deck.config.json' },
+  }, { strict: true });
+  assert.equal(document.valid, true);
+  assert.deepEqual(document.unknown, []);
+
+  const style = validateLabelFields(fieldRegistry, {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'style',
+    id: 'style-page-title',
+    token: 'page-title',
+    displayName: '页面标题',
+    styleKind: 'paragraph',
+    htmlClass: 'page-title',
+  }, { strict: true });
+  assert.equal(style.valid, true);
+  assert.deepEqual(style.unknown, []);
+
+  const layer = validateLabelFields(fieldRegistry, {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'layer',
+    id: 'layer-text',
+    token: 'text',
+    displayName: '文字',
+  }, { strict: true });
+  assert.equal(layer.valid, true);
+  assert.deepEqual(layer.unknown, []);
+
+  const parentPage = validateLabelFields(fieldRegistry, {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'parentPage',
+    id: 'report-parent',
+    name: '汇报母版',
+    displayName: '汇报母版',
+    semantic: 'report-parent',
+    provides: ['header-guides'],
+  }, { strict: true });
+  assert.equal(parentPage.valid, true);
+  assert.deepEqual(parentPage.unknown, []);
 });

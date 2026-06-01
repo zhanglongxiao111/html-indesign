@@ -192,6 +192,7 @@ function shouldRecordFieldValidation(fieldValidation) {
     fieldValidation.accepted.length
       || fieldValidation.unknown.length
       || fieldValidation.retired.length
+      || (fieldValidation.disallowed && fieldValidation.disallowed.length)
       || fieldValidation.observed.length
       || fieldValidation.warnings.length
       || fieldValidation.errors.length,
@@ -209,6 +210,13 @@ function labelFieldValidationDiagnostic(fieldValidation, context = {}) {
     unknown: fieldValidation.unknown.slice(),
     retired: fieldValidation.retired.map((entry) => ({
       path: entry.path,
+      canonicalPath: entry.field && entry.field.canonicalPath || null,
+      lifecycle: entry.field && entry.field.lifecycle || null,
+    })),
+    disallowed: (fieldValidation.disallowed || []).map((entry) => ({
+      path: entry.path,
+      labelKind: entry.labelKind || null,
+      allowedLabelKinds: Array.isArray(entry.allowedLabelKinds) ? entry.allowedLabelKinds.slice() : [],
       canonicalPath: entry.field && entry.field.canonicalPath || null,
       lifecycle: entry.field && entry.field.lifecycle || null,
     })),
@@ -417,18 +425,33 @@ function reverseCompositeFonts(items) {
 function activeSemanticPreset(snapshot, documentLabel, options = {}) {
   if (options.semanticPreset) return options.semanticPreset;
   const sourcePackage = documentLabel && documentLabel.sourcePackage || {};
-  const profile = documentLabel && documentLabel.profile
-    || sourcePackage.profile
-    || snapshot && snapshot.metadata && snapshot.metadata.profile
-    || 'architecture-report';
+  const explicitProfile = firstProfile([
+    documentLabel && documentLabel.profile,
+    sourcePackage.profile,
+    snapshot && snapshot.metadata && snapshot.metadata.profile,
+  ]);
+  const profile = explicitProfile || 'architecture-report';
   try {
     return loadStandardSemanticPreset(profile).preset;
   } catch (error) {
-    if (profile !== 'architecture-report') {
-      return loadStandardSemanticPreset('architecture-report').preset;
+    if (explicitProfile) {
+      const wrapped = new Error(`SEMANTIC_PRESET_LOAD_FAILED:${profile}:${error.message}`);
+      wrapped.code = 'SEMANTIC_PRESET_LOAD_FAILED';
+      wrapped.profile = profile;
+      wrapped.cause = error;
+      throw wrapped;
     }
     throw error;
   }
+}
+
+function firstProfile(values) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const profile = value.trim();
+    if (profile) return profile;
+  }
+  return null;
 }
 
 function observedLabelWithReasons(validation) {

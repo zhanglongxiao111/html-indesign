@@ -13,6 +13,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['sourceNode'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -29,6 +30,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['sourceAncestorNodes'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -45,6 +47,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['sourceFile'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -61,6 +64,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['sourceText'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -77,6 +81,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['sourceHtml'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -93,6 +98,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['htmlTag'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -109,6 +115,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['className'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -138,6 +145,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['structure'],
+      labelKinds: ['page', 'item'],
     },
   },
   {
@@ -154,6 +162,7 @@ module.exports = [
     },
     indesign: {
       labelPaths: ['sourceRuns'],
+      labelKinds: ['page', 'item'],
     },
   },
 ];

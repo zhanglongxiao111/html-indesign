@@ -77,7 +77,9 @@ function parentPageEntries() {
     sourceMetadata('parentPages[].id', [], 'string'),
     sourceMetadata('parentPages[].name', [], 'string'),
     sourceMetadata('parentPages[].semantic', [], 'string'),
-    sourceMetadata('parentPages[].provides', [], 'array'),
+    sourceMetadata('parentPages[].provides', [], 'array', {
+      indesign: { labelPaths: ['provides'], labelKinds: ['parentPage'] },
+    }),
     sourceMetadata('parentPages[].bounds', [], 'object'),
     sourceMetadata('parentPages[].labels', [], 'array'),
     sourceMetadata('parentPages[].items', [], 'array'),
@@ -137,17 +139,17 @@ function compositeFontEntries() {
 
 module.exports = [
   canonical('document.title', ['title', 'labels[].title'], 'string', {
-    indesign: { labelPaths: ['title'] },
+    indesign: { labelPaths: ['title'], labelKinds: ['document'] },
   }),
   sourceMetadata('document.source', ['source'], 'string'),
   canonical('document.unitMode', ['unitMode', 'labels[].unitMode'], 'string', {
-    indesign: { labelPaths: ['unitMode'] },
+    indesign: { labelPaths: ['unitMode'], labelKinds: ['document'] },
   }),
   canonical('document.coordinateUnit', ['coordinateUnit', 'labels[].coordinateUnit'], 'string', {
-    indesign: { labelPaths: ['coordinateUnit'] },
+    indesign: { labelPaths: ['coordinateUnit'], labelKinds: ['document'] },
   }),
   sourceMetadata('document.sourcePackage', ['sourcePackage', 'labels[].sourcePackage'], 'object', {
-    indesign: { labelPaths: ['sourcePackage'] },
+    indesign: { labelPaths: ['sourcePackage'], labelKinds: ['document'] },
   }),
   sourceMetadata('parentPages', [], 'array'),
   ...parentPageEntries(),

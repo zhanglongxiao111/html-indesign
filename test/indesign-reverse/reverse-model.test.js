@@ -57,6 +57,25 @@ test('validateSemanticModel rejects nested unknown effectiveLabel style refs', (
   );
 });
 
+test('reverseSnapshotToSemanticModel fails visibly when an explicit semantic profile is missing', () => {
+  assert.throws(
+    () => reverseSnapshotToSemanticModel({
+      metadata: { sourceDocument: 'bad-profile.indd', mode: 'structured', profile: 'missing-profile' },
+      document: { name: 'bad-profile.indd', labels: [] },
+      pages: [
+        {
+          id: '1',
+          index: 0,
+          labels: [],
+          bounds: { x: 0, y: 0, width: 800, height: 450 },
+          items: [],
+        },
+      ],
+    }, { strictFields: true }),
+    /SEMANTIC_PRESET_LOAD_FAILED:missing-profile/,
+  );
+});
+
 test('reverseSnapshotToSemanticModel preserves parent page decorative items', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'parent.indd', mode: 'structured' },
@@ -971,12 +990,15 @@ test('reverseSnapshotToSemanticModel maps InDesign display style names back to s
 test('reverseSnapshotToSemanticModel preserves native InDesign table structure', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'table.indd', mode: 'structured' },
-    document: { name: 'table.indd', labels: [] },
+    document: {
+      name: 'table.indd',
+      labels: [{ protocol: 'html-indesign', version: 1, kind: 'document', id: 'table-doc' }],
+    },
     pages: [
       {
         id: '1',
         index: 0,
-        labels: [],
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'page', id: 'page-1' }],
         bounds: { x: 0, y: 0, width: 800, height: 450 },
         items: [
           {
@@ -1053,6 +1075,10 @@ test('reverseSnapshotToSemanticModel preserves native InDesign table structure',
   assert.equal(table.table.rows[0].cells[0].header, true);
   assert.equal(table.table.rows[0].cells[0].paragraphStyle, '表头文字');
   assert.equal(table.table.rows[0].cells[0].borders.left.color, '#cfd6d2');
+
+  const strict = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strict.valid, true);
+  assert.deepEqual(strict.fieldValidation.unknown, []);
 });
 
 test('reverseSnapshotToSemanticModel preserves reverse style resources composite fonts and z order', () => {
