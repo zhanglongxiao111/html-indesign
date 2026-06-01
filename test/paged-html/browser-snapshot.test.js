@@ -4,6 +4,20 @@ const fs = require('fs');
 const path = require('path');
 const { renderSnapshot } = require('../../src/adapters/html');
 
+test('browser snapshot reader exposes focused browser-context scripts', () => {
+  const { browserSnapshotScriptPaths } = require('../../src/adapters/html/reader/browser-snapshot-scripts');
+
+  assert.deepEqual(
+    browserSnapshotScriptPaths.map((scriptPath) => path.basename(scriptPath)),
+    [
+      'browser-style-capture.js',
+      'browser-element-capture.js',
+      'browser-snapshot-capture.js',
+    ],
+  );
+  assert.equal(browserSnapshotScriptPaths.every((scriptPath) => fs.existsSync(scriptPath)), true);
+});
+
 test('renderSnapshot captures fixed-size paged HTML pages', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

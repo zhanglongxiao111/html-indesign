@@ -2,6 +2,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tree');
 
+test('author HTML tree exposes focused rendering helpers', () => {
+  const assetRenderer = require('../../src/writers/html/author-asset-renderer');
+  const pdfRenderer = require('../../src/writers/html/author-pdf-renderer');
+  const vectorRenderer = require('../../src/writers/html/author-vector-renderer');
+  const tableRenderer = require('../../src/writers/html/author-table-renderer');
+  const richTextRenderer = require('../../src/writers/html/author-rich-text-renderer');
+
+  assert.equal(typeof assetRenderer.renderPlacedAssetFrameNode, 'function');
+  assert.equal(typeof pdfRenderer.renderPdfObjectNode, 'function');
+  assert.equal(typeof vectorRenderer.renderVectorSvgNode, 'function');
+  assert.equal(typeof tableRenderer.tableContent, 'function');
+  assert.equal(typeof richTextRenderer.ownContent, 'function');
+});
+
 test('pageItemsToAuthorHtml nests children under source parent items', () => {
   const page = {
     id: 'agenda-page',

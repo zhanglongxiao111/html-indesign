@@ -79,7 +79,7 @@ test('retired data-id-page source scanner allows explicit cleanup only', () => {
   const source = "if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];";
 
   assert.deepEqual(
-    findRetiredDataIdPageViolations(source, 'src/writers/html/author-html-tree.js'),
+    findRetiredDataIdPageViolations(source, 'src/writers/html/author-asset-attrs.js'),
     [],
   );
 });
@@ -124,7 +124,7 @@ test('source code does not read data-id-page as PDF page number fallback', () =>
   assert.deepEqual(violations, []);
   assert.deepEqual(
     occurrences.map((occurrence) => `${occurrence.file}:${occurrence.source}`),
-    ["src/writers/html/author-html-tree.js:if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];"],
+    ["src/writers/html/author-asset-attrs.js:if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];"],
   );
 });
 
@@ -178,7 +178,7 @@ function findDataIdPageLiteralOccurrences(source, relativeFile) {
 }
 
 function isAllowedDataIdPageCleanup(occurrence) {
-  return occurrence.file === 'src/writers/html/author-html-tree.js'
+  return occurrence.file === 'src/writers/html/author-asset-attrs.js'
     && occurrence.source === "if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];";
 }
 
