@@ -66,6 +66,93 @@ test('validateSemanticModel rejects unknown model fields in strict field mode', 
   );
 });
 
+test('validateSemanticModel rejects raw item label fields that are not allowed for item labels in strict field mode', () => {
+  const result = validateSemanticModel({
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{ kind: 'document', id: 'doc' }],
+    pages: [{
+      id: 'p1',
+      labels: [{ kind: 'page', id: 'p1' }],
+      items: [{
+        id: 'item-1',
+        labels: [{
+          kind: 'item',
+          id: 'item-1',
+          title: 'Document Title',
+          sourcePackage: { config: 'deck.config.json' },
+          parentPageId: 'report-parent',
+          grid: { columns: 12 },
+          margins: { top: 32, right: 32, bottom: 32, left: 32 },
+        }],
+      }],
+    }],
+  }, { strictFields: true });
+
+  assert.equal(result.valid, false);
+  const labelErrors = result.errors
+    .filter((error) => error.code === 'LABEL_FIELD_KIND_NOT_ALLOWED');
+  assert.deepEqual(
+    labelErrors.map((error) => error.path),
+    ['title', 'sourcePackage', 'parentPageId', 'grid', 'margins'],
+  );
+  assert.deepEqual(
+    labelErrors.map((error) => error.labelPath),
+    [
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+    ],
+  );
+  assert.equal(labelErrors.every((error) => error.surfacePath === 'pages[].items[].labels[]'), true);
+});
+
+test('validateSemanticModel reports raw item label fields that are not allowed for item labels in warning field mode', () => {
+  const result = validateSemanticModel({
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{ kind: 'document', id: 'doc' }],
+    pages: [{
+      id: 'p1',
+      labels: [{ kind: 'page', id: 'p1' }],
+      items: [{
+        id: 'item-1',
+        labels: [{
+          kind: 'item',
+          id: 'item-1',
+          title: 'Document Title',
+          sourcePackage: { config: 'deck.config.json' },
+          parentPageId: 'report-parent',
+          grid: { columns: 12 },
+          margins: { top: 32, right: 32, bottom: 32, left: 32 },
+        }],
+      }],
+    }],
+  }, { warnFields: true });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.length, 0);
+  const labelWarnings = result.warnings
+    .filter((warning) => warning.code === 'LABEL_FIELD_KIND_NOT_ALLOWED');
+  assert.deepEqual(
+    labelWarnings.map((warning) => warning.path),
+    ['title', 'sourcePackage', 'parentPageId', 'grid', 'margins'],
+  );
+  assert.deepEqual(
+    labelWarnings.map((warning) => warning.labelPath),
+    [
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+      'pages[0].items[0].labels[0]',
+    ],
+  );
+  assert.equal(labelWarnings.every((warning) => warning.surfacePath === 'pages[].items[].labels[]'), true);
+});
+
 test('validateSemanticModel rejects nested root-surface ghosts in strict field mode', () => {
   const result = validateSemanticModel({
     kind: 'DocumentModel',
@@ -138,6 +225,37 @@ test('validateSemanticModel accepts current DocumentModel fields in strict field
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.fieldValidation.unknown, []);
+});
+
+test('validateSemanticModel accepts legal raw document and page label fields in strict field mode', () => {
+  const result = validateSemanticModel({
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{
+      kind: 'document',
+      id: 'doc',
+      title: 'Current document',
+      sourcePackage: { config: 'deck.config.json' },
+      profile: 'architecture-report',
+    }],
+    pages: [{
+      id: 'p1',
+      labels: [{
+        kind: 'page',
+        id: 'p1',
+        parentPageId: 'report-parent',
+        grid: { columns: 12 },
+        margins: { top: 32, right: 32, bottom: 32, left: 32 },
+      }],
+      items: [{
+        id: 'item-1',
+        labels: [{ kind: 'item', id: 'item-1' }],
+      }],
+    }],
+  }, { strictFields: true });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.length, 0);
 });
 
 test('validateSemanticModel reports unknown model fields as warnings in warning field mode', () => {
