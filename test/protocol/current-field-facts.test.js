@@ -98,3 +98,28 @@ test('registry keeps sourceRuns metadata separate from canonical text runs', () 
   assert.equal(textRuns.fieldClass, 'canonical');
   assert.equal(textRuns.currentPaths.includes('sourceRuns'), false);
 });
+
+test('registry keeps reverse item effects as an InDesign format extension', () => {
+  const canonicalVisualEffects = fieldRegistry.getByPath('items[].visualStyle.effects');
+  const reverseEffects = fieldRegistry.getByPath('items[].effects');
+
+  assert.equal(canonicalVisualEffects, null);
+  assert.equal(reverseEffects.fieldClass, 'formatExtension');
+  assert.equal(reverseEffects.owner, 'reverse-model');
+});
+
+test('registry does not declare reverse visualStyle fields as native InDesign write fields', () => {
+  for (const path of [
+    'items[].visualStyle.fillColor',
+    'items[].visualStyle.strokeColor',
+    'items[].visualStyle.strokeLineCap',
+  ]) {
+    const field = fieldRegistry.getByPath(path);
+
+    assert.ok(field, `${path} should remain registered`);
+    assert.equal(field.fieldClass, 'canonical');
+    assert.equal(field.capabilities.indesign.read, 'native');
+    assert.equal(field.capabilities.indesign.write, 'observe-only');
+    assert.equal(field.indesign.instructionPaths, undefined);
+  }
+});

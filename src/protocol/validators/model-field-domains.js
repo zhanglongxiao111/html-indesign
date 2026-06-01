@@ -17,15 +17,57 @@ const MODEL_FIELD_DOMAIN_ALIASES = Object.freeze({
   'table/text': 'table.text',
 });
 
-const SOURCE_METADATA_SEGMENTS = new Set([
+const SOURCE_METADATA_PATHS = new Set([
+  'document.sourcePackage',
   'sourcePackage',
-  'sourceFile',
-  'sourceNode',
-  'sourceAncestorNodes',
-  'sourceText',
-  'sourceHtml',
-  'sourceRuns',
-  'structure',
+  'labels[].sourcePackage',
+  'items[].sourceFile',
+  'pages[].sourceFile',
+  'labels[].sourceFile',
+  'effectiveLabel.sourceFile',
+  'items[].effectiveLabel.sourceFile',
+  'pages[].effectiveLabel.sourceFile',
+  'items[].sourceNode',
+  'pages[].sourceNode',
+  'labels[].sourceNode',
+  'effectiveLabel.sourceNode',
+  'items[].effectiveLabel.sourceNode',
+  'pages[].effectiveLabel.sourceNode',
+  'items[].sourceAncestorNodes',
+  'labels[].sourceAncestorNodes',
+  'effectiveLabel.sourceAncestorNodes',
+  'items[].effectiveLabel.sourceAncestorNodes',
+  'pages[].effectiveLabel.sourceAncestorNodes',
+  'items[].sourceText',
+  'labels[].sourceText',
+  'effectiveLabel.sourceText',
+  'items[].effectiveLabel.sourceText',
+  'pages[].effectiveLabel.sourceText',
+  'items[].sourceHtml',
+  'labels[].sourceHtml',
+  'effectiveLabel.sourceHtml',
+  'items[].effectiveLabel.sourceHtml',
+  'pages[].effectiveLabel.sourceHtml',
+  'items[].content.sourceHtml',
+  'items[].sourceRuns',
+  'labels[].sourceRuns',
+  'effectiveLabel.sourceRuns',
+  'items[].effectiveLabel.sourceRuns',
+  'pages[].effectiveLabel.sourceRuns',
+  'items[].structure',
+  'labels[].structure',
+  'effectiveLabel.structure',
+  'items[].effectiveLabel.structure',
+  'pages[].effectiveLabel.structure',
+]);
+
+const LABEL_DOMAIN_PATHS = new Set([
+  'document.title',
+  'document.profile',
+  'document.sourcePackage',
+  'document.unitMode',
+  'document.coordinateUnit',
+  'parentPages[].provides',
 ]);
 
 const DOMAIN_DEFINITIONS = Object.freeze({
@@ -34,8 +76,8 @@ const DOMAIN_DEFINITIONS = Object.freeze({
     prefixes: ['items[].asset.placement.'],
   }),
   'source.metadata': Object.freeze({
-    fieldClasses: new Set(['sourceMetadata']),
-    matchPath: isSourceMetadataPath,
+    paths: SOURCE_METADATA_PATHS,
+    prefixes: childPrefixes(SOURCE_METADATA_PATHS),
   }),
   styleRefs: Object.freeze({
     owners: new Set(['style-refs']),
@@ -47,6 +89,7 @@ const DOMAIN_DEFINITIONS = Object.freeze({
   }),
   labels: Object.freeze({
     owners: new Set(['label-protocol']),
+    paths: LABEL_DOMAIN_PATHS,
     prefixes: [
       'labels[].',
       'items[].effectiveLabel.',
@@ -125,6 +168,9 @@ function pathInDomain(path, field, definition) {
   if (!definition) {
     return false;
   }
+  if (typeof path === 'string' && definition.paths && definition.paths.has(path)) {
+    return true;
+  }
   if (field && definition.owners && definition.owners.has(field.owner)) {
     return true;
   }
@@ -144,17 +190,8 @@ function pathInDomain(path, field, definition) {
   return false;
 }
 
-function isSourceMetadataPath(path) {
-  const segment = lastPathSegment(path);
-  return SOURCE_METADATA_SEGMENTS.has(segment) || /^source[A-Z]/.test(segment);
-}
-
-function lastPathSegment(path) {
-  if (typeof path !== 'string') {
-    return '';
-  }
-  const index = path.lastIndexOf('.');
-  return index === -1 ? path : path.slice(index + 1);
+function childPrefixes(paths) {
+  return Array.from(paths, (path) => `${path}.`);
 }
 
 module.exports = Object.freeze({

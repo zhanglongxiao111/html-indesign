@@ -193,11 +193,6 @@ const ITEM_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
   strokeLineCap: 'items[].visualStyle.strokeLineCap',
   strokeLineJoin: 'items[].visualStyle.strokeLineJoin',
   strokeMiterLimit: 'items[].visualStyle.strokeMiterLimit',
-  strokeAlignment: 'items[].visualStyle.strokeAlignment',
-  lineStartMarker: 'items[].visualStyle.lineStartMarker',
-  lineEndMarker: 'items[].visualStyle.lineEndMarker',
-  blendMode: 'items[].visualStyle.blendMode',
-  effects: 'items[].visualStyle.effects',
   cornerRadius: 'items[].visualStyle.cornerRadius',
 });
 

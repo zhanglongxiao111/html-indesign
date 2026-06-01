@@ -15,6 +15,7 @@ function validateModelFields(registry, paths, options = {}) {
 
   for (const path of uniqueStrings(modelFieldPaths(paths))) {
     const field = registry.getByPath(path);
+    const inDomain = modelFieldPathInDomains(path, field, domains);
     if (!field) {
       unknown.push(path);
       const issue = {
@@ -23,7 +24,7 @@ function validateModelFields(registry, paths, options = {}) {
         message: `Model field path is not registered: ${path}`,
       };
       warnings.push(issue);
-      if (strict && modelFieldPathInDomains(path, null, domains)) {
+      if (strict && inDomain) {
         errors.push({ ...issue });
       }
       continue;
@@ -41,13 +42,15 @@ function validateModelFields(registry, paths, options = {}) {
         message: `Retired model field path must not be accepted: ${path}`,
       };
       warnings.push(issue);
-      if (strict && modelFieldPathInDomains(path, field, domains)) {
+      if (strict && inDomain) {
         errors.push({ ...issue });
       }
       continue;
     }
 
-    accepted.push(path);
+    if (inDomain) {
+      accepted.push(path);
+    }
   }
 
   return {
@@ -62,12 +65,17 @@ function validateModelFields(registry, paths, options = {}) {
 
 function modelFieldPaths(pathsOrModel) {
   if (Array.isArray(pathsOrModel)) {
+    for (const path of pathsOrModel) {
+      if (typeof path !== 'string' || path.trim().length === 0) {
+        throw new Error('MODEL_FIELD_INPUT_INVALID');
+      }
+    }
     return pathsOrModel;
   }
   if (isDocumentModel(pathsOrModel)) {
     return scanModelPaths(pathsOrModel);
   }
-  return [];
+  throw new Error('MODEL_FIELD_INPUT_INVALID');
 }
 
 function isDocumentModel(value) {

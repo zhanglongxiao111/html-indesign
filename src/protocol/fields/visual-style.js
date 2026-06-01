@@ -1,6 +1,6 @@
 const VISUAL_STYLE_CAPABILITIES = Object.freeze({
   html: { read: 'native', write: 'native', persist: 'native' },
-  indesign: { read: 'native', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
   pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
 });
 
@@ -16,7 +16,6 @@ function visualStyleField(canonicalPath, type, extra = {}) {
     capabilities: VISUAL_STYLE_CAPABILITIES,
     indesign: {
       snapshotPaths: [`visualStyle.${fieldName}`],
-      instructionPaths: [`appearance.${fieldName}`],
     },
     ...extra,
   };
@@ -32,7 +31,7 @@ module.exports = [
     type: 'color',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
     html: {
@@ -40,7 +39,6 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.fillColor'],
-      instructionPaths: ['appearance.fillColor'],
     },
   },
   visualStyleField('items[].visualStyle.fillOpacity', 'number', {
@@ -57,7 +55,7 @@ module.exports = [
     type: 'color',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
     html: {
@@ -65,7 +63,6 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.strokeColor'],
-      instructionPaths: ['appearance.strokeColor'],
     },
   },
   {
@@ -77,7 +74,7 @@ module.exports = [
     type: 'number',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
     html: {
@@ -85,7 +82,6 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.strokeWeight'],
-      instructionPaths: ['appearance.strokeWeight'],
     },
   },
   {
@@ -97,7 +93,7 @@ module.exports = [
     type: 'number',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
     html: {
@@ -105,7 +101,6 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.opacity'],
-      instructionPaths: ['appearance.opacity'],
     },
   },
   {
@@ -117,7 +112,7 @@ module.exports = [
     type: 'number',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
     html: {
@@ -125,7 +120,6 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.strokeOpacity'],
-      instructionPaths: ['appearance.strokeOpacity'],
     },
   },
   visualStyleField('items[].visualStyle.strokeStyle', 'string', {
@@ -148,15 +142,6 @@ module.exports = [
       styleProps: ['stroke-miterlimit'],
     },
   }),
-  visualStyleField('items[].visualStyle.strokeAlignment', 'string'),
-  visualStyleField('items[].visualStyle.lineStartMarker', 'string'),
-  visualStyleField('items[].visualStyle.lineEndMarker', 'string'),
-  visualStyleField('items[].visualStyle.blendMode', 'string', {
-    html: {
-      styleProps: ['mix-blend-mode'],
-    },
-  }),
-  visualStyleField('items[].visualStyle.effects', 'object'),
   {
     canonicalPath: 'items[].visualStyle.cornerRadius',
     currentPaths: ['reverseModel.pages[].items[].visualStyle.cornerRadius'],
@@ -166,7 +151,7 @@ module.exports = [
     type: 'number',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
     html: {
@@ -174,7 +159,6 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.cornerRadius'],
-      instructionPaths: ['appearance.cornerRadius'],
     },
   },
 ];

@@ -137,6 +137,20 @@ test('validateModelFields can scan a DocumentModel object input explicitly', () 
   );
 });
 
+test('validateModelFields rejects non-path-array and non-DocumentModel inputs', () => {
+  for (const input of [
+    'labels[].x',
+    42,
+    { kind: 'NotDocumentModel' },
+    null,
+  ]) {
+    assert.throws(
+      () => validateModelFields(fieldRegistry, input),
+      /MODEL_FIELD_INPUT_INVALID/,
+    );
+  }
+});
+
 test('validateModelFields rejects nested ghosts on registered root surfaces in strict mode', () => {
   const model = {
     kind: 'DocumentModel',
@@ -553,7 +567,10 @@ test('source metadata domain strict rejects unknown source metadata paths and ac
 
   const result = validateModelFields(
     fieldRegistry,
-    scannedPaths,
+    [
+      ...scannedPaths,
+      'items[].sourceNode.sourceMystery',
+    ],
     { strict: true, domains: ['source.metadata'] },
   );
 
@@ -575,13 +592,64 @@ test('source metadata domain strict rejects unknown source metadata paths and ac
   assert.equal(
     result.errors.some((error) => (
       error.code === 'MODEL_FIELD_NOT_REGISTERED'
-      && error.path === 'labels[].sourceMystery'
+      && error.path === 'items[].sourceNode.sourceMystery'
     )),
     true,
   );
   assert.equal(
+    result.errors.some((error) => error.path === 'labels[].sourceMystery'),
+    false,
+  );
+  assert.equal(
     result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
     false,
+  );
+});
+
+test('source metadata domain strict does not accept label protocol or derived label carrier fields', () => {
+  const result = validateModelFields(
+    fieldRegistry,
+    [
+      'items[].sourceNode',
+      'labels[].protocol',
+      'labels[].version',
+      'labels[].kind',
+      'labels[].id',
+      'labels[].source',
+      'labels[].htmlTag',
+      'labels[].className',
+      'items[].effectiveLabel',
+    ],
+    { strict: true, domains: ['source.metadata'] },
+  );
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.accepted, ['items[].sourceNode']);
+  for (const path of [
+    'labels[].protocol',
+    'labels[].version',
+    'labels[].kind',
+    'labels[].id',
+    'labels[].source',
+    'labels[].htmlTag',
+    'labels[].className',
+    'items[].effectiveLabel',
+  ]) {
+    assert.equal(result.accepted.includes(path), false, `${path} should not be source.metadata accepted`);
+  }
+
+  const unknownNested = validateModelFields(
+    fieldRegistry,
+    ['items[].sourceNode.unregistered'],
+    { strict: true, domains: ['source.metadata'] },
+  );
+  assert.equal(unknownNested.valid, false);
+  assert.equal(
+    unknownNested.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].sourceNode.unregistered'
+    )),
+    true,
   );
 });
 
@@ -691,7 +759,7 @@ test('labels domain strict rejects unknown label model paths', () => {
   );
 });
 
-test('visualStyle/vectorGeometry domain strict rejects raw InDesign visual fields and accepts standardized fields', () => {
+test('visualStyle/vectorGeometry domain strict rejects unsupported visual fields and accepts implemented fields', () => {
   const scannedPaths = scanModelPaths({
     kind: 'DocumentModel',
     pages: [{
@@ -704,11 +772,13 @@ test('visualStyle/vectorGeometry domain strict rejects raw InDesign visual field
           fillOpacity: 0.5,
           strokeColor: '#111111',
           strokeWeight: 1,
+          opacity: 0.9,
           strokeOpacity: 0.75,
           strokeStyle: 'solid',
           strokeLineCap: 'round',
           strokeLineJoin: 'miter',
           strokeMiterLimit: 4,
+          cornerRadius: 8,
           strokeAlignment: 'center',
           lineStartMarker: 'none',
           lineEndMarker: 'arrow',
@@ -736,29 +806,37 @@ test('visualStyle/vectorGeometry domain strict rejects raw InDesign visual field
     'items[].visualStyle.fillOpacity',
     'items[].visualStyle.strokeColor',
     'items[].visualStyle.strokeWeight',
+    'items[].visualStyle.opacity',
     'items[].visualStyle.strokeOpacity',
     'items[].visualStyle.strokeStyle',
     'items[].visualStyle.strokeLineCap',
     'items[].visualStyle.strokeLineJoin',
     'items[].visualStyle.strokeMiterLimit',
-    'items[].visualStyle.strokeAlignment',
-    'items[].visualStyle.lineStartMarker',
-    'items[].visualStyle.lineEndMarker',
-    'items[].visualStyle.blendMode',
-    'items[].visualStyle.effects',
+    'items[].visualStyle.cornerRadius',
     'items[].vectorGeometry.kind',
     'items[].vectorGeometry.paths',
   ]) {
     assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
     assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
   }
-  assert.equal(
-    result.errors.some((error) => (
-      error.code === 'MODEL_FIELD_NOT_REGISTERED'
-      && error.path === 'items[].visualStyle.rawIndesignBlendMode'
-    )),
-    true,
-  );
+  for (const path of [
+    'items[].visualStyle.strokeAlignment',
+    'items[].visualStyle.lineStartMarker',
+    'items[].visualStyle.lineEndMarker',
+    'items[].visualStyle.blendMode',
+    'items[].visualStyle.effects',
+    'items[].visualStyle.rawIndesignBlendMode',
+  ]) {
+    assert.equal(result.accepted.includes(path), false, `${path} should not be accepted`);
+    assert.equal(
+      result.errors.some((error) => (
+        error.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be a strict visualStyle/vectorGeometry error`,
+    );
+  }
   assert.equal(
     result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
     false,
@@ -773,6 +851,14 @@ test('visualStyle/vectorGeometry domain strict rejects raw InDesign visual field
   assert.equal(extension.valid, true);
   assert.equal(extension.errors.length, 0);
   assert.deepEqual(extension.unknown, [extensionPath]);
+
+  const formatExtension = validateModelFields(
+    fieldRegistry,
+    ['items[].effects'],
+    { strict: true, domains: ['visualStyle/vectorGeometry'] },
+  );
+  assert.equal(formatExtension.valid, true);
+  assert.deepEqual(formatExtension.accepted, []);
 });
 
 test('table/text domain strict rejects unknown text and table fields while accepting current static spec fields', () => {
