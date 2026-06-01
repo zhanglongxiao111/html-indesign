@@ -75,6 +75,123 @@ test('reverseSnapshotToSemanticModel preserves parent page decorative items', ()
   assert.equal(model.pages[0].parentPageName, 'A-正文');
 });
 
+test('reverseSnapshotToSemanticModel surfaces observation label field warnings', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'observed-label.indd', mode: 'observation' },
+    document: { name: 'observed-label.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [
+          {
+            protocol: 'html-indesign',
+            version: 1,
+            kind: 'page',
+            id: 'page-1',
+            copiedTemplateSlot: 'old-slot',
+          },
+        ],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.equal(model.valid, true);
+  assert.equal(model.errors.length, 0);
+  assert.equal(model.report.warningCount, 1);
+  assert.equal(model.report.errorCount, 0);
+  assert.equal(model.warnings[0].code, 'LABEL_FIELD_NOT_REGISTERED');
+  assert.equal(model.warnings[0].path, 'copiedTemplateSlot');
+  assert.equal(model.warnings[0].labelKind, 'page');
+  assert.equal(model.fieldValidation.length, 1);
+  assert.equal(model.fieldValidation[0].labelKind, 'page');
+  assert.deepEqual(model.fieldValidation[0].unknown, ['copiedTemplateSlot']);
+  assert.equal(model.pages[0].observedLabel.copiedTemplateSlot, 'old-slot');
+});
+
+test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'strict-label.indd', mode: 'structured' },
+    document: { name: 'strict-label.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Title',
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'title',
+                role: 'text',
+                unknownPayload: 'bad',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  }, { strictFields: true });
+
+  assert.equal(model.valid, false);
+  assert.equal(model.errors.length, 1);
+  assert.equal(model.errors[0].code, 'LABEL_FIELD_NOT_REGISTERED');
+  assert.equal(model.errors[0].path, 'unknownPayload');
+  assert.equal(model.errors[0].labelKind, 'item');
+  assert.equal(model.report.errorCount, 1);
+  assert.equal(
+    model.fieldValidation.some((validation) => (
+      validation.labelKind === 'item'
+      && validation.valid === false
+      && validation.unknown.includes('unknownPayload')
+    )),
+    true,
+  );
+});
+
+test('reverseSnapshotToSemanticModel accepts registered page parent label fields through effective label', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'parent-label.indd', mode: 'structured' },
+    document: { name: 'parent-label.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [
+          {
+            protocol: 'html-indesign',
+            version: 1,
+            kind: 'page',
+            id: 'page-1',
+            parentPageId: 'report-parent',
+            parentPageName: '汇报母版',
+          },
+        ],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { strictFields: true });
+
+  assert.equal(model.valid, true);
+  assert.equal(model.errors.length, 0);
+  assert.equal(model.report, null);
+  assert.equal(model.pages[0].parentPageId, 'report-parent');
+  assert.equal(model.pages[0].parentPageName, '汇报母版');
+  assert.equal(model.pages[0].effectiveLabel.parentPageId, 'report-parent');
+  assert.equal(model.pages[0].effectiveLabel.parentPageName, '汇报母版');
+});
+
 test('reverseSnapshotToSemanticModel preserves observed visual style and placed asset per item', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'visual.indd', mode: 'structured' },

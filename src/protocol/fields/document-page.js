@@ -108,6 +108,44 @@ module.exports = [
     },
   },
   {
+    canonicalPath: 'pages[].parentPageId',
+    currentPaths: ['labels[].parentPageId'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document-page',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+    },
+    indesign: {
+      labelPaths: ['parentPageId'],
+    },
+    pptx: {
+      customDataPaths: ['htmlIndesign.pages[].parentPageId'],
+    },
+  },
+  {
+    canonicalPath: 'pages[].parentPageName',
+    currentPaths: ['labels[].parentPageName'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'document-page',
+    type: 'string',
+    capabilities: {
+      html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+    },
+    indesign: {
+      labelPaths: ['parentPageName'],
+    },
+    pptx: {
+      customDataPaths: ['htmlIndesign.pages[].parentPageName'],
+    },
+  },
+  {
     canonicalPath: 'pages[].margins',
     currentPaths: ['labels[].margins'],
     fieldClass: 'canonical',

@@ -95,3 +95,19 @@ test('validateLabelFields accepts registered nested style refs and source metada
   assert.equal(result.valid, true);
   assert.deepEqual(result.unknown, []);
 });
+
+test('validateLabelFields accepts registered parent page label fields', () => {
+  const result = validateLabelFields(fieldRegistry, {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'page',
+    id: 'page-1',
+    parentPageId: 'report-parent',
+    parentPageName: '汇报母版',
+  }, { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.unknown, []);
+  assert.equal(result.accepted.includes('parentPageId'), true);
+  assert.equal(result.accepted.includes('parentPageName'), true);
+});

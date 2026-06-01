@@ -113,3 +113,25 @@ test('validateReverseLabel accepts registered common and nested payload fields i
   assert.equal(result.effective.sourceFile, 'pages/cover.html');
   assert.deepEqual(result.fieldValidation.unknown, []);
 });
+
+test('validateReverseLabel does not make page-only label fields effective for items', () => {
+  const result = validateReverseLabel({
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'title',
+    semantic: 'page-title',
+    role: 'text',
+    parentPageId: 'report-parent',
+    parentPageName: '汇报母版',
+    grid: { columns: 12 },
+    margins: { top: 32, right: 32, bottom: 32, left: 32 },
+  }, { preset, strictFields: true, kind: 'item' });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.effective.semantic, 'page-title');
+  assert.equal(result.effective.parentPageId, undefined);
+  assert.equal(result.effective.parentPageName, undefined);
+  assert.equal(result.effective.grid, undefined);
+  assert.equal(result.effective.margins, undefined);
+});

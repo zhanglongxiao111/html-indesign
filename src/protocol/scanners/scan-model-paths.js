@@ -49,6 +49,8 @@ const LABEL_FIELD_PATHS = Object.freeze({
   structure: 'labels[].structure',
   sourceRuns: 'labels[].sourceRuns',
   parentPage: 'labels[].parentPage',
+  parentPageId: 'labels[].parentPageId',
+  parentPageName: 'labels[].parentPageName',
   margins: 'labels[].margins',
 });
 

@@ -26,6 +26,7 @@ function validateReverseLabel(label = {}, options = {}) {
   applyLayout(label, known, effective, observed, rejectedFields, rejectionReasons);
   applyStyleRefs(label, known, effective, observed, rejectedFields, rejectionReasons);
   applySourceFields(label, effective, observed);
+  applyPageFields(label, effective, options, fieldValidation);
 
   return {
     status: statusFor(effective, observed, rejectionReasons),
@@ -186,6 +187,22 @@ function applySourceFields(label, effective, observed) {
   if (label.className && !canTrustSourceFields(effective, observed)) observed.className = label.className;
 }
 
+function applyPageFields(label, effective, options = {}, fieldValidation = null) {
+  if (options.kind !== 'page') return;
+  for (const name of ['parentPage', 'parentPageId', 'parentPageName', 'grid', 'margins']) {
+    if (label[name] == null) continue;
+    if (!isAcceptedPageLabelField(name, fieldValidation)) continue;
+    effective[name] = clone(label[name]);
+  }
+}
+
+function isAcceptedPageLabelField(name, fieldValidation) {
+  const field = fieldRegistry.getByPath(`labels[].${name}`);
+  if (!field || field.lifecycle !== 'active') return false;
+  if (!fieldValidation) return true;
+  return fieldValidation.accepted.includes(name);
+}
+
 function canTrustSourceFields(effective, observed) {
   return Boolean(effective.semantic) || !observed.semantic;
 }
@@ -205,7 +222,18 @@ function statusFor(effective, observed, reasons) {
 }
 
 function hasAnyEffectiveProtocolField(effective) {
-  return Boolean(effective.semantic || effective.layout || effective.styleRefs || effective.sourceNode || effective.structure);
+  return Boolean(
+    effective.semantic
+      || effective.layout
+      || effective.styleRefs
+      || effective.sourceNode
+      || effective.structure
+      || effective.parentPage
+      || effective.parentPageId
+      || effective.parentPageName
+      || effective.grid
+      || effective.margins,
+  );
 }
 
 function styleRefsFromLabel(label) {

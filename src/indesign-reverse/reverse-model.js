@@ -1,4 +1,5 @@
 const { loadStandardSemanticPreset } = require('../semantic-preset');
+const { createReport, addMessage } = require('../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
@@ -7,9 +8,11 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options);
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
   const reverseMode = options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured';
+  const diagnostics = createLabelDiagnostics();
   const context = {
     semanticPreset,
     layerVisibility,
+    diagnostics,
     labelOptions: {
       mode: reverseMode,
       strictFields: options.strictFields === true,
@@ -17,6 +20,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     },
   };
   const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, context));
+  const report = diagnostics.report.messages.length ? diagnostics.report : null;
   return {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
@@ -32,8 +36,11 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     layers: (snapshot.layers || []).map(reverseLayer),
     styles: reverseStyles(snapshot.styles || {}),
     assets: snapshot.assets || [],
-    warnings: [],
-    report: null,
+    warnings: diagnostics.warnings,
+    errors: diagnostics.errors,
+    fieldValidation: diagnostics.fieldValidation,
+    report,
+    valid: diagnostics.errors.length === 0,
     reverseMode,
   };
 }
@@ -41,22 +48,27 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
 function reversePage(page, styleMaps, context = {}) {
   const label = firstLabel(page.labels, 'page') || {};
   const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'page', ...context.labelOptions });
+  recordLabelDiagnostics(context.diagnostics, validation, {
+    labelKind: 'page',
+    labelId: label.id || page.id || null,
+    pageId: page.id || null,
+  });
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
-  const parent = label.parentPage || {};
+  const parent = effective.parentPage || {};
   return {
     id: label.id || page.id,
     index: page.index,
     semantic: effective.semantic || null,
-    parentPageId: label.parentPageId || parent.id || null,
-    parentPageName: label.parentPageName || parent.name || page.appliedParentPageName || null,
+    parentPageId: effective.parentPageId || parent.id || null,
+    parentPageName: effective.parentPageName || parent.name || page.appliedParentPageName || null,
     layout: effective.layout || null,
     sourceFile: effective.sourceFile || null,
     sourceNode: effective.sourceNode || null,
-    grid: label.grid || null,
+    grid: effective.grid || null,
     width: page.bounds && page.bounds.width,
     height: page.bounds && page.bounds.height,
-    margins: label.margins || page.margins || null,
+    margins: effective.margins || page.margins || null,
     guides: page.guides || [],
     labelStatus: validation.status,
     effectiveLabel: effective,
@@ -64,13 +76,19 @@ function reversePage(page, styleMaps, context = {}) {
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
     labels: page.labels || [],
-    items: (page.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, context)),
+    items: (page.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, { ...context, pageId: page.id || null })),
   };
 }
 
 function reverseItem(item, styleMaps = {}, context = {}) {
   const label = firstLabel(item.labels, 'item') || {};
   const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'item', ...context.labelOptions });
+  recordLabelDiagnostics(context.diagnostics, validation, {
+    labelKind: 'item',
+    labelId: label.id || item.id || null,
+    pageId: context.pageId || null,
+    itemId: item.id || null,
+  });
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
   const role = label.role || roleFromInDesignType(item.type, item);
@@ -139,6 +157,76 @@ function reverseLayer(layer) {
     printable: typeof layer.printable === 'boolean' ? layer.printable : undefined,
     locked: typeof layer.locked === 'boolean' ? layer.locked : undefined,
     labels: layer.labels || [],
+  };
+}
+
+function createLabelDiagnostics() {
+  return {
+    warnings: [],
+    errors: [],
+    fieldValidation: [],
+    report: createReport(),
+  };
+}
+
+function recordLabelDiagnostics(diagnostics, validation, context = {}) {
+  if (!diagnostics || !validation) return;
+  if (shouldRecordFieldValidation(validation.fieldValidation)) {
+    diagnostics.fieldValidation.push(labelFieldValidationDiagnostic(validation.fieldValidation, context));
+  }
+  for (const warning of validation.warnings || []) {
+    const diagnostic = labelDiagnostic(warning, context);
+    diagnostics.warnings.push(diagnostic);
+    addMessage(diagnostics.report, 'warning', diagnostic.code, diagnostic.message, diagnostic);
+  }
+  for (const error of validation.errors || []) {
+    const diagnostic = labelDiagnostic(error, context);
+    diagnostics.errors.push(diagnostic);
+    addMessage(diagnostics.report, 'error', diagnostic.code, diagnostic.message, diagnostic);
+  }
+}
+
+function shouldRecordFieldValidation(fieldValidation) {
+  if (!fieldValidation) return false;
+  return Boolean(
+    fieldValidation.accepted.length
+      || fieldValidation.unknown.length
+      || fieldValidation.retired.length
+      || fieldValidation.observed.length
+      || fieldValidation.warnings.length
+      || fieldValidation.errors.length,
+  );
+}
+
+function labelFieldValidationDiagnostic(fieldValidation, context = {}) {
+  return {
+    labelKind: context.labelKind || null,
+    labelId: context.labelId || null,
+    pageId: context.pageId || null,
+    itemId: context.itemId || null,
+    valid: fieldValidation.valid,
+    accepted: fieldValidation.accepted.slice(),
+    unknown: fieldValidation.unknown.slice(),
+    retired: fieldValidation.retired.map((entry) => ({
+      path: entry.path,
+      canonicalPath: entry.field && entry.field.canonicalPath || null,
+      lifecycle: entry.field && entry.field.lifecycle || null,
+    })),
+    observed: fieldValidation.observed.slice(),
+    warnings: fieldValidation.warnings.slice(),
+    errors: fieldValidation.errors.slice(),
+  };
+}
+
+function labelDiagnostic(issue = {}, context = {}) {
+  return {
+    code: issue.code,
+    message: issue.message,
+    path: issue.path,
+    labelKind: context.labelKind || null,
+    labelId: context.labelId || null,
+    pageId: context.pageId || null,
+    itemId: context.itemId || null,
   };
 }
 
