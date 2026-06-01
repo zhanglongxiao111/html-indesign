@@ -129,9 +129,6 @@ function normalizeBox(value, element = false) {
     tableStyle: optionalString(value.tableStyle),
     sourceCsv: optionalString(value.sourceCsv),
     sourceXml: optionalString(value.sourceXml),
-    visualAccept: optionalString(value.visualAccept),
-    generated: Boolean(value.generated),
-    generatedKind: optionalString(value.generatedKind),
     classList: normalizeClassList(value.classList || value.className || value.classes),
     x: num(value.x),
     y: num(value.y),
@@ -164,8 +161,6 @@ function formatDelta(delta) {
 }
 
 function acceptedMissingElement(element, context = {}) {
-  const explicitKind = explicitGeneratedKind(element);
-  if (explicitKind) return generatedAcceptedCode(explicitKind);
   if (isGeneratedPageBackground(element, context)) return 'AUTHOR_VISUAL_GENERATED_BACKGROUND_ACCEPTED';
   if (isGeneratedBorderFragment(element, context)) return 'AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED';
   if (isGeneratedTextFragment(element, context)) return 'AUTHOR_VISUAL_GENERATED_TEXT_ACCEPTED';
@@ -184,28 +179,6 @@ function acceptedGeometryMismatch(reference, candidate, delta, tolerance) {
     && isReverseAuthorTextMetricNormalization(reference, candidate)) {
     return 'AUTHOR_VISUAL_TEXT_METRICS_ACCEPTED';
   }
-  return null;
-}
-
-function explicitGeneratedKind(element) {
-  const kind = normalizeGeneratedKind(element && (element.generatedKind || element.visualAccept));
-  if (kind) return kind;
-  return element && element.generated ? normalizeGeneratedKind(element.generatedKind) : null;
-}
-
-function generatedAcceptedCode(kind) {
-  if (kind === 'background') return 'AUTHOR_VISUAL_GENERATED_BACKGROUND_ACCEPTED';
-  if (kind === 'border') return 'AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED';
-  if (kind === 'text') return 'AUTHOR_VISUAL_GENERATED_TEXT_ACCEPTED';
-  return null;
-}
-
-function normalizeGeneratedKind(value) {
-  const normalized = String(value || '').trim().toLowerCase();
-  if (!normalized) return null;
-  if (['background', 'generated-background'].includes(normalized)) return 'background';
-  if (['border', 'generated-border'].includes(normalized)) return 'border';
-  if (['text', 'generated-text'].includes(normalized)) return 'text';
   return null;
 }
 

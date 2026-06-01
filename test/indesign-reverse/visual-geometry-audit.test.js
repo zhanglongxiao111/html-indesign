@@ -50,19 +50,24 @@ test('compareVisualGeometry accepts matching elements within tolerance', () => {
   assert.equal(report.errors.length, 0);
 });
 
-test('compareVisualGeometry reports accepted generated author differences as warnings', () => {
+test('compareVisualGeometry accepts generated visual fragments only from structural evidence', () => {
   const report = compareVisualGeometry({
     reference: {
-      pages: [{ index: 0, width: 1000, height: 600 }],
+      pages: [{ index: 0, id: 'cover', width: 1000, height: 600 }],
       elements: [
-        { key: '0:cover-background', id: 'cover-background', pageIndex: 0, tagName: 'svg', generated: true, generatedKind: 'background', x: 0, y: 0, width: 1000, height: 600 },
-        { key: '0:card-border-left', id: 'card-border-left', pageIndex: 0, tagName: 'svg', generated: true, generatedKind: 'border', x: 20, y: 20, width: 2, height: 100 },
-        { key: '0:label-text', id: 'label-text', pageIndex: 0, tagName: 'span', generated: true, generatedKind: 'text', x: 40, y: 40, width: 80, height: 20 },
+        { key: '0:cover-background', id: 'cover-background', pageIndex: 0, tagName: 'svg', role: 'background', vector: 'rectangle', x: 0, y: 0, width: 1000, height: 600 },
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', x: 20, y: 20, width: 200, height: 100 },
+        { key: '0:card-border-left', id: 'card-border-left', pageIndex: 0, tagName: 'svg', role: 'decoration', vector: 'rectangle', x: 20, y: 20, width: 2, height: 100 },
+        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', x: 40, y: 40, width: 120, height: 32 },
+        { key: '0:label-text', id: 'label-text', pageIndex: 0, tagName: 'span', role: 'text', x: 48, y: 48, width: 80, height: 20 },
       ],
     },
     candidate: {
-      pages: [{ index: 0, width: 1000, height: 600 }],
-      elements: [],
+      pages: [{ index: 0, id: 'cover', width: 1000, height: 600 }],
+      elements: [
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', x: 20, y: 20, width: 200, height: 100 },
+        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', x: 40, y: 40, width: 120, height: 32 },
+      ],
     },
     tolerance: 2,
   });
@@ -70,6 +75,11 @@ test('compareVisualGeometry reports accepted generated author differences as war
   assert.equal(report.ok, true);
   assert.equal(report.errors.length, 0);
   assert.equal(report.warnings.length, 3);
+  assert.deepEqual(report.warnings.map((issue) => issue.code), [
+    'AUTHOR_VISUAL_GENERATED_BACKGROUND_ACCEPTED',
+    'AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED',
+    'AUTHOR_VISUAL_GENERATED_TEXT_ACCEPTED',
+  ]);
   assert.equal(report.stats.accepted, 3);
 });
 
@@ -92,6 +102,29 @@ test('compareVisualGeometry reports ordinary body text missing as an error', () 
   assert.equal(report.warnings.length, 0);
   assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_ELEMENT_MISSING' && issue.id === 'body-text'), true);
   assert.equal(report.stats.missing, 1);
+  assert.equal(report.stats.accepted, 0);
+});
+
+test('compareVisualGeometry rejects unregistered generated hints on ordinary missing body text', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:body-generated-kind', id: 'body-generated-kind', pageIndex: 0, tagName: 'p', generatedKind: 'text', x: 120, y: 160, width: 400, height: 96 },
+        { key: '0:body-visual-accept', id: 'body-visual-accept', pageIndex: 0, tagName: 'p', visualAccept: 'text', x: 120, y: 280, width: 400, height: 96 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.errors.filter((issue) => issue.code === 'AUTHOR_VISUAL_ELEMENT_MISSING').length, 2);
+  assert.equal(report.stats.missing, 2);
   assert.equal(report.stats.accepted, 0);
 });
 

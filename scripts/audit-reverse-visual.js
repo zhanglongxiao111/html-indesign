@@ -93,9 +93,6 @@ async function captureHtmlGeometry(htmlFile) {
           tableStyle: element.getAttribute('data-id-table-style') || '',
           sourceCsv: element.getAttribute('data-id-source-csv') || '',
           sourceXml: element.getAttribute('data-id-source-xml') || '',
-          visualAccept: element.getAttribute('data-id-visual-accept') || '',
-          generated: element.getAttribute('data-id-generated-fragment') === 'true',
-          generatedKind: element.getAttribute('data-id-generated-kind') || '',
           classList: Array.from(element.classList || []),
         };
       }
