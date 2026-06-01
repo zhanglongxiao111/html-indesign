@@ -16,8 +16,7 @@ const SECTION_ORDER = Object.freeze([
 ]);
 
 function generateFieldDocsMarkdown(fieldRegistry) {
-  const registry = fieldRegistry || defaultFieldRegistry;
-  assertRegistry(registry);
+  assertRegistry(fieldRegistry);
 
   const lines = [
     '# 协议字段注册表',
@@ -28,7 +27,7 @@ function generateFieldDocsMarkdown(fieldRegistry) {
     '',
   ];
 
-  const entriesBySection = groupEntries(registry.entries);
+  const entriesBySection = groupEntries(fieldRegistry.entries);
   for (const section of SECTION_ORDER) {
     const sectionNotes = [];
 
@@ -37,7 +36,7 @@ function generateFieldDocsMarkdown(fieldRegistry) {
     lines.push(tableHeader());
 
     for (const entry of entriesBySection.get(section) || []) {
-      lines.push(tableRow(registry, entry));
+      lines.push(tableRow(fieldRegistry, entry));
       for (const note of notesFor(entry)) {
         sectionNotes.push(note);
       }
@@ -148,7 +147,13 @@ function escapeTableCell(value) {
 }
 
 function assertRegistry(registry) {
-  if (!registry || !Array.isArray(registry.entries)) {
+  if (
+    !registry
+    || typeof registry !== 'object'
+    || Array.isArray(registry)
+    || !Array.isArray(registry.entries)
+    || typeof registry.getByPath !== 'function'
+  ) {
     throw new Error('FIELD_REGISTRY_DOCS_INVALID_REGISTRY');
   }
 }

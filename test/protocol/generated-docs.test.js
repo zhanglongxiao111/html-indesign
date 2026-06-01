@@ -1,10 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const { generateFieldDocsMarkdown } = require('../../src/protocol/docs/generate-field-docs');
 const { fieldRegistry } = require('../../src/protocol');
+
+const ROOT_DIR = path.join(__dirname, '../..');
+const FIELD_DOCS_CLI = path.join(ROOT_DIR, 'src/protocol/docs/generate-field-docs.js');
+const GENERATED_DOC = path.join(ROOT_DIR, 'docs/规范/PROTOCOL_FIELD_REGISTRY.md');
+
+function assertBytesEqual(actual, expected) {
+  assert.equal(
+    Buffer.compare(actual, expected),
+    0,
+    `byte content mismatch: actual=${actual.length} expected=${expected.length}`,
+  );
+}
 
 test('generated field docs include registry fields, lifecycle, field class, and format capabilities', () => {
   const markdown = generateFieldDocsMarkdown(fieldRegistry);
@@ -48,6 +61,22 @@ test('generated field docs are deterministic', () => {
   );
 });
 
+test('generated field docs file is byte-for-byte synchronized with registry output', () => {
+  assertBytesEqual(
+    fs.readFileSync(GENERATED_DOC),
+    Buffer.from(generateFieldDocsMarkdown(fieldRegistry), 'utf8'),
+  );
+});
+
+test('generated field docs require an explicit valid registry for library calls', () => {
+  for (const invalidRegistry of [undefined, null, { entries: [] }]) {
+    assert.throws(
+      () => generateFieldDocsMarkdown(invalidRegistry),
+      /FIELD_REGISTRY_DOCS_INVALID_REGISTRY/,
+    );
+  }
+});
+
 test('generated field docs reject unrendered field classes instead of dropping fields', () => {
   const registry = {
     entries: [{
@@ -70,6 +99,60 @@ test('generated field docs reject unrendered field classes instead of dropping f
   assert.throws(
     () => generateFieldDocsMarkdown(registry),
     /FIELD_REGISTRY_DOCS_SECTION_UNSUPPORTED:futureClass/,
+  );
+});
+
+test('generated field docs reject fields missing a format capability declaration', () => {
+  const registry = {
+    entries: [{
+      canonicalPath: 'field.without.pptx',
+      currentPaths: [],
+      fieldClass: 'canonical',
+      lifecycle: 'active',
+      owner: 'test-owner',
+      capabilities: {
+        html: { read: 'native', write: 'native', persist: 'native' },
+        indesign: { read: 'native', write: 'native', persist: 'native' },
+      },
+    }],
+    getByPath(fieldPath) {
+      return this.entries.find((entry) => entry.canonicalPath === fieldPath) || null;
+    },
+  };
+
+  assert.throws(
+    () => generateFieldDocsMarkdown(registry),
+    /CAPABILITY_DECLARATION_INVALID:field\.without\.pptx:pptx/,
+  );
+});
+
+test('generated field docs CLI fails when --out is missing', () => {
+  const result = spawnSync(process.execPath, [FIELD_DOCS_CLI], {
+    cwd: ROOT_DIR,
+    encoding: 'utf8',
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(`${result.stdout}${result.stderr}`, /FIELD_REGISTRY_DOCS_OUT_REQUIRED/);
+});
+
+test('generated field docs CLI writes exact UTF-8 registry output', (t) => {
+  const tempDir = path.join(ROOT_DIR, 'test/workspace/generated-docs-stage-11');
+  const outFile = path.join(tempDir, 'PROTOCOL_FIELD_REGISTRY.md');
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+  fs.mkdirSync(tempDir, { recursive: true });
+  t.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+
+  const result = spawnSync(process.execPath, [FIELD_DOCS_CLI, '--out', outFile], {
+    cwd: ROOT_DIR,
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
+  assertBytesEqual(
+    fs.readFileSync(outFile),
+    Buffer.from(generateFieldDocsMarkdown(fieldRegistry), 'utf8'),
   );
 });
 
