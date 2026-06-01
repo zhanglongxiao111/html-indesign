@@ -991,50 +991,78 @@ src/indesign-reverse/
   const { normalizeFieldEntry, validateFieldEntry } = require('./field-entry');
   
   function createFieldRegistry(entries = []) {
-   const normalized = entries.map((entry) => {
-     const validation = validateFieldEntry(entry);
-     if (!validation.valid) {
-       const codes = validation.errors.map((error) => error.code).join(',');
-       throw new Error(`FIELD_ENTRY_INVALID:${codes}`);
-     }
-     return normalizeFieldEntry(entry);
-   });
-  
-   const byPath = new Map();
-   const byHtmlAttr = new Map();
-  
-   for (const entry of normalized) {
-     for (const fieldPath of entry.allPaths) {
-       if (byPath.has(fieldPath)) throw new Error(`FIELD_PATH_DUPLICATED:${fieldPath}`);
-       byPath.set(fieldPath, entry);
-     }
-     for (const attr of htmlAttrsFor(entry)) {
-       if (byHtmlAttr.has(attr)) throw new Error(`HTML_ATTR_DUPLICATED:${attr}`);
-       byHtmlAttr.set(attr, entry);
-     }
-   }
-  
-   return {
-     entries: normalized.slice(),
-     getByPath: (fieldPath) => byPath.get(fieldPath) || null,
-     getByHtmlAttr: (attr) => byHtmlAttr.get(attr) || null,
-     listByOwner: (owner) => normalized.filter((entry) => entry.owner === owner),
-     listByClass: (fieldClass) => normalized.filter((entry) => entry.fieldClass === fieldClass),
-     listByLifecycle: (lifecycle) => normalized.filter((entry) => entry.lifecycle === lifecycle),
-   };
+    const normalized = entries.map((entry) => {
+      const validation = validateFieldEntry(entry);
+      if (!validation.valid) {
+        const codes = validation.errors.map((error) => error.code).join(',');
+        throw new Error(`FIELD_ENTRY_INVALID:${codes}`);
+      }
+      return normalizeFieldEntry(entry);
+    });
+
+    const byPath = new Map();
+    const byHtmlAttr = new Map();
+    const byRetiredHtmlAttr = new Map();
+
+    for (const entry of normalized) {
+      for (const fieldPath of entry.allPaths) {
+        if (byPath.has(fieldPath)) throw new Error(`FIELD_PATH_DUPLICATED:${fieldPath}`);
+        byPath.set(fieldPath, entry);
+      }
+      for (const attr of htmlAttrsFor(entry)) {
+        if (byHtmlAttr.has(attr)) throw new Error(`HTML_ATTR_DUPLICATED:${attr}`);
+        byHtmlAttr.set(attr, entry);
+      }
+      for (const retiredHtmlAttr of retiredHtmlAttrsFor(entry)) {
+        const attr = retiredHtmlAttr && retiredHtmlAttr.name;
+        if (!attr) continue;
+        if (byRetiredHtmlAttr.has(attr)) throw new Error(`RETIRED_HTML_ATTR_DUPLICATED:${attr}`);
+        byRetiredHtmlAttr.set(attr, retiredHtmlAttrRecord(entry, retiredHtmlAttr));
+      }
+    }
+
+    return {
+      entries: normalized.slice(),
+      getByPath: (fieldPath) => byPath.get(fieldPath) || null,
+      getByHtmlAttr: (attr) => byHtmlAttr.get(attr) || null,
+      getRetiredHtmlAttr: (attr) => byRetiredHtmlAttr.get(attr) || null,
+      listByOwner: (owner) => normalized.filter((entry) => entry.owner === owner),
+      listByClass: (fieldClass) => normalized.filter((entry) => entry.fieldClass === fieldClass),
+      listByLifecycle: (lifecycle) => normalized.filter((entry) => entry.lifecycle === lifecycle),
+    };
   }
-  
+
   function htmlAttrsFor(entry) {
-   const html = entry.html || {};
-   return [
-     ...(html.readAttrs || []),
-     ...(html.writeAttrs || []),
-     ...(html.retiredAttrs || []).map((item) => item.name).filter(Boolean),
-   ];
+    const html = entry.html || {};
+    return [
+      ...(html.readAttrs || []),
+      ...(html.writeAttrs || []),
+      ...(html.persistAttrs || []),
+    ];
+  }
+
+  function retiredHtmlAttrsFor(entry) {
+    if (entry.lifecycle !== 'retired') return [];
+    return ((entry.retired || {}).htmlAttrs || []);
+  }
+
+  function retiredHtmlAttrRecord(entry, retiredHtmlAttr) {
+    return {
+      canonicalPath: entry.canonicalPath,
+      owner: entry.owner,
+      fieldClass: entry.fieldClass,
+      lifecycle: entry.lifecycle,
+      name: retiredHtmlAttr.name,
+      readPolicy: retiredHtmlAttr.readPolicy,
+      writePolicy: retiredHtmlAttr.writePolicy,
+      replacedBy: retiredHtmlAttr.replacedBy,
+      reason: retiredHtmlAttr.reason,
+      entry,
+    };
   }
   
   module.exports = {
-   createFieldRegistry,
+    createFieldRegistry,
   };
   ```
   
@@ -1122,16 +1150,22 @@ src/indesign-reverse/
   ```js
   const { fieldRegistry } = require('../../src/protocol');
   
-  test('registry contains current PDF page number facts and retired data-id-page alias', () => {
+  test('registry contains current PDF page number facts separate from retired data-id-page facts', () => {
    const field = fieldRegistry.getByPath('items[].asset.placement.pageNumber');
   
    assert.equal(field.fieldClass, 'canonical');
    assert.equal(field.lifecycle, 'active');
    assert.deepEqual(field.html.readAttrs, ['data-id-pdf-page']);
-  
-   const retired = field.html.retiredAttrs.find((item) => item.name === 'data-id-page');
-   assert.equal(retired.readPolicy, 'observe-only');
-   assert.equal(retired.writePolicy, 'forbidden');
+   assert.equal(fieldRegistry.getByHtmlAttr('data-id-page'), null);
+
+   const retiredLookup = fieldRegistry.getRetiredHtmlAttr('data-id-page');
+   assert.equal(retiredLookup.canonicalPath, 'retired.htmlAttrs.dataIdPage');
+   assert.equal(retiredLookup.fieldClass, 'observation');
+   assert.equal(retiredLookup.lifecycle, 'retired');
+   assert.equal(retiredLookup.name, 'data-id-page');
+   assert.equal(retiredLookup.readPolicy, 'observe-only');
+   assert.equal(retiredLookup.writePolicy, 'forbidden');
+   assert.equal(retiredLookup.replacedBy, 'data-id-pdf-page');
   });
   
   test('registry contains sourceNode as sourceMetadata not canonical', () => {
@@ -1205,12 +1239,6 @@ src/indesign-reverse/
      html: {
        readAttrs: ['data-id-pdf-page'],
        writeAttrs: ['data-id-pdf-page'],
-       retiredAttrs: [{
-         name: 'data-id-page',
-         readPolicy: 'observe-only',
-         writePolicy: 'forbidden',
-         reason: 'ambiguous-with-page-identity',
-       }],
      },
      indesign: {
        snapshotPaths: ['placedAsset.placement.pageNumber', 'graphic.pdfAttributes.pageNumber'],
@@ -1229,6 +1257,36 @@ src/indesign-reverse/
   ];
   ```
   
+  `src/protocol/fields/retired.js` 单独登记退役 HTML 属性；它不属于
+  active PDF page number 字段，也不进入 `getByHtmlAttr()`：
+
+  ```js
+  module.exports = [
+   {
+     canonicalPath: 'retired.htmlAttrs.dataIdPage',
+     currentPaths: [],
+     fieldClass: 'observation',
+     lifecycle: 'retired',
+     owner: 'asset-placement',
+     type: 'attribute',
+     capabilities: {
+       html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+       indesign: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+       pptx: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+     },
+     retired: {
+       htmlAttrs: [{
+         name: 'data-id-page',
+         replacedBy: 'data-id-pdf-page',
+         readPolicy: 'observe-only',
+         writePolicy: 'forbidden',
+         reason: 'ambiguous-with-page-identity',
+       }],
+     },
+   },
+  ];
+  ```
+
   `src/protocol/fields/source-metadata.js` 示例：
   
   ```js
@@ -1488,7 +1546,7 @@ src/indesign-reverse/
 
 - **步骤 3.7：实现 retired lifecycle 查询。**
   
-  retired lifecycle 必须以阶段 2 的 retired entry 为唯一事实源：`retired.htmlAttrs.dataIdPage`。不得重新引入 `html.data-id-page` 作为 currentPath，不得读取 active entry 上的 `html.retiredAttrs`，不得让 `data-id-page` 进入 `getByHtmlAttr()`。如需按退役 HTML 属性名查询，只能复用 `getRetiredHtmlAttr()` 这类独立 retired metadata surface。在 `src/protocol/field-query.js` 增加：
+  retired lifecycle 必须以阶段 2 的 retired entry 为唯一事实源：`retired.htmlAttrs.dataIdPage`。不得把旧 HTML 属性名拼成 currentPath，不得从 active entry 读取退役属性策略，不得让 `data-id-page` 进入 `getByHtmlAttr()`。如需按退役 HTML 属性名查询，只能复用 `getRetiredHtmlAttr()` 这类独立 retired metadata surface。在 `src/protocol/field-query.js` 增加：
   
   ```js
   function lifecyclePolicyFor(registry, fieldPath) {
