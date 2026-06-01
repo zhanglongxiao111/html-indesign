@@ -10,6 +10,29 @@ const SOURCE_METADATA_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
 });
 
+const FORMAT_EXTENSION_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+});
+
+const STYLE_COLLECTIONS = Object.freeze([
+  'paragraphStyles',
+  'characterStyles',
+  'objectStyles',
+  'frameStyles',
+  'tableStyles',
+  'cellStyles',
+]);
+
+const STYLE_FEATURES = Object.freeze([
+  'compositeFont',
+  'dropCap',
+  'list',
+  'grepStyles',
+  'nestedStyles',
+]);
+
 function canonical(canonicalPath, currentPaths, type, extra = {}) {
   return {
     canonicalPath,
@@ -36,6 +59,82 @@ function sourceMetadata(canonicalPath, currentPaths, type, extra = {}) {
   };
 }
 
+function formatExtension(canonicalPath, currentPaths, type, extra = {}) {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'formatExtension',
+    lifecycle: 'active',
+    owner: 'document-model',
+    type,
+    capabilities: FORMAT_EXTENSION_CAPABILITIES,
+    ...extra,
+  };
+}
+
+function parentPageEntries() {
+  return [
+    sourceMetadata('parentPages[].id', [], 'string'),
+    sourceMetadata('parentPages[].name', [], 'string'),
+    sourceMetadata('parentPages[].semantic', [], 'string'),
+    sourceMetadata('parentPages[].provides', [], 'array'),
+    sourceMetadata('parentPages[].bounds', [], 'object'),
+    sourceMetadata('parentPages[].labels', [], 'array'),
+    sourceMetadata('parentPages[].items', [], 'array'),
+  ];
+}
+
+function layerEntries() {
+  return [
+    canonical('layers[].token', [], 'string'),
+    canonical('layers[].displayName', [], 'string'),
+    canonical('layers[].name', [], 'string'),
+    canonical('layers[].visible', [], 'boolean'),
+    canonical('layers[].printable', [], 'boolean'),
+    canonical('layers[].locked', [], 'boolean'),
+    sourceMetadata('layers[].labels', [], 'array'),
+  ];
+}
+
+function styleCollectionEntries(collection) {
+  return [
+    canonical(`styles.${collection}`, [], 'object'),
+    ...styleResourceEntries(`styles.${collection}[]`),
+  ];
+}
+
+function styleResourceEntries(prefix) {
+  return [
+    canonical(`${prefix}.name`, [], 'string'),
+    canonical(`${prefix}.token`, [], 'string'),
+    canonical(`${prefix}.displayName`, [], 'string'),
+    canonical(`${prefix}.safeName`, [], 'string'),
+    canonical(`${prefix}.css`, [], 'string'),
+    sourceMetadata(`${prefix}.source`, [], 'string'),
+    sourceMetadata(`${prefix}.labels`, [], 'array'),
+    formatExtension(`${prefix}.indesignFeatures`, [], 'object'),
+    ...STYLE_FEATURES.map((feature) => (
+      formatExtension(`${prefix}.indesignFeatures.${feature}`, [], 'object')
+    )),
+  ];
+}
+
+function compositeFontEntries() {
+  return [
+    formatExtension('styles.compositeFonts', [], 'object'),
+    formatExtension('styles.compositeFonts[].name', [], 'string'),
+    formatExtension('styles.compositeFonts[].safeName', [], 'string'),
+    formatExtension('styles.compositeFonts[].hasBoldCJK', [], 'boolean'),
+    formatExtension('styles.compositeFonts[].cjkWeight', [], 'string'),
+    formatExtension('styles.compositeFonts[].romanWeight', [], 'string'),
+    formatExtension('styles.compositeFonts[].entries', [], 'array'),
+    formatExtension('styles.compositeFonts[].entries[].name', [], 'string'),
+    formatExtension('styles.compositeFonts[].entries[].fontStyle', [], 'string'),
+    formatExtension('styles.compositeFonts[].entries[].size', [], 'number'),
+    formatExtension('styles.compositeFonts[].entries[].weight', [], 'string'),
+  ];
+}
+
 module.exports = [
   canonical('document.title', ['title', 'labels[].title'], 'string', {
     indesign: { labelPaths: ['title'] },
@@ -51,11 +150,16 @@ module.exports = [
     indesign: { labelPaths: ['sourcePackage'] },
   }),
   sourceMetadata('parentPages', [], 'array'),
+  ...parentPageEntries(),
   canonical('layers', [], 'array'),
+  ...layerEntries(),
   canonical('styles', [], 'object'),
+  ...styleResourceEntries('styles[]'),
+  ...STYLE_COLLECTIONS.flatMap(styleCollectionEntries),
+  ...compositeFontEntries(),
   canonical('pages[].index', [], 'integer'),
-  canonical('pages[].semantic', [], 'string'),
-  sourceMetadata('pages[].sourceNode', [], 'object'),
+  canonical('pages[].semantic', ['pages[].effectiveLabel.semantic'], 'string'),
+  sourceMetadata('pages[].sourceNode', ['pages[].effectiveLabel.sourceNode'], 'object'),
   canonical('pages[].width', [], 'number'),
   canonical('pages[].height', [], 'number'),
   canonical('pages[].guides', [], 'array'),

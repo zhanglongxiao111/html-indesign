@@ -82,6 +82,79 @@ test('validateModelFields rejects unknown model paths in strict mode', () => {
   );
 });
 
+test('validateModelFields rejects nested ghosts on registered root surfaces in strict mode', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'doc',
+    parentPages: [{ id: 'parent-a', ghost: true }],
+    layers: [{ token: 'text', ghost: true }],
+    styles: [{ name: 'Title', ghost: true }],
+    pages: [{
+      id: 'p1',
+      effectiveLabel: { semantic: 'agenda-page', ghost: true },
+      observedLabel: { rejectionReasons: ['unknown-layout'], ghost: true },
+      items: [],
+    }],
+  };
+
+  const scannedPaths = scanModelPaths(model);
+  for (const path of [
+    'parentPages[].ghost',
+    'layers[].ghost',
+    'styles[].ghost',
+    'pages[].effectiveLabel.ghost',
+    'pages[].observedLabel.ghost',
+  ]) {
+    assert.equal(scannedPaths.includes(path), true, `${path} should be scanned`);
+  }
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.unknown, [
+    'parentPages[].ghost',
+    'layers[].ghost',
+    'styles[].ghost',
+    'pages[].effectiveLabel.ghost',
+    'pages[].observedLabel.ghost',
+  ]);
+  for (const path of strict.unknown) {
+    assert.equal(
+      strict.errors.some((error) => (
+        error.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be a strict error`,
+    );
+  }
+});
+
+test('validateModelFields rejects unknown style collection fields in strict mode', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    styles: {
+      paragraphStyles: {
+        title: {
+          name: 'Title',
+          css: 'font-size:32pt',
+          ghost: true,
+        },
+      },
+      ghostCollection: {},
+    },
+  });
+
+  assert.equal(scannedPaths.includes('styles.paragraphStyles[].ghost'), true);
+  assert.equal(scannedPaths.includes('styles.ghostCollection'), true);
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.deepEqual(strict.unknown, [
+    'styles.paragraphStyles[].ghost',
+    'styles.ghostCollection',
+  ]);
+});
+
 test('validateModelFields reports model root unknown fields in warning-only and strict modes', () => {
   const model = {
     kind: 'DocumentModel',

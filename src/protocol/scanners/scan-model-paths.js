@@ -1,4 +1,12 @@
 const hasOwn = Object.prototype.hasOwnProperty;
+const {
+  scanItemObservedLabel,
+  scanLayerArray,
+  scanPageEffectiveLabel,
+  scanPageObservedLabel,
+  scanParentPages,
+  scanStyles,
+} = require('./model-surface-paths');
 
 const ROOT_FIELD_PATHS = Object.freeze({
   id: 'document.id',
@@ -229,7 +237,16 @@ function scanModelPaths(model) {
   }
 
   for (const [key, value] of Object.entries(model)) {
-    if (hasOwn.call(ROOT_FIELD_PATHS, key)) {
+    if (key === 'parentPages') {
+      addPath(paths, seen, ROOT_FIELD_PATHS.parentPages);
+      scanParentPages(paths, seen, value, scanLabelArray);
+    } else if (key === 'layers') {
+      addPath(paths, seen, ROOT_FIELD_PATHS.layers);
+      scanLayerArray(paths, seen, value, scanLabelArray);
+    } else if (key === 'styles') {
+      addPath(paths, seen, ROOT_FIELD_PATHS.styles);
+      scanStyles(paths, seen, value, scanLabelArray);
+    } else if (hasOwn.call(ROOT_FIELD_PATHS, key)) {
       addPath(paths, seen, ROOT_FIELD_PATHS[key]);
     } else if (key === 'assets') {
       scanArraySurface(paths, seen, value, ASSET_FIELD_PATHS, 'assets[]');
@@ -260,6 +277,12 @@ function scanPages(paths, seen, pages) {
         scanItems(paths, seen, value);
       } else if (key === 'labels') {
         scanLabelArray(paths, seen, value);
+      } else if (key === 'effectiveLabel') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.effectiveLabel);
+        scanPageEffectiveLabel(paths, seen, value);
+      } else if (key === 'observedLabel') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.observedLabel);
+        scanPageObservedLabel(paths, seen, value);
       } else if (hasOwn.call(PAGE_FIELD_PATHS, key)) {
         addPath(paths, seen, PAGE_FIELD_PATHS[key]);
       } else if (!STRUCTURAL_KEYS.has(key)) {
@@ -289,6 +312,9 @@ function scanItems(paths, seen, items) {
           EFFECTIVE_LABEL_FIELD_PATHS,
           'items[].effectiveLabel',
         );
+      } else if (key === 'observedLabel') {
+        addPath(paths, seen, ITEM_FIELD_PATHS.observedLabel);
+        scanItemObservedLabel(paths, seen, value);
       } else if (key === 'labels') {
         scanLabelArray(paths, seen, value);
       } else if (hasOwn.call(ITEM_FIELD_PATHS, key)) {

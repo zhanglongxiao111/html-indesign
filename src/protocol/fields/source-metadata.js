@@ -17,7 +17,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceAncestorNodes',
-    currentPaths: ['labels[].sourceAncestorNodes', 'effectiveLabel.sourceAncestorNodes'],
+    currentPaths: ['labels[].sourceAncestorNodes', 'effectiveLabel.sourceAncestorNodes', 'pages[].effectiveLabel.sourceAncestorNodes'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -33,7 +33,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceFile',
-    currentPaths: ['pages[].sourceFile', 'labels[].sourceFile', 'effectiveLabel.sourceFile'],
+    currentPaths: ['pages[].sourceFile', 'labels[].sourceFile', 'effectiveLabel.sourceFile', 'pages[].effectiveLabel.sourceFile'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -49,7 +49,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceText',
-    currentPaths: ['labels[].sourceText', 'effectiveLabel.sourceText'],
+    currentPaths: ['labels[].sourceText', 'effectiveLabel.sourceText', 'pages[].effectiveLabel.sourceText'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -65,7 +65,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceHtml',
-    currentPaths: ['labels[].sourceHtml', 'effectiveLabel.sourceHtml'],
+    currentPaths: ['labels[].sourceHtml', 'effectiveLabel.sourceHtml', 'pages[].effectiveLabel.sourceHtml'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -81,7 +81,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceHtmlTag',
-    currentPaths: ['labels[].htmlTag', 'effectiveLabel.htmlTag'],
+    currentPaths: ['labels[].htmlTag', 'effectiveLabel.htmlTag', 'pages[].effectiveLabel.htmlTag'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -97,7 +97,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceClassName',
-    currentPaths: ['labels[].className', 'effectiveLabel.className'],
+    currentPaths: ['labels[].className', 'effectiveLabel.className', 'pages[].effectiveLabel.className'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -126,7 +126,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].structure',
-    currentPaths: ['labels[].structure', 'effectiveLabel.structure'],
+    currentPaths: ['labels[].structure', 'effectiveLabel.structure', 'pages[].effectiveLabel.structure'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',
@@ -142,7 +142,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceRuns',
-    currentPaths: ['labels[].sourceRuns', 'effectiveLabel.sourceRuns'],
+    currentPaths: ['labels[].sourceRuns', 'effectiveLabel.sourceRuns', 'pages[].effectiveLabel.sourceRuns'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',

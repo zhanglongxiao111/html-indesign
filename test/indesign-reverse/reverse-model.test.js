@@ -215,15 +215,30 @@ test('reverseSnapshotToSemanticModel output is strict-valid for registered rever
   assert.deepEqual(strictResult.fieldValidation.unknown, []);
 
   model.pages[0].items[0].adapterPrivateGhost = true;
+  model.pages[0].effectiveLabel.ghost = true;
+  model.pages[0].observedLabel.ghost = true;
+  model.styles.paragraphStyles.Title.ghost = true;
+  model.parentPages[0].ghost = true;
+  model.layers[0].ghost = true;
   const rejected = validateSemanticModel(model, { strictFields: true });
   assert.equal(rejected.valid, false);
-  assert.equal(
-    rejected.errors.some((error) => (
-      error.code === 'MODEL_FIELD_NOT_REGISTERED'
-      && error.path === 'pages[].items[].adapterPrivateGhost'
-    )),
-    true,
-  );
+  for (const path of [
+    'pages[].items[].adapterPrivateGhost',
+    'pages[].effectiveLabel.ghost',
+    'pages[].observedLabel.ghost',
+    'styles.paragraphStyles[].ghost',
+    'parentPages[].ghost',
+    'layers[].ghost',
+  ]) {
+    assert.equal(
+      rejected.errors.some((error) => (
+        error.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be a strict model field error`,
+    );
+  }
 });
 
 test('reverseSnapshotToSemanticModel surfaces observation label field warnings', () => {

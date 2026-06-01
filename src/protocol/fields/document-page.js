@@ -70,7 +70,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].layout',
-    currentPaths: ['pages[].semanticLayout', 'labels[].layout'],
+    currentPaths: ['pages[].semanticLayout', 'labels[].layout', 'pages[].effectiveLabel.layout'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'document-page',
@@ -93,7 +93,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].parentPage',
-    currentPaths: ['labels[].parentPage'],
+    currentPaths: ['labels[].parentPage', 'pages[].effectiveLabel.parentPage'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'document-page',
@@ -109,7 +109,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].parentPageId',
-    currentPaths: ['labels[].parentPageId'],
+    currentPaths: ['labels[].parentPageId', 'pages[].effectiveLabel.parentPageId'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'document-page',
@@ -128,7 +128,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].parentPageName',
-    currentPaths: ['labels[].parentPageName'],
+    currentPaths: ['labels[].parentPageName', 'pages[].effectiveLabel.parentPageName'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'document-page',
@@ -147,7 +147,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].margins',
-    currentPaths: ['labels[].margins'],
+    currentPaths: ['labels[].margins', 'pages[].effectiveLabel.margins'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'document-page',
@@ -163,7 +163,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].grid',
-    currentPaths: ['labels[].grid', 'sourceNode.attributes.data-id-grid'],
+    currentPaths: ['labels[].grid', 'sourceNode.attributes.data-id-grid', 'pages[].effectiveLabel.grid'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'document-page',

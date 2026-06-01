@@ -66,6 +66,37 @@ test('validateSemanticModel rejects unknown model fields in strict field mode', 
   );
 });
 
+test('validateSemanticModel rejects nested root-surface ghosts in strict field mode', () => {
+  const result = validateSemanticModel({
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{ kind: 'document', id: 'doc' }],
+    parentPages: [{ id: 'parent-a', ghost: true }],
+    layers: [{ token: 'text', ghost: true }],
+    styles: {
+      paragraphStyles: {
+        title: { name: 'Title', css: 'font-size:32pt', ghost: true },
+      },
+    },
+    pages: [{
+      id: 'p1',
+      labels: [{ kind: 'page', id: 'p1' }],
+      effectiveLabel: { semantic: 'agenda-page', ghost: true },
+      observedLabel: { rejectionReasons: ['unknown-layout'], ghost: true },
+      items: [],
+    }],
+  }, { strictFields: true });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.fieldValidation.unknown, [
+    'parentPages[].ghost',
+    'layers[].ghost',
+    'styles.paragraphStyles[].ghost',
+    'pages[].effectiveLabel.ghost',
+    'pages[].observedLabel.ghost',
+  ]);
+});
+
 test('validateSemanticModel accepts current DocumentModel fields in strict field mode', () => {
   const result = validateSemanticModel({
     kind: 'DocumentModel',
@@ -83,6 +114,12 @@ test('validateSemanticModel accepts current DocumentModel fields in strict field
       index: 0,
       semantic: 'agenda-page',
       labels: [{ kind: 'page', id: 'p1' }],
+      effectiveLabel: {
+        semantic: 'agenda-page',
+        sourceNode: { tagName: 'section' },
+        grid: { columns: 12 },
+      },
+      observedLabel: { rejectionReasons: ['unknown-layout'] },
       guides: [{ axis: 'x', position: 40 }],
       items: [{
         id: 'item-1',

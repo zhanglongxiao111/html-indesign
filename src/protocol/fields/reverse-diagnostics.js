@@ -37,6 +37,28 @@ function sourceMetadata(canonicalPath, currentPaths, type) {
   };
 }
 
+function pageObservedLabelEntries() {
+  return [
+    observation('pages[].observedLabel.semantic', [], 'string'),
+    observation('pages[].observedLabel.layout', [], 'object|string'),
+    observation('pages[].observedLabel.parentPage', [], 'object'),
+    observation('pages[].observedLabel.parentPageId', [], 'string'),
+    observation('pages[].observedLabel.parentPageName', [], 'string'),
+    observation('pages[].observedLabel.sourceFile', [], 'string'),
+    observation('pages[].observedLabel.sourceNode', [], 'object'),
+    observation('pages[].observedLabel.sourceAncestorNodes', [], 'array'),
+    observation('pages[].observedLabel.sourceText', [], 'string'),
+    observation('pages[].observedLabel.sourceHtml', [], 'string'),
+    observation('pages[].observedLabel.htmlTag', [], 'string'),
+    observation('pages[].observedLabel.className', [], 'string'),
+    observation('pages[].observedLabel.sourceRuns', [], 'array'),
+    observation('pages[].observedLabel.structure', [], 'object'),
+    observation('pages[].observedLabel.grid', [], 'object'),
+    observation('pages[].observedLabel.margins', [], 'object'),
+    observation('pages[].observedLabel.rejectionReasons', [], 'array'),
+  ];
+}
+
 module.exports = [
   observation('warnings', [], 'array'),
   observation('errors', [], 'array'),
@@ -46,6 +68,7 @@ module.exports = [
   sourceMetadata('reverseMode', [], 'string'),
   observation('pages[].labelStatus', [], 'string'),
   observation('pages[].observedLabel', [], 'object'),
+  ...pageObservedLabelEntries(),
   observation('pages[].rejectedFields', [], 'object'),
   observation('pages[].rejectionReasons', [], 'array'),
   observation('pages[].items[].labelStatus', [], 'string'),
