@@ -7,6 +7,8 @@ const {
 const { isFieldClass, isLifecycle } = require('./lifecycle');
 const { uniquePaths } = require('./path-utils');
 const hasOwn = Object.prototype.hasOwnProperty;
+const RETIRED_READ_POLICIES = new Set(['observe-only']);
+const RETIRED_WRITE_POLICIES = new Set(['forbidden']);
 
 function normalizeFieldEntry(input) {
   const source = input && typeof input === 'object' ? input : {};
@@ -188,6 +190,9 @@ function validateRetiredPolicy(input, errors) {
     }
   }
 
+  validateRetiredPolicyValue(retiredAttr, 'readPolicy', RETIRED_READ_POLICIES, errors);
+  validateRetiredPolicyValue(retiredAttr, 'writePolicy', RETIRED_WRITE_POLICIES, errors);
+
   for (const key of ['replacedBy', 'reason']) {
     if (
       hasOwn.call(retiredAttr, key)
@@ -198,6 +203,19 @@ function validateRetiredPolicy(input, errors) {
         message: `retired.htmlAttrs ${key} must be a non-empty string when present.`,
       });
     }
+  }
+}
+
+function validateRetiredPolicyValue(retiredAttr, key, allowedValues, errors) {
+  if (
+    typeof retiredAttr[key] === 'string'
+    && retiredAttr[key].length > 0
+    && !allowedValues.has(retiredAttr[key])
+  ) {
+    errors.push({
+      code: 'RETIRED_POLICY_INVALID',
+      message: `retired.htmlAttrs ${key} is not allowed: ${retiredAttr[key]}.`,
+    });
   }
 }
 

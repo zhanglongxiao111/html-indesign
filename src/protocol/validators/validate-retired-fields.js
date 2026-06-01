@@ -4,7 +4,7 @@ function validateRetiredFields(registry, input = {}) {
   }
 
   const htmlAttrs = uniqueStrings(input.htmlAttrs);
-  const direction = input.direction || 'read';
+  const direction = input.direction === undefined ? 'read' : input.direction;
   if (direction !== 'read' && direction !== 'write') {
     throw new Error(`RETIRED_FIELD_DIRECTION_INVALID:${direction}`);
   }

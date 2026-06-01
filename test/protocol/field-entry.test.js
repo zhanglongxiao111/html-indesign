@@ -132,6 +132,20 @@ test('field entry rejects malformed retired html attr policy declarations', () =
     ],
     [
       {
+        name: 'data-id-page',
+        readPolicy: 'collect',
+        writePolicy: 'forbidden',
+      },
+    ],
+    [
+      {
+        name: 'data-id-page',
+        readPolicy: 'observe-only',
+        writePolicy: 'warn',
+      },
+    ],
+    [
+      {
         name: 'data-id-old-a',
         readPolicy: 'observe-only',
         writePolicy: 'forbidden',
