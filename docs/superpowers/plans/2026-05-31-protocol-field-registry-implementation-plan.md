@@ -21,7 +21,7 @@
 - [x] 阶段 2：登记当前事实字段，不接入强门禁（implementation：`68cde6b`；spec fixes：`9e05f2a`、`e5ad1cd`；quality fix：`d30df31`；spec review 通过；code quality review 通过；controller 验证：protocol focused 16/16、protocol 33/33、npm test 390/390）
 - [x] 阶段 3：能力矩阵和生命周期策略门禁（implementation：`8648f27`；spec fixes：`50386a6`、`b22aa2c`；quality fixes：`b2fe754`、`d304e75`、`3f9d8ae`、`01cf80d`、`7e4d017`；spec review 通过；code quality review 通过；controller 验证：stage focused 51/51、protocol 57/57、npm test 414/414）
 - [x] 阶段 4：字段扫描和仅警告门禁（implementation：`f8b2e9b`；spec fix：`5c33f35`；quality fixes：`4347e0a`、`6cd173d`、`b9880d8`；spec review 通过；code quality review 通过；controller 验证：stage focused 18/18、protocol 75/75、npm test 432/432）
-- [ ] 阶段 5：接入语义模型和标签白名单（implementation：`a8b4c0d`；spec fixes：`44ffe16`、`ad1ed4d`；controller 合法样本复验：focused 112/112、npm test 448/448；spec re-review 拒绝：`parentPages` / `layers` / `styles` / page label surfaces 存在嵌套未知字段 strict 盲点；修复中）
+- [ ] 阶段 5：接入语义模型和标签白名单（implementation：`a8b4c0d`；spec fixes：`44ffe16`、`ad1ed4d`、`0687952`；controller 复验中：重点复核 nested ghost strict 失败、合法 DocumentModel / reverse model strict 通过）
 - [ ] 阶段 6：退役字段集中登记与清理
 - [ ] 阶段 7：按域接入强校验
 - [ ] 阶段 8：目录重构为适配器 / 写出器
