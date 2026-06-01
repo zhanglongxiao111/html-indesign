@@ -1,3 +1,32 @@
+const STYLE_REF_CAPABILITIES = Object.freeze({
+  html: { read: 'native', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
+
+function styleRefCarrier(canonicalPath, currentPaths, htmlAttr, type = 'string') {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'style-refs',
+    type,
+    capabilities: STYLE_REF_CAPABILITIES,
+    html: {
+      readAttrs: [htmlAttr],
+      writeAttrs: [htmlAttr],
+    },
+    indesign: {
+      labelPaths: [`styleRefs.${canonicalPath.slice('items[].styleRefs.'.length)}`],
+      labelKinds: ['item'],
+    },
+    pptx: {
+      customDataPaths: [`htmlIndesign.${canonicalPath}`],
+    },
+  };
+}
+
 module.exports = [
   {
     canonicalPath: 'items[].styleRefs.paragraphStyle',
@@ -179,4 +208,39 @@ module.exports = [
       customDataPaths: ['htmlIndesign.items[].styleRefs.cellStyle'],
     },
   },
+  styleRefCarrier(
+    'items[].styleRefs.genericStyle',
+    ['items[].styleRefs.style', 'sourceNode.attributes.data-id-style'],
+    'data-id-style',
+  ),
+  styleRefCarrier(
+    'items[].styleRefs.displayName',
+    ['items[].styleRefs.styleName', 'sourceNode.attributes.data-id-style-name'],
+    'data-id-style-name',
+  ),
+  styleRefCarrier(
+    'items[].styleRefs.paragraphStyleDisplayName',
+    ['items[].paragraphStyleName', 'sourceNode.attributes.data-id-paragraph-style-name'],
+    'data-id-paragraph-style-name',
+  ),
+  styleRefCarrier(
+    'items[].styleRefs.characterStyleDisplayName',
+    ['items[].characterStyleName', 'sourceNode.attributes.data-id-character-style-name'],
+    'data-id-character-style-name',
+  ),
+  styleRefCarrier(
+    'items[].styleRefs.objectStyleDisplayName',
+    ['items[].objectStyleName', 'sourceNode.attributes.data-id-object-style-name'],
+    'data-id-object-style-name',
+  ),
+  styleRefCarrier(
+    'items[].styleRefs.frameStyleDisplayName',
+    ['items[].frameStyleName', 'sourceNode.attributes.data-id-frame-style-name'],
+    'data-id-frame-style-name',
+  ),
+  styleRefCarrier(
+    'items[].styleRefs.tableStyleDisplayName',
+    ['items[].tableStyleName', 'sourceNode.attributes.data-id-table-style-name'],
+    'data-id-table-style-name',
+  ),
 ];

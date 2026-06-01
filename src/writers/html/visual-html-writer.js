@@ -59,6 +59,12 @@ function semanticModelToHtml(model, options = {}) {
   const title = model.title || model.id;
   const pages = (model.pages || []).map((page) => pageToHtml(page, model, options)).join('\n');
   const reverseMode = model.reverseMode || 'structured';
+  const mainAttrs = [
+    'class="deck"',
+    `data-id-document="${attr(model.id)}"`,
+    `data-id-profile="${attr(model.profile || '')}"`,
+    reverseMode !== 'structured' ? `data-id-reverse-mode="${attr(reverseMode)}"` : null,
+  ].filter(Boolean);
 
   return [
     '<!doctype html>',
@@ -71,7 +77,7 @@ function semanticModelToHtml(model, options = {}) {
     '  </style>',
     '</head>',
     '<body>',
-    `<main class="deck" data-id-document="${attr(model.id)}" data-id-profile="${attr(model.profile || '')}" data-id-reverse-mode="${attr(reverseMode)}">`,
+    `<main ${mainAttrs.join(' ')}>`,
     pages,
     '</main>',
     '</body>',
@@ -90,7 +96,7 @@ function pageToHtml(page, model, options) {
     page.parentPageId ? `data-id-parent-page="${attr(page.parentPageId)}"` : null,
     page.parentPageName ? `data-id-parent-page-name="${attr(page.parentPageName)}"` : null,
     page.layout ? `data-id-layout="${attr(page.layout)}"` : null,
-    page.margins ? `data-id-margins="${attr(marginValue(page.margins))}"` : null,
+    page.margins ? `data-id-margin="${attr(marginValue(page.margins))}"` : null,
     page.source ? `data-id-source="${attr(page.source)}"` : null,
     `style="${attr(pageStyle(page))}"`,
   ].filter(Boolean);

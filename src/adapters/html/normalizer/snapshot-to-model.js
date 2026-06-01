@@ -67,7 +67,7 @@ function pageModelFor(page, layout) {
   const pageId = page.id || attrs['data-page'] || `page-${Number(page.index || 0) + 1}`;
   const semantic = attrs['data-id-semantic'] || null;
   const parentPageId = attrs['data-id-parent-page'] || null;
-  const parentPageName = attrs['data-id-parent-page-name'] || attrs['data-id-parent-page-display-name'] || null;
+  const parentPageName = attrs['data-id-parent-page-name'] || null;
   const layoutToken = attrs['data-id-layout'] || null;
   const sourceFile = attrs['data-id-source-file'] || page.sourceFile || null;
   const sourceNode = page.sourceNode || sourceNodeForSnapshotItem(Object.assign({}, page, { tagName: 'section' }));

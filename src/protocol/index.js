@@ -35,6 +35,7 @@ const rawFieldEntries = [
   ...require('./fields/document-model'),
   ...require('./fields/styles'),
   ...require('./fields/assets'),
+  ...require('./fields/html-authoring'),
   ...require('./fields/labels'),
   ...require('./fields/source-metadata'),
   ...require('./fields/visual-style'),

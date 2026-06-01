@@ -1,4 +1,84 @@
+function documentSourcePackageField(canonicalPath, currentPaths, htmlAttr, type = 'string') {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type,
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: [htmlAttr],
+      writeAttrs: [htmlAttr],
+    },
+    indesign: {
+      labelPaths: [canonicalPath.slice('document.'.length)],
+      labelKinds: ['document'],
+    },
+  };
+}
+
+function htmlSourceMetadataField(canonicalPath, currentPaths, htmlAttr, type = 'string') {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type,
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: [htmlAttr],
+      writeAttrs: [htmlAttr],
+    },
+    indesign: {
+      labelPaths: [canonicalPath.slice('items[].'.length)],
+      labelKinds: ['page', 'item'],
+    },
+  };
+}
+
 module.exports = [
+  documentSourcePackageField(
+    'document.sourcePackage.config',
+    ['sourcePackage.config', 'labels[].sourcePackage.config', 'sourcePackageInput.attributes.data-id-source-package-config'],
+    'data-id-source-package-config',
+  ),
+  documentSourcePackageField(
+    'document.sourcePackage.schemaVersion',
+    ['sourcePackage.schemaVersion', 'labels[].sourcePackage.schemaVersion', 'sourcePackageInput.attributes.data-id-source-package-schema'],
+    'data-id-source-package-schema',
+    'integer|string',
+  ),
+  documentSourcePackageField(
+    'document.semanticPreset.relativePath',
+    ['semanticPreset.relativePath', 'labels[].semanticPreset.relativePath', 'sourcePackageInput.attributes.data-id-semantic-preset'],
+    'data-id-semantic-preset',
+  ),
+  htmlSourceMetadataField(
+    'items[].source',
+    ['pages[].source', 'items[].source', 'sourceNode.attributes.data-id-source'],
+    'data-id-source',
+  ),
+  htmlSourceMetadataField(
+    'items[].parentPageItem',
+    ['pages[].items[].parentPageItem', 'sourceNode.attributes.data-id-parent-page-item'],
+    'data-id-parent-page-item',
+    'boolean|string',
+  ),
+  htmlSourceMetadataField(
+    'items[].parentPageSourceId',
+    ['pages[].items[].parentPageSourceId', 'sourceNode.attributes.data-id-parent-page-source-id'],
+    'data-id-parent-page-source-id',
+  ),
   {
     canonicalPath: 'items[].sourceNode',
     currentPaths: ['labels[].sourceNode', 'effectiveLabel.sourceNode'],
@@ -48,6 +128,10 @@ module.exports = [
     indesign: {
       labelPaths: ['sourceFile'],
       labelKinds: ['page', 'item'],
+    },
+    html: {
+      readAttrs: ['data-id-source-file'],
+      writeAttrs: ['data-id-source-file'],
     },
   },
   {

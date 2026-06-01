@@ -4,12 +4,6 @@ const OBSERVATION_CAPABILITIES = Object.freeze({
   pptx: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
 });
 
-const SOURCE_METADATA_CAPABILITIES = Object.freeze({
-  html: { read: 'native', write: 'observe-only', persist: 'lossless' },
-  indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
-  pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
-});
-
 function observation(canonicalPath, currentPaths, type) {
   return {
     canonicalPath,
@@ -22,18 +16,6 @@ function observation(canonicalPath, currentPaths, type) {
     validation: {
       mayDriveStructuredCompilation: false,
     },
-  };
-}
-
-function sourceMetadata(canonicalPath, currentPaths, type) {
-  return {
-    canonicalPath,
-    currentPaths,
-    fieldClass: 'sourceMetadata',
-    lifecycle: 'active',
-    owner: 'reverse-diagnostics',
-    type,
-    capabilities: SOURCE_METADATA_CAPABILITIES,
   };
 }
 
@@ -65,7 +47,22 @@ module.exports = [
   observation('fieldValidation', [], 'array'),
   observation('report', [], 'object'),
   observation('valid', [], 'boolean'),
-  sourceMetadata('reverseMode', [], 'string'),
+  {
+    canonicalPath: 'reverseMode',
+    currentPaths: ['sourceNode.attributes.data-id-reverse-mode'],
+    fieldClass: 'observation',
+    lifecycle: 'active',
+    owner: 'reverse-diagnostics',
+    type: 'string',
+    capabilities: OBSERVATION_CAPABILITIES,
+    html: {
+      readAttrs: ['data-id-reverse-mode'],
+      writeAttrs: ['data-id-reverse-mode'],
+    },
+    validation: {
+      mayDriveStructuredCompilation: false,
+    },
+  },
   observation('pages[].labelStatus', [], 'string'),
   observation('pages[].observedLabel', [], 'object'),
   ...pageObservedLabelEntries(),

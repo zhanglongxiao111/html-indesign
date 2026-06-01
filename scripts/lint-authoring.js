@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
 const path = require('path');
 const { renderSnapshot, validateAuthoringRules } = require('../src/adapters/html');
 const { auditAuthorPackageSourceFormat, checkAuthorPackageEntry, readAuthorPackage } = require('../src/authoring');
+const {
+  fieldRegistry,
+  scanDataIdFields,
+  validateDataIdFields,
+} = require('../src/protocol');
 const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../src/semantic-preset');
 
 main().catch((error) => {
@@ -21,6 +27,7 @@ async function main() {
   let sourceFormat = null;
   let semanticAudit = null;
   let semanticPreset = null;
+  let dataIdAudit = null;
   if (options.packagePath) {
     const packagePath = path.resolve(options.packagePath);
     const sourcePackage = readAuthorPackage(packagePath);
@@ -67,16 +74,18 @@ async function main() {
     htmlPath = path.resolve(options.html);
   }
 
+  dataIdAudit = auditHtmlDataIdFields(htmlPath, { strict: options.strict });
   const snapshot = await renderSnapshot({ htmlPath });
-  const result = validateAuthoringRules(snapshot, {
+  const result = withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
-  });
+  }), dataIdAudit);
 
   if (options.json) {
     console.log(JSON.stringify({
       ok: result.valid,
       htmlPath,
+      dataIdAudit,
       ...(sourceFormat ? { sourceFormat } : {}),
       ...(semanticPreset ? { semanticPreset } : {}),
       ...(semanticAudit ? { semanticAudit } : {}),
@@ -145,6 +154,50 @@ function packageFailure(sourceFormat, entryIssue, semanticAudit, semanticPreset)
     sourceFormat,
     ...(semanticPreset ? { semanticPreset } : {}),
     ...(semanticAudit ? { semanticAudit } : {}),
+    errors,
+    warnings,
+    messages: errors.concat(warnings),
+  };
+}
+
+function auditHtmlDataIdFields(htmlPath, options = {}) {
+  const attrs = scanDataIdFields(fs.readFileSync(htmlPath, 'utf8'));
+  const validation = validateDataIdFields(fieldRegistry, attrs, { strict: options.strict });
+  const errors = validation.errors.map((issue) => dataIdMessage('error', issue, htmlPath));
+  const warnings = options.strict
+    ? []
+    : validation.warnings.map((issue) => dataIdMessage('warning', issue, htmlPath));
+
+  return {
+    valid: errors.length === 0,
+    htmlPath,
+    attrs,
+    accepted: validation.accepted,
+    unknown: validation.unknown,
+    retired: validation.retired,
+    errors,
+    warnings,
+    messages: errors.concat(warnings),
+  };
+}
+
+function dataIdMessage(level, issue, htmlPath) {
+  return {
+    level,
+    code: issue.code,
+    file: htmlPath,
+    attribute: issue.name,
+    message: issue.message,
+    ...(issue.policy ? { policy: issue.policy } : {}),
+  };
+}
+
+function withDataIdAudit(result, dataIdAudit) {
+  if (!dataIdAudit) return result;
+  const errors = result.errors.concat(dataIdAudit.errors);
+  const warnings = result.warnings.concat(dataIdAudit.warnings);
+  return {
+    valid: errors.length === 0,
     errors,
     warnings,
     messages: errors.concat(warnings),

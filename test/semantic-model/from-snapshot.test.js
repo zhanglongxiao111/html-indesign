@@ -118,7 +118,7 @@ test('snapshotToSemanticModel does not infer item semantic from style tokens', (
   assert.deepEqual(model.pages[0].items.map((item) => item.labels[0].semantic), [null, null]);
 });
 
-test('snapshotToSemanticModel accepts alternate parent page display-name metadata', () => {
+test('snapshotToSemanticModel ignores retired parent page display-name alias', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },
     pages: [{
@@ -138,8 +138,8 @@ test('snapshotToSemanticModel accepts alternate parent page display-name metadat
     assets: [],
   }, { unitMode: 'print' });
 
-  assert.equal(model.pages[0].parentPageName, '汇报母版');
-  assert.equal(model.parentPages[0].name, '汇报母版');
+  assert.equal(model.pages[0].parentPageName, null);
+  assert.equal(model.parentPages[0].name, 'report-parent');
 });
 
 test('snapshotToSemanticModel preserves authoring source package labels', () => {

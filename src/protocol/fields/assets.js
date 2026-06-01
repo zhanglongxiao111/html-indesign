@@ -10,7 +10,7 @@ const ASSET_PLACEMENT_CANONICAL_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'preview-image' },
 });
 
-function assetSourceMetadata(canonicalPath, type, snapshotPath) {
+function assetSourceMetadata(canonicalPath, type, snapshotPath, extra = {}) {
   return {
     canonicalPath,
     currentPaths: [],
@@ -22,10 +22,11 @@ function assetSourceMetadata(canonicalPath, type, snapshotPath) {
     indesign: {
       snapshotPaths: [snapshotPath],
     },
+    ...extra,
   };
 }
 
-function assetPlacementCanonical(canonicalPath, type, snapshotPath) {
+function assetPlacementCanonical(canonicalPath, type, snapshotPath, extra = {}) {
   return {
     canonicalPath,
     currentPaths: [],
@@ -37,10 +38,32 @@ function assetPlacementCanonical(canonicalPath, type, snapshotPath) {
     indesign: {
       snapshotPaths: [snapshotPath],
     },
+    ...extra,
   };
 }
 
 module.exports = [
+  {
+    canonicalPath: 'assets[].kind',
+    currentPaths: ['assets[].kind', 'items[].asset.kind', 'sourceNode.attributes.data-id-asset-kind'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'asset-placement',
+    type: 'string',
+    capabilities: ASSET_PLACEMENT_CANONICAL_CAPABILITIES,
+    html: {
+      readAttrs: ['data-id-asset-kind'],
+      writeAttrs: ['data-id-asset-kind'],
+    },
+    indesign: {
+      snapshotPaths: ['placedAsset.kind', 'asset.kind'],
+      labelPaths: ['asset.kind'],
+      labelKinds: ['item'],
+    },
+    pptx: {
+      customDataPaths: ['htmlIndesign.assets[].kind'],
+    },
+  },
   {
     canonicalPath: 'assets[].path',
     currentPaths: ['assets[].src', 'assets[].resolvedPath', 'items[].asset.path'],
@@ -114,14 +137,107 @@ module.exports = [
   assetSourceMetadata('items[].asset.graphicType', 'string', 'placedAsset.graphicType'),
   assetSourceMetadata('items[].asset.imageTypeName', 'string', 'placedAsset.imageTypeName'),
   assetSourceMetadata('items[].asset.cropped', 'boolean', 'placedAsset.cropped'),
+  assetSourceMetadata('items[].asset.imageCropped', 'boolean', 'placedAsset.cropped', {
+    html: {
+      readAttrs: ['data-id-image-cropped'],
+      writeAttrs: ['data-id-image-cropped'],
+    },
+  }),
   assetSourceMetadata('items[].asset.preview', 'object', 'placedAsset.preview'),
-  assetPlacementCanonical('items[].asset.placement.crop', 'string', 'placedAsset.placement.crop'),
+  assetSourceMetadata('items[].asset.preview.kind', 'string', 'placedAsset.preview.kind', {
+    html: {
+      readAttrs: ['data-id-preview-kind'],
+      writeAttrs: ['data-id-preview-kind'],
+    },
+  }),
+  assetSourceMetadata('items[].asset.preview.path', 'string', 'placedAsset.preview.path', {
+    html: {
+      readAttrs: ['data-id-preview-asset-path', 'data-id-preview-src'],
+      writeAttrs: ['data-id-preview-asset-path', 'data-id-preview-src'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.crop', 'string', 'placedAsset.placement.crop', {
+    html: {
+      readAttrs: ['data-id-crop'],
+      writeAttrs: ['data-id-crop'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.fit', 'string', 'placedAsset.placement.fit', {
+    html: {
+      readAttrs: ['data-id-fit'],
+      writeAttrs: ['data-id-fit'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.artboard', 'string|integer', 'placedAsset.placement.artboard', {
+    html: {
+      readAttrs: ['data-id-artboard'],
+      writeAttrs: ['data-id-artboard'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.layerComp', 'string', 'placedAsset.placement.layerComp', {
+    html: {
+      readAttrs: ['data-id-layer-comp'],
+      writeAttrs: ['data-id-layer-comp'],
+    },
+  }),
   assetPlacementCanonical(
     'items[].asset.placement.transparentBackground',
     'boolean',
     'placedAsset.placement.transparentBackground',
   ),
-  assetPlacementCanonical('items[].asset.placement.visibleLayers', 'array', 'placedAsset.placement.visibleLayers'),
-  assetPlacementCanonical('items[].asset.placement.hiddenLayers', 'array', 'placedAsset.placement.hiddenLayers'),
+  assetPlacementCanonical('items[].asset.placement.visibleLayers', 'array', 'placedAsset.placement.visibleLayers', {
+    html: {
+      readAttrs: ['data-id-visible-layers', 'data-id-pdf-visible-layers'],
+      writeAttrs: ['data-id-visible-layers', 'data-id-pdf-visible-layers'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.hiddenLayers', 'array', 'placedAsset.placement.hiddenLayers', {
+    html: {
+      readAttrs: ['data-id-hidden-layers', 'data-id-pdf-hidden-layers'],
+      writeAttrs: ['data-id-hidden-layers', 'data-id-pdf-hidden-layers'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.preserveVector', 'boolean', 'placedAsset.placement.preserveVector', {
+    html: {
+      readAttrs: ['data-id-preserve-vector'],
+      writeAttrs: ['data-id-preserve-vector'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.contentBox.x', 'number|string', 'placedAsset.placement.contentBox.x', {
+    html: {
+      readAttrs: ['data-id-content-x'],
+      writeAttrs: ['data-id-content-x'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.contentBox.y', 'number|string', 'placedAsset.placement.contentBox.y', {
+    html: {
+      readAttrs: ['data-id-content-y'],
+      writeAttrs: ['data-id-content-y'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.contentBox.width', 'number|string', 'placedAsset.placement.contentBox.width', {
+    html: {
+      readAttrs: ['data-id-content-width'],
+      writeAttrs: ['data-id-content-width'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.contentBox.height', 'number|string', 'placedAsset.placement.contentBox.height', {
+    html: {
+      readAttrs: ['data-id-content-height'],
+      writeAttrs: ['data-id-content-height'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.contentBox.scaleX', 'number', 'placedAsset.placement.contentBox.scaleX', {
+    html: {
+      readAttrs: ['data-id-content-scale-x'],
+      writeAttrs: ['data-id-content-scale-x'],
+    },
+  }),
+  assetPlacementCanonical('items[].asset.placement.contentBox.scaleY', 'number', 'placedAsset.placement.contentBox.scaleY', {
+    html: {
+      readAttrs: ['data-id-content-scale-y'],
+      writeAttrs: ['data-id-content-scale-y'],
+    },
+  }),
   assetSourceMetadata('items[].asset.placement.layers', 'array', 'placedAsset.placement.layers'),
 ];

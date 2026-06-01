@@ -21,6 +21,26 @@ test('semanticModelToHtml writes page, parent page, layout and text item tags', 
   assert.match(html, /汇报结构/);
 });
 
+test('semanticModelToHtml writes current page margin carrier and omits structured reverse mode bookkeeping', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'registry-current-carriers',
+    title: 'registry-current-carriers',
+    reverseMode: 'structured',
+    pages: [{
+      id: 'page-1',
+      width: 400,
+      height: 225,
+      margins: { top: 14, right: 16, bottom: 10, left: 18 },
+      items: [],
+    }],
+  });
+
+  assert.match(html, /data-id-margin="14 16 10 18"/);
+  assert.doesNotMatch(html, /data-id-margins/);
+  assert.doesNotMatch(html, /data-id-reverse-mode="structured"/);
+});
+
 test('semanticModelToHtml rejects pages without explicit geometry', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
   const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured' });

@@ -1,11 +1,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   validateDataIdFields,
   scanDataIdFields,
   fieldRegistry,
 } = require('../../src/protocol');
+
+const ROOT_DIR = path.join(__dirname, '../..');
 
 test('scanDataIdFields returns unique data-id attributes in first-seen order', () => {
   assert.deepEqual(
@@ -179,3 +183,95 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
     assert.equal(field.capabilities.pptx.persist, 'lossless');
   }
 });
+
+test('validateDataIdFields accepts architecture report deck data-id carriers in strict mode', () => {
+  const htmlPath = path.join(ROOT_DIR, 'test/fixtures/e2e/architecture-report/deck.html');
+  const attrs = scanDataIdFields(fs.readFileSync(htmlPath, 'utf8'));
+  const result = validateDataIdFields(fieldRegistry, attrs, { strict: true });
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors, null, 2));
+  assert.deepEqual(result.unknown, []);
+  assert.deepEqual(result.retired, []);
+  assert.deepEqual(result.errors, []);
+});
+
+test('validateDataIdFields accepts every current fixture HTML data-id carrier in strict mode', () => {
+  for (const htmlPath of fixtureHtmlFiles(path.join(ROOT_DIR, 'test/fixtures'))) {
+    const attrs = scanDataIdFields(fs.readFileSync(htmlPath, 'utf8'));
+    const result = validateDataIdFields(fieldRegistry, attrs, { strict: true });
+
+    assert.equal(
+      result.valid,
+      true,
+      `${path.relative(ROOT_DIR, htmlPath)}:\n${JSON.stringify(result.errors, null, 2)}`,
+    );
+  }
+});
+
+test('validateDataIdFields lifecycle-manages stale parent-page and reverse-mode carriers', () => {
+  const strict = validateDataIdFields(fieldRegistry, [
+    'data-id-authoring-grid',
+    'data-id-parent-page-display-name',
+    'data-id-margins',
+  ], { strict: true });
+
+  assert.equal(strict.valid, false);
+  assert.deepEqual(
+    strict.retired.map((item) => item.name).sort(),
+    ['data-id-authoring-grid', 'data-id-margins', 'data-id-parent-page-display-name'].sort(),
+  );
+  assert.equal(
+    strict.errors.every((entry) => entry.code === 'DATA_ID_FIELD_RETIRED'),
+    true,
+  );
+
+  const reverseModeField = fieldRegistry.getByHtmlAttr('data-id-reverse-mode');
+  assert.ok(reverseModeField);
+  assert.equal(reverseModeField.fieldClass, 'observation');
+  assert.equal(reverseModeField.lifecycle, 'active');
+  assert.equal(reverseModeField.validation.mayDriveStructuredCompilation, false);
+  assert.equal(reverseModeField.capabilities.html.read, 'observe-only');
+  assert.equal(reverseModeField.capabilities.html.write, 'observe-only');
+});
+
+test('validateDataIdFields accepts active source and writer data-id carriers outside current fixtures', () => {
+  const attrs = [
+    'data-id-character-style-name',
+    'data-id-confidence',
+    'data-id-frame-style-name',
+    'data-id-grid-ignore',
+    'data-id-guide-ignore',
+    'data-id-migration-slot',
+    'data-id-object-style-name',
+    'data-id-paragraph-style-name',
+    'data-id-parent-page-item',
+    'data-id-parent-page-source-id',
+    'data-id-placement',
+    'data-id-slot-name',
+    'data-id-slot-type',
+    'data-id-snap-grid',
+    'data-id-snap-grid-x',
+    'data-id-snap-grid-y',
+    'data-id-source',
+    'data-id-style',
+    'data-id-style-name',
+    'data-id-table-style-name',
+  ];
+
+  const result = validateDataIdFields(fieldRegistry, attrs, { strict: true });
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors, null, 2));
+  assert.deepEqual(result.unknown, []);
+  assert.deepEqual(result.retired, []);
+  assert.deepEqual(result.errors, []);
+});
+
+function fixtureHtmlFiles(root) {
+  const out = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const fullPath = path.join(root, entry.name);
+    if (entry.isDirectory()) out.push(...fixtureHtmlFiles(fullPath));
+    else if (/\.html$/i.test(entry.name)) out.push(fullPath);
+  }
+  return out.sort();
+}

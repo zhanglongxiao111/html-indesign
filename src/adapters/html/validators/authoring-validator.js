@@ -207,7 +207,7 @@ function resolvePageGrid(page, margins) {
 }
 
 function snapGridSpec(page, margins, attrs) {
-  const raw = attributeValue(attrs, 'data-id-snap-grid') || attributeValue(attrs, 'data-id-authoring-grid');
+  const raw = attributeValue(attrs, 'data-id-snap-grid');
   const rawX = attributeValue(attrs, 'data-id-snap-grid-x') || raw;
   const rawY = attributeValue(attrs, 'data-id-snap-grid-y') || raw;
   if (rawX == null && rawY == null) {
