@@ -1,6 +1,6 @@
 function rewriteResourceAttrs(attrs, options = {}) {
   if (!attrs || !options.assetPathMap) return attrs;
-  for (const name of ['src', 'data', 'href', 'data-id-preview-src', 'data-id-source-csv', 'data-id-source-xml']) {
+  for (const name of ['src', 'data', 'href', 'data-id-preview-src']) {
     if (!attrs[name]) continue;
     const rewritten = lookupAssetPath(options.assetPathMap, attrs[name]);
     if (rewritten) attrs[name] = rewritten;

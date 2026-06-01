@@ -147,12 +147,10 @@ function loadReverseHtmlEvidence(reverseHtmlDir) {
   if (!reverseHtmlDir) {
     return {
       reverseModel: null,
-      authoringReport: null,
     };
   }
   return {
     reverseModel: readJsonIfExists(path.join(reverseHtmlDir, 'reverse-model.json')),
-    authoringReport: readJsonIfExists(path.join(reverseHtmlDir, 'author/reports/authoring-report.json')),
   };
 }
 
@@ -210,35 +208,6 @@ function sourceMetadataFromItem(item) {
   };
 }
 
-function canonicalizeCaptureSourceMetadata(capture, authoringReport) {
-  if (!capture || !Array.isArray(capture.elements) || !authoringReport) return capture;
-  const aliases = sourcePathAliasMap(authoringReport);
-  if (!aliases.size) return capture;
-  for (const element of capture.elements) {
-    for (const { prop } of sourceMetadataAttrs()) {
-      const value = normalizeSourcePath(element[prop]);
-      if (value && aliases.has(value)) {
-        element[prop] = aliases.get(value);
-      }
-    }
-  }
-  return capture;
-}
-
-function sourcePathAliasMap(authoringReport) {
-  const aliases = new Map();
-  const entries = authoringReport && authoringReport.assets && Array.isArray(authoringReport.assets.entries)
-    ? authoringReport.assets.entries
-    : [];
-  for (const entry of entries) {
-    const htmlPath = normalizeSourcePath(entry && entry.htmlPath);
-    const originalPath = normalizeSourcePath(entry && entry.originalPath);
-    if (!htmlPath || !originalPath) continue;
-    aliases.set(htmlPath, originalPath);
-  }
-  return aliases;
-}
-
 function sourceMetadataAttrs() {
   return [
     { attr: 'data-id-source-csv', prop: 'sourceCsv' },
@@ -249,10 +218,6 @@ function sourceMetadataAttrs() {
 function addDataIdAttr(element, attr) {
   if (!Array.isArray(element.dataIdAttrs)) element.dataIdAttrs = [];
   if (!element.dataIdAttrs.includes(attr)) element.dataIdAttrs.push(attr);
-}
-
-function normalizeSourcePath(value) {
-  return String(value == null ? '' : value).trim().replace(/\\/g, '/');
 }
 
 function validateInputs(inputs) {
@@ -302,7 +267,6 @@ async function main() {
   const candidate = await captureHtmlGeometry(inputs.candidateHtml);
   const evidence = loadReverseHtmlEvidence(inputs.reverseHtmlDir);
   enrichCaptureWithReverseModelSourceMetadata(reference, evidence.reverseModel);
-  canonicalizeCaptureSourceMetadata(candidate, evidence.authoringReport);
   const report = compareVisualGeometry({ reference, candidate, tolerance: inputs.tolerance });
   if (inputs.outFile) {
     fs.mkdirSync(path.dirname(inputs.outFile), { recursive: true });
@@ -325,6 +289,5 @@ module.exports = {
   resolveInputs,
   captureHtmlGeometry,
   enrichCaptureWithReverseModelSourceMetadata,
-  canonicalizeCaptureSourceMetadata,
   usage,
 };

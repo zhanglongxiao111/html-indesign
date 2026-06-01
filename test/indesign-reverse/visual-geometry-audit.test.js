@@ -228,6 +228,76 @@ test('compareVisualGeometry rejects table height drift when source metadata is c
   assert.equal(report.stats.accepted, 0);
 });
 
+test('compareVisualGeometry rejects table height drift when csv/xml source metadata partially differs', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', sourceXml: 'assets/metrics.xml', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv', 'data-id-source-xml'], x: 300, y: 100, width: 500, height: 301 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/stale-metrics.csv', sourceXml: 'assets/metrics.xml', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv', 'data-id-source-xml'], x: 300.1, y: 100.1, width: 500, height: 284 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'metrics'), true);
+  assert.equal(report.stats.mismatched, 1);
+  assert.equal(report.stats.accepted, 0);
+});
+
+test('compareVisualGeometry rejects table height drift when candidate has extra registered source metadata', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv'], x: 300, y: 100, width: 500, height: 301 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', sourceXml: 'assets/metrics.xml', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv', 'data-id-source-xml'], x: 300.1, y: 100.1, width: 500, height: 284 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'metrics'), true);
+  assert.equal(report.stats.mismatched, 1);
+  assert.equal(report.stats.accepted, 0);
+});
+
+test('compareVisualGeometry accepts table height drift when registered csv/xml source metadata sets match exactly', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', sourceXml: 'assets/metrics.xml', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv', 'data-id-source-xml'], x: 300, y: 100, width: 500, height: 301 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', sourceXml: 'assets/metrics.xml', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv', 'data-id-source-xml'], x: 300.1, y: 100.1, width: 500, height: 284 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.warnings.map((issue) => issue.code), ['AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED']);
+  assert.equal(report.stats.accepted, 1);
+});
+
 test('compareVisualGeometry reports ordinary inline text clipping as an error', () => {
   const report = compareVisualGeometry({
     reference: {

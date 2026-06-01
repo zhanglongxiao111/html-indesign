@@ -1,13 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const {
   parseArgs,
   resolveInputs,
   enrichCaptureWithReverseModelSourceMetadata,
-  canonicalizeCaptureSourceMetadata,
 } = require('../../scripts/audit-reverse-visual');
-const { compareVisualGeometry } = require('../../src/writers/html/audit/visual-geometry-audit');
 
 test('audit-reverse-visual cli resolves reverse-html directory defaults', () => {
   const root = path.resolve('test/workspace/reverse-html');
@@ -80,53 +80,64 @@ test('audit-reverse-visual enriches reference source metadata from reverse model
   ]);
 });
 
-test('audit-reverse-visual canonicalizes author package copied source paths before table normalization', () => {
-  const reference = {
-    pages: [{ index: 0, width: 1000, height: 600 }],
-    elements: [{
-      key: '0:metrics',
-      id: 'metrics',
-      pageIndex: 0,
-      tagName: 'table',
-      tableStyle: 'area-table',
-      sourceCsv: '../smoke-assets/data/metrics.csv',
-      dataIdAttrs: ['data-id-table-style', 'data-id-source-csv'],
-      x: 300,
-      y: 100,
-      width: 500,
+test('audit-reverse-visual does not accept table height drift via stale authoring-report source aliases', () => {
+  const reverseRoot = path.resolve('test/workspace/visual-audit-stale-alias-test');
+  fs.rmSync(reverseRoot, { recursive: true, force: true });
+  fs.mkdirSync(path.join(reverseRoot, 'author/reports'), { recursive: true });
+  fs.writeFileSync(
+    path.join(reverseRoot, 'deck.visual.html'),
+    htmlWithMetricsTable({
       height: 301,
-    }],
-  };
-  const candidate = {
-    pages: [{ index: 0, width: 1000, height: 600 }],
-    elements: [{
-      key: '0:metrics',
-      id: 'metrics',
-      pageIndex: 0,
-      tagName: 'table',
-      tableStyle: 'area-table',
-      sourceCsv: 'assets/smoke-assets/data/metrics.csv',
-      dataIdAttrs: ['data-id-table-style', 'data-id-source-csv'],
-      x: 300.1,
-      y: 100.1,
-      width: 500,
+      sourceCsv: '../real/ref.csv',
+    }),
+    'utf8',
+  );
+  fs.writeFileSync(
+    path.join(reverseRoot, 'author/deck.html'),
+    htmlWithMetricsTable({
       height: 284,
-    }],
-  };
-  const authoringReport = {
-    assets: {
-      entries: [{
-        originalPath: '../smoke-assets/data/metrics.csv',
-        htmlPath: 'assets/smoke-assets/data/metrics.csv',
-      }],
-    },
-  };
+      sourceCsv: 'assets/fake.csv',
+    }),
+    'utf8',
+  );
+  fs.writeFileSync(
+    path.join(reverseRoot, 'author/reports/authoring-report.json'),
+    JSON.stringify({
+      assets: {
+        entries: [{
+          originalPath: '../real/ref.csv',
+          htmlPath: 'assets/fake.csv',
+        }],
+      },
+    }),
+    'utf8',
+  );
 
-  canonicalizeCaptureSourceMetadata(candidate, authoringReport);
-  const report = compareVisualGeometry({ reference, candidate, tolerance: 2 });
+  const result = spawnSync(process.execPath, [
+    'scripts/audit-reverse-visual.js',
+    '--reverse-html',
+    reverseRoot,
+    '--json',
+  ], {
+    cwd: path.resolve('.'),
+    encoding: 'utf8',
+  });
+  const report = JSON.parse(result.stdout);
 
-  assert.equal(candidate.elements[0].sourceCsv, '../smoke-assets/data/metrics.csv');
-  assert.equal(report.ok, true);
-  assert.deepEqual(report.warnings.map((issue) => issue.code), ['AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED']);
-  assert.equal(report.stats.accepted, 1);
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.equal(report.stats.accepted, 0);
+  assert.deepEqual(report.warnings.map((issue) => issue.code), []);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'metrics'), true);
 });
+
+function htmlWithMetricsTable({ height, sourceCsv }) {
+  return [
+    '<!doctype html>',
+    '<section id="page-1" class="page" style="position:relative;width:1000px;height:600px">',
+    `<table id="metrics" style="position:absolute;left:300px;top:100px;width:500px;height:${height}px" data-id-table-style="area-table" data-id-source-csv="${sourceCsv}">`,
+    '<tbody><tr><td>metric</td></tr></tbody>',
+    '</table>',
+    '</section>',
+  ].join('');
+}

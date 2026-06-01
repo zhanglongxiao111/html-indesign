@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tree');
+const { rewriteResourceAttrs } = require('../../src/writers/html/author-resource-paths');
 
 test('author HTML tree exposes focused rendering helpers', () => {
   const assetRenderer = require('../../src/writers/html/author-asset-renderer');
@@ -14,6 +15,25 @@ test('author HTML tree exposes focused rendering helpers', () => {
   assert.equal(typeof vectorRenderer.renderVectorSvgNode, 'function');
   assert.equal(typeof tableRenderer.tableContent, 'function');
   assert.equal(typeof richTextRenderer.ownContent, 'function');
+});
+
+test('rewriteResourceAttrs preserves registered table source metadata protocol values', () => {
+  const attrs = {
+    src: '../images/site.png',
+    'data-id-source-csv': '../data/metrics.csv',
+    'data-id-source-xml': '../data/metrics.xml',
+  };
+  const assetPathMap = new Map([
+    ['../images/site.png', 'assets/images/site.png'],
+    ['../data/metrics.csv', 'assets/data/metrics.csv'],
+    ['../data/metrics.xml', 'assets/data/metrics.xml'],
+  ]);
+
+  rewriteResourceAttrs(attrs, { assetPathMap });
+
+  assert.equal(attrs.src, 'assets/images/site.png');
+  assert.equal(attrs['data-id-source-csv'], '../data/metrics.csv');
+  assert.equal(attrs['data-id-source-xml'], '../data/metrics.xml');
 });
 
 test('pageItemsToAuthorHtml nests children under source parent items', () => {

@@ -291,10 +291,9 @@ function hasRegisteredParagraphStyle(element, paragraphStyle) {
 function hasMatchingRegisteredTableSourceMetadata(reference, candidate) {
   const referenceSources = registeredTableSourceMetadata(reference);
   const candidateSources = registeredTableSourceMetadata(candidate);
-  return referenceSources.some((referenceSource) => candidateSources.some((candidateSource) => (
-    candidateSource.attr === referenceSource.attr
-      && candidateSource.value === referenceSource.value
-  )));
+  if (!referenceSources.length || referenceSources.length !== candidateSources.length) return false;
+  const candidateByAttr = new Map(candidateSources.map((source) => [source.attr, source.value]));
+  return referenceSources.every((referenceSource) => candidateByAttr.get(referenceSource.attr) === referenceSource.value);
 }
 
 function registeredTableSourceMetadata(element) {
