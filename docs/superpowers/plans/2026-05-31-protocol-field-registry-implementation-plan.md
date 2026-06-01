@@ -32,6 +32,7 @@
 
   - 2026-06-01 质量复审补充：quality re-review agent `019e8345-cd7d-7af2-ab38-620d06a6091e` BLOCKED。阻塞点：`src/writers/html/audit/visual-geometry-audit.js` 仍保留 `explicitGeneratedKind()` / `visualAccept` 快速接受通道，且 `scripts/audit-reverse-visual.js` 捕获未进入协议字段注册表的 `data-id-visual-accept`、`data-id-generated-fragment`、`data-id-generated-kind`，构成 registry 外第二事实源；复现为普通缺失 `body-text` 只要带 `generatedKind: "text"` 或 `visualAccept: "text"` 即被 accepted warning 吞掉。已确认前轮 table/inline 几何漂移与坏 source config 两项阻塞关闭。下一步：派 gpt-5.5 xhigh 修复 agent 移除未登记显式接受旁路，改用结构化证据判定并补负向测试。
   - 2026-06-01 质量阻塞二次修复：quality fix agent `019e834b-d6c1-7481-ba3a-f515b6f98b02` RUNNING（gpt-5.5 xhigh）。范围限定为移除未登记 `visualAccept` / `generatedKind` accepted bypass、补结构化接受正例和未登记字段负例、保持前轮 table/inline/source config 修复不回退。
+  - 2026-06-01 质量阻塞二次修复结果：quality fix agent `019e834b-d6c1-7481-ba3a-f515b6f98b02` DONE，commit `1eff17f`。修复内容：移除 `explicitGeneratedKind()` / `generatedAcceptedCode()` / `normalizeGeneratedKind()`，从 reverse visual capture 清理未登记 `data-id-visual-accept`、`data-id-generated-fragment`、`data-id-generated-kind`，accepted missing 正例改为全页背景、边框碎片、annotation text fragment 的结构化证据；新增负例证明普通 missing text 即使携带 `generatedKind` 或 `visualAccept` 也必须 hard error。agent 自报验证：focused 29/29、regression group 81/81、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit 0 errors accepted 35、`npm test` 531/531、`git diff --check` clean、worktree clean。下一步：controller 复验并重新派 gpt-5.4 xhigh quality re-review。
 
 执行原则：
 
