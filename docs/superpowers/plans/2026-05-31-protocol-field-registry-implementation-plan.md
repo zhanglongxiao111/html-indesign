@@ -23,7 +23,7 @@
 - [x] 阶段 4：字段扫描和仅警告门禁（implementation：`f8b2e9b`；spec fix：`5c33f35`；quality fixes：`4347e0a`、`6cd173d`、`b9880d8`；spec review 通过；code quality review 通过；controller 验证：stage focused 18/18、protocol 75/75、npm test 432/432）
 - [x] 阶段 5：接入语义模型和标签白名单（implementation：`a8b4c0d`；spec fixes：`44ffe16`、`ad1ed4d`、`0687952`、`27deff8`、`d0994b1`、`e5fc097`；quality fixes：`6ca7c7e`、`e77dcf3`、`16147a1`、`9ca607a`、`5cec7c2`、`b2f40db`；controller 复验通过：raw label strict/warn 探针通过，validator 9/9、author-package 18/18、focused 78/78、focused 89/89、stage broad 149/149、blocker focused 82/82、`git diff --check` 通过、`npm test` 474/474 通过；quality re-review agent `019e8132-919f-7353-ab5e-0fa4338f821e` BLOCKED 项已修复；post-fix review agent `019e81ac-0c8a-7e83-ba2d-2a956d015450` PASS，focused 82/82 + protocol/model 28/28）
 - [x] 阶段 6：退役字段集中登记与清理（implementation `af0065f`；implementation agent `019e81b1-af6e-7472-831a-dbfac7ae53d0` 完成；spec review agent `019e81b6-ff27-7380-a7f7-5b64ea04a8cd` PASS；quality review agent `019e81bb-599b-7ed1-a695-24d605de7265` BLOCKED：direction 空值静默当 read、retired policy 缺枚举校验、no-fallback grep 过脆弱；quality fix `75c941d`，controller 复验通过：fix focused 31/31、stage focused 70/70、protocol/semantic 105/105、`git diff --check` 通过；quality re-review agent `019e81c4-f70d-7651-ad97-a5ec8455052e` PASS；`npm test` 481/481）
-- [ ] 阶段 7：按域接入强校验
+- [ ] 阶段 7：按域接入强校验（implementation agent 待启动）
 - [ ] 阶段 8：目录重构为适配器 / 写出器
 - [ ] 阶段 9：拆分大文件并保持行为可验证
 - [ ] 阶段 10：PPTX 预留适配器 / 写出器契约
