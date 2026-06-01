@@ -129,8 +129,8 @@ function normalizeBox(value, element = false) {
     objectStyle: optionalString(value.objectStyle),
     paragraphStyle: optionalString(value.paragraphStyle),
     tableStyle: optionalString(value.tableStyle),
-    sourceCsv: optionalString(value.sourceCsv),
-    sourceXml: optionalString(value.sourceXml),
+    sourceCsv: registeredSourceMetadataValue(value.sourceCsv),
+    sourceXml: registeredSourceMetadataValue(value.sourceXml),
     dataIdAttrs: normalizeDataIdAttrs(value.dataIdAttrs || value.dataIdFields || value.htmlAttrs),
     classList: normalizeClassList(value.classList || value.className || value.classes),
     x: num(value.x),
@@ -302,7 +302,7 @@ function registeredTableSourceMetadata(element) {
     ['data-id-source-csv', 'sourceCsv'],
     ['data-id-source-xml', 'sourceXml'],
   ]) {
-    const value = normalizeSourceMetadataValue(element && element[prop]);
+    const value = registeredSourceMetadataValue(element && element[prop]);
     if (value && hasRegisteredDataIdAttr(element, attr, 'sourceMetadata')) {
       sources.push({ attr, value });
     }
@@ -310,9 +310,10 @@ function registeredTableSourceMetadata(element) {
   return sources;
 }
 
-function normalizeSourceMetadataValue(value) {
-  const string = optionalString(value);
-  return string ? string.replace(/\\/g, '/') : undefined;
+function registeredSourceMetadataValue(value) {
+  if (value == null) return undefined;
+  const string = String(value);
+  return string.trim() ? string : undefined;
 }
 
 function hasRegisteredDataIdAttr(element, attr, fieldClass) {
