@@ -1,15 +1,34 @@
 const { createReport, addMessage } = require('../../shared/report');
-const { parseCssLength, round } = require('../../shared/geometry');
-const { createProtocolLabel } = require('../../shared/labels');
+const { round } = require('../../shared/geometry');
 const {
   normalizeCssColor,
   normalizeCssColorFromBackgroundImage,
   parseCssLinearGradient,
-  cssLengthToPt,
   stableAutoName,
   firstClassName,
-  explicitName,
 } = require('../../shared/style-utils');
+const {
+  styleLengthToPt,
+  trackingValue,
+  itemLengthToPt,
+  cornerRadiusValue,
+  tableCellPadding,
+  lengthStyleValue,
+} = require('./box-model');
+const { compileEffects, gradientHasSingleColor } = require('./effect-style-mapping');
+const {
+  explicitFrameStyleName,
+  styleNameForKind,
+  classFrameStyleName,
+  styleTokenForKind,
+  styleIdentityForKind,
+  styleProtocolLabel,
+} = require('./style-identities');
+const {
+  capitalizationFor,
+  ensureFont,
+  fontStyleNameFor,
+} = require('./text-style-mapping');
 
 function createEmptyStyleModel() {
   return {
@@ -100,7 +119,7 @@ function compileItemStyles(item, styles, report, options) {
     styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
     compiled.box = compileBoxModel(item, styles, options);
     warnObjectBorderLimitations(item, compiled.box, report);
-    compiled.effects = compileEffects(item, report);
+    compiled.effects = compileEffects(item, report, addMessage);
   }
 
   if (item.role === 'shape' && shouldCompileObjectText(item)) {
@@ -226,12 +245,6 @@ function expandRunsWithPlainSegments(fullText, runs) {
     out.push({ text: fullText.slice(cursor), plain: true });
   }
   return out.filter((run) => run.text);
-}
-
-function capitalizationFor(style) {
-  const transform = String(style && style.textTransform || '').toLowerCase();
-  if (transform === 'uppercase') return 'allCaps';
-  return null;
 }
 
 function ensureParagraphStyle(styles, item, report, options) {
@@ -369,55 +382,6 @@ function isNativeLineCandidate(item) {
   const objectStyle = item.attributes && item.attributes['data-id-object-style'];
   return item.role === 'shape'
     && (classNames.includes('line') || /(^|-)line($|-)/.test(String(objectStyle || '')));
-}
-
-function compileEffects(item, report) {
-  const style = item.computedStyle || {};
-  const gradient = parseCssLinearGradient(style.backgroundImage);
-  if (!gradient) return null;
-  if (!gradientHasSingleColor(gradient)) {
-    addMessage(report, 'warning', 'GRADIENT_COLOR_UNSUPPORTED', 'Multi-color CSS gradients are not mapped to InDesign gradient feather effects', {
-      itemId: item.id,
-      backgroundImage: style.backgroundImage,
-    });
-    return null;
-  }
-  return {
-    gradientFeather: {
-      type: 'linear',
-      scope: 'fill',
-      angle: cssGradientAngleToIndesign(gradient.angle),
-      start: gradientStartForBounds(item.boundsMm, cssGradientAngleToIndesign(gradient.angle)),
-      length: 0,
-      stops: gradient.stops.map((stop) => ({
-        location: stop.location,
-        opacity: stop.opacity,
-      })),
-    },
-  };
-}
-
-function cssGradientAngleToIndesign(angle) {
-  const normalized = ((Number(angle) % 360) + 360) % 360;
-  return (normalized + 270) % 360;
-}
-
-function gradientStartForBounds(bounds, angle) {
-  const normalized = ((Number(angle) % 360) + 360) % 360;
-  const x = Number(bounds && bounds.x || 0);
-  const y = Number(bounds && bounds.y || 0);
-  const width = Number(bounds && bounds.width || 0);
-  const height = Number(bounds && bounds.height || 0);
-  if (normalized === 0) return { x: round(x - width / 2, 2), y: round(y + height / 2, 2) };
-  if (normalized === 180) return { x: round(x + width * 1.5, 2), y: round(y + height / 2, 2) };
-  if (normalized === 90) return { x: round(x + width / 2, 2), y: round(y + height * 1.5, 2) };
-  if (normalized === 270) return { x: round(x + width / 2, 2), y: round(y - height / 2, 2) };
-  return { x: round(x - width / 2, 2), y: round(y + height / 2, 2) };
-}
-
-function gradientHasSingleColor(gradient) {
-  const names = new Set((gradient.stops || []).map((stop) => stop.color && stop.color.name).filter(Boolean));
-  return names.size <= 1;
 }
 
 function compileBoxModel(item, styles, options) {
@@ -568,11 +532,6 @@ function compileTableRowHeights(rows) {
   });
 }
 
-function lengthStyleValue(item, prop) {
-  const authored = item && item.authoredStyle && item.authoredStyle[prop];
-  return authored || (item && item.computedStyle && item.computedStyle[prop]);
-}
-
 function tableCellStyleItem(cell) {
   return {
     id: `table-cell-${cell.index}`,
@@ -612,168 +571,6 @@ function ensureFrameStyle(styles, item, options) {
     };
   }
   return name;
-}
-
-function explicitFrameStyleName(item, options) {
-  const attributes = item.attributes || {};
-  const explicitDisplay = explicitName(attributes, styleDisplayAttributes('frameStyles'));
-  if (explicitDisplay) return explicitDisplay;
-  const token = styleTokenForKind(attributes, 'frameStyles');
-  return mappedStyleName(token, 'frameStyles', options) || token || null;
-}
-
-function styleNameForKind(item, kind, signature, options) {
-  const attributes = item.attributes || {};
-  const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
-  if (explicitDisplay) return explicitDisplay;
-  const token = styleTokenForKind(attributes, kind);
-  const mapped = mappedStyleName(token, kind, options);
-  if (mapped) return mapped;
-  if (token) return token;
-  const className = firstClassName(item);
-  const mappedClass = mappedStyleName(className, kind, options);
-  if (mappedClass) return mappedClass;
-  return signature ? null : firstClassName(item);
-}
-
-function classFrameStyleName(item, options) {
-  const className = firstClassName(item);
-  if (!className) return null;
-  return mappedStyleName(`${className}-frame`, 'frameStyles', options)
-    || mappedStyleName(className, 'frameStyles', options)
-    || `${className}-frame`;
-}
-
-function styleTokenForKind(attributes, kind) {
-  return explicitName(attributes || {}, styleTokenAttributes(kind));
-}
-
-function styleIdentityForKind(item, kind, name, options) {
-  const attributes = item && item.attributes || {};
-  const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
-  const explicitToken = styleTokenForKind(attributes, kind);
-  const className = firstClassName(item);
-  const token = explicitToken || className || name;
-  const displayName = explicitDisplay || mappedStyleName(token, kind, options) || name;
-  return {
-    token: token || name,
-    displayName: displayName || name,
-  };
-}
-
-function styleProtocolLabel(kind, identity) {
-  return createProtocolLabel({
-    kind: 'style',
-    id: identity.token,
-    source: 'html-to-indesign',
-    styleKind: kind,
-    token: identity.token,
-    displayName: identity.displayName,
-  });
-}
-
-function mappedStyleName(token, kind, options) {
-  if (!token || !options || !options.styleNameMap) return null;
-  const map = options.styleNameMap;
-  return (map[kind] && map[kind][token]) || map[token] || null;
-}
-
-function styleDisplayAttributes(kind) {
-  const byKind = {
-    paragraphStyles: ['data-id-paragraph-style-name', 'data-id-style-name'],
-    characterStyles: ['data-id-character-style-name', 'data-id-style-name'],
-    objectStyles: ['data-id-object-style-name', 'data-id-style-name'],
-    frameStyles: ['data-id-frame-style-name', 'data-id-style-name'],
-    tableStyles: ['data-id-table-style-name', 'data-id-style-name'],
-  };
-  return byKind[kind] || [];
-}
-
-function styleTokenAttributes(kind) {
-  const byKind = {
-    paragraphStyles: ['data-id-paragraph-style', 'data-id-style'],
-    characterStyles: ['data-id-character-style', 'data-id-style'],
-    objectStyles: ['data-id-object-style', 'data-id-style'],
-    frameStyles: ['data-id-frame-style'],
-    tableStyles: ['data-id-table-style'],
-  };
-  return byKind[kind] || [];
-}
-
-function styleLengthToPt(style, prop, options) {
-  const value = style && style[prop];
-  if (isPresentationLayout(options)) return cssLengthToPresentationPt(value, options);
-  return cssLengthToPt(value);
-}
-
-function trackingValue(style, options) {
-  const letterSpacing = styleLengthToPt(style, 'letterSpacing', options);
-  const fontSize = styleLengthToPt(style, 'fontSize', options);
-  if (!letterSpacing || !fontSize) return null;
-  return round(letterSpacing / fontSize * 1000, 4);
-}
-
-function itemLengthToPt(item, prop, options) {
-  if (isPresentationLayout(options)) {
-    return cssLengthToPresentationPt(item && item.computedStyle && item.computedStyle[prop], options);
-  }
-  return cssLengthToPt(lengthStyleValue(item, prop));
-}
-
-function cssLengthToPresentationPt(value, options) {
-  const px = cssLengthToPx(value);
-  if (px == null) return null;
-  return round(px * presentationScale(options), 4);
-}
-
-function cornerRadiusValue(item, options) {
-  const computed = item && item.computedStyle && item.computedStyle.borderRadius;
-  if (isPresentationLayout(options)) {
-    if (String(computed || '').trim().endsWith('%')) return computed;
-    const pt = cssLengthToPresentationPt(computed, options);
-    return pt == null ? '0pt' : `${pt}pt`;
-  }
-  return lengthStyleValue(item, 'borderRadius') || computed || '0px';
-}
-
-function tableCellPadding(style, options) {
-  if (isPresentationLayout(options)) {
-    return {
-      unit: 'pt',
-      values: {
-        top: styleLengthToPt(style, 'paddingTop', options),
-        right: styleLengthToPt(style, 'paddingRight', options),
-        bottom: styleLengthToPt(style, 'paddingBottom', options),
-        left: styleLengthToPt(style, 'paddingLeft', options),
-      },
-    };
-  }
-  return {
-    unit: 'mm',
-    values: {
-      top: cssLengthToMm(style.paddingTop),
-      right: cssLengthToMm(style.paddingRight),
-      bottom: cssLengthToMm(style.paddingBottom),
-      left: cssLengthToMm(style.paddingLeft),
-    },
-  };
-}
-
-function isPresentationLayout(options) {
-  return options && options.layout && options.layout.unitMode === 'presentation';
-}
-
-function presentationScale(options) {
-  return Number(options && options.layout && options.layout.scale || 1);
-}
-
-function cssLengthToPx(value) {
-  const parsed = parseCssLength(value);
-  if (!parsed) return null;
-  if (parsed.unit === 'px') return parsed.value;
-  if (parsed.unit === 'pt') return parsed.value * 96 / 72;
-  if (parsed.unit === 'mm') return parsed.value * 96 / 25.4;
-  return null;
 }
 
 function ensureSwatch(styles, cssColor) {
@@ -875,71 +672,6 @@ function sameCompiledBorder(a, b) {
   return a.color === b.color
     && a.style === b.style
     && Math.abs(Number(a.widthPt || 0) - Number(b.widthPt || 0)) < 0.01;
-}
-
-function cssLengthToMm(value) {
-  const parsed = parseCssLength(value);
-  if (!parsed) return null;
-  let mm = null;
-  if (parsed.unit === 'mm') mm = parsed.value;
-  if (parsed.unit === 'pt') mm = parsed.value * 25.4 / 72;
-  if (parsed.unit === 'px') mm = parsed.value * 25.4 / 96;
-  if (mm == null) return null;
-  const nearest = Math.round(mm);
-  if (Math.abs(mm - nearest) < 0.15) return nearest;
-  return round(mm, 2);
-}
-
-function ensureFont(styles, fontFamily, options, text) {
-  const family = selectFontFamily(fontFamily, text, options) || options.fontFallback || 'Arial';
-  if (!family) return null;
-  if (!styles.fonts[family]) {
-    styles.fonts[family] = {
-      family,
-      fallback: options.fontFallback || 'Arial',
-    };
-  }
-  return family;
-}
-
-function selectFontFamily(fontFamily, text, options) {
-  const families = fontStack(fontFamily);
-  if (containsCjk(text)) {
-    return families.find(isCjkFontFamily)
-      || options.cjkFontFallback
-      || families[0]
-      || null;
-  }
-  return families[0] || null;
-}
-
-function fontStack(fontFamily) {
-  return String(fontFamily || '')
-    .split(',')
-    .map((part) => part.trim().replace(/^["']|["']$/g, ''))
-    .filter((part) => part && !isGenericFontFamily(part));
-}
-
-function isGenericFontFamily(family) {
-  return ['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui'].includes(String(family || '').toLowerCase());
-}
-
-function containsCjk(text) {
-  return /[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]/.test(String(text || ''));
-}
-
-function isCjkFontFamily(family) {
-  return /(yahei|microsoft yahei|simsun|simhei|kaiti|fangsong|noto sans cjk|source han|pingfang|hiragino|heiti|微软雅黑|宋体|黑体|楷体|仿宋|思源)/i.test(String(family || ''));
-}
-
-function fontStyleNameFor(style) {
-  const weight = Number(style.fontWeight || 400);
-  const italic = /italic|oblique/i.test(String(style.fontStyle || ''));
-  const bold = Number.isFinite(weight) ? weight >= 600 : /bold/i.test(String(style.fontWeight || ''));
-  if (bold && italic) return 'Bold Italic';
-  if (bold) return 'Bold';
-  if (italic) return 'Italic';
-  return 'Regular';
 }
 
 module.exports = {

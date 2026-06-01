@@ -2,9 +2,11 @@ const path = require('path');
 const { chromium } = require('playwright');
 const { rectPxToMm, round } = require('../../../shared/geometry');
 const { createReport, addMessage } = require('../../../shared/report');
-const { inferAssetKind, assetSourceFromElementLike } = require('../../../shared/assets');
 const { detectAssetsFromItems } = require('./asset-detector');
+const { roleFromItem, selectorFor } = require('./candidate-elements');
 const { defaultPageSelector } = require('./page-detector');
+const { tableRowsWithBounds } = require('./table-snapshot');
+const { collectUnsupportedWarnings } = require('./unsupported-css');
 
 async function renderSnapshot(options) {
   const htmlPath = path.resolve(options.htmlPath);
@@ -673,24 +675,6 @@ function parseZIndex(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function tableRowsWithBounds(rows, pageRectPx, pageWidthMm, pageHeightMm) {
-  return rows.map((row) => ({
-    ...row,
-    cells: (row.cells || []).map((cell) => {
-      if (!cell.rectPx) return cell;
-      return {
-        ...cell,
-        boundsMm: roundBounds(rectPxToMm({
-          rectPx: cell.rectPx,
-          pageRectPx,
-          pageWidthMm,
-          pageHeightMm,
-        }), 2),
-      };
-    }),
-  }));
-}
-
 function applyNestedPaintOrder(items) {
   const byCandidateIndex = new Map(items.map((item) => [item.documentOrder, item]));
   const visiting = new Set();
@@ -711,73 +695,6 @@ function applyNestedPaintOrder(items) {
     return item.zIndex;
   }
   for (const item of items) effectiveZ(item);
-}
-
-function collectUnsupportedWarnings(pages, warnings, report) {
-  for (const pageInfo of pages) {
-    for (const item of pageInfo.items) {
-      const unsupported = item.unsupported || {};
-      const effects = ['boxShadow', 'filter', 'maskImage'].filter((prop) => unsupported[prop]);
-      if (effects.length) {
-        const warning = {
-          code: 'CSS_EFFECT_UNSUPPORTED',
-          message: 'CSS visual effect is captured but not translated to native InDesign output yet.',
-          itemId: item.id,
-          effects: Object.fromEntries(effects.map((prop) => [prop, unsupported[prop]])),
-        };
-        warnings.push(warning);
-        addMessage(report, 'warning', warning.code, warning.message, warning);
-      }
-      const pseudo = ['beforeContent', 'afterContent', 'markerContent'].filter((prop) => unsupported[prop]);
-      if (pseudo.length) {
-        const warning = {
-          code: 'PSEUDO_CONTENT_UNSUPPORTED',
-          message: 'CSS pseudo content is captured but not translated to native InDesign output yet.',
-          itemId: item.id,
-          content: Object.fromEntries(pseudo.map((prop) => [prop, unsupported[prop]])),
-        };
-        warnings.push(warning);
-        addMessage(report, 'warning', warning.code, warning.message, warning);
-      }
-      if (item.tagName === 'li') {
-        const warning = {
-          code: 'LIST_MARKER_UNSUPPORTED',
-          message: 'HTML list markers are not translated to native InDesign bullets yet.',
-          itemId: item.id,
-        };
-        warnings.push(warning);
-        addMessage(report, 'warning', warning.code, warning.message, warning);
-      }
-      if ((item.tagName === 'svg' || item.tagName === 'canvas') && !assetSourceFromElementLike(item).src) {
-        const code = item.tagName === 'svg' ? 'INLINE_SVG_UNSUPPORTED' : 'CANVAS_FALLBACK_UNSUPPORTED';
-        const warning = {
-          code,
-          message: `${item.tagName.toUpperCase()} fallback asset generation is not implemented yet.`,
-          itemId: item.id,
-        };
-        warnings.push(warning);
-        addMessage(report, 'warning', warning.code, warning.message, warning);
-      }
-    }
-  }
-}
-
-function roleFromItem(item) {
-  const tagName = item.tagName;
-  const attributes = item.attributes || {};
-  const source = assetSourceFromElementLike({ tagName, attributes, computedStyle: item.computedStyle, authoredStyle: item.authoredStyle });
-  if (source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown') return 'graphic';
-  if (attributes['data-id-paragraph-style']) return 'text';
-  if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'figcaption'].includes(tagName)) return 'text';
-  if (['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return 'graphic';
-  if (tagName === 'table') return 'table';
-  return 'shape';
-}
-
-function selectorFor(item) {
-  if (item.attributes.id) return `#${item.attributes.id}`;
-  if (item.classList.length) return `${item.tagName}.${item.classList.join('.')}`;
-  return item.tagName;
 }
 
 module.exports = {
