@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { reverseSnapshotToSemanticModel, writeReverseAuthorPackage } = require('../../src/indesign-reverse');
+const { reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
+const { writeReverseAuthorPackage } = require('../../src/writers/html');
 const { checkAuthorPackageEntry } = require('../../src/authoring');
 
 function captureThrow(fn) {

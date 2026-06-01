@@ -1,11 +1,19 @@
-const pagedHtml = require('./src/paged-html');
+const protocol = require('./src/protocol');
+const adapters = {
+  html: require('./src/adapters/html'),
+  indesign: require('./src/adapters/indesign'),
+};
 const semanticModel = require('./src/semantic-model');
-const indesignReverse = require('./src/indesign-reverse');
+const writers = {
+  html: require('./src/writers/html'),
+  indesign: require('./src/writers/indesign'),
+};
 const historicalTemplate = require('./src/historical-template');
 
 module.exports = {
-  pagedHtml,
+  protocol,
+  adapters,
   semanticModel,
-  indesignReverse,
+  writers,
   historicalTemplate,
 };

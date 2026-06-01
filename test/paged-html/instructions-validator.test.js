@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot, compileInstructions, validateInstructions } = require('../../src/paged-html');
+const { renderSnapshot } = require('../../src/adapters/html');
+const { compileInstructions, validateInstructions } = require('../../src/writers/indesign');
 
 test('validateInstructions accepts compiler output', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');

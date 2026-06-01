@@ -1,4 +1,4 @@
-const { parseCssLength, round } = require('../shared/geometry');
+const { parseCssLength, round } = require('../../../shared/geometry');
 
 const PAGE_MARGIN_RULE_MISSING = 'PAGE_MARGIN_RULE_MISSING';
 const PAGE_GRID_RULE_MISSING = 'PAGE_GRID_RULE_MISSING';

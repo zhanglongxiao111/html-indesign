@@ -1,8 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot } = require('../../src/paged-html');
-const { snapshotToSemanticModel } = require('../../src/semantic-model');
+const { renderSnapshot, snapshotToSemanticModel } = require('../../src/adapters/html');
 
 test('snapshotToSemanticModel builds document pages, styles, assets, and items', async () => {
   const snapshot = await renderSnapshot({

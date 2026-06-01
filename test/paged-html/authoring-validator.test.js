@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateAuthoringRules } = require('../../src/paged-html');
+const { validateAuthoringRules } = require('../../src/adapters/html');
 
 test('validateAuthoringRules accepts aligned semantic grid authored pages', () => {
   const snapshot = snapshotWithPage({

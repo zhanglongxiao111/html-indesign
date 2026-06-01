@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { isDegenerateInvisibleVector } = require('./vector-svg');
+const { isDegenerateInvisibleVector } = require('../vector-svg');
 
 function auditReverseAuthorPackage(outDir, options = {}) {
   const root = path.resolve(outDir);

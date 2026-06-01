@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot } = require('../../src/paged-html');
+const { renderSnapshot } = require('../../src/adapters/html');
 
 test('renderSnapshot captures style properties needed by InDesign style compilation', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');

@@ -1,17 +1,17 @@
-const { compileStyles } = require('../paged-html/style-compiler');
+const { compileStyles } = require('../../../writers/indesign/style-compiler');
 const {
   resolveLayout,
   pageDimensions,
   pageMargins,
   pageGuides,
   itemBounds,
-} = require('../paged-html/layout');
-const { createProtocolLabel } = require('../shared/labels');
+} = require('../../../semantic-model/layout');
+const { createProtocolLabel } = require('../../../shared/labels');
 const {
   sourcePackageFromDocument,
   sourceNodeForSnapshotItem,
   gridLayoutFromCssVars,
-} = require('../paged-html/source-metadata');
+} = require('../reader/source-metadata');
 
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);

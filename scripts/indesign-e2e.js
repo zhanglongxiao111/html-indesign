@@ -3,11 +3,11 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { pathToFileURL } = require('url');
 
+const { renderSnapshot } = require('../src/adapters/html');
 const {
-  renderSnapshot,
   compileInstructions,
   validateInstructions,
-} = require('../src/paged-html');
+} = require('../src/writers/indesign');
 const { readAuthorPackage } = require('../src/authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../src/semantic-preset');
 
@@ -340,8 +340,8 @@ function auditReverseAuthorPackage(author) {
     return { ok: false, missing: ['author/deck.config.json'] };
   }
   const { checkAuthorPackageEntry } = require('../src/authoring');
-  const { auditReverseAuthorPackage: auditEditableAuthorPackage } = require('../src/indesign-reverse/author-audit');
-  const { auditAuthorSourceRoundtrip } = require('../src/indesign-reverse/source-roundtrip-diff');
+  const { auditReverseAuthorPackage: auditEditableAuthorPackage } = require('../src/writers/html/audit/author-audit');
+  const { auditAuthorSourceRoundtrip } = require('../src/writers/html/audit/source-roundtrip-diff');
   let check;
   try {
     check = checkAuthorPackageEntry(author.config);
@@ -629,7 +629,7 @@ async function runReverseRoundtrip(context, options = {}) {
       secondPassRoundtrip: false,
       styleNameMap: options.styleNameMap,
     })
-    const { measureAuthorSourceDrift } = require('../src/indesign-reverse/source-roundtrip-diff');
+    const { measureAuthorSourceDrift } = require('../src/writers/html/audit/source-roundtrip-diff');
     canonicalDrift = measureAuthorSourceDrift({
       sourceRoot: htmlResult.files.author.outDir,
       reverseRoot: secondPass.reverse && secondPass.reverse.author && secondPass.reverse.author.outDir,

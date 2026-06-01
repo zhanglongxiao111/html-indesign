@@ -3,7 +3,7 @@ const {
   parseLabeledSegments,
   parseSlotName,
   parseSlotType,
-} = require('../shared/labels');
+} = require('../../../shared/labels');
 
 const HISTORICAL_BLUEPRINT_INPUT = 'historical-blueprint';
 const BLUEPRINT_MIGRATION_SOURCE = 'blueprint-migration';

@@ -1,13 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const { writeAuthorPackageEntry } = require('../authoring');
+const { writeAuthorPackageEntry } = require('../../authoring');
 const { writeAuthorCssFiles } = require('./author-css-writer');
 const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
 const { collectSemanticCandidates } = require('./semantic-candidates');
-const { loadStandardSemanticPreset } = require('../semantic-preset');
+const { loadStandardSemanticPreset } = require('../../semantic-preset');
 const { writeRevealPresentation } = require('./reveal-presentation-writer');
 
 function writeReverseAuthorPackage(model, options = {}) {

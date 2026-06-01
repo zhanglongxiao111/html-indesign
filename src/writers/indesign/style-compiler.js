@@ -1,6 +1,6 @@
-const { createReport, addMessage } = require('../shared/report');
-const { parseCssLength, round } = require('../shared/geometry');
-const { createProtocolLabel } = require('../shared/labels');
+const { createReport, addMessage } = require('../../shared/report');
+const { parseCssLength, round } = require('../../shared/geometry');
+const { createProtocolLabel } = require('../../shared/labels');
 const {
   normalizeCssColor,
   normalizeCssColorFromBackgroundImage,
@@ -9,7 +9,7 @@ const {
   stableAutoName,
   firstClassName,
   explicitName,
-} = require('./style-utils');
+} = require('../../shared/style-utils');
 
 function createEmptyStyleModel() {
   return {

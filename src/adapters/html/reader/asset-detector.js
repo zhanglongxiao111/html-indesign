@@ -3,7 +3,7 @@ const {
   inferAssetKind,
   assetSourceFromElementLike,
   createAssetId,
-} = require('../shared/assets');
+} = require('../../../shared/assets');
 
 function detectAssetsFromItems(items, htmlPath) {
   const assets = [];

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { parseCssLength, round } = require('../shared/geometry');
+const { parseCssLength, round } = require('./geometry');
 
 function normalizeCssColor(value) {
   const text = String(value || '').trim().toLowerCase();

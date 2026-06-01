@@ -1,6 +1,6 @@
 'use strict';
 
-const { fieldRegistry, validateLabelFields } = require('../protocol');
+const { fieldRegistry, validateLabelFields } = require('../../../protocol');
 
 function validateReverseLabel(label = {}, options = {}) {
   const preset = options.preset || {};

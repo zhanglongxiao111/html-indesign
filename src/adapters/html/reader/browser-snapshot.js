@@ -1,8 +1,8 @@
 const path = require('path');
 const { chromium } = require('playwright');
-const { rectPxToMm, round } = require('../shared/geometry');
-const { createReport, addMessage } = require('../shared/report');
-const { inferAssetKind, assetSourceFromElementLike } = require('../shared/assets');
+const { rectPxToMm, round } = require('../../../shared/geometry');
+const { createReport, addMessage } = require('../../../shared/report');
+const { inferAssetKind, assetSourceFromElementLike } = require('../../../shared/assets');
 const { detectAssetsFromItems } = require('./asset-detector');
 const { defaultPageSelector } = require('./page-detector');
 

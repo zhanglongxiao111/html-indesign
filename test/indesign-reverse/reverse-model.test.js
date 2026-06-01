@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/indesign-reverse');
+const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
 const { validateSemanticModel } = require('../../src/semantic-model');
 
 function captureThrow(fn) {

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validateReverseLabel } = require('../../src/indesign-reverse/label-whitelist');
+const { validateReverseLabel } = require('../../src/adapters/indesign/normalizer/label-whitelist');
 
 const preset = {
   semantics: {

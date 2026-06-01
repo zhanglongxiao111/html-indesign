@@ -20,7 +20,8 @@ const {
   resolveIndesignCliCommand,
   parseTargetSize,
 } = require('../scripts/indesign-e2e');
-const { renderSnapshot, compileInstructions } = require('../src/paged-html');
+const { renderSnapshot } = require('../src/adapters/html');
+const { compileInstructions } = require('../src/writers/indesign');
 
 test('createRunContext creates stable default paths under test/workspace', () => {
   const repoRoot = path.resolve('D:/AI/html-indesign');
@@ -195,7 +196,7 @@ test('assertReverseHtmlSemantics rejects false-positive reverse roundtrips', () 
 test('auditReverseAuthorPackage reports generated author package health', () => {
   const outDir = path.resolve('test/workspace/e2e-author-audit-test');
   fs.rmSync(outDir, { recursive: true, force: true });
-  const { writeReverseAuthorPackage } = require('../src/indesign-reverse');
+  const { writeReverseAuthorPackage } = require('../src/writers/html');
 
   const author = writeReverseAuthorPackage({
     kind: 'DocumentModel',

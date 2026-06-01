@@ -5,7 +5,7 @@ const {
   pageMargins,
   pageGuides,
   itemBounds,
-} = require('../../src/paged-html/layout');
+} = require('../../src/semantic-model/layout');
 
 test('resolveLayout maps presentation source pixels to pt target size', () => {
   const layout = resolveLayout({

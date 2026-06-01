@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('path');
-const { readReverseSnapshot, reverseSnapshotToSemanticModel, semanticModelToHtml } = require('../../src/indesign-reverse');
+const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
+const { semanticModelToHtml } = require('../../src/writers/html');
 
 test('semanticModelToHtml writes page, parent page, layout and text item tags', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));

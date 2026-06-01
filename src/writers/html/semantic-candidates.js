@@ -1,6 +1,6 @@
 'use strict';
 
-const { collectKnownSemanticTokens } = require('../semantic-preset');
+const { collectKnownSemanticTokens } = require('../../semantic-preset');
 
 function collectSemanticCandidates(model, preset) {
   const known = collectKnownSemanticTokens(preset || {});

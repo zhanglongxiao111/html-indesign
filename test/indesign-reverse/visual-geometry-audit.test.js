@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { compareVisualGeometry } = require('../../src/indesign-reverse/visual-geometry-audit');
+const { compareVisualGeometry } = require('../../src/writers/html/audit/visual-geometry-audit');
 
 test('compareVisualGeometry reports missing and shifted author elements', () => {
   const report = compareVisualGeometry({

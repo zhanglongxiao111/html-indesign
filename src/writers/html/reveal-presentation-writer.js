@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { readAuthorPackage } = require('../authoring');
+const { readAuthorPackage } = require('../../authoring');
 
 function writeRevealPresentation(configPath, options = {}) {
   const sourcePackage = readAuthorPackage(configPath);

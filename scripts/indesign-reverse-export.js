@@ -5,11 +5,13 @@ const path = require('path');
 const {
   readReverseSnapshot,
   reverseSnapshotToSemanticModel,
-  semanticModelToHtml,
   blueprintMigrationToSemanticModel,
+} = require('../src/adapters/indesign');
+const {
+  semanticModelToHtml,
   writeReverseAuthorPackage,
-} = require('../src/indesign-reverse');
-const { auditReverseAuthorPackage } = require('../src/indesign-reverse/author-audit');
+} = require('../src/writers/html');
+const { auditReverseAuthorPackage } = require('../src/writers/html/audit/author-audit');
 
 function parseArgs(argv) {
   const out = {

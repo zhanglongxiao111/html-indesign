@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot } = require('../../src/paged-html');
-const { snapshotToSemanticModel, semanticModelToInstructions } = require('../../src/semantic-model');
+const { renderSnapshot, snapshotToSemanticModel } = require('../../src/adapters/html');
+const { semanticModelToInstructions } = require('../../src/writers/indesign');
 
 test('semanticModelToInstructions produces current executor schema', async () => {
   const snapshot = await renderSnapshot({

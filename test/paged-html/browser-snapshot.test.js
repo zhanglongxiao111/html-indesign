@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { renderSnapshot } = require('../../src/paged-html');
+const { renderSnapshot } = require('../../src/adapters/html');
 
 test('renderSnapshot captures fixed-size paged HTML pages', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');

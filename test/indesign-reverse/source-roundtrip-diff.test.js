@@ -6,7 +6,7 @@ const path = require('path');
 const {
   auditAuthorSourceRoundtrip,
   measureAuthorSourceDrift,
-} = require('../../src/indesign-reverse/source-roundtrip-diff');
+} = require('../../src/writers/html/audit/source-roundtrip-diff');
 
 test('auditAuthorSourceRoundtrip accepts equivalent source and reverse author packages', () => {
   const root = path.resolve('test/workspace/source-roundtrip-equivalent');

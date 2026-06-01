@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadStandardSemanticPreset } = require('../../src/semantic-preset');
-const { collectSemanticCandidates } = require('../../src/indesign-reverse/semantic-candidates');
+const { collectSemanticCandidates } = require('../../src/writers/html/semantic-candidates');
 
 test('collectSemanticCandidates reports unknown object and layer tokens', () => {
   const preset = loadStandardSemanticPreset('architecture-report').preset;

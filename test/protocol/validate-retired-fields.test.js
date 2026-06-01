@@ -79,15 +79,13 @@ test('retired data-id-page source scanner allows explicit cleanup only', () => {
   const source = "if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];";
 
   assert.deepEqual(
-    findRetiredDataIdPageViolations(source, 'src/indesign-reverse/author-html-tree.js'),
+    findRetiredDataIdPageViolations(source, 'src/writers/html/author-html-tree.js'),
     [],
   );
 });
 
 test('source code does not read data-id-page as PDF page number fallback', () => {
   const files = collectRuntimeFiles([
-    'src/paged-html',
-    'src/indesign-reverse',
     'src/adapters/html',
     'src/adapters/indesign',
     'src/writers/html',
@@ -99,17 +97,17 @@ test('source code does not read data-id-page as PDF page number fallback', () =>
   assert.notEqual(files.length, 0, 'retired field scan must cover active runtime files');
   const relativeFiles = files.map((file) => relativePath(file));
   assert.equal(
-    relativeFiles.includes('src/paged-html/asset-detector.js'),
+    relativeFiles.includes('src/adapters/html/reader/asset-detector.js'),
     true,
     'scan must cover asset detector',
   );
   assert.equal(
-    relativeFiles.includes('src/indesign-reverse/author-html-tree.js'),
+    relativeFiles.includes('src/writers/html/author-html-tree.js'),
     true,
     'scan must cover reverse author HTML tree writer',
   );
   assert.equal(
-    relativeFiles.includes('src/indesign-reverse/html-writer.js'),
+    relativeFiles.includes('src/writers/html/visual-html-writer.js'),
     true,
     'scan must cover reverse visual HTML writer',
   );
@@ -126,7 +124,7 @@ test('source code does not read data-id-page as PDF page number fallback', () =>
   assert.deepEqual(violations, []);
   assert.deepEqual(
     occurrences.map((occurrence) => `${occurrence.file}:${occurrence.source}`),
-    ["src/indesign-reverse/author-html-tree.js:if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];"],
+    ["src/writers/html/author-html-tree.js:if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];"],
   );
 });
 
@@ -180,7 +178,7 @@ function findDataIdPageLiteralOccurrences(source, relativeFile) {
 }
 
 function isAllowedDataIdPageCleanup(occurrence) {
-  return occurrence.file === 'src/indesign-reverse/author-html-tree.js'
+  return occurrence.file === 'src/writers/html/author-html-tree.js'
     && occurrence.source === "if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];";
 }
 

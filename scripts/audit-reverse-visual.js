@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { compareVisualGeometry } = require('../src/indesign-reverse/visual-geometry-audit');
+const { compareVisualGeometry } = require('../src/writers/html/audit/visual-geometry-audit');
 
 function parseArgs(argv) {
   const options = {};

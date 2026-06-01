@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { copyAuthorAssets } = require('./author-asset-packager');
-const { toBrowserAssetPath } = require('../shared/nas-paths');
+const { toBrowserAssetPath } = require('../../shared/nas-paths');
 
 function prepareAuthorAssets(model, options = {}) {
   const policy = options.assetPolicy || 'reference';

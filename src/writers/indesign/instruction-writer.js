@@ -1,15 +1,15 @@
-const { createReport, addMessage } = require('../shared/report');
-const { parseCssLength, round } = require('../shared/geometry');
-const { placementFromAttributes } = require('../paged-html/asset-detector');
-const { normalizeCssColor } = require('../paged-html/style-utils');
-const { assetSourceFromElementLike } = require('../shared/assets');
-const { createProtocolLabel } = require('../shared/labels');
+const { createReport, addMessage } = require('../../shared/report');
+const { parseCssLength, round } = require('../../shared/geometry');
+const { placementFromAttributes } = require('../../adapters/html/reader/asset-detector');
+const { normalizeCssColor } = require('../../shared/style-utils');
+const { assetSourceFromElementLike } = require('../../shared/assets');
+const { createProtocolLabel } = require('../../shared/labels');
 const {
   itemBounds,
   cssLengthToTarget,
   cssLengthToMm,
   normalizeVisualMm,
-} = require('../paged-html/layout');
+} = require('../../semantic-model/layout');
 
 function semanticModelToInstructions(model, options = {}) {
   const layout = model.layoutInfo || {

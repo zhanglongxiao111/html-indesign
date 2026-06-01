@@ -1,8 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot, compileStyles, compileInstructions } = require('../../src/paged-html');
-const { detectAssetsFromItems } = require('../../src/paged-html/asset-detector');
+const { renderSnapshot } = require('../../src/adapters/html');
+const { compileStyles, compileInstructions } = require('../../src/writers/indesign');
+const { detectAssetsFromItems } = require('../../src/adapters/html/reader/asset-detector');
 
 test('compileInstructions emits document styles pages and text items', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');

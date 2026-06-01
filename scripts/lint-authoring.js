@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const path = require('path');
-const { renderSnapshot, validateAuthoringRules } = require('../src/paged-html');
+const { renderSnapshot, validateAuthoringRules } = require('../src/adapters/html');
 const { auditAuthorPackageSourceFormat, checkAuthorPackageEntry, readAuthorPackage } = require('../src/authoring');
 const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../src/semantic-preset');
 

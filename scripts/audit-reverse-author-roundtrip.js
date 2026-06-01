@@ -3,7 +3,7 @@
 const {
   auditAuthorSourceRoundtrip,
   measureAuthorSourceDrift,
-} = require('../src/indesign-reverse/source-roundtrip-diff');
+} = require('../src/writers/html/audit/source-roundtrip-diff');
 
 function parseArgs(argv) {
   const options = {};

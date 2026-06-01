@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pageItemsToAuthorHtml } = require('../../src/indesign-reverse/author-html-tree');
+const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tree');
 
 test('pageItemsToAuthorHtml nests children under source parent items', () => {
   const page = {

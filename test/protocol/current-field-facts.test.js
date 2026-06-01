@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { placementFromAttributes } = require('../../src/paged-html/asset-detector');
+const { placementFromAttributes } = require('../../src/adapters/html/reader/asset-detector');
 const { fieldRegistry } = require('../../src/protocol');
 
 test('current HTML asset placement reads data-id-pdf-page and not data-id-page', () => {

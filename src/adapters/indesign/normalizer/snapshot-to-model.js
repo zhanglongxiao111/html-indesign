@@ -1,5 +1,5 @@
-const { loadStandardSemanticPreset } = require('../semantic-preset');
-const { createReport, addMessage } = require('../shared/report');
+const { loadStandardSemanticPreset } = require('../../../semantic-preset');
+const { createReport, addMessage } = require('../../../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
