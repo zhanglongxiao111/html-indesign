@@ -13,6 +13,7 @@ const { validateDataIdFields } = require('./validators/validate-data-id-fields')
 const { validateInstructionFields } = require('./validators/validate-instruction-fields');
 const { validateLabelFields } = require('./validators/validate-label-fields');
 const { validateModelFields } = require('./validators/validate-model-fields');
+const { validateRetiredFields } = require('./validators/validate-retired-fields');
 const {
   CAPABILITY_LEVELS,
   DIRECTIONS,
@@ -76,4 +77,5 @@ module.exports = Object.freeze({
   validateInstructionFields,
   validateLabelFields,
   validateModelFields,
+  validateRetiredFields,
 });
