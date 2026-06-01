@@ -606,6 +606,84 @@ test('source metadata domain strict rejects unknown source metadata paths and ac
   );
 });
 
+test('source metadata domain strict accepts scanned item effective-label source facts only as bare paths', () => {
+  const registeredEffectiveLabelSourcePaths = [
+    'effectiveLabel.sourceFile',
+    'effectiveLabel.sourceNode',
+    'effectiveLabel.sourceAncestorNodes',
+    'effectiveLabel.sourceText',
+    'effectiveLabel.sourceHtml',
+    'effectiveLabel.sourceRuns',
+    'effectiveLabel.structure',
+  ];
+  const falseItemEffectiveLabelSourcePaths = [
+    'items[].effectiveLabel.sourceFile',
+    'items[].effectiveLabel.sourceNode',
+    'items[].effectiveLabel.sourceAncestorNodes',
+    'items[].effectiveLabel.sourceText',
+    'items[].effectiveLabel.sourceHtml',
+    'items[].effectiveLabel.sourceRuns',
+    'items[].effectiveLabel.structure',
+  ];
+
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'item-1',
+        effectiveLabel: {
+          semantic: 'caption',
+          sourceFile: 'pages/01.html',
+          sourceNode: { tagName: 'p' },
+          sourceAncestorNodes: [{ tagName: 'section' }],
+          sourceText: 'Caption',
+          sourceHtml: '<p>Caption</p>',
+          sourceRuns: [{ text: 'Caption' }],
+          structure: { parentId: 'p1' },
+        },
+      }],
+    }],
+  });
+
+  for (const path of registeredEffectiveLabelSourcePaths) {
+    assert.equal(Boolean(fieldRegistry.getByPath(path)), true, `${path} should be registered`);
+    assert.equal(scannedPaths.includes(path), true, `${path} should be scanned`);
+  }
+  for (const path of falseItemEffectiveLabelSourcePaths) {
+    assert.equal(Boolean(fieldRegistry.getByPath(path)), false, `${path} should not be registered`);
+    assert.equal(scannedPaths.includes(path), false, `${path} should not be scanned`);
+  }
+
+  const scannedStrict = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['source.metadata'] },
+  );
+  assert.equal(scannedStrict.valid, true);
+  assert.deepEqual(scannedStrict.accepted, registeredEffectiveLabelSourcePaths);
+
+  const falsePathStrict = validateModelFields(
+    fieldRegistry,
+    falseItemEffectiveLabelSourcePaths,
+    { strict: true, domains: ['source.metadata'] },
+  );
+  assert.equal(falsePathStrict.valid, true);
+  assert.deepEqual(falsePathStrict.accepted, []);
+  assert.deepEqual(falsePathStrict.unknown, falseItemEffectiveLabelSourcePaths);
+  assert.equal(falsePathStrict.errors.length, 0);
+  for (const path of falseItemEffectiveLabelSourcePaths) {
+    assert.equal(
+      falsePathStrict.warnings.some((warning) => (
+        warning.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && warning.path === path
+      )),
+      true,
+      `${path} should remain an unknown warning`,
+    );
+  }
+});
+
 test('source metadata domain strict does not accept label protocol or derived label carrier fields', () => {
   const result = validateModelFields(
     fieldRegistry,
