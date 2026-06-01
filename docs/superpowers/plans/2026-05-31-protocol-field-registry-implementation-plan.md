@@ -21,7 +21,7 @@
 - [x] 阶段 2：登记当前事实字段，不接入强门禁（implementation：`68cde6b`；spec fixes：`9e05f2a`、`e5ad1cd`；quality fix：`d30df31`；spec review 通过；code quality review 通过；controller 验证：protocol focused 16/16、protocol 33/33、npm test 390/390）
 - [x] 阶段 3：能力矩阵和生命周期策略门禁（implementation：`8648f27`；spec fixes：`50386a6`、`b22aa2c`；quality fixes：`b2fe754`、`d304e75`、`3f9d8ae`、`01cf80d`、`7e4d017`；spec review 通过；code quality review 通过；controller 验证：stage focused 51/51、protocol 57/57、npm test 414/414）
 - [x] 阶段 4：字段扫描和仅警告门禁（implementation：`f8b2e9b`；spec fix：`5c33f35`；quality fixes：`4347e0a`、`6cd173d`、`b9880d8`；spec review 通过；code quality review 通过；controller 验证：stage focused 18/18、protocol 75/75、npm test 432/432）
-- [ ] 阶段 5：接入语义模型和标签白名单（implementation：`a8b4c0d`；spec fixes：`44ffe16`、`ad1ed4d`、`0687952`、`27deff8`、`d0994b1`、`e5fc097`；quality fixes：`6ca7c7e`、`e77dcf3`、`16147a1`；controller 复验通过：npm test 464/464；quality re-review 拒绝：`writeReverseAuthorPackage` 的 `activeSemanticPresetFor` 仍对缺失/无效 profile fallback 到 `architecture-report`，默认 reverse CLI 可达；修复中）
+- [ ] 阶段 5：接入语义模型和标签白名单（implementation：`a8b4c0d`；spec fixes：`44ffe16`、`ad1ed4d`、`0687952`、`27deff8`、`d0994b1`、`e5fc097`；quality fixes：`6ca7c7e`、`e77dcf3`、`16147a1`、`9ca607a`；controller 复验中：重点复核 `writeReverseAuthorPackage` 无 profile/bad profile/空 `semanticPreset` fail-fast，observation/inferred 不默认到 `architecture-report`，reverse CLI 仍通过）
 - [ ] 阶段 6：退役字段集中登记与清理
 - [ ] 阶段 7：按域接入强校验
 - [ ] 阶段 8：目录重构为适配器 / 写出器
