@@ -20,3 +20,12 @@ test('public API exposes protocol adapters semanticModel writers and historical-
   assert.equal(typeof api.historicalTemplate.buildInstructions, 'function');
   assert.equal(typeof api.historicalTemplate.validate, 'function');
 });
+
+test('public API does not expose retired stage 8 facades or semantic-model conversion entry points', () => {
+  assert.equal(api.pagedHtml, undefined);
+  assert.equal(api.indesignReverse, undefined);
+  assert.equal(api.adapters.pptx, undefined);
+  assert.deepEqual(Object.keys(api.semanticModel), ['validateSemanticModel']);
+  assert.equal(api.semanticModel.snapshotToSemanticModel, undefined);
+  assert.equal(api.semanticModel.semanticModelToInstructions, undefined);
+});
