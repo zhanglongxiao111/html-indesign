@@ -12,6 +12,7 @@ const { createFieldRegistry } = require('./registry');
 const { validateDataIdFields } = require('./validators/validate-data-id-fields');
 const { validateInstructionFields } = require('./validators/validate-instruction-fields');
 const { validateLabelFields } = require('./validators/validate-label-fields');
+const { MODEL_FIELD_DOMAIN_NAMES } = require('./validators/model-field-domains');
 const { validateModelFields } = require('./validators/validate-model-fields');
 const { validateRetiredFields } = require('./validators/validate-retired-fields');
 const {
@@ -62,6 +63,7 @@ module.exports = Object.freeze({
   fieldRegistry,
   FORMATS,
   LIFECYCLES,
+  MODEL_FIELD_DOMAIN_NAMES,
   isCapabilityLevel,
   isFieldClass,
   isLifecycle,

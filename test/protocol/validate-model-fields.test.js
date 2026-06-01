@@ -114,6 +114,29 @@ test('validateModelFields rejects unknown model paths in strict mode', () => {
   );
 });
 
+test('validateModelFields can scan a DocumentModel object input explicitly', () => {
+  const result = validateModelFields(fieldRegistry, {
+    kind: 'DocumentModel',
+    id: 'doc',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'i1',
+        asset: { placement: { fakePlacement: true } },
+      }],
+    }],
+  }, { strict: true, domains: ['asset.placement'] });
+
+  assert.equal(result.valid, false);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].asset.placement.fakePlacement'
+    )),
+    true,
+  );
+});
+
 test('validateModelFields rejects nested ghosts on registered root surfaces in strict mode', () => {
   const model = {
     kind: 'DocumentModel',
@@ -436,4 +459,443 @@ test('scanModelPaths maps effectiveLabel style refs while preserving nested unkn
     'items[].styleRefs.objectStyle',
   ]);
   assert.deepEqual(strict.unknown, ['items[].effectiveLabel.styleRefs.ghost']);
+});
+
+test('validateModelFields rejects invalid model field domain names', () => {
+  assert.throws(
+    () => validateModelFields(fieldRegistry, ['pages[].id'], { strict: true, domains: ['asset.missing'] }),
+    /MODEL_FIELD_DOMAIN_UNKNOWN:asset\.missing/,
+  );
+});
+
+test('asset placement domain strict rejects placement unknowns without escalating unrelated unknowns', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'asset-1',
+        madeUpField: true,
+        asset: {
+          placement: {
+            pageNumber: 1,
+            crop: 'trim',
+            transparentBackground: true,
+            visibleLayers: ['site'],
+            hiddenLayers: ['notes'],
+            layers: ['site', 'notes'],
+            fakePlacement: true,
+          },
+        },
+      }],
+    }],
+  });
+
+  const result = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['asset.placement'] },
+  );
+
+  assert.equal(result.valid, false);
+  for (const path of [
+    'items[].asset.placement.pageNumber',
+    'items[].asset.placement.crop',
+    'items[].asset.placement.transparentBackground',
+    'items[].asset.placement.visibleLayers',
+    'items[].asset.placement.hiddenLayers',
+    'items[].asset.placement.layers',
+  ]) {
+    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+    assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
+  }
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].asset.placement.fakePlacement'
+    )),
+    true,
+  );
+  assert.equal(
+    result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
+    false,
+  );
+  assert.equal(
+    result.warnings.some((warning) => warning.path === 'pages[].items[].madeUpField'),
+    true,
+  );
+});
+
+test('source metadata domain strict rejects unknown source metadata paths and accepts registered source facts', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    sourcePackage: { config: 'deck.config.json' },
+    pages: [{
+      id: 'p1',
+      sourceNode: { tagName: 'section' },
+      items: [{
+        id: 'item-1',
+        madeUpField: true,
+        sourceFile: 'pages/01.html',
+        sourceNode: { tagName: 'p' },
+        sourceAncestorNodes: [{ tagName: 'section' }],
+        labels: [{
+          kind: 'item',
+          sourceText: 'Caption',
+          sourceHtml: '<p>Caption</p>',
+          sourceRuns: [{ text: 'Caption' }],
+          structure: { parentId: 'p1' },
+          sourceMystery: true,
+        }],
+      }],
+    }],
+  });
+
+  const result = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['source.metadata'] },
+  );
+
+  assert.equal(result.valid, false);
+  for (const path of [
+    'document.sourcePackage',
+    'pages[].sourceNode',
+    'items[].sourceFile',
+    'items[].sourceNode',
+    'items[].sourceAncestorNodes',
+    'labels[].sourceText',
+    'labels[].sourceHtml',
+    'labels[].sourceRuns',
+    'labels[].structure',
+  ]) {
+    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+    assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
+  }
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'labels[].sourceMystery'
+    )),
+    true,
+  );
+  assert.equal(
+    result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
+    false,
+  );
+});
+
+test('styleRefs domain strict rejects unknown style refs and accepts style token/name pairs', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'styled',
+        madeUpField: true,
+        styleRefs: {
+          paragraphStyle: 'body',
+          characterStyle: 'accent',
+          objectStyle: 'frame',
+          frameStyle: 'image-frame',
+          tableStyle: 'metrics-table',
+          cellStyle: 'metrics-cell',
+          layer: 'text',
+          fakeStyleToken: 'ghost',
+        },
+        labels: [{
+          kind: 'item',
+          styleRefs: {
+            paragraphStyleToken: 'body-token',
+            characterStyleToken: 'accent-token',
+            objectStyleToken: 'frame-token',
+            frameStyleToken: 'image-frame-token',
+            tableStyleToken: 'metrics-table-token',
+            cellStyleToken: 'metrics-cell-token',
+            layerToken: 'text-token',
+          },
+        }],
+      }],
+    }],
+  });
+
+  const result = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['styleRefs'] },
+  );
+
+  assert.equal(result.valid, false);
+  for (const path of [
+    'items[].styleRefs.paragraphStyle',
+    'items[].styleRefs.characterStyle',
+    'items[].styleRefs.objectStyle',
+    'items[].styleRefs.frameStyle',
+    'items[].styleRefs.tableStyle',
+    'items[].styleRefs.cellStyle',
+    'items[].styleRefs.layer',
+  ]) {
+    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+    assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
+  }
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].styleRefs.fakeStyleToken'
+    )),
+    true,
+  );
+  assert.equal(
+    result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
+    false,
+  );
+});
+
+test('labels domain strict rejects unknown label model paths', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    madeUpRoot: true,
+    labels: [{
+      protocol: 'html-indesign',
+      version: 1,
+      kind: 'document',
+      id: 'doc',
+      profile: 'architecture-report',
+      foreignLabelField: true,
+    }],
+    pages: [{ id: 'p1' }],
+  });
+
+  const result = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['labels'] },
+  );
+
+  assert.equal(result.valid, false);
+  assert.equal(result.accepted.includes('labels[].protocol'), true);
+  assert.equal(result.accepted.includes('labels[].version'), true);
+  assert.equal(result.accepted.includes('labels[].kind'), true);
+  assert.equal(result.accepted.includes('labels[].id'), true);
+  assert.equal(result.accepted.includes('document.profile'), true);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'labels[].foreignLabelField'
+    )),
+    true,
+  );
+  assert.equal(
+    result.errors.some((error) => error.path === 'madeUpRoot'),
+    false,
+  );
+});
+
+test('visualStyle/vectorGeometry domain strict rejects raw InDesign visual fields and accepts standardized fields', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'shape-1',
+        madeUpField: true,
+        visualStyle: {
+          fillColor: '#ffffff',
+          fillOpacity: 0.5,
+          strokeColor: '#111111',
+          strokeWeight: 1,
+          strokeOpacity: 0.75,
+          strokeStyle: 'solid',
+          strokeLineCap: 'round',
+          strokeLineJoin: 'miter',
+          strokeMiterLimit: 4,
+          strokeAlignment: 'center',
+          lineStartMarker: 'none',
+          lineEndMarker: 'arrow',
+          blendMode: 'multiply',
+          effects: { shadow: true },
+          rawIndesignBlendMode: 'Multiply',
+        },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [],
+        },
+      }],
+    }],
+  });
+
+  const result = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['visualStyle/vectorGeometry'] },
+  );
+
+  assert.equal(result.valid, false);
+  for (const path of [
+    'items[].visualStyle.fillColor',
+    'items[].visualStyle.fillOpacity',
+    'items[].visualStyle.strokeColor',
+    'items[].visualStyle.strokeWeight',
+    'items[].visualStyle.strokeOpacity',
+    'items[].visualStyle.strokeStyle',
+    'items[].visualStyle.strokeLineCap',
+    'items[].visualStyle.strokeLineJoin',
+    'items[].visualStyle.strokeMiterLimit',
+    'items[].visualStyle.strokeAlignment',
+    'items[].visualStyle.lineStartMarker',
+    'items[].visualStyle.lineEndMarker',
+    'items[].visualStyle.blendMode',
+    'items[].visualStyle.effects',
+    'items[].vectorGeometry.kind',
+    'items[].vectorGeometry.paths',
+  ]) {
+    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+    assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
+  }
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'items[].visualStyle.rawIndesignBlendMode'
+    )),
+    true,
+  );
+  assert.equal(
+    result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
+    false,
+  );
+
+  const extensionPath = 'items[].extensions.indesign.rawIndesignBlendMode';
+  const extension = validateModelFields(
+    fieldRegistry,
+    [extensionPath],
+    { strict: true, domains: ['visualStyle/vectorGeometry'] },
+  );
+  assert.equal(extension.valid, true);
+  assert.equal(extension.errors.length, 0);
+  assert.deepEqual(extension.unknown, [extensionPath]);
+});
+
+test('table/text domain strict rejects unknown text and table fields while accepting current static spec fields', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'table-1',
+        madeUpField: true,
+        content: {
+          text: 'Area',
+          sourceHtml: '<strong>Area</strong>',
+          fakeTextField: true,
+          runs: [{
+            text: 'Area',
+            tagName: 'strong',
+            classList: ['metric'],
+            attributes: { 'data-id-character-style': 'emphasis' },
+            characterStyle: 'emphasis',
+          }],
+        },
+        table: {
+          tableStyle: 'metrics-table',
+          rowCount: 1,
+          columnCount: 1,
+          columnWidths: [160],
+          rowHeights: [32],
+          fakeTableField: true,
+          rows: [{
+            index: 0,
+            cells: [{
+              index: 0,
+              text: 'Area',
+              header: true,
+              rowSpan: 1,
+              colSpan: 1,
+              paragraphStyle: 'table-body',
+              cellStyle: 'table-cell',
+              fillColor: '#ffffff',
+              textColor: '#111111',
+              pointSize: 10,
+              leading: 12,
+              textAlign: 'center',
+              padding: { top: 4 },
+              borders: { left: { color: '#111111' } },
+              runs: [{
+                text: 'Area',
+                tagName: 'span',
+                classList: ['metric'],
+                attributes: {},
+                characterStyle: 'emphasis',
+              }],
+            }],
+          }],
+        },
+      }],
+    }],
+  });
+
+  const result = validateModelFields(
+    fieldRegistry,
+    scannedPaths,
+    { strict: true, domains: ['table/text'] },
+  );
+
+  assert.equal(result.valid, false);
+  for (const path of [
+    'items[].content.text',
+    'items[].content.sourceHtml',
+    'items[].content.runs',
+    'items[].content.runs[].text',
+    'items[].content.runs[].tagName',
+    'items[].content.runs[].classList',
+    'items[].content.runs[].attributes',
+    'items[].content.runs[].characterStyle',
+    'items[].table.tableStyle',
+    'items[].table.rowCount',
+    'items[].table.columnCount',
+    'items[].table.columnWidths',
+    'items[].table.rowHeights',
+    'items[].table.rows',
+    'items[].table.rows[].index',
+    'items[].table.rows[].cells',
+    'items[].table.rows[].cells[].index',
+    'items[].table.rows[].cells[].text',
+    'items[].table.rows[].cells[].header',
+    'items[].table.rows[].cells[].rowSpan',
+    'items[].table.rows[].cells[].colSpan',
+    'items[].table.rows[].cells[].paragraphStyle',
+    'items[].table.rows[].cells[].cellStyle',
+    'items[].table.rows[].cells[].fillColor',
+    'items[].table.rows[].cells[].textColor',
+    'items[].table.rows[].cells[].pointSize',
+    'items[].table.rows[].cells[].leading',
+    'items[].table.rows[].cells[].textAlign',
+    'items[].table.rows[].cells[].padding',
+    'items[].table.rows[].cells[].borders',
+    'items[].table.rows[].cells[].runs',
+    'items[].table.rows[].cells[].runs[].text',
+    'items[].table.rows[].cells[].runs[].tagName',
+    'items[].table.rows[].cells[].runs[].classList',
+    'items[].table.rows[].cells[].runs[].attributes',
+    'items[].table.rows[].cells[].runs[].characterStyle',
+  ]) {
+    assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
+    assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
+  }
+  for (const path of [
+    'items[].content.fakeTextField',
+    'items[].table.fakeTableField',
+  ]) {
+    assert.equal(
+      result.errors.some((error) => (
+        error.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be a strict domain error`,
+    );
+  }
+  assert.equal(
+    result.errors.some((error) => error.path === 'pages[].items[].madeUpField'),
+    false,
+  );
 });

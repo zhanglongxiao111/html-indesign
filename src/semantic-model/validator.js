@@ -4,6 +4,11 @@ const {
   validateLabelFields,
   validateModelFields,
 } = require('../protocol');
+const {
+  modelFieldDomainsInclude,
+  normalizeModelFieldDomains,
+} = require('../protocol/validators/model-field-domains');
+const hasOwn = Object.prototype.hasOwnProperty;
 
 const STYLE_LABEL_COLLECTION_KEYS = Object.freeze([
   'paragraphStyles',
@@ -19,6 +24,7 @@ function validateSemanticModel(model, options = {}) {
   const warnings = [];
   let fieldValidation = null;
   let labelValidation = null;
+  const fieldDomains = normalizeModelFieldDomains(fieldDomainsOption(options));
   if (!model || model.kind !== 'DocumentModel') {
     errors.push({ code: 'SEMANTIC_MODEL_INVALID', message: 'Expected DocumentModel.' });
     return { valid: false, errors, warnings };
@@ -36,7 +42,10 @@ function validateSemanticModel(model, options = {}) {
     fieldValidation = validateModelFields(
       fieldRegistry,
       scanModelPaths(model),
-      { strict: options.strictFields === true },
+      {
+        strict: options.strictFields === true,
+        domains: fieldDomains || undefined,
+      },
     );
     warnings.push(...fieldValidation.warnings);
     if (options.strictFields === true) {
@@ -44,7 +53,9 @@ function validateSemanticModel(model, options = {}) {
     }
     labelValidation = validateRawLabelFields(
       model,
-      { strict: options.strictFields === true },
+      {
+        strict: options.strictFields === true && modelFieldDomainsInclude(fieldDomains, 'labels'),
+      },
     );
     warnings.push(...labelValidation.warnings);
     if (options.strictFields === true) {
@@ -58,6 +69,19 @@ function validateSemanticModel(model, options = {}) {
     fieldValidation,
     labelValidation,
   };
+}
+
+function fieldDomainsOption(options) {
+  if (hasOwn.call(options, 'fieldDomains') && hasOwn.call(options, 'strictFieldDomains')) {
+    throw new Error('SEMANTIC_FIELD_DOMAINS_CONFLICT');
+  }
+  if (hasOwn.call(options, 'fieldDomains')) {
+    return options.fieldDomains;
+  }
+  if (hasOwn.call(options, 'strictFieldDomains')) {
+    return options.strictFieldDomains;
+  }
+  return undefined;
 }
 
 function validatePage(page, errors) {

@@ -184,10 +184,20 @@ const LABEL_STYLE_REFS_FIELD_PATHS = Object.freeze({
 
 const ITEM_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
   fillColor: 'items[].visualStyle.fillColor',
+  fillOpacity: 'items[].visualStyle.fillOpacity',
   strokeColor: 'items[].visualStyle.strokeColor',
   strokeWeight: 'items[].visualStyle.strokeWeight',
   opacity: 'items[].visualStyle.opacity',
   strokeOpacity: 'items[].visualStyle.strokeOpacity',
+  strokeStyle: 'items[].visualStyle.strokeStyle',
+  strokeLineCap: 'items[].visualStyle.strokeLineCap',
+  strokeLineJoin: 'items[].visualStyle.strokeLineJoin',
+  strokeMiterLimit: 'items[].visualStyle.strokeMiterLimit',
+  strokeAlignment: 'items[].visualStyle.strokeAlignment',
+  lineStartMarker: 'items[].visualStyle.lineStartMarker',
+  lineEndMarker: 'items[].visualStyle.lineEndMarker',
+  blendMode: 'items[].visualStyle.blendMode',
+  effects: 'items[].visualStyle.effects',
   cornerRadius: 'items[].visualStyle.cornerRadius',
 });
 

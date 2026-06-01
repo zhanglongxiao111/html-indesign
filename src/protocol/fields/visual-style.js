@@ -1,3 +1,27 @@
+const VISUAL_STYLE_CAPABILITIES = Object.freeze({
+  html: { read: 'native', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
+});
+
+function visualStyleField(canonicalPath, type, extra = {}) {
+  const fieldName = canonicalPath.slice('items[].visualStyle.'.length);
+  return {
+    canonicalPath,
+    currentPaths: [`reverseModel.pages[].items[].visualStyle.${fieldName}`],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'visual-style',
+    type,
+    capabilities: VISUAL_STYLE_CAPABILITIES,
+    indesign: {
+      snapshotPaths: [`visualStyle.${fieldName}`],
+      instructionPaths: [`appearance.${fieldName}`],
+    },
+    ...extra,
+  };
+}
+
 module.exports = [
   {
     canonicalPath: 'items[].visualStyle.fillColor',
@@ -19,6 +43,11 @@ module.exports = [
       instructionPaths: ['appearance.fillColor'],
     },
   },
+  visualStyleField('items[].visualStyle.fillOpacity', 'number', {
+    html: {
+      styleProps: ['fill-opacity'],
+    },
+  }),
   {
     canonicalPath: 'items[].visualStyle.strokeColor',
     currentPaths: ['reverseModel.pages[].items[].visualStyle.strokeColor'],
@@ -99,6 +128,35 @@ module.exports = [
       instructionPaths: ['appearance.strokeOpacity'],
     },
   },
+  visualStyleField('items[].visualStyle.strokeStyle', 'string', {
+    html: {
+      styleProps: ['border-style', 'stroke-dasharray'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.strokeLineCap', 'string', {
+    html: {
+      styleProps: ['stroke-linecap'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.strokeLineJoin', 'string', {
+    html: {
+      styleProps: ['stroke-linejoin'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.strokeMiterLimit', 'number', {
+    html: {
+      styleProps: ['stroke-miterlimit'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.strokeAlignment', 'string'),
+  visualStyleField('items[].visualStyle.lineStartMarker', 'string'),
+  visualStyleField('items[].visualStyle.lineEndMarker', 'string'),
+  visualStyleField('items[].visualStyle.blendMode', 'string', {
+    html: {
+      styleProps: ['mix-blend-mode'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.effects', 'object'),
   {
     canonicalPath: 'items[].visualStyle.cornerRadius',
     currentPaths: ['reverseModel.pages[].items[].visualStyle.cornerRadius'],

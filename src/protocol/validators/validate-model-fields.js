@@ -1,12 +1,19 @@
+const { scanModelPaths } = require('../scanners/scan-model-paths');
+const {
+  modelFieldPathInDomains,
+  normalizeModelFieldDomains,
+} = require('./model-field-domains');
+
 function validateModelFields(registry, paths, options = {}) {
   const strict = options.strict === true;
+  const domains = normalizeModelFieldDomains(options.domains);
   const accepted = [];
   const unknown = [];
   const retired = [];
   const warnings = [];
   const errors = [];
 
-  for (const path of uniqueStrings(paths)) {
+  for (const path of uniqueStrings(modelFieldPaths(paths))) {
     const field = registry.getByPath(path);
     if (!field) {
       unknown.push(path);
@@ -16,7 +23,7 @@ function validateModelFields(registry, paths, options = {}) {
         message: `Model field path is not registered: ${path}`,
       };
       warnings.push(issue);
-      if (strict) {
+      if (strict && modelFieldPathInDomains(path, null, domains)) {
         errors.push({ ...issue });
       }
       continue;
@@ -34,7 +41,7 @@ function validateModelFields(registry, paths, options = {}) {
         message: `Retired model field path must not be accepted: ${path}`,
       };
       warnings.push(issue);
-      if (strict) {
+      if (strict && modelFieldPathInDomains(path, field, domains)) {
         errors.push({ ...issue });
       }
       continue;
@@ -51,6 +58,23 @@ function validateModelFields(registry, paths, options = {}) {
     warnings,
     errors,
   };
+}
+
+function modelFieldPaths(pathsOrModel) {
+  if (Array.isArray(pathsOrModel)) {
+    return pathsOrModel;
+  }
+  if (isDocumentModel(pathsOrModel)) {
+    return scanModelPaths(pathsOrModel);
+  }
+  return [];
+}
+
+function isDocumentModel(value) {
+  return value !== null
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && value.kind === 'DocumentModel';
 }
 
 function uniqueStrings(values) {
