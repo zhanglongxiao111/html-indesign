@@ -24,7 +24,12 @@ test('public API exposes protocol adapters semanticModel writers and historical-
 test('public API does not expose retired stage 8 facades or semantic-model conversion entry points', () => {
   assert.equal(api.pagedHtml, undefined);
   assert.equal(api.indesignReverse, undefined);
-  assert.equal(api.adapters.pptx, undefined);
+  assert.equal(api.adapters.pptx.PptxReaderContract.contractOnly, true);
+  assert.equal(api.adapters.pptx.PptxWriterContract.contractOnly, true);
+  assert.equal(api.adapters.pptx.readPptxPackage, undefined);
+  assert.equal(api.adapters.pptx.writePptxPackage, undefined);
+  assert.equal(api.adapters.pptx.readPptx, undefined);
+  assert.equal(api.adapters.pptx.writePptx, undefined);
   assert.deepEqual(Object.keys(api.semanticModel), ['validateSemanticModel']);
   assert.equal(api.semanticModel.snapshotToSemanticModel, undefined);
   assert.equal(api.semanticModel.semanticModelToInstructions, undefined);

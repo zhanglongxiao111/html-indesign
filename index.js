@@ -1,7 +1,13 @@
 const protocol = require('./src/protocol');
+const pptxContracts = require('./src/adapters/pptx/contracts');
+const pptxCapabilities = require('./src/adapters/pptx/capabilities');
 const adapters = {
   html: require('./src/adapters/html'),
   indesign: require('./src/adapters/indesign'),
+  pptx: Object.freeze({
+    ...pptxContracts,
+    ...pptxCapabilities,
+  }),
 };
 const semanticModel = require('./src/semantic-model');
 const writers = {
