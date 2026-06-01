@@ -375,7 +375,6 @@ function shouldCheckGrid(item, page) {
   if (attributeValue(attrs, 'data-id-grid-ignore') != null) return false;
   if (attributeValue(attrs, 'data-id-role') === 'annotation') return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
-  if (Array.isArray(item && item.classList) && item.classList.includes('page-number')) return false;
   if (attributeValue(attrs, 'data-id-paragraph-style') === 'folio') return false;
   const bounds = item && item.boundsMm;
   return bounds

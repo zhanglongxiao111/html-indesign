@@ -204,6 +204,30 @@ test('compareVisualGeometry rejects table height drift when source hint lacks re
   assert.equal(report.stats.accepted, 0);
 });
 
+test('compareVisualGeometry rejects table height drift when source metadata is candidate-only', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', dataIdAttrs: ['data-id-table-style'], x: 300, y: 100, width: 500, height: 301 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv'], x: 300.1, y: 100.1, width: 500, height: 284 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'metrics'), true);
+  assert.equal(report.stats.mismatched, 1);
+  assert.equal(report.stats.accepted, 0);
+});
+
 test('compareVisualGeometry reports ordinary inline text clipping as an error', () => {
   const report = compareVisualGeometry({
     reference: {

@@ -109,6 +109,52 @@ test('validateAuthoringRules warns when item edges do not align to the declared 
   assert.deepEqual(warning.edges, ['left', 'right']);
 });
 
+test('validateAuthoringRules warns for class-only page-number items that are off grid', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'class-only-folio',
+      role: 'text',
+      tagName: 'span',
+      classList: ['page-number'],
+      attributes: {},
+      boundsMm: { x: 13, y: 10, width: 20, height: 9 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { gridTolerance: 0.5 });
+  const warning = result.warnings.find((entry) => entry.code === 'GRID_ALIGNMENT_OFF');
+
+  assert.ok(warning);
+  assert.equal(warning.itemId, 'class-only-folio');
+  assert.deepEqual(warning.edges, ['left', 'right']);
+});
+
+test('validateAuthoringRules skips grid checks for registered folio paragraph style', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'registered-folio',
+      role: 'text',
+      tagName: 'span',
+      classList: ['page-number'],
+      attributes: { 'data-id-paragraph-style': 'folio' },
+      boundsMm: { x: 13, y: 10, width: 20, height: 9 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 0.5 });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+});
+
 test('validateAuthoringRules does not treat snap grid as the page layout grid', () => {
   const snapshot = snapshotWithPage({
     attributes: {

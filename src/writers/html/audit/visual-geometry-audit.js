@@ -244,8 +244,9 @@ function isReverseAuthorTableNormalization(reference, candidate) {
     refTableStyle
       && candidateTableStyle
       && refTableStyle === candidateTableStyle
+      && hasRegisteredDataIdAttr(reference, 'data-id-table-style', 'canonical')
       && hasRegisteredDataIdAttr(candidate, 'data-id-table-style', 'canonical')
-      && hasRegisteredTableSourceMetadata(candidate),
+      && hasMatchingRegisteredTableSourceMetadata(reference, candidate),
   );
 }
 
@@ -287,11 +288,32 @@ function hasRegisteredParagraphStyle(element, paragraphStyle) {
   );
 }
 
-function hasRegisteredTableSourceMetadata(element) {
-  return Boolean(
-    (element.sourceCsv && hasRegisteredDataIdAttr(element, 'data-id-source-csv', 'sourceMetadata'))
-      || (element.sourceXml && hasRegisteredDataIdAttr(element, 'data-id-source-xml', 'sourceMetadata')),
-  );
+function hasMatchingRegisteredTableSourceMetadata(reference, candidate) {
+  const referenceSources = registeredTableSourceMetadata(reference);
+  const candidateSources = registeredTableSourceMetadata(candidate);
+  return referenceSources.some((referenceSource) => candidateSources.some((candidateSource) => (
+    candidateSource.attr === referenceSource.attr
+      && candidateSource.value === referenceSource.value
+  )));
+}
+
+function registeredTableSourceMetadata(element) {
+  const sources = [];
+  for (const [attr, prop] of [
+    ['data-id-source-csv', 'sourceCsv'],
+    ['data-id-source-xml', 'sourceXml'],
+  ]) {
+    const value = normalizeSourceMetadataValue(element && element[prop]);
+    if (value && hasRegisteredDataIdAttr(element, attr, 'sourceMetadata')) {
+      sources.push({ attr, value });
+    }
+  }
+  return sources;
+}
+
+function normalizeSourceMetadataValue(value) {
+  const string = optionalString(value);
+  return string ? string.replace(/\\/g, '/') : undefined;
 }
 
 function hasRegisteredDataIdAttr(element, attr, fieldClass) {

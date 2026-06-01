@@ -150,14 +150,13 @@ function usedSnapGuideCandidate(item, page, layout) {
   const attrs = item.attributes || {};
   if (attrs['data-id-guide-ignore'] != null) return false;
   if (attrs['data-id-role'] === 'annotation') return false;
-  if ((item.classList || []).includes('page-number')) return false;
   if (attrs['data-id-paragraph-style'] === 'folio') return false;
   if ((item.ancestorCandidateIndexes || []).length) return false;
   const bounds = itemBounds(item, page, layout);
   if (!bounds || coversWholePage(bounds, page, layout)) return false;
   if (attrs['data-id-object'] != null) return true;
   if (item.role === 'graphic' || item.role === 'table') return true;
-  return item.role === 'text' && attrs['data-id-paragraph-style'];
+  return item.role === 'text';
 }
 
 function coversWholePage(bounds, page, layout) {
