@@ -180,10 +180,10 @@ PPTX Adapter <-> Semantic Model <-> HTML/InDesign Adapter
 
 | 层级 | 职责 | 典型模块 |
 | ---- | ---- | -------- |
-| HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/paged-html/*` |
+| HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/adapters/html/*` |
 | Semantic Model | 保存双向共享事实：页面、母版、样式、图层、对象、资源、标签、网格 | `src/semantic-model/*` |
-| InDesign Adapter | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/indesign-reverse/*`、`src/paged-html/instructions-compiler.js` |
-| HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/indesign-reverse/html-writer.js` |
+| InDesign Adapter / Writer | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/adapters/indesign/*`、`src/writers/indesign/instructions-compiler.js` |
+| HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/writers/html/*` |
 | InDesign Executor | 只执行已验证 instructions，创建 InDesign 原生对象 | `_indesign_scripts/*` |
 
 ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推理。
@@ -1092,53 +1092,71 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 
 ## 16. 与现有代码的关系
 
-当前文件可按新架构逐步迁移：
+当前实现已按多格式边界落位：
 
-| 当前文件 | 新角色 |
+| 当前文件 | 当前角色 |
 | -------- | ------ |
-| `src/paged-html/` | HTML Adapter 的现有实现：浏览器快照、样式读取、HTML -> instructions |
+| `src/adapters/html/` | HTML Adapter：浏览器快照、样式读取、资源发现、HTML snapshot -> semantic model |
+| `src/writers/indesign/` | InDesign Writer：semantic model -> instructions、样式编译、instructions 校验 |
+| `src/adapters/indesign/` | InDesign Adapter：reverse snapshot -> semantic model、标签白名单、历史 blueprint 迁移 |
+| `src/writers/html/` | HTML Writer：reverse author package、visual HTML、source/visual audit |
 | `src/generator.js` | 历史 blueprint -> 模板预览 HTML，只作为迁移参考 |
 | `src/spec-generator.js` | Agent 可读规范生成器，后续从 style model 生成 |
 | `src/validator.js` | 历史模板 validator，保留给旧测试和迁移对照 |
 | `src/builder.js` | 历史模板 builder，保留给旧测试和迁移对照 |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
-| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/indesign-reverse/blueprint-migration.js` 归一化为 reverse model |
+| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/adapters/indesign/normalizer/blueprint-migration.js` 归一化为 semantic model |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
-第一阶段实现保留现有历史模板能力，并通过 `src/historical-template/*` wrappers 对外暴露给迁移测试。新的浏览器驱动转换代码放在 `src/paged-html/*` 下，可复用工具放在 `src/shared/*` 下；新功能不得继续扩展历史模板路径。
+历史模板能力通过 `src/historical-template/*` wrappers 对外暴露给迁移测试。新的浏览器驱动转换代码放在 `src/adapters/html/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`；新功能不得继续扩展历史模板路径。
 
-新模块建议：
+当前模块布局：
 
 ```text
 src/
   semantic-model/
-    document-model.js
-    labels.js
-    styles.js
-    assets.js
-    validators.js
-  paged-html/
-    browser-snapshot.js
-    style-compiler.js
-    semantic-model-compiler.js
-    instructions-compiler.js
-    instructions-validator.js
-  indesign-reverse/
-    snapshot-reader.js
-    label-protocol.js
-    reverse-model.js
-    blueprint-migration.js
-    html-writer.js
-    asset-exporter.js
-    report.js
+    index.js
+    layout.js
+    validator.js
+  adapters/
+    html/
+      reader/browser-snapshot.js
+      reader/style-reader.js
+      normalizer/snapshot-to-model.js
+    indesign/
+      reader/snapshot-reader.js
+      normalizer/snapshot-to-model.js
+      normalizer/blueprint-migration.js
+    pptx/
+      contracts.js
+      capabilities.js
+  writers/
+    indesign/
+      style-compiler.js
+      instructions-compiler.js
+      instructions-validator.js
+    html/
+      visual-html-writer.js
+      author-package-writer.js
+      audit/
+        source-roundtrip-diff.js
+        visual-geometry-audit.js
+  protocol/
+    index.js
+    fields/
+    validators/
+    scanners/
   shared/
+    style-utils.js
+    labels.js
+    nas-paths.js
     report.js
     geometry.js
     assets.js
 ```
 
-`instructions-compiler.js` 后续应从“直接消费浏览器快照”迁移为“消费 Semantic Model 并生成 InDesign instructions”。迁移期间可以保留兼容入口，但新增双向能力必须围绕 Semantic Model 和标签协议实现。
+`instructions-compiler.js` 位于 InDesign writer 边界，负责把 Semantic Model 派生为 InDesign instructions。新增双向能力必须围绕 Semantic Model、协议字段注册表和标签协议实现，不得重新引入旧目录 facade 或绕过 adapter/writer 边界。
 
 ## 17. 非目标
 

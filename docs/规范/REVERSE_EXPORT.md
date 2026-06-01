@@ -367,14 +367,15 @@ _indesign_scripts/export_to_html_snapshot.jsx
 新增模块：
 
 ```text
-src/indesign-reverse/
-  snapshot-reader.js
-  label-protocol.js
-  reverse-model.js
-  blueprint-migration.js
-  html-writer.js
-  asset-exporter.js
-  report.js
+src/adapters/indesign/
+  reader/snapshot-reader.js
+  normalizer/label-whitelist.js
+  normalizer/snapshot-to-model.js
+  normalizer/blueprint-migration.js
+src/writers/html/
+  visual-html-writer.js
+  author-package-writer.js
+  audit/author-audit.js
 ```
 
 职责：

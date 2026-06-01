@@ -67,11 +67,13 @@
 
 | 路径 | 作用 |
 | ---- | ---- |
-| `src/paged-html/` | 浏览器快照、样式读取、语义到构建指令的编译层 |
-| `src/semantic-model/` | 计划中的统一语义模型层，承接 HTML 与 InDesign 双向事实 |
-| `src/indesign-reverse/` | 计划中的 InDesign 反向导出层 |
-| `src/protocol/` | 计划中的协议字段注册表、能力矩阵和字段生命周期管理 |
-| `src/adapters/` | 计划中的多格式适配器边界；HTML/InDesign/PPTX 等格式不得绕过语义模型互转 |
+| `src/adapters/html/` | HTML 适配器：浏览器快照、样式/资源读取、HTML snapshot 到语义模型归一化 |
+| `src/writers/indesign/` | InDesign 写出器：语义模型到构建指令、样式编译和 instructions 校验 |
+| `src/adapters/indesign/` | InDesign 适配器：反向 snapshot 读取、标签白名单、历史 blueprint 迁移 |
+| `src/writers/html/` | HTML 写出器：语义模型到固定语义 HTML、视觉 HTML、作者包和审核报告 |
+| `src/semantic-model/` | 统一语义模型层，承接 HTML 与 InDesign 双向事实 |
+| `src/protocol/` | 协议字段注册表、能力矩阵和字段生命周期管理 |
+| `src/adapters/pptx/` | PPTX 适配器 contract 与能力声明；不得绕过语义模型互转 |
 | `src/` 根层旧模块 | blueprint、规范生成、校验、早期 builder |
 | `_indesign_scripts/` | InDesign 端执行脚本和共享 JSX 库 |
 | `test/fixtures/` | HTML、资源和语义样例 |
