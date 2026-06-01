@@ -11,6 +11,7 @@ const { scanModelPaths } = require('./scanners/scan-model-paths');
 const { createFieldRegistry } = require('./registry');
 const { validateDataIdFields } = require('./validators/validate-data-id-fields');
 const { validateInstructionFields } = require('./validators/validate-instruction-fields');
+const { validateLabelFields } = require('./validators/validate-label-fields');
 const { validateModelFields } = require('./validators/validate-model-fields');
 const {
   CAPABILITY_LEVELS,
@@ -70,5 +71,6 @@ module.exports = Object.freeze({
   validateDataIdFields,
   validateFieldEntry,
   validateInstructionFields,
+  validateLabelFields,
   validateModelFields,
 });

@@ -1,5 +1,7 @@
 'use strict';
 
+const { fieldRegistry, validateLabelFields } = require('../protocol');
+
 function validateReverseLabel(label = {}, options = {}) {
   const preset = options.preset || {};
   const known = knownTokens(preset);
@@ -7,7 +9,19 @@ function validateReverseLabel(label = {}, options = {}) {
   const observed = {};
   const rejectedFields = {};
   const rejectionReasons = [];
+  const warnings = [];
+  const errors = [];
+  let fieldValidation = null;
 
+  if (shouldValidateFields(options)) {
+    fieldValidation = validateLabelFields(fieldRegistry, label, {
+      strict: options.strictFields === true,
+      mode: options.mode,
+    });
+    warnings.push(...fieldValidation.warnings);
+    errors.push(...fieldValidation.errors);
+    applyFieldValidation(label, fieldValidation, observed, rejectedFields, rejectionReasons);
+  }
   applySemantic(label, known, effective, observed, rejectedFields, rejectionReasons);
   applyLayout(label, known, effective, observed, rejectedFields, rejectionReasons);
   applyStyleRefs(label, known, effective, observed, rejectedFields, rejectionReasons);
@@ -19,7 +33,73 @@ function validateReverseLabel(label = {}, options = {}) {
     observed,
     rejectedFields,
     rejectionReasons,
+    valid: errors.length === 0,
+    warnings,
+    errors,
+    fieldValidation,
   };
+}
+
+function shouldValidateFields(options) {
+  return options.strictFields === true
+    || options.warnFields === true
+    || options.mode === 'observation';
+}
+
+function applyFieldValidation(label, validation, observed, rejectedFields, reasons) {
+  for (const path of [...validation.unknown, ...validation.retired.map((entry) => entry.path)]) {
+    observeRejectedPayloadPath(label, path, observed);
+    rejectedFields[path] = 'label-field-not-registered';
+    if (!reasons.includes('label-field-not-registered')) {
+      reasons.push('label-field-not-registered');
+    }
+  }
+}
+
+function observeRejectedPayloadPath(label, path, observed) {
+  const parts = String(path || '').split('.');
+  if (!parts.length) return;
+  if (parts.length === 1) {
+    const key = parts[0];
+    if (Object.prototype.hasOwnProperty.call(label, key)) {
+      observed[key] = clone(label[key]);
+    }
+    return;
+  }
+
+  const [head, ...tail] = parts;
+  const value = valueAtPath(label, [head, ...tail]);
+  if (value === undefined) return;
+  if (!observed[head] || typeof observed[head] !== 'object' || Array.isArray(observed[head])) {
+    observed[head] = {};
+  }
+  setValueAtPath(observed[head], tail, clone(value));
+}
+
+function valueAtPath(value, parts) {
+  let current = value;
+  for (const part of parts) {
+    if (!current || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, part)) {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function setValueAtPath(target, parts, value) {
+  let current = target;
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
+    if (index === parts.length - 1) {
+      current[part] = value;
+      return;
+    }
+    if (!current[part] || typeof current[part] !== 'object' || Array.isArray(current[part])) {
+      current[part] = {};
+    }
+    current = current[part];
+  }
 }
 
 function applySemantic(label, known, effective, observed, rejectedFields, reasons) {

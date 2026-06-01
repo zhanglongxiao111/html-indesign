@@ -6,7 +6,16 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const styleMaps = reverseStyleNameMaps(snapshot.styles || {});
   const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options);
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
-  const context = { semanticPreset, layerVisibility };
+  const reverseMode = options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured';
+  const context = {
+    semanticPreset,
+    layerVisibility,
+    labelOptions: {
+      mode: reverseMode,
+      strictFields: options.strictFields === true,
+      warnFields: options.warnFields === true,
+    },
+  };
   const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, context));
   return {
     kind: 'DocumentModel',
@@ -25,13 +34,13 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     assets: snapshot.assets || [],
     warnings: [],
     report: null,
-    reverseMode: options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured',
+    reverseMode,
   };
 }
 
 function reversePage(page, styleMaps, context = {}) {
   const label = firstLabel(page.labels, 'page') || {};
-  const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'page' });
+  const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'page', ...context.labelOptions });
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
   const parent = label.parentPage || {};
@@ -61,7 +70,7 @@ function reversePage(page, styleMaps, context = {}) {
 
 function reverseItem(item, styleMaps = {}, context = {}) {
   const label = firstLabel(item.labels, 'item') || {};
-  const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'item' });
+  const validation = validateReverseLabel(label, { preset: context.semanticPreset, kind: 'item', ...context.labelOptions });
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
   const role = label.role || roleFromInDesignType(item.type, item);

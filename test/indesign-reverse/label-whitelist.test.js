@@ -70,3 +70,46 @@ test('validateReverseLabel treats standard style-map tokens as known semantics',
   assert.equal(result.effective.semantic, 'metric-card');
   assert.equal(result.effective.styleRefs.objectStyle, 'metric-card');
 });
+
+test('validateReverseLabel reports unknown payload fields without making them effective', () => {
+  const result = validateReverseLabel({
+    semantic: 'page-title',
+    role: 'text',
+    madeUpField: 'copied-template-value',
+  }, { preset, warnFields: true });
+
+  assert.equal(result.status, 'partial');
+  assert.equal(result.effective.semantic, 'page-title');
+  assert.equal(result.effective.madeUpField, undefined);
+  assert.equal(result.observed.madeUpField, 'copied-template-value');
+  assert.equal(result.rejectedFields.madeUpField, 'label-field-not-registered');
+  assert.equal(
+    result.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && warning.path === 'madeUpField'
+    )),
+    true,
+  );
+});
+
+test('validateReverseLabel accepts registered common and nested payload fields in field strict mode', () => {
+  const result = validateReverseLabel({
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'title',
+    semantic: 'page-title',
+    role: 'text',
+    styleRefs: { paragraphStyle: 'page-title' },
+    sourceFile: 'pages/cover.html',
+    sourceText: 'Cover',
+    sourceHtml: '<span>Cover</span>',
+    sourceRuns: [{ text: 'Cover' }],
+    structure: { parentId: 'cover' },
+  }, { preset, strictFields: true });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.status, 'accepted');
+  assert.equal(result.effective.sourceFile, 'pages/cover.html');
+  assert.deepEqual(result.fieldValidation.unknown, []);
+});

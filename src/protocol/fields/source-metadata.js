@@ -11,6 +11,9 @@ module.exports = [
       indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
     },
+    indesign: {
+      labelPaths: ['sourceNode'],
+    },
   },
   {
     canonicalPath: 'items[].sourceAncestorNodes',
@@ -23,6 +26,89 @@ module.exports = [
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['sourceAncestorNodes'],
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceFile',
+    currentPaths: ['pages[].sourceFile', 'labels[].sourceFile', 'effectiveLabel.sourceFile'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['sourceFile'],
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceText',
+    currentPaths: ['labels[].sourceText', 'effectiveLabel.sourceText'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['sourceText'],
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceHtml',
+    currentPaths: ['labels[].sourceHtml', 'effectiveLabel.sourceHtml'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['sourceHtml'],
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceHtmlTag',
+    currentPaths: ['labels[].htmlTag', 'effectiveLabel.htmlTag'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['htmlTag'],
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceClassName',
+    currentPaths: ['labels[].className', 'effectiveLabel.className'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['className'],
     },
   },
   {
@@ -50,6 +136,9 @@ module.exports = [
       indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
     },
+    indesign: {
+      labelPaths: ['structure'],
+    },
   },
   {
     canonicalPath: 'items[].sourceRuns',
@@ -62,6 +151,9 @@ module.exports = [
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      labelPaths: ['sourceRuns'],
     },
   },
 ];

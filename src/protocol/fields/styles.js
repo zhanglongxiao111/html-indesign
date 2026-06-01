@@ -16,7 +16,7 @@ module.exports = [
       writeAttrs: ['data-id-paragraph-style'],
     },
     indesign: {
-      labelPaths: ['styleRefs.paragraphStyle'],
+      labelPaths: ['styleRefs.paragraphStyle', 'styleRefs.paragraphStyleToken'],
       instructionPaths: ['paragraphStyle'],
     },
     pptx: {
@@ -45,7 +45,7 @@ module.exports = [
       writeAttrs: ['data-id-character-style'],
     },
     indesign: {
-      labelPaths: ['styleRefs.characterStyle'],
+      labelPaths: ['styleRefs.characterStyle', 'styleRefs.characterStyleToken'],
       instructionPaths: ['characterStyle'],
     },
     pptx: {
@@ -69,7 +69,7 @@ module.exports = [
       writeAttrs: ['data-id-object-style'],
     },
     indesign: {
-      labelPaths: ['styleRefs.objectStyle'],
+      labelPaths: ['styleRefs.objectStyle', 'styleRefs.objectStyleToken'],
       instructionPaths: ['objectStyle'],
     },
     pptx: {
@@ -93,7 +93,7 @@ module.exports = [
       writeAttrs: ['data-id-table-style'],
     },
     indesign: {
-      labelPaths: ['styleRefs.tableStyle'],
+      labelPaths: ['styleRefs.tableStyle', 'styleRefs.tableStyleToken'],
       instructionPaths: ['tableStyle'],
     },
     pptx: {
@@ -117,11 +117,59 @@ module.exports = [
       writeAttrs: ['data-id-layer'],
     },
     indesign: {
-      labelPaths: ['layerToken'],
+      labelPaths: ['styleRefs.layer', 'styleRefs.layerToken', 'layer', 'layerToken'],
       instructionPaths: ['layer'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.items[].styleRefs.layer'],
+    },
+  },
+  {
+    canonicalPath: 'items[].styleRefs.frameStyle',
+    currentPaths: ['items[].frameStyle', 'labels[].frameStyle', 'labels[].frameStyleToken'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'style-refs',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+    },
+    html: {
+      readAttrs: ['data-id-frame-style'],
+      writeAttrs: ['data-id-frame-style'],
+    },
+    indesign: {
+      labelPaths: ['styleRefs.frameStyle', 'styleRefs.frameStyleToken'],
+      instructionPaths: ['frameStyle'],
+    },
+    pptx: {
+      customDataPaths: ['htmlIndesign.items[].styleRefs.frameStyle'],
+    },
+  },
+  {
+    canonicalPath: 'items[].styleRefs.cellStyle',
+    currentPaths: ['items[].cellStyle', 'labels[].cellStyle', 'labels[].cellStyleToken'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'style-refs',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+    },
+    html: {
+      readAttrs: ['data-id-cell-style'],
+      writeAttrs: ['data-id-cell-style'],
+    },
+    indesign: {
+      labelPaths: ['styleRefs.cellStyle', 'styleRefs.cellStyleToken'],
+      instructionPaths: ['cellStyle'],
+    },
+    pptx: {
+      customDataPaths: ['htmlIndesign.items[].styleRefs.cellStyle'],
     },
   },
 ];

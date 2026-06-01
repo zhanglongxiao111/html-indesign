@@ -1,8 +1,16 @@
-function validateSemanticModel(model) {
+const {
+  fieldRegistry,
+  scanModelPaths,
+  validateModelFields,
+} = require('../protocol');
+
+function validateSemanticModel(model, options = {}) {
   const errors = [];
+  const warnings = [];
+  let fieldValidation = null;
   if (!model || model.kind !== 'DocumentModel') {
     errors.push({ code: 'SEMANTIC_MODEL_INVALID', message: 'Expected DocumentModel.' });
-    return { valid: false, errors, warnings: [] };
+    return { valid: false, errors, warnings };
   }
   if (!hasLabel(model.labels, 'document')) {
     errors.push({ code: 'DOCUMENT_LABEL_MISSING', message: 'Document html_indesign label is missing.' });
@@ -13,7 +21,23 @@ function validateSemanticModel(model) {
   for (const page of model.pages || []) {
     validatePage(page, errors);
   }
-  return { valid: errors.length === 0, errors, warnings: [] };
+  if (options.strictFields === true || options.warnFields === true) {
+    fieldValidation = validateModelFields(
+      fieldRegistry,
+      scanModelPaths(model),
+      { strict: options.strictFields === true },
+    );
+    warnings.push(...fieldValidation.warnings);
+    if (options.strictFields === true) {
+      errors.push(...fieldValidation.errors);
+    }
+  }
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    fieldValidation,
+  };
 }
 
 function validatePage(page, errors) {

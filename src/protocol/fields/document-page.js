@@ -70,7 +70,7 @@ module.exports = [
   },
   {
     canonicalPath: 'pages[].layout',
-    currentPaths: ['pages[].semanticLayout'],
+    currentPaths: ['pages[].semanticLayout', 'labels[].layout'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'document-page',
@@ -85,10 +85,42 @@ module.exports = [
       writeAttrs: ['data-id-layout'],
     },
     indesign: {
-      labelPaths: ['page.layout'],
+      labelPaths: ['page.layout', 'layout'],
     },
     pptx: {
       customDataPaths: ['htmlIndesign.pages[].layout'],
+    },
+  },
+  {
+    canonicalPath: 'pages[].parentPage',
+    currentPaths: ['labels[].parentPage'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'document-page',
+    type: 'object',
+    capabilities: {
+      html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+    },
+    indesign: {
+      labelPaths: ['parentPage'],
+    },
+  },
+  {
+    canonicalPath: 'pages[].margins',
+    currentPaths: ['labels[].margins'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document-page',
+    type: 'object',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+    },
+    indesign: {
+      labelPaths: ['margins'],
     },
   },
   {
