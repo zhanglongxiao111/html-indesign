@@ -56,6 +56,7 @@
   - 2026-06-01 controller exact source value 复验：通过。direct probes 确认 slash/backslash mismatch hard error accepted 0、whitespace mismatch hard error accepted 0、raw exact match 仍 `AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED` accepted 1；`rg` 确认 `normalizeSourceMetadataValue`、`replace(/\\/g, '/')` source accepted path、`optionalString(value.sourceCsv/sourceXml)` 无命中；focused audit/cli/author-html-tree/asset-reference-policy 60/60；roundtrip audit 7/7 warnings 0 errors 0；reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35；`npm test` 546/546；`git diff --check` PASS；`git diff --cached --check` PASS；worktree clean。下一步：quality re-review agent 复审 `166b107`。
   - 2026-06-01 exact source value 质量复审：quality re-review agent `019e8399-29db-7372-aeb2-86cbc848d8c8` RUNNING（gpt-5.4 xhigh）。复审重点：确认 `166b107` 关闭 path normalization / trim-as-equality blocker，并严查 authoring-report alias、asset packager alias、candidate-only、partial-match、extra-field、未登记字段或 fixture hardcode 是否仍可进入 accepted authority。
   - 2026-06-02 exact source value 质量复审结果：quality re-review agent `019e8399-29db-7372-aeb2-86cbc848d8c8` ERRORED：gpt-5.4 xhigh usage limit，无有效审核产出，不作为质量结论。下一步：启动 replacement quality re-review agent 继续复审 `166b107`。
+  - 2026-06-02 exact source value replacement 质量复审：quality re-review agent `019e845a-8a24-7351-a1a7-01dd32d513ab` RUNNING（gpt-5.4 xhigh）。复审重点同上：确认 raw exact source authority，无 path normalization、trim-as-equality、authoring-report/asset alias、candidate-only、partial-match、extra-field、未登记字段或 fixture hardcode 进入 accepted authority。
 
 执行原则：
 
