@@ -111,7 +111,7 @@
 | 人工 InDesign，按协议打标签 | 有规范脚本标签 | 高 | 正式支持 |
 | 人工 InDesign，只使用模板但无标签 | 有母版和样式，语义不完整 | 中 | 输出观察 HTML 和模板线索 |
 | 普通未标注 InDesign | 只有视觉对象 | 低 | 输出观察 HTML，等待 Agent 语义化 |
-| 历史 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `blueprintMigrationToSemanticModel` 进入 `indesign-reverse`，输出 inferred/observation HTML |
+| 历史 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `blueprintMigrationToSemanticModel` 进入 `src/adapters/indesign` 归一化为统一语义模型，再由 `src/writers/html` 输出 inferred/observation HTML |
 
 首次来自人类用户的 InDesign 文档通常语义混乱，可能混入旧模板、复制来的脚本标签或不符合本项目协议的自定义标签。反向导出不得信任这些标签的存在本身，只能信任通过当前语义库白名单复核的字段。Agent 拿到观察 HTML 后，应根据页面视觉、图层、样式、资源和用户意图重建符合白名单的语义，再导回结构化 InDesign。
 
