@@ -11,6 +11,10 @@ module.exports = [
       indesign: { read: 'native', write: 'native', persist: 'native' },
       pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'svg' },
     },
+    html: {
+      readAttrs: ['data-id-vector'],
+      writeAttrs: ['data-id-vector'],
+    },
     indesign: {
       snapshotPaths: ['vectorGeometry.kind'],
     },

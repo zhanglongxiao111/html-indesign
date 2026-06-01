@@ -84,6 +84,9 @@ async function captureHtmlGeometry(htmlFile) {
         return Math.round(Number(value || 0) * 1000) / 1000;
       }
       function metadataFor(element, pageElement) {
+        const dataIdAttrs = Array.from(element.attributes || [])
+          .map((attribute) => attribute.name)
+          .filter((name) => name.startsWith('data-id-'));
         return {
           pageId: pageElement.id || '',
           role: element.getAttribute('data-id-role') || '',
@@ -93,6 +96,7 @@ async function captureHtmlGeometry(htmlFile) {
           tableStyle: element.getAttribute('data-id-table-style') || '',
           sourceCsv: element.getAttribute('data-id-source-csv') || '',
           sourceXml: element.getAttribute('data-id-source-xml') || '',
+          dataIdAttrs,
           classList: Array.from(element.classList || []),
         };
       }

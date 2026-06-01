@@ -1,3 +1,5 @@
+const { fieldRegistry } = require('../../../protocol');
+
 function compareVisualGeometry(options = {}) {
   const reference = normalizeCapture(options.reference);
   const candidate = normalizeCapture(options.candidate);
@@ -129,6 +131,7 @@ function normalizeBox(value, element = false) {
     tableStyle: optionalString(value.tableStyle),
     sourceCsv: optionalString(value.sourceCsv),
     sourceXml: optionalString(value.sourceXml),
+    dataIdAttrs: normalizeDataIdAttrs(value.dataIdAttrs || value.dataIdFields || value.htmlAttrs),
     classList: normalizeClassList(value.classList || value.className || value.classes),
     x: num(value.x),
     y: num(value.y),
@@ -186,7 +189,7 @@ function isGeneratedPageBackground(element, context) {
   const page = context.referencePagesByIndex && context.referencePagesByIndex.get(element.pageIndex);
   if (!page || !page.id) return false;
   if (element.id !== `${page.id}-background`) return false;
-  if (!hasRole(element, 'background') || !isVectorRectangle(element)) return false;
+  if (!hasRegisteredRole(element, 'background') || !isRegisteredVectorRectangle(element)) return false;
   if (String(element.tagName || '').toLowerCase() !== 'svg') return false;
   const tolerance = Number.isFinite(Number(context.tolerance)) ? Number(context.tolerance) : 2;
   return maxDelta(geometryDelta({
@@ -199,16 +202,16 @@ function isGeneratedPageBackground(element, context) {
 
 function isGeneratedBorderFragment(element, context) {
   const match = /^(.*)-border-(left|right|top|bottom)$/.exec(String(element && element.id || ''));
-  if (!match || !hasRole(element, 'decoration') || !isVectorRectangle(element)) return false;
+  if (!match || !hasRegisteredRole(element, 'decoration') || !isRegisteredVectorRectangle(element)) return false;
   const baseReference = samePageElement(context.referenceElements, element, match[1]);
   const baseCandidate = samePageElement(context.candidateElements, element, match[1]);
-  if (!baseReference || !baseCandidate || !isVectorRectangle(baseReference)) return false;
+  if (!baseReference || !baseCandidate || !isRegisteredVectorRectangle(baseReference)) return false;
   return hasBorderFragmentGeometry(element, match[2]);
 }
 
 function isGeneratedTextFragment(element, context) {
   const match = /^(.*)-text$/.exec(String(element && element.id || ''));
-  if (!match || !hasRole(element, 'text')) return false;
+  if (!match || !hasRegisteredRole(element, 'text')) return false;
   const baseReference = samePageElement(context.referenceElements, element, match[1]);
   const baseCandidate = samePageElement(context.candidateElements, element, match[1]);
   if (!baseReference || !baseCandidate) return false;
@@ -229,8 +232,8 @@ function hasBorderFragmentGeometry(element, side) {
 }
 
 function isAnnotationBase(element) {
-  if (hasRole(element, 'annotation')) return true;
-  return String(element && element.objectStyle || '').toLowerCase() === 'annotation-label';
+  if (hasRegisteredRole(element, 'annotation')) return true;
+  return hasRegisteredObjectStyle(element, 'annotation-label');
 }
 
 function isReverseAuthorTableNormalization(reference, candidate) {
@@ -241,7 +244,8 @@ function isReverseAuthorTableNormalization(reference, candidate) {
     refTableStyle
       && candidateTableStyle
       && refTableStyle === candidateTableStyle
-      && (candidate.sourceCsv || candidate.sourceXml),
+      && hasRegisteredDataIdAttr(candidate, 'data-id-table-style', 'canonical')
+      && hasRegisteredTableSourceMetadata(candidate),
   );
 }
 
@@ -250,7 +254,7 @@ function isReverseAuthorTextMetricNormalization(reference, candidate) {
 }
 
 function isPageNumberText(element) {
-  return hasClass(element, 'page-number') || String(element && element.paragraphStyle || '').trim().toLowerCase() === 'folio';
+  return hasRegisteredParagraphStyle(element, 'folio');
 }
 
 function hasRole(element, role) {
@@ -261,8 +265,44 @@ function isVectorRectangle(element) {
   return String(element && element.vector || '').trim().toLowerCase() === 'rectangle';
 }
 
-function hasClass(element, className) {
-  return Array.isArray(element && element.classList) && element.classList.includes(className);
+function hasRegisteredRole(element, role) {
+  return hasRole(element, role) && hasRegisteredDataIdAttr(element, 'data-id-role', 'canonical');
+}
+
+function isRegisteredVectorRectangle(element) {
+  return isVectorRectangle(element) && hasRegisteredDataIdAttr(element, 'data-id-vector', 'canonical');
+}
+
+function hasRegisteredObjectStyle(element, objectStyle) {
+  return (
+    String(element && element.objectStyle || '').trim().toLowerCase() === objectStyle
+    && hasRegisteredDataIdAttr(element, 'data-id-object-style', 'canonical')
+  );
+}
+
+function hasRegisteredParagraphStyle(element, paragraphStyle) {
+  return Boolean(
+    hasRegisteredDataIdAttr(element, 'data-id-paragraph-style', 'canonical')
+      && String(element && element.paragraphStyle || '').trim().toLowerCase() === paragraphStyle,
+  );
+}
+
+function hasRegisteredTableSourceMetadata(element) {
+  return Boolean(
+    (element.sourceCsv && hasRegisteredDataIdAttr(element, 'data-id-source-csv', 'sourceMetadata'))
+      || (element.sourceXml && hasRegisteredDataIdAttr(element, 'data-id-source-xml', 'sourceMetadata')),
+  );
+}
+
+function hasRegisteredDataIdAttr(element, attr, fieldClass) {
+  const field = fieldRegistry.getByHtmlAttr(attr);
+  return Boolean(
+    field
+      && field.lifecycle === 'active'
+      && (!fieldClass || field.fieldClass === fieldClass)
+      && Array.isArray(element && element.dataIdAttrs)
+      && element.dataIdAttrs.includes(attr),
+  );
 }
 
 function isInlineTextTag(tagName) {
@@ -272,6 +312,19 @@ function isInlineTextTag(tagName) {
 function normalizeClassList(value) {
   if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
   return String(value || '').split(/\s+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeDataIdAttrs(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const attrs = [];
+  for (const item of value) {
+    const attr = String(item || '').trim();
+    if (!attr.startsWith('data-id-') || seen.has(attr)) continue;
+    seen.add(attr);
+    attrs.push(attr);
+  }
+  return attrs;
 }
 
 function optionalString(value) {

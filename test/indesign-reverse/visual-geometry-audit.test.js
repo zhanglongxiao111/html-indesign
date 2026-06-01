@@ -55,18 +55,18 @@ test('compareVisualGeometry accepts generated visual fragments only from structu
     reference: {
       pages: [{ index: 0, id: 'cover', width: 1000, height: 600 }],
       elements: [
-        { key: '0:cover-background', id: 'cover-background', pageIndex: 0, tagName: 'svg', role: 'background', vector: 'rectangle', x: 0, y: 0, width: 1000, height: 600 },
-        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', x: 20, y: 20, width: 200, height: 100 },
-        { key: '0:card-border-left', id: 'card-border-left', pageIndex: 0, tagName: 'svg', role: 'decoration', vector: 'rectangle', x: 20, y: 20, width: 2, height: 100 },
-        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', x: 40, y: 40, width: 120, height: 32 },
-        { key: '0:label-text', id: 'label-text', pageIndex: 0, tagName: 'span', role: 'text', x: 48, y: 48, width: 80, height: 20 },
+        { key: '0:cover-background', id: 'cover-background', pageIndex: 0, tagName: 'svg', role: 'background', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 0, y: 0, width: 1000, height: 600 },
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 200, height: 100 },
+        { key: '0:card-border-left', id: 'card-border-left', pageIndex: 0, tagName: 'svg', role: 'decoration', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 2, height: 100 },
+        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-object-style', 'data-id-vector'], x: 40, y: 40, width: 120, height: 32 },
+        { key: '0:label-text', id: 'label-text', pageIndex: 0, tagName: 'span', role: 'text', dataIdAttrs: ['data-id-role'], x: 48, y: 48, width: 80, height: 20 },
       ],
     },
     candidate: {
       pages: [{ index: 0, id: 'cover', width: 1000, height: 600 }],
       elements: [
-        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', x: 20, y: 20, width: 200, height: 100 },
-        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', x: 40, y: 40, width: 120, height: 32 },
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 200, height: 100 },
+        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-object-style', 'data-id-vector'], x: 40, y: 40, width: 120, height: 32 },
       ],
     },
     tolerance: 2,
@@ -133,15 +133,15 @@ test('compareVisualGeometry accepts known text metrics and table height drift as
     reference: {
       pages: [{ index: 0, width: 1000, height: 600 }],
       elements: [
-        { key: '0:folio', id: 'folio', pageIndex: 0, tagName: 'span', paragraphStyle: 'folio', classList: ['page-number'], x: 900, y: 560, width: 17.6, height: 12.8 },
-        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', x: 300, y: 100, width: 500, height: 301 },
+        { key: '0:folio', id: 'folio', pageIndex: 0, tagName: 'span', paragraphStyle: 'folio', classList: ['page-number'], dataIdAttrs: ['data-id-paragraph-style'], x: 900, y: 560, width: 17.6, height: 12.8 },
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv'], x: 300, y: 100, width: 500, height: 301 },
       ],
     },
     candidate: {
       pages: [{ index: 0, width: 1000, height: 600 }],
       elements: [
-        { key: '0:folio', id: 'folio', pageIndex: 0, tagName: 'span', paragraphStyle: 'folio', classList: ['page-number'], x: 900.1, y: 560.1, width: 11.9, height: 12 },
-        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', x: 300.1, y: 100.1, width: 500, height: 284 },
+        { key: '0:folio', id: 'folio', pageIndex: 0, tagName: 'span', paragraphStyle: 'folio', classList: ['page-number'], dataIdAttrs: ['data-id-paragraph-style'], x: 900.1, y: 560.1, width: 11.9, height: 12 },
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', dataIdAttrs: ['data-id-table-style', 'data-id-source-csv'], x: 300.1, y: 100.1, width: 500, height: 284 },
       ],
     },
     tolerance: 2,
@@ -180,6 +180,30 @@ test('compareVisualGeometry reports ordinary table height shrink as an error', (
   assert.equal(report.stats.accepted, 0);
 });
 
+test('compareVisualGeometry rejects table height drift when source hint lacks registered attribute evidence', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', dataIdAttrs: ['data-id-table-style'], x: 300, y: 100, width: 500, height: 301 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:metrics', id: 'metrics', pageIndex: 0, tagName: 'table', tableStyle: 'area-table', sourceCsv: 'assets/metrics.csv', dataIdAttrs: ['data-id-table-style'], x: 300.1, y: 100.1, width: 500, height: 284 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'metrics'), true);
+  assert.equal(report.stats.mismatched, 1);
+  assert.equal(report.stats.accepted, 0);
+});
+
 test('compareVisualGeometry reports ordinary inline text clipping as an error', () => {
   const report = compareVisualGeometry({
     reference: {
@@ -200,6 +224,30 @@ test('compareVisualGeometry reports ordinary inline text clipping as an error', 
   assert.equal(report.ok, false);
   assert.equal(report.warnings.length, 0);
   assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'caption'), true);
+  assert.equal(report.stats.mismatched, 1);
+  assert.equal(report.stats.accepted, 0);
+});
+
+test('compareVisualGeometry rejects page-number class-only text metrics drift', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:folio', id: 'folio', pageIndex: 0, tagName: 'span', classList: ['page-number'], x: 900, y: 560, width: 17.6, height: 12.8 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:folio', id: 'folio', pageIndex: 0, tagName: 'span', classList: ['page-number'], x: 900.1, y: 560.1, width: 11.9, height: 12 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.warnings.length, 0);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'folio'), true);
   assert.equal(report.stats.mismatched, 1);
   assert.equal(report.stats.accepted, 0);
 });

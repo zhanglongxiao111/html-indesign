@@ -165,4 +165,56 @@ module.exports = [
       labelKinds: ['page', 'item'],
     },
   },
+  {
+    canonicalPath: 'items[].sourceNode.attributes.data-id-source-csv',
+    currentPaths: [
+      'sourceNode.attributes.data-id-source-csv',
+      'labels[].sourceNode.attributes.data-id-source-csv',
+      'effectiveLabel.sourceNode.attributes.data-id-source-csv',
+      'pages[].items[].sourceNode.attributes.data-id-source-csv',
+    ],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: ['data-id-source-csv'],
+      writeAttrs: ['data-id-source-csv'],
+    },
+    indesign: {
+      labelPaths: ['sourceNode.attributes.data-id-source-csv'],
+      labelKinds: ['item'],
+    },
+  },
+  {
+    canonicalPath: 'items[].sourceNode.attributes.data-id-source-xml',
+    currentPaths: [
+      'sourceNode.attributes.data-id-source-xml',
+      'labels[].sourceNode.attributes.data-id-source-xml',
+      'effectiveLabel.sourceNode.attributes.data-id-source-xml',
+      'pages[].items[].sourceNode.attributes.data-id-source-xml',
+    ],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'string',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: ['data-id-source-xml'],
+      writeAttrs: ['data-id-source-xml'],
+    },
+    indesign: {
+      labelPaths: ['sourceNode.attributes.data-id-source-xml'],
+      labelKinds: ['item'],
+    },
+  },
 ];

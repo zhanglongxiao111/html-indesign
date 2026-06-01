@@ -143,3 +143,39 @@ test('validateDataIdFields rejects unknown data-id fields in strict mode while k
     true,
   );
 });
+
+test('validateDataIdFields accepts reverse-author active protocol data-id fields in strict mode', () => {
+  const attrs = [
+    'data-id-role',
+    'data-id-vector',
+    'data-id-object-style',
+    'data-id-paragraph-style',
+    'data-id-table-style',
+    'data-id-source-csv',
+    'data-id-source-xml',
+  ];
+
+  const result = validateDataIdFields(fieldRegistry, attrs, { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.accepted, attrs);
+  assert.deepEqual(result.unknown, []);
+  assert.deepEqual(result.retired, []);
+  assert.deepEqual(result.errors, []);
+
+  const vectorField = fieldRegistry.getByHtmlAttr('data-id-vector');
+  assert.equal(vectorField.canonicalPath, 'items[].vectorGeometry.kind');
+  assert.equal(vectorField.fieldClass, 'canonical');
+
+  for (const attr of ['data-id-source-csv', 'data-id-source-xml']) {
+    const field = fieldRegistry.getByHtmlAttr(attr);
+    assert.equal(field.fieldClass, 'sourceMetadata', `${attr} must be registered as source metadata`);
+    assert.equal(field.capabilities.html.read, 'native');
+    assert.equal(field.capabilities.html.write, 'native');
+    assert.equal(field.capabilities.html.persist, 'native');
+    assert.equal(field.capabilities.indesign.write, 'observe-only');
+    assert.equal(field.capabilities.indesign.persist, 'lossless');
+    assert.equal(field.capabilities.pptx.read, 'unsupported');
+    assert.equal(field.capabilities.pptx.persist, 'lossless');
+  }
+});
