@@ -97,7 +97,26 @@ test('reverseSnapshotToSemanticModel output is strict-valid for registered rever
         name: 'A-Parent',
         labels: [{ protocol: 'html-indesign', version: 1, kind: 'parentPage', id: 'parent-a' }],
         bounds: { x: 0, y: 0, width: 800, height: 450 },
-        items: [],
+        items: [{
+          id: 'parent-rule',
+          type: 'GraphicLine',
+          bounds: { x: 40, y: 420, width: 720, height: 0 },
+          layerName: 'Decor',
+          vectorGeometry: {
+            kind: 'line',
+            paths: [{
+              points: [
+                { anchor: { x: 40, y: 420 } },
+                { anchor: { x: 760, y: 420 } },
+              ],
+            }],
+          },
+          visualStyle: {
+            strokeColor: '#c8102e',
+            strokeWeight: 2,
+          },
+          labels: [],
+        }],
       },
     ],
     layers: [{ name: 'Text', visible: true, printable: true }],

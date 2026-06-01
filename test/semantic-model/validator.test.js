@@ -71,7 +71,11 @@ test('validateSemanticModel rejects nested root-surface ghosts in strict field m
     kind: 'DocumentModel',
     id: 'doc',
     labels: [{ kind: 'document', id: 'doc' }],
-    parentPages: [{ id: 'parent-a', ghost: true }],
+    parentPages: [{
+      id: 'parent-a',
+      ghost: true,
+      items: [{ id: 'parent-rule', role: 'line', ghost: true }],
+    }],
     layers: [{ token: 'text', ghost: true }],
     styles: {
       paragraphStyles: {
@@ -90,6 +94,7 @@ test('validateSemanticModel rejects nested root-surface ghosts in strict field m
   assert.equal(result.valid, false);
   assert.deepEqual(result.fieldValidation.unknown, [
     'parentPages[].ghost',
+    'parentPages[].items[].ghost',
     'layers[].ghost',
     'styles.paragraphStyles[].ghost',
     'pages[].effectiveLabel.ghost',

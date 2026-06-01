@@ -129,6 +129,53 @@ test('validateModelFields rejects nested ghosts on registered root surfaces in s
   }
 });
 
+test('validateModelFields rejects unknown parent page item fields in strict mode', () => {
+  const scannedPaths = scanModelPaths({
+    parentPages: [{
+      id: 'parent-a',
+      items: [{
+        id: 'parent-rule',
+        role: 'line',
+        layerName: 'Decor',
+        vectorGeometry: { kind: 'line', paths: [] },
+        visualStyle: { strokeColor: '#c8102e', strokeWeight: 2 },
+        ghost: true,
+      }],
+    }],
+    pages: [{ id: 'p1' }],
+  });
+
+  assert.deepEqual(scannedPaths, [
+    'parentPages',
+    'parentPages[].id',
+    'parentPages[].items',
+    'items[].role',
+    'items[].layerName',
+    'items[].vectorGeometry.kind',
+    'items[].vectorGeometry.paths',
+    'items[].visualStyle.strokeColor',
+    'items[].visualStyle.strokeWeight',
+    'parentPages[].items[].ghost',
+    'pages[].id',
+  ]);
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, false);
+  assert.equal(strict.accepted.includes('parentPages[].items'), true);
+  assert.equal(strict.accepted.includes('items[].role'), true);
+  assert.equal(strict.accepted.includes('items[].layerName'), true);
+  assert.equal(strict.accepted.includes('items[].vectorGeometry.kind'), true);
+  assert.equal(strict.accepted.includes('items[].visualStyle.strokeColor'), true);
+  assert.deepEqual(strict.unknown, ['parentPages[].items[].ghost']);
+  assert.equal(
+    strict.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'parentPages[].items[].ghost'
+    )),
+    true,
+  );
+});
+
 test('validateModelFields rejects unknown style collection fields in strict mode', () => {
   const scannedPaths = scanModelPaths({
     kind: 'DocumentModel',

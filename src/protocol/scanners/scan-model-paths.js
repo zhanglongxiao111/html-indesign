@@ -239,7 +239,7 @@ function scanModelPaths(model) {
   for (const [key, value] of Object.entries(model)) {
     if (key === 'parentPages') {
       addPath(paths, seen, ROOT_FIELD_PATHS.parentPages);
-      scanParentPages(paths, seen, value, scanLabelArray);
+      scanParentPages(paths, seen, value, scanLabelArray, scanParentPageItems);
     } else if (key === 'layers') {
       addPath(paths, seen, ROOT_FIELD_PATHS.layers);
       scanLayerArray(paths, seen, value, scanLabelArray);
@@ -274,7 +274,7 @@ function scanPages(paths, seen, pages) {
 
     for (const [key, value] of Object.entries(page)) {
       if (key === 'items') {
-        scanItems(paths, seen, value);
+        scanItems(paths, seen, value, 'pages[].items[]');
       } else if (key === 'labels') {
         scanLabelArray(paths, seen, value);
       } else if (key === 'effectiveLabel') {
@@ -292,7 +292,11 @@ function scanPages(paths, seen, pages) {
   }
 }
 
-function scanItems(paths, seen, items) {
+function scanParentPageItems(paths, seen, items) {
+  scanItems(paths, seen, items, 'parentPages[].items[]');
+}
+
+function scanItems(paths, seen, items, unknownPrefix) {
   if (!Array.isArray(items)) {
     return;
   }
@@ -332,7 +336,7 @@ function scanItems(paths, seen, items) {
       } else if (key === 'table') {
         scanItemTable(paths, seen, value);
       } else if (!STRUCTURAL_KEYS.has(key)) {
-        addPath(paths, seen, `pages[].items[].${key}`);
+        addPath(paths, seen, `${unknownPrefix}.${key}`);
       }
     }
   }

@@ -131,7 +131,7 @@ function scanItemObservedLabel(paths, seen, value) {
   scanObjectSurface(paths, seen, value, OBSERVED_LABEL_FIELD_PATHS, 'items[].observedLabel');
 }
 
-function scanParentPages(paths, seen, parentPages, scanLabelArray) {
+function scanParentPages(paths, seen, parentPages, scanLabelArray, scanParentPageItems) {
   if (!Array.isArray(parentPages)) {
     return;
   }
@@ -145,6 +145,9 @@ function scanParentPages(paths, seen, parentPages, scanLabelArray) {
       if (key === 'labels') {
         addPath(paths, seen, PARENT_PAGE_FIELD_PATHS.labels);
         scanLabelArray(paths, seen, value);
+      } else if (key === 'items') {
+        addPath(paths, seen, PARENT_PAGE_FIELD_PATHS.items);
+        scanParentPageItems(paths, seen, value);
       } else if (hasOwn.call(PARENT_PAGE_FIELD_PATHS, key)) {
         addPath(paths, seen, PARENT_PAGE_FIELD_PATHS[key]);
       } else if (!STRUCTURAL_KEYS.has(key)) {
