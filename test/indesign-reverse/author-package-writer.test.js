@@ -5,6 +5,15 @@ const path = require('path');
 const { writeReverseAuthorPackage } = require('../../src/indesign-reverse');
 const { checkAuthorPackageEntry } = require('../../src/authoring');
 
+function captureThrow(fn) {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  assert.fail('Expected function to throw');
+}
+
 test('writeReverseAuthorPackage splits tagged model into author source package', () => {
   const outDir = path.resolve('test/workspace/reverse-author-package-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -75,6 +84,9 @@ test('writeReverseAuthorPackage still splits observation models by page', () => 
   assert.match(pageHtml, /data-id-reverse-mode="observation"/);
   assert.match(pageHtml, /data-id-observed="true"/);
   assert.match(pageHtml, /class="observed-text id-object"/);
+
+  const candidates = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/semantic-candidates.json'), 'utf8'));
+  assert.equal(candidates.presetId, null);
 
   const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
   assert.match(overrides, /\[id="observed-title"\]/);
@@ -408,6 +420,51 @@ test('writeReverseAuthorPackage writes semantic candidate report', () => {
   });
 });
 
+test('writeReverseAuthorPackage fails visibly when structured author package has no semantic preset source', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-missing-preset-source-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  delete model.profile;
+  delete model.sourcePackage.profile;
+
+  const error = captureThrow(() => writeReverseAuthorPackage(model, { outDir, mode: 'structured' }));
+
+  assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+  assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:profile-required/);
+  assert.equal(fs.existsSync(outDir), false);
+});
+
+test('writeReverseAuthorPackage fails visibly when structured author package profile is unknown', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-bad-profile-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  model.profile = 'missing-profile';
+
+  const error = captureThrow(() => writeReverseAuthorPackage(model, { outDir, mode: 'structured' }));
+
+  assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+  assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:missing-profile/);
+  assert.equal(fs.existsSync(outDir), false);
+});
+
+test('writeReverseAuthorPackage rejects explicit empty semantic presets instead of loading profile fallback', () => {
+  const root = path.resolve('test/workspace/reverse-author-empty-preset-test');
+  fs.rmSync(root, { recursive: true, force: true });
+
+  [null, {}, []].forEach((semanticPreset, index) => {
+    const outDir = path.join(root, String(index));
+    const error = captureThrow(() => writeReverseAuthorPackage(taggedModel(), {
+      outDir,
+      mode: 'structured',
+      semanticPreset,
+    }));
+
+    assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+    assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:semanticPreset/);
+    assert.equal(fs.existsSync(outDir), false);
+  });
+});
+
 test('writeReverseAuthorPackage reports accepted partial and observed reverse labels', () => {
   const outDir = path.resolve('test/workspace/reverse-author-label-report-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -486,11 +543,13 @@ function taggedModel() {
     kind: 'DocumentModel',
     id: 'architecture-report',
     title: '建筑汇报',
+    profile: 'architecture-report',
     reverseMode: 'structured',
     sourcePackage: {
       schemaVersion: 1,
       config: 'deck.config.json',
       entry: 'deck.html',
+      profile: 'architecture-report',
       styleFiles: ['styles/tokens.css', 'styles/layout.css', 'styles/components.css', 'styles/pages.css'],
       pageFiles: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
       assetRoot: 'assets',
@@ -581,6 +640,7 @@ function resourceModel() {
     unitMode: 'presentation',
     sourcePackage: {
       entry: 'deck.html',
+      profile: 'architecture-report',
       assetRoot: 'assets',
     },
     styles: {},

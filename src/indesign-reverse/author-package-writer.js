@@ -14,6 +14,7 @@ function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
     throw new Error('writeReverseAuthorPackage requires a DocumentModel');
   }
+  const semanticPreset = activeSemanticPresetFor(model, options);
   const outDir = path.resolve(options.outDir || 'reverse-export/author');
   const sourceRoot = options.sourceRoot ? path.resolve(options.sourceRoot) : null;
   fs.mkdirSync(outDir, { recursive: true });
@@ -58,7 +59,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     assets: assetCopy.report,
     sourceCss: sourceCss.report,
   });
-  const semanticCandidates = collectSemanticCandidates(model, activeSemanticPresetFor(model, options));
+  const semanticCandidates = collectSemanticCandidates(model, semanticPreset);
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/inference-report.json'), JSON.stringify(report.inference, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/semantic-candidates.json'), JSON.stringify(semanticCandidates, null, 2), 'utf8');
@@ -86,16 +87,51 @@ function firstPageSize(pages) {
 }
 
 function activeSemanticPresetFor(model, options = {}) {
-  if (options.semanticPreset) return options.semanticPreset;
-  const profile = model.profile || model.sourcePackage && model.sourcePackage.profile || 'architecture-report';
+  if (Object.prototype.hasOwnProperty.call(options, 'semanticPreset')) {
+    if (isNonEmptyObject(options.semanticPreset)) return options.semanticPreset;
+    throw semanticPresetLoadFailed(
+      'semanticPreset',
+      'semanticPreset must be a non-empty object when provided',
+    );
+  }
+  const profile = firstProfile([
+    model && model.profile,
+    model && model.sourcePackage && model.sourcePackage.profile,
+  ]);
+  const mode = options.mode || model.reverseMode || 'structured';
+  if (!profile) {
+    if (mode === 'observation' || mode === 'inferred') return {};
+    throw semanticPresetLoadFailed(
+      'profile-required',
+      'Structured reverse author package requires an explicit semanticPreset or profile',
+    );
+  }
   try {
     return loadStandardSemanticPreset(profile).preset;
   } catch (error) {
-    if (error && error.code === 'SEMANTIC_PRESET_NOT_FOUND') {
-      return loadStandardSemanticPreset('architecture-report').preset;
-    }
-    throw error;
+    throw semanticPresetLoadFailed(profile, error.message, error);
   }
+}
+
+function isNonEmptyObject(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length);
+}
+
+function semanticPresetLoadFailed(profile, message, cause) {
+  const error = new Error(`SEMANTIC_PRESET_LOAD_FAILED:${profile}:${message}`);
+  error.code = 'SEMANTIC_PRESET_LOAD_FAILED';
+  error.profile = profile;
+  if (cause) error.cause = cause;
+  return error;
+}
+
+function firstProfile(values) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const profile = value.trim();
+    if (profile) return profile;
+  }
+  return null;
 }
 
 function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {

@@ -30,7 +30,6 @@ function blueprintMigrationToSemanticModel(blueprint, options = {}) {
     id: documentId,
     title: documentName,
     source: documentName,
-    profile: BLUEPRINT_MIGRATION_SOURCE,
     unitMode: 'print',
     coordinateUnit: 'mm',
     labels: [],
