@@ -333,6 +333,35 @@ test('writeReverseAuthorPackage preserves source package config metadata', () =>
   assert.equal(config.profile, 'architecture-report');
 });
 
+test('writeReverseAuthorPackage preserves source page ids when reverse page semantic is absent', () => {
+  const root = path.resolve('test/workspace/reverse-author-source-page-id-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'architecture-report',
+    title: '建筑汇报',
+    profile: 'architecture-report',
+    unitMode: 'presentation',
+    targetSize: 'source',
+    entry: 'deck.html',
+    styles: ['styles/tokens.css'],
+    pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
+    assets: { root: 'assets' },
+  }, null, 2));
+  writeFixtureFile(path.join(sourceRoot, 'styles/tokens.css'), ':root { --ink: #123456; }');
+  const model = taggedModel();
+  model.pages[0].semantic = null;
+
+  writeReverseAuthorPackage(model, { outDir, sourceRoot, mode: 'structured' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  assert.deepEqual(config.pages, [{ id: 'agenda', file: 'pages/01-agenda.html' }]);
+  assert.match(pageHtml, /data-page="agenda"/);
+});
+
 test('writeReverseAuthorPackage writes clean structured author markup', () => {
   const outDir = path.resolve('test/workspace/reverse-author-clean-markup-test');
   fs.rmSync(outDir, { recursive: true, force: true });

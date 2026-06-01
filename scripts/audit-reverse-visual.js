@@ -144,12 +144,18 @@ function printHuman(report, inputs) {
     `elements compared: ${report.stats.compared}`,
     `missing: ${report.stats.missing}`,
     `mismatched: ${report.stats.mismatched}`,
+    `accepted: ${report.stats.accepted || 0}`,
     `errors: ${report.errors.length}`,
+    `warnings: ${report.warnings.length}`,
   ];
   for (const issue of report.errors.slice(0, 40)) {
     lines.push(`- ${issue.code}${issue.id ? ` ${issue.id}` : ''}: ${issue.message}`);
   }
   if (report.errors.length > 40) lines.push(`- ... ${report.errors.length - 40} more errors`);
+  for (const issue of report.warnings.slice(0, 20)) {
+    lines.push(`~ ${issue.code}${issue.id ? ` ${issue.id}` : ''}: ${issue.message}`);
+  }
+  if (report.warnings.length > 20) lines.push(`~ ... ${report.warnings.length - 20} more warnings`);
   console.log(lines.join('\n'));
 }
 

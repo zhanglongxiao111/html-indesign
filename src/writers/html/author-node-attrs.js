@@ -20,6 +20,8 @@ function attrsForItem(item, sourceNode, options) {
   const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
   if (sourceNode.id) {
     attrs.id = sourceNode.id;
+  } else if (preserveTrustedSource && item.id) {
+    attrs.id = item.id;
   } else if (!item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
     attrs.id = item.id;
   }

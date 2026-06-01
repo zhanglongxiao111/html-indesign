@@ -139,6 +139,25 @@ test('pageItemsToAuthorHtml restores original source inner html when text is unc
   assert.match(html, /<h1 class="cover-title pstyle-cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报<\/span><\/h1>/);
 });
 
+test('pageItemsToAuthorHtml adds stable item ids when preserving trusted source nodes', () => {
+  const page = {
+    id: 'cover-page',
+    items: [
+      {
+        id: 'p1-el2',
+        role: 'text',
+        sourceNode: { tagName: 'h1', id: null, classList: ['cover-title'], attributes: { 'data-id-paragraph-style': 'cover-title' } },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: { text: '冰球场首层平面排布汇报', runs: [] },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
+
+  assert.match(html, /<h1 id="p1-el2" class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面排布汇报<\/h1>/);
+});
+
 test('pageItemsToAuthorHtml merges observed text style into sourced text nodes', () => {
   const page = {
     id: 'cover-page',

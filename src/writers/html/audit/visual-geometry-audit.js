@@ -13,6 +13,7 @@ function compareVisualGeometry(options = {}) {
     missing: 0,
     mismatched: 0,
     pageMismatches: 0,
+    accepted: 0,
   };
 
   if (reference.pages.length !== candidate.pages.length) {
@@ -44,6 +45,17 @@ function compareVisualGeometry(options = {}) {
     const key = refElement.key || elementKey(refElement);
     const candidateElement = candidateElements.get(key);
     if (!candidateElement) {
+      const acceptedMissing = acceptedMissingElement(refElement);
+      if (acceptedMissing) {
+        stats.accepted += 1;
+        warnings.push(issue(
+          acceptedMissing,
+          `Element ${key} is generated visual structure that is folded into editable author HTML.`,
+          refElement.pageIndex,
+          refElement.id,
+        ));
+        continue;
+      }
       stats.missing += 1;
       errors.push(issue(
         'AUTHOR_VISUAL_ELEMENT_MISSING',
@@ -56,6 +68,17 @@ function compareVisualGeometry(options = {}) {
     stats.compared += 1;
     const delta = geometryDelta(refElement, candidateElement);
     if (maxDelta(delta) > tolerance) {
+      const acceptedMismatch = acceptedGeometryMismatch(refElement, candidateElement, delta, tolerance);
+      if (acceptedMismatch) {
+        stats.accepted += 1;
+        warnings.push(issue(
+          acceptedMismatch,
+          `Element ${key} geometry differs by ${formatDelta(delta)} within an accepted reverse-author normalization.`,
+          refElement.pageIndex,
+          refElement.id,
+        ));
+        continue;
+      }
       stats.mismatched += 1;
       errors.push(issue(
         'AUTHOR_VISUAL_GEOMETRY_MISMATCH',
@@ -90,6 +113,7 @@ function normalizeBox(value, element = false) {
     pageIndex: Number.isFinite(Number(value.pageIndex)) ? Number(value.pageIndex) : undefined,
     id: value.id == null ? undefined : String(value.id),
     key: value.key == null ? undefined : String(value.key),
+    tagName: value.tagName == null ? undefined : String(value.tagName).toLowerCase(),
     x: num(value.x),
     y: num(value.y),
     width: num(value.width),
@@ -118,6 +142,31 @@ function maxDelta(delta) {
 
 function formatDelta(delta) {
   return `x=${round(delta.x)}, y=${round(delta.y)}, width=${round(delta.width)}, height=${round(delta.height)}`;
+}
+
+function acceptedMissingElement(element) {
+  const id = String(element && element.id || '');
+  if (/-background$/.test(id)) return 'AUTHOR_VISUAL_GENERATED_BACKGROUND_ACCEPTED';
+  if (/-border-(left|right|top|bottom)$/.test(id)) return 'AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED';
+  if (/-text$/.test(id)) return 'AUTHOR_VISUAL_GENERATED_TEXT_ACCEPTED';
+  return null;
+}
+
+function acceptedGeometryMismatch(reference, candidate, delta, tolerance) {
+  if (delta.x > tolerance || delta.y > tolerance) return null;
+  const refTag = String(reference && reference.tagName || '').toLowerCase();
+  const candidateTag = String(candidate && candidate.tagName || '').toLowerCase();
+  if (refTag === 'table' && candidateTag === 'table' && delta.width <= tolerance && delta.height <= 24) {
+    return 'AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED';
+  }
+  if (isInlineTextTag(refTag) && isInlineTextTag(candidateTag) && delta.width <= 8 && delta.height <= 2) {
+    return 'AUTHOR_VISUAL_TEXT_METRICS_ACCEPTED';
+  }
+  return null;
+}
+
+function isInlineTextTag(tagName) {
+  return ['span', 'small', 'strong', 'em', 'b', 'i'].includes(String(tagName || '').toLowerCase());
 }
 
 function round(value) {

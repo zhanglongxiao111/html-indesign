@@ -22,7 +22,8 @@ function writeReverseAuthorPackage(model, options = {}) {
   fs.mkdirSync(path.join(outDir, 'styles'), { recursive: true });
   fs.mkdirSync(path.join(outDir, 'reports'), { recursive: true });
 
-  const pages = pageEntries(model).map((page) => ({
+  const sourceConfig = readSourceConfig(sourceRoot);
+  const pages = pageEntries(model, sourceConfig).map((page) => ({
     ...page,
     authorPage: pageWithAppliedParentItems(page.modelPage, model.parentPages || []),
   }));
@@ -42,7 +43,6 @@ function writeReverseAuthorPackage(model, options = {}) {
     preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
     assetPathMap: assetCopy.pathMap,
   };
-  const sourceConfig = readSourceConfig(sourceRoot);
   const config = deckConfigFor(model, pages, styleFiles, sourceConfig);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
@@ -165,15 +165,46 @@ function readSourceConfig(sourceRoot) {
   }
 }
 
-function pageEntries(model) {
+function pageEntries(model, sourceConfig = null) {
+  const sourcePages = sourcePagesByFile(sourceConfig, model.sourcePackage);
   return (model.pages || []).map((page, index) => {
-    const file = page.sourceFile || `pages/${String(index).padStart(2, '0')}-${safeFile(page.semantic || page.id || `page-${index + 1}`)}.html`;
+    const sourceFile = slash(page.sourceFile || sourceNodeAttribute(page, 'data-id-source-file') || '');
+    const sourcePage = sourceFile ? sourcePages.get(sourceFile) : null;
+    const pageToken = page.pageToken || (sourcePage && sourcePage.id) || sourceNodeAttribute(page, 'data-page') || null;
+    const pageId = pageToken || page.semantic || page.id || `page-${index + 1}`;
+    const file = (sourcePage && sourcePage.file)
+      || sourceFile
+      || `pages/${String(index).padStart(2, '0')}-${safeFile(page.semantic || page.id || `page-${index + 1}`)}.html`;
     return {
-      id: page.semantic || page.pageToken || page.id || `page-${index + 1}`,
+      id: (sourcePage && sourcePage.id) || pageId,
       file,
-      modelPage: page,
+      modelPage: {
+        ...page,
+        pageToken,
+      },
     };
   });
+}
+
+function sourcePagesByFile(sourceConfig, sourcePackage = {}) {
+  const out = new Map();
+  addSourcePages(out, sourceConfig && sourceConfig.pages);
+  addSourcePages(out, sourcePackage && sourcePackage.pageFiles);
+  return out;
+}
+
+function addSourcePages(out, pages) {
+  for (const page of Array.isArray(pages) ? pages : []) {
+    if (!page || !page.file || !page.id) continue;
+    const key = slash(page.file);
+    if (!out.has(key)) out.set(key, { id: page.id, file: key });
+  }
+}
+
+function sourceNodeAttribute(page, name) {
+  return page && page.sourceNode && page.sourceNode.attributes
+    ? page.sourceNode.attributes[name]
+    : null;
 }
 
 function pageWithAppliedParentItems(page, parentPages = []) {
@@ -275,7 +306,7 @@ function sourcePageAttrs(page, sourceFile, options) {
   const attrs = mergeAttributes(sourceNode.attributes);
   attrs.class = sourceNode.classList && sourceNode.classList.length ? sourceNode.classList.join(' ') : 'page';
   attrs.id = sourceNode.id || page.id;
-  attrs['data-page'] = page.semantic || page.id;
+  attrs['data-page'] = page.pageToken || sourceNodeAttribute(page, 'data-page') || page.semantic || page.id;
   attrs['data-id-source-file'] = sourceFile;
   const preserveTrustedSource = options.preserveTrustedSource && sourceNode.attributes;
   if (options.mode === 'observation' || page.semantic === 'unknown') attrs['data-id-observed'] = 'true';

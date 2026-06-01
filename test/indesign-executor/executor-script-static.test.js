@@ -192,6 +192,17 @@ test('asset helper resolves placed files and applies fitting preferences', () =>
   assert.doesNotMatch(source, /Number\(pageNumber \|\| 1\)/);
 });
 
+test('asset helper applies manual content bounds to placed graphics without moving the frame off pasteboard', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
+  const placeAssetBody = source.slice(
+    source.indexOf('HI.placeAssetInFrame'),
+    source.indexOf('HI.configurePlacePreferences = function'),
+  );
+
+  assert.doesNotMatch(placeAssetBody, /frame\.geometricBounds\s*=\s*HI\.boundsToGeometricBounds\(placed\.contentBounds\)/);
+  assert.match(placeAssetBody, /frame\.allGraphics\[0\]\.geometricBounds\s*=\s*HI\.boundsToGeometricBounds\(placed\.contentBounds\)/);
+});
+
 test('item helper creates text graphic shape items and applies z order', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
   const tableSource = fs.readFileSync(path.join(libDir, 'hi_tables.jsxinc'), 'utf8');
