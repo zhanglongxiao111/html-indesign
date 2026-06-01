@@ -104,7 +104,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].layout',
-    currentPaths: ['pages[].items[].layout'],
+    currentPaths: ['pages[].items[].layout', 'items[].effectiveLabel.layout'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'label-protocol',
@@ -120,7 +120,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].role',
-    currentPaths: ['labels[].role'],
+    currentPaths: ['labels[].role', 'items[].effectiveLabel.role'],
     fieldClass: 'canonical',
     lifecycle: 'active',
     owner: 'label-protocol',

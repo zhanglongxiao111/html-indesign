@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/indesign-reverse');
+const { validateSemanticModel } = require('../../src/semantic-model');
 
 test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
@@ -73,6 +74,156 @@ test('reverseSnapshotToSemanticModel preserves parent page decorative items', ()
   assert.equal(model.parentPages[0].items.length, 1);
   assert.equal(model.parentPages[0].items[0].role, 'line');
   assert.equal(model.pages[0].parentPageName, 'A-正文');
+});
+
+test('reverseSnapshotToSemanticModel output is strict-valid for registered reverse surfaces', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'strict-valid.indd', mode: 'structured' },
+    document: {
+      name: 'strict-valid.indd',
+      labels: [{
+        protocol: 'html-indesign',
+        version: 1,
+        kind: 'document',
+        id: 'strict-doc',
+        title: 'Strict reverse document',
+        unitMode: 'presentation',
+        coordinateUnit: 'pt',
+        sourcePackage: { config: 'deck.config.json', profile: 'architecture-report' },
+      }],
+    },
+    parentPages: [
+      {
+        name: 'A-Parent',
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'parentPage', id: 'parent-a' }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+    layers: [{ name: 'Text', visible: true, printable: true }],
+    styles: {
+      paragraphStyles: [
+        { name: 'Title', safeName: 'title', css: 'font-size:32pt' },
+      ],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'page',
+          id: 'page-1',
+          semantic: 'agenda-page',
+          sourceFile: 'pages/01-agenda.html',
+          sourceNode: { tagName: 'section', id: 'page-1' },
+          grid: { columns: 12 },
+        }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        guides: [{ axis: 'x', position: 40 }],
+        items: [
+          {
+            id: 'title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            layerName: 'Text',
+            paragraphStyleName: 'Title',
+            text: 'Title',
+            textRuns: [{ text: 'Title', characterStyle: null }],
+            visualStyle: {
+              fillColor: '#ffffff',
+              strokeColor: '#123456',
+              strokeWeight: 1,
+              opacity: 90,
+              cornerRadius: 8,
+            },
+            effects: { transparency: { opacity: 90 } },
+            textFrameStyle: { insetSpacing: 8 },
+            inlineStyle: 'font-size:32pt',
+            zIndex: 1,
+            firstLineFont: 'Title Composite',
+            labels: [{
+              protocol: 'html-indesign',
+              version: 1,
+              kind: 'item',
+              id: 'title',
+              role: 'text',
+              semantic: 'page-title',
+              layout: { grid: { col: 1, span: 4, row: 1 } },
+              sourceFile: 'pages/01-agenda.html',
+              sourceText: 'Title',
+              sourceHtml: '<h1>Title</h1>',
+              htmlTag: 'h1',
+              className: 'page-title',
+              sourceNode: { tagName: 'h1', id: 'title', classList: ['page-title'] },
+              sourceRuns: [{ text: 'Title', tagName: 'span', classList: [], attributes: {} }],
+            }],
+          },
+          {
+            id: 'hero',
+            type: 'Rectangle',
+            bounds: { x: 0, y: 0, width: 800, height: 450 },
+            placedAsset: {
+              name: 'hero.pdf',
+              path: '\\\\server\\share\\hero.pdf',
+              status: 'NORMAL',
+              graphicType: 'PDF',
+              imageTypeName: 'Adobe PDF',
+              cropped: false,
+              placement: {
+                pageNumber: 2,
+                crop: 'trim',
+                transparentBackground: true,
+                visibleLayers: ['base'],
+                hiddenLayers: ['notes'],
+                layers: [{ name: 'base', currentVisibility: true, originalVisibility: true }],
+              },
+              preview: {
+                path: 'D:\\tmp\\hero.png',
+                relativePath: 'previews/hero.png',
+                source: 'indesign-frame-export',
+                format: 'png',
+              },
+            },
+            labels: [{
+              protocol: 'html-indesign',
+              version: 1,
+              kind: 'item',
+              id: 'hero',
+              role: 'graphic',
+              semantic: 'hero-image',
+            }],
+          },
+        ],
+      },
+    ],
+  }, {
+    mode: 'structured',
+    strictFields: true,
+    semanticPreset: {
+      semantics: {
+        'agenda-page': {},
+        'page-title': { roles: ['text'] },
+        'hero-image': { roles: ['graphic'] },
+      },
+    },
+  });
+
+  const strictResult = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strictResult.valid, true);
+  assert.deepEqual(strictResult.fieldValidation.unknown, []);
+
+  model.pages[0].items[0].adapterPrivateGhost = true;
+  const rejected = validateSemanticModel(model, { strictFields: true });
+  assert.equal(rejected.valid, false);
+  assert.equal(
+    rejected.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'pages[].items[].adapterPrivateGhost'
+    )),
+    true,
+  );
 });
 
 test('reverseSnapshotToSemanticModel surfaces observation label field warnings', () => {

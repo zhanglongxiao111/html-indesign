@@ -59,4 +59,64 @@ module.exports = [
       instructionPaths: ['appearance.strokeWeight'],
     },
   },
+  {
+    canonicalPath: 'items[].visualStyle.opacity',
+    currentPaths: ['reverseModel.pages[].items[].visualStyle.opacity'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'visual-style',
+    type: 'number',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
+    },
+    html: {
+      styleProps: ['opacity'],
+    },
+    indesign: {
+      snapshotPaths: ['visualStyle.opacity'],
+      instructionPaths: ['appearance.opacity'],
+    },
+  },
+  {
+    canonicalPath: 'items[].visualStyle.strokeOpacity',
+    currentPaths: ['reverseModel.pages[].items[].visualStyle.strokeOpacity'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'visual-style',
+    type: 'number',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
+    },
+    html: {
+      styleProps: ['border-opacity', 'stroke-opacity'],
+    },
+    indesign: {
+      snapshotPaths: ['visualStyle.strokeOpacity'],
+      instructionPaths: ['appearance.strokeOpacity'],
+    },
+  },
+  {
+    canonicalPath: 'items[].visualStyle.cornerRadius',
+    currentPaths: ['reverseModel.pages[].items[].visualStyle.cornerRadius'],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'visual-style',
+    type: 'number',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
+    },
+    html: {
+      styleProps: ['border-radius'],
+    },
+    indesign: {
+      snapshotPaths: ['visualStyle.cornerRadius'],
+      instructionPaths: ['appearance.cornerRadius'],
+    },
+  },
 ];

@@ -53,6 +53,27 @@ test('registry contains effectiveLabel and observedLabel observation boundaries'
   assert.equal(fieldRegistry.getByPath('items[].observedLabel').fieldClass, 'observation');
 });
 
+test('registry keeps reverse diagnostics out of canonical model facts', () => {
+  assert.equal(fieldRegistry.getByPath('pages[].observedLabel').fieldClass, 'observation');
+  assert.equal(fieldRegistry.getByPath('items[].observedLabel').fieldClass, 'observation');
+
+  for (const path of [
+    'warnings',
+    'errors',
+    'fieldValidation',
+    'report',
+    'valid',
+    'pages[].labelStatus',
+    'pages[].rejectedFields',
+    'pages[].rejectionReasons',
+    'pages[].items[].labelStatus',
+    'pages[].items[].rejectedFields',
+    'pages[].items[].rejectionReasons',
+  ]) {
+    assert.notEqual(fieldRegistry.getByPath(path).fieldClass, 'canonical', path);
+  }
+});
+
 test('registry keeps sourceRuns metadata separate from canonical text runs', () => {
   const sourceRuns = fieldRegistry.getByPath('items[].sourceRuns');
   const textRuns = fieldRegistry.getByPath('items[].content.runs');

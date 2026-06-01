@@ -2,14 +2,39 @@ const hasOwn = Object.prototype.hasOwnProperty;
 
 const ROOT_FIELD_PATHS = Object.freeze({
   id: 'document.id',
+  title: 'document.title',
   profile: 'document.profile',
+  source: 'document.source',
+  unitMode: 'document.unitMode',
+  coordinateUnit: 'document.coordinateUnit',
+  sourcePackage: 'document.sourcePackage',
+  parentPages: 'parentPages',
+  layers: 'layers',
+  styles: 'styles',
+  warnings: 'warnings',
+  errors: 'errors',
+  fieldValidation: 'fieldValidation',
+  report: 'report',
+  valid: 'valid',
+  reverseMode: 'reverseMode',
 });
 
 const PAGE_FIELD_PATHS = Object.freeze({
   id: 'pages[].id',
+  index: 'pages[].index',
+  semantic: 'pages[].semantic',
   layout: 'pages[].layout',
   semanticLayout: 'pages[].semanticLayout',
+  sourceNode: 'pages[].sourceNode',
   grid: 'pages[].grid',
+  width: 'pages[].width',
+  height: 'pages[].height',
+  guides: 'pages[].guides',
+  labelStatus: 'pages[].labelStatus',
+  effectiveLabel: 'pages[].effectiveLabel',
+  observedLabel: 'pages[].observedLabel',
+  rejectedFields: 'pages[].rejectedFields',
+  rejectionReasons: 'pages[].rejectionReasons',
 });
 
 const ASSET_FIELD_PATHS = Object.freeze({
@@ -23,7 +48,11 @@ const LABEL_FIELD_PATHS = Object.freeze({
   version: 'labels[].version',
   kind: 'labels[].kind',
   id: 'labels[].id',
+  title: 'document.title',
   source: 'labels[].source',
+  unitMode: 'document.unitMode',
+  coordinateUnit: 'document.coordinateUnit',
+  sourcePackage: 'document.sourcePackage',
   grid: 'labels[].grid',
   semantic: 'labels[].semantic',
   layout: 'labels[].layout',
@@ -55,6 +84,11 @@ const LABEL_FIELD_PATHS = Object.freeze({
 });
 
 const ITEM_FIELD_PATHS = Object.freeze({
+  sourceType: 'items[].sourceType',
+  tagName: 'items[].tagName',
+  htmlClass: 'items[].htmlClass',
+  bounds: 'items[].bounds',
+  layerName: 'items[].layerName',
   semantic: 'items[].semantic',
   layout: 'pages[].items[].layout',
   role: 'items[].role',
@@ -73,12 +107,22 @@ const ITEM_FIELD_PATHS = Object.freeze({
   sourceAncestorNodes: 'items[].sourceAncestorNodes',
   effectiveLabel: 'items[].effectiveLabel',
   observedLabel: 'items[].observedLabel',
+  effects: 'items[].effects',
   structure: 'items[].structure',
   sourceRuns: 'items[].sourceRuns',
+  textFrameStyle: 'items[].textFrameStyle',
+  inlineStyle: 'items[].inlineStyle',
+  zIndex: 'items[].zIndex',
+  firstLineFont: 'items[].firstLineFont',
+  labelStatus: 'pages[].items[].labelStatus',
+  rejectedFields: 'pages[].items[].rejectedFields',
+  rejectionReasons: 'pages[].items[].rejectionReasons',
 });
 
 const EFFECTIVE_LABEL_FIELD_PATHS = Object.freeze({
+  role: 'items[].effectiveLabel.role',
   semantic: 'items[].effectiveLabel.semantic',
+  layout: 'items[].effectiveLabel.layout',
   sourceNode: 'effectiveLabel.sourceNode',
   sourceAncestorNodes: 'effectiveLabel.sourceAncestorNodes',
   sourceFile: 'effectiveLabel.sourceFile',
@@ -91,12 +135,23 @@ const EFFECTIVE_LABEL_FIELD_PATHS = Object.freeze({
 });
 
 const ITEM_ASSET_FIELD_PATHS = Object.freeze({
+  name: 'items[].asset.name',
   path: 'items[].asset.path',
+  status: 'items[].asset.status',
+  graphicType: 'items[].asset.graphicType',
+  imageTypeName: 'items[].asset.imageTypeName',
+  cropped: 'items[].asset.cropped',
+  preview: 'items[].asset.preview',
   pageNumber: 'items[].asset.pageNumber',
 });
 
 const ITEM_ASSET_PLACEMENT_FIELD_PATHS = Object.freeze({
   pageNumber: 'items[].asset.placement.pageNumber',
+  crop: 'items[].asset.placement.crop',
+  transparentBackground: 'items[].asset.placement.transparentBackground',
+  visibleLayers: 'items[].asset.placement.visibleLayers',
+  hiddenLayers: 'items[].asset.placement.hiddenLayers',
+  layers: 'items[].asset.placement.layers',
 });
 
 const ITEM_STYLE_REFS_FIELD_PATHS = Object.freeze({
@@ -130,6 +185,9 @@ const ITEM_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
   fillColor: 'items[].visualStyle.fillColor',
   strokeColor: 'items[].visualStyle.strokeColor',
   strokeWeight: 'items[].visualStyle.strokeWeight',
+  opacity: 'items[].visualStyle.opacity',
+  strokeOpacity: 'items[].visualStyle.strokeOpacity',
+  cornerRadius: 'items[].visualStyle.cornerRadius',
 });
 
 const ITEM_VECTOR_GEOMETRY_FIELD_PATHS = Object.freeze({
@@ -139,10 +197,15 @@ const ITEM_VECTOR_GEOMETRY_FIELD_PATHS = Object.freeze({
 
 const ITEM_CONTENT_FIELD_PATHS = Object.freeze({
   text: 'items[].content.text',
+  sourceHtml: 'items[].content.sourceHtml',
   runs: 'items[].content.runs',
 });
 
 const ITEM_CONTENT_RUN_FIELD_PATHS = Object.freeze({
+  text: 'items[].content.runs[].text',
+  tagName: 'items[].content.runs[].tagName',
+  classList: 'items[].content.runs[].classList',
+  attributes: 'items[].content.runs[].attributes',
   characterStyle: 'items[].content.runs[].characterStyle',
 });
 

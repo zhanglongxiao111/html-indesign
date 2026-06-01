@@ -30,6 +30,7 @@ const { uniquePaths } = require('./path-utils');
 
 const rawFieldEntries = [
   ...require('./fields/document-page'),
+  ...require('./fields/document-model'),
   ...require('./fields/styles'),
   ...require('./fields/assets'),
   ...require('./fields/labels'),
@@ -39,6 +40,8 @@ const rawFieldEntries = [
   ...require('./fields/text'),
   ...require('./fields/table'),
   ...require('./fields/observation'),
+  ...require('./fields/reverse-surfaces'),
+  ...require('./fields/reverse-diagnostics'),
   ...require('./fields/retired'),
   ...require('./fields/pptx-extensions'),
 ];

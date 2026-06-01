@@ -66,6 +66,38 @@ test('validateSemanticModel rejects unknown model fields in strict field mode', 
   );
 });
 
+test('validateSemanticModel accepts current DocumentModel fields in strict field mode', () => {
+  const result = validateSemanticModel({
+    kind: 'DocumentModel',
+    id: 'doc',
+    title: 'Current document',
+    profile: 'architecture-report',
+    source: 'deck.html',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    sourcePackage: { config: 'deck.config.json', profile: 'architecture-report' },
+    labels: [{ kind: 'document', id: 'doc' }],
+    parentPages: [{ id: 'parent-a', name: 'A-Parent' }],
+    pages: [{
+      id: 'p1',
+      index: 0,
+      semantic: 'agenda-page',
+      labels: [{ kind: 'page', id: 'p1' }],
+      guides: [{ axis: 'x', position: 40 }],
+      items: [{
+        id: 'item-1',
+        labels: [{ kind: 'item', id: 'item-1' }],
+      }],
+    }],
+    layers: [{ token: 'text', displayName: 'Text' }],
+    styles: { paragraphStyles: {} },
+    assets: [],
+  }, { strictFields: true });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.fieldValidation.unknown, []);
+});
+
 test('validateSemanticModel reports unknown model fields as warnings in warning field mode', () => {
   const result = validateSemanticModel({
     kind: 'DocumentModel',
