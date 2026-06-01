@@ -83,6 +83,22 @@ async function captureHtmlGeometry(htmlFile) {
       function round(value) {
         return Math.round(Number(value || 0) * 1000) / 1000;
       }
+      function metadataFor(element, pageElement) {
+        return {
+          pageId: pageElement.id || '',
+          role: element.getAttribute('data-id-role') || '',
+          vector: element.getAttribute('data-id-vector') || '',
+          objectStyle: element.getAttribute('data-id-object-style') || '',
+          paragraphStyle: element.getAttribute('data-id-paragraph-style') || '',
+          tableStyle: element.getAttribute('data-id-table-style') || '',
+          sourceCsv: element.getAttribute('data-id-source-csv') || '',
+          sourceXml: element.getAttribute('data-id-source-xml') || '',
+          visualAccept: element.getAttribute('data-id-visual-accept') || '',
+          generated: element.getAttribute('data-id-generated-fragment') === 'true',
+          generatedKind: element.getAttribute('data-id-generated-kind') || '',
+          classList: Array.from(element.classList || []),
+        };
+      }
       const pageElements = Array.from(document.querySelectorAll('.page'));
       const pages = pageElements.map((pageElement, index) => {
         const rect = pageElement.getBoundingClientRect();
@@ -109,6 +125,7 @@ async function captureHtmlGeometry(htmlFile) {
             id,
             pageIndex,
             tagName: element.tagName.toLowerCase(),
+            ...metadataFor(element, pageElement),
             x: round(rect.left - pageRect.left),
             y: round(rect.top - pageRect.top),
             width: round(rect.width),

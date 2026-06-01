@@ -160,9 +160,18 @@ function readSourceConfig(sourceRoot) {
   if (!fs.existsSync(configPath)) return null;
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  } catch (_error) {
-    return null;
+  } catch (error) {
+    throw sourceConfigParseFailed(configPath, error);
   }
+}
+
+function sourceConfigParseFailed(configPath, cause) {
+  const message = cause && cause.message ? cause.message : String(cause || 'unknown parse error');
+  const error = new Error(`SOURCE_CONFIG_PARSE_FAILED:${configPath}:${message}`);
+  error.code = 'SOURCE_CONFIG_PARSE_FAILED';
+  error.configPath = configPath;
+  error.cause = cause;
+  return error;
 }
 
 function pageEntries(model, sourceConfig = null) {

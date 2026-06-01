@@ -333,6 +333,22 @@ test('writeReverseAuthorPackage preserves source package config metadata', () =>
   assert.equal(config.profile, 'architecture-report');
 });
 
+test('writeReverseAuthorPackage fails visibly when source deck config is invalid JSON', () => {
+  const root = path.resolve('test/workspace/reverse-author-invalid-source-config-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'deck.config.json'), '{ invalid-json');
+
+  const error = captureThrow(() => writeReverseAuthorPackage(taggedModel(), { outDir, sourceRoot, mode: 'structured' }));
+
+  assert.equal(error.code, 'SOURCE_CONFIG_PARSE_FAILED');
+  assert.match(error.message, /^SOURCE_CONFIG_PARSE_FAILED:/);
+  assert.match(error.message, /deck\.config\.json/);
+  assert.equal(fs.existsSync(path.join(outDir, 'deck.config.json')), false);
+  assert.equal(fs.existsSync(path.join(outDir, 'deck.html')), false);
+});
+
 test('writeReverseAuthorPackage preserves source page ids when reverse page semantic is absent', () => {
   const root = path.resolve('test/workspace/reverse-author-source-page-id-test');
   const sourceRoot = path.join(root, 'source');
