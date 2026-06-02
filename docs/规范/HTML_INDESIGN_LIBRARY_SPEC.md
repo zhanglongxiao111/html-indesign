@@ -10,7 +10,7 @@
 Paged HTML <-> InDesign Document
 ```
 
-第一阶段目标：
+当前基础目标：
 
 ```text
 Paged HTML
@@ -19,7 +19,7 @@ Paged HTML
 -> InDesign Document
 ```
 
-第一阶段不做任意长网页自动分页，也不做模板选择或母版推理。HTML 必须已经分页，每个 HTML 页面对应一个 InDesign 页面。浏览器负责计算每页内部布局，InDesign 页面使用相同物理尺寸承接布局结果。
+当前不做任意长网页自动分页，也不做模板选择或母版推理。HTML 必须已经分页，每个 HTML 页面对应一个 InDesign 页面。浏览器负责计算每页内部布局，InDesign 页面使用相同物理尺寸承接布局结果。
 
 ## 2. 核心原则
 
@@ -134,21 +134,11 @@ Semantic Model -> HTML Writer -> fixed semantic HTML
 Semantic Model -> Instruction Compiler -> InDesign Build Instructions -> InDesign Executor
 ```
 
-当前已实现主线仍是：
+当前主线是：
 
 ```text
-Paged HTML
--> Browser Layout Snapshot
--> Style/Element Compiler
--> InDesign Build Instructions
--> InDesign Executor
-```
-
-这条链路会逐步迁移为：
-
-```text
-Paged HTML -> Semantic Model -> InDesign
-InDesign -> Semantic Model -> Paged HTML
+Paged HTML -> HTML Adapter -> Semantic Model -> InDesign Writer -> InDesign Build Instructions -> InDesign Executor
+InDesign Snapshot -> InDesign Adapter -> Semantic Model -> HTML Writer -> Fixed Semantic HTML / Author Package
 ```
 
 `Build Instructions` 只是 InDesign 执行器消费的命令格式，不是长期事实模型。反向导出、回环校验、模板/母版保真都必须以 `Semantic Model` 和标签协议为依据。
@@ -158,8 +148,9 @@ InDesign -> Semantic Model -> Paged HTML
 未来 PPTX、PDF 页面包或其他分页文档格式只能作为格式适配器接入：
 
 ```text
-HTML Adapter <-> Semantic Model <-> InDesign Adapter
-PPTX Adapter <-> Semantic Model <-> HTML/InDesign Adapter
+HTML Adapter -> Semantic Model -> InDesign Writer
+InDesign Adapter -> Semantic Model -> HTML Writer
+PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 ```
 
 字段边界必须由协议字段注册表统一管理。当前字段事实源是 `PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry；本文、`SEMANTIC_PROTOCOL.md`、`LABEL_PROTOCOL.md` 和 `REVERSE_EXPORT.md` 只保留原则、边界和关键示例，不维护重复静态字段表。
@@ -453,7 +444,7 @@ CSS 颜色应映射为 InDesign 色板。
 | class 内匿名颜色 | `auto-color-<hash>` |
 | inline 匿名颜色 | `auto-color-<hash>` |
 
-颜色值第一阶段使用 RGB hex。后续可扩展 CMYK、Spot、Tint。
+颜色值当前使用 RGB hex。后续可扩展 CMYK、Spot、Tint。
 
 ### 8.2 字体与复合字体
 
@@ -1160,7 +1151,7 @@ src/
 
 ## 17. 非目标
 
-第一阶段明确不做：
+当前明确不做：
 
 - 任意长网页自动分页。
 - 自动模板选择。
@@ -1170,9 +1161,9 @@ src/
 - 完整交互网页转换。
 - JavaScript 动态应用状态转换，除非页面在快照前已经稳定渲染。
 - CAD/DWG 原生解析。CAD 图纸应先由外部流程导出为 PDF/AI/SVG/图片。
-- Photoshop/Illustrator 内部图层的完整编辑重建。第一阶段以 linked placement 为主。
+- Photoshop/Illustrator 内部图层的完整编辑重建。当前以 linked placement 为主。
 
-第一阶段可以做：
+当前可以做：
 
 - 分页 HTML 一页对一页转换。
 - Chromium 页内布局测量。

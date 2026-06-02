@@ -12,9 +12,9 @@
 
 架构演进目标是固定分页文档的多格式互转。HTML 与 InDesign 是当前主线，未来 PPTX 等格式只能通过统一语义模型接入，不得另建绕过语义模型的专用转换协议。
 
-第一阶段已建立 HTML 到 InDesign：把受约束的 HTML 编译为 InDesign 构建指令，再交给真实 InDesign 执行。HTML 不是任意网页源码，而是面向建筑设计汇报的语义输入。
+当前已建立 HTML 到 InDesign：把受约束的 HTML 编译为 InDesign 构建指令，再交给真实 InDesign 执行。HTML 不是任意网页源码，而是面向建筑设计汇报的语义输入。
 
-下一阶段进入双向主线：HTML 的 `data-id-*` 语义必须能写入 InDesign 的 `html_indesign` 脚本标签；InDesign 反向导出时优先读取这些标签恢复固定语义 HTML。
+双向主线已经进入当前架构：HTML 的 `data-id-*` 语义必须能写入 InDesign 的 `html_indesign` 脚本标签；InDesign 反向导出时优先读取这些标签恢复固定语义 HTML。
 
 当前的 blueprint 提取、参考 HTML 生成和 `AGENT_SPEC.md` 属于历史模板迁移层，主要用于追溯和迁移旧 InDesign 模板。旧 blueprint 不作为新 authoring 协议的事实源，但可以作为 historical blueprint input，经 `blueprintMigrationToSemanticModel` 进入 `src/adapters/indesign` 归一化为统一语义模型，再由 `src/writers/html` 输出 inferred/observation HTML。
 

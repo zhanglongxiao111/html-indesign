@@ -4,7 +4,7 @@
 
 反向导出把 InDesign 文档转换为固定语义 HTML。
 
-第一阶段目标不是任意 InDesign 文件无损还原，而是建立可验证的双向闭环：
+当前目标不是任意 InDesign 文件无损还原，而是建立可验证的双向闭环：
 
 ```text
 带标签 InDesign
@@ -343,7 +343,7 @@ PDF 反向导出必须保留：
 
 ### 5.1 InDesign 侧快照脚本
 
-新增脚本：
+当前脚本：
 
 ```text
 _indesign_scripts/export_to_html_snapshot.jsx
@@ -364,7 +364,7 @@ _indesign_scripts/export_to_html_snapshot.jsx
 
 ### 5.2 Node 侧反向编译器
 
-新增模块：
+当前模块：
 
 ```text
 src/adapters/indesign/
@@ -389,7 +389,7 @@ src/writers/html/
 
 ### 5.3 CLI 封装
 
-新增脚本：
+当前脚本：
 
 ```text
 scripts/indesign-reverse-export.js
@@ -504,7 +504,7 @@ HTML -> InDesign -> HTML
 - 文本内容。
 - 表格结构。
 
-视觉比较作为后续增强，不作为第一阶段硬门槛。
+视觉比较已进入反向作者包审核链路。交付前或作为规范样例时，应运行 `npm run audit:reverse-visual`；允许的 accepted 差异必须有结构化证据和报告说明，missing、mismatched 和 errors 必须为 0。
 
 ## 10. 实施顺序
 

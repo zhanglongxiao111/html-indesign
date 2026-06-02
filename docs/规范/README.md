@@ -21,4 +21,4 @@
 
 | 文档 | 用途 |
 | ---- | ---- |
-| `../superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` | 协议字段注册表、多格式能力矩阵和未来 PPTX 适配架构设计 |
+| `../superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` | 已落地的协议字段注册表、多格式能力矩阵和 PPTX 适配边界设计，作为追溯和边界参考；当前事实以代码、registry 和生成文档为准 |

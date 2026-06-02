@@ -24,9 +24,14 @@
 | `规范/LABEL_PROTOCOL.md` | HTML 与 InDesign 双向标签协议 |
 | `规范/REVERSE_EXPORT.md` | InDesign 反向导出和语义化迁移规范 |
 | `规范/FONT_POLICY.md` | 项目公共字体库、字体 token、映射和预检规范 |
-| `superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` | 协议字段注册表、多格式能力矩阵和未来 PPTX 适配架构设计 |
+| `superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` | 已落地的协议字段注册表、多格式能力矩阵和 PPTX 适配边界设计，作为追溯和边界参考 |
 | `AI协作/README.md` | AI 协作材料的分类、命名和流转规则 |
-| `review/html-to-indesign-translation-audit-20260524.md` | HTML 到 InDesign 翻译准确性审核 |
+
+## 参考过程材料
+
+| 文档 | 用途 |
+| ---- | ---- |
+| `review/html-to-indesign-translation-audit-20260524.md` | 历史 HTML 到 InDesign 翻译准确性审核，只作问题追溯，不作为当前架构事实源 |
 
 ## 写作规则
 
