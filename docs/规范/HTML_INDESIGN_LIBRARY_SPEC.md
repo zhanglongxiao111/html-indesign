@@ -1091,16 +1091,12 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | `src/writers/indesign/` | InDesign Writer：semantic model -> instructions、样式编译、instructions 校验 |
 | `src/adapters/indesign/` | InDesign Adapter：reverse snapshot -> semantic model、标签白名单、历史 blueprint 迁移 |
 | `src/writers/html/` | HTML Writer：reverse author package、visual HTML、source/visual audit |
-| `src/generator.js` | 历史 blueprint -> 模板预览 HTML，只作为迁移参考 |
-| `src/spec-generator.js` | Agent 可读规范生成器，后续从 style model 生成 |
-| `src/validator.js` | 历史模板 validator，保留给旧测试和迁移对照 |
-| `src/builder.js` | 历史模板 builder，保留给旧测试和迁移对照 |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
 | `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/adapters/indesign/normalizer/blueprint-migration.js` 归一化为 semantic model |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
-历史模板能力通过 `src/historical-template/*` wrappers 对外暴露给迁移测试。新的浏览器驱动转换代码放在 `src/adapters/html/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`；新功能不得继续扩展历史模板路径。
+旧根层 blueprint 模板脚本和 `historicalTemplate` 公共出口已经退役。旧 blueprint 只能作为迁移输入进入 `src/adapters/indesign/normalizer/blueprint-migration.js`，再通过统一语义模型和 writer 输出；不得恢复旧模板 HTML 生成、旧槽位 validator、旧 builder 或公共 wrapper。新的浏览器驱动转换代码放在 `src/adapters/html/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`。
 
 当前模块布局：
 

@@ -17,12 +17,10 @@ const writers = {
   html: require('./src/writers/html'),
   indesign: require('./src/writers/indesign'),
 };
-const historicalTemplate = require('./src/historical-template');
 
 module.exports = {
   protocol,
   adapters,
   semanticModel,
   writers,
-  historicalTemplate,
 };

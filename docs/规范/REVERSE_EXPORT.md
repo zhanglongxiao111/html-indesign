@@ -235,7 +235,7 @@ PDF 反向导出必须保留：
 
 `reverse-model.json` 必须是统一语义模型的序列化结果，而不是独立的第三套结构。反向导出可以在语义模型外附加 snapshot、诊断和 unresolved 信息，但 `document`、`parentPages`、`pages`、`styles`、`layers`、`assets`、`items` 的字段含义必须和 `HTML_INDESIGN_LIBRARY_SPEC.md` 中的 Canonical Mapping Model 保持一致；具体字段事实以 `PROTOCOL_FIELD_REGISTRY.md` 为准。
 
-旧 blueprint 输入也必须先转换成 `reverse-model.json`，不得直接绕过模型调用旧 `generator.js` 生成最终 HTML。
+旧 blueprint 输入也必须先转换成 `reverse-model.json`，不得直接绕过模型恢复已退役的旧模板 HTML 生成器或旧槽位 builder。
 
 用途：
 

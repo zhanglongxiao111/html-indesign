@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const api = require('../index');
 
-test('public API exposes protocol adapters semanticModel writers and historical-template entry points', () => {
+test('public API exposes protocol adapters semanticModel and writers entry points', () => {
   assert.equal(typeof api.protocol.fieldRegistry.getByPath, 'function');
   assert.equal(typeof api.adapters.html.renderSnapshot, 'function');
   assert.equal(typeof api.adapters.html.snapshotToSemanticModel, 'function');
@@ -19,13 +19,12 @@ test('public API exposes protocol adapters semanticModel writers and historical-
   assert.equal(typeof api.writers.indesign.semanticModelToInstructions, 'function');
   assert.equal(typeof api.writers.html.semanticModelToHtml, 'function');
   assert.equal(typeof api.writers.html.writeReverseAuthorPackage, 'function');
-  assert.equal(typeof api.historicalTemplate.buildInstructions, 'function');
-  assert.equal(typeof api.historicalTemplate.validate, 'function');
 });
 
-test('public API does not expose retired stage 8 facades or semantic-model conversion entry points', () => {
+test('public API does not expose retired facades historical template or semantic-model conversion entry points', () => {
   assert.equal(api.pagedHtml, undefined);
   assert.equal(api.indesignReverse, undefined);
+  assert.equal(api.historicalTemplate, undefined);
   assert.equal(api.adapters.pptx.PptxReaderContract.contractOnly, true);
   assert.equal(api.adapters.pptx.PptxWriterContract.contractOnly, true);
   assert.equal(api.adapters.pptx.readPptxPackage, undefined);
