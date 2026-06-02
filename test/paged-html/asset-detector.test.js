@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot } = require('../../src/paged-html');
-const { detectAssetsFromItems } = require('../../src/paged-html/asset-detector');
+const { renderSnapshot } = require('../../src/adapters/html');
+const { detectAssetsFromItems } = require('../../src/adapters/html/reader/asset-detector');
 
 test('renderSnapshot detects raster pdf psd and ai placed assets', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');

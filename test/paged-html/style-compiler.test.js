@@ -1,7 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { renderSnapshot, compileStyles } = require('../../src/paged-html');
+const { renderSnapshot } = require('../../src/adapters/html');
+const { compileStyles } = require('../../src/writers/indesign');
 
 test('compileStyles creates swatches fonts and named paragraph styles', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');

@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { compareVisualGeometry } = require('../src/indesign-reverse/visual-geometry-audit');
+const { compareVisualGeometry } = require('../src/writers/html/audit/visual-geometry-audit');
 
 function parseArgs(argv) {
   const options = {};
@@ -44,6 +44,7 @@ function resolveInputs(options = {}) {
   const referenceHtml = path.resolve(options.referenceHtml || (reverseHtmlDir && path.join(reverseHtmlDir, 'deck.visual.html')) || '');
   const candidateHtml = path.resolve(options.candidateHtml || (reverseHtmlDir && path.join(reverseHtmlDir, 'author/deck.html')) || '');
   return {
+    reverseHtmlDir,
     referenceHtml,
     candidateHtml,
     outFile: options.outFile ? path.resolve(options.outFile) : null,
@@ -83,6 +84,23 @@ async function captureHtmlGeometry(htmlFile) {
       function round(value) {
         return Math.round(Number(value || 0) * 1000) / 1000;
       }
+      function metadataFor(element, pageElement) {
+        const dataIdAttrs = Array.from(element.attributes || [])
+          .map((attribute) => attribute.name)
+          .filter((name) => name.startsWith('data-id-'));
+        return {
+          pageId: pageElement.id || '',
+          role: element.getAttribute('data-id-role') || '',
+          vector: element.getAttribute('data-id-vector') || '',
+          objectStyle: element.getAttribute('data-id-object-style') || '',
+          paragraphStyle: element.getAttribute('data-id-paragraph-style') || '',
+          tableStyle: element.getAttribute('data-id-table-style') || '',
+          sourceCsv: element.getAttribute('data-id-source-csv') || '',
+          sourceXml: element.getAttribute('data-id-source-xml') || '',
+          dataIdAttrs,
+          classList: Array.from(element.classList || []),
+        };
+      }
       const pageElements = Array.from(document.querySelectorAll('.page'));
       const pages = pageElements.map((pageElement, index) => {
         const rect = pageElement.getBoundingClientRect();
@@ -109,6 +127,7 @@ async function captureHtmlGeometry(htmlFile) {
             id,
             pageIndex,
             tagName: element.tagName.toLowerCase(),
+            ...metadataFor(element, pageElement),
             x: round(rect.left - pageRect.left),
             y: round(rect.top - pageRect.top),
             width: round(rect.width),
@@ -122,6 +141,83 @@ async function captureHtmlGeometry(htmlFile) {
   } finally {
     await browser.close();
   }
+}
+
+function loadReverseHtmlEvidence(reverseHtmlDir) {
+  if (!reverseHtmlDir) {
+    return {
+      reverseModel: null,
+    };
+  }
+  return {
+    reverseModel: readJsonIfExists(path.join(reverseHtmlDir, 'reverse-model.json')),
+  };
+}
+
+function readJsonIfExists(file) {
+  if (!file || !fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(`Invalid audit evidence JSON: ${file}: ${error.message}`);
+  }
+}
+
+function enrichCaptureWithReverseModelSourceMetadata(capture, model) {
+  if (!capture || !Array.isArray(capture.elements) || !model) return capture;
+  const sourceMetadata = reverseModelSourceMetadataByKey(model);
+  for (const element of capture.elements) {
+    const metadata = sourceMetadata.get(element.key || `${element.pageIndex || 0}:${element.id || ''}`);
+    if (!metadata) continue;
+    for (const { attr, prop } of sourceMetadataAttrs()) {
+      if (!element[prop] && metadata[prop]) {
+        element[prop] = metadata[prop];
+      }
+      if (element[prop]) addDataIdAttr(element, attr);
+    }
+  }
+  return capture;
+}
+
+function reverseModelSourceMetadataByKey(model) {
+  const map = new Map();
+  const pages = Array.isArray(model && model.pages) ? model.pages : [];
+  pages.forEach((page, pageIndex) => {
+    collectReverseModelSourceMetadata(map, page && page.items, pageIndex);
+  });
+  return map;
+}
+
+function collectReverseModelSourceMetadata(map, items, pageIndex) {
+  for (const item of Array.isArray(items) ? items : []) {
+    const id = item && item.id ? String(item.id) : '';
+    const metadata = sourceMetadataFromItem(item);
+    if (id && (metadata.sourceCsv || metadata.sourceXml)) {
+      map.set(`${pageIndex}:${id}`, metadata);
+    }
+    collectReverseModelSourceMetadata(map, item && item.children, pageIndex);
+  }
+}
+
+function sourceMetadataFromItem(item) {
+  const sourceNode = item && (item.sourceNode || (item.effectiveLabel && item.effectiveLabel.sourceNode)) || {};
+  const attrs = sourceNode.attributes || {};
+  return {
+    sourceCsv: attrs['data-id-source-csv'] || '',
+    sourceXml: attrs['data-id-source-xml'] || '',
+  };
+}
+
+function sourceMetadataAttrs() {
+  return [
+    { attr: 'data-id-source-csv', prop: 'sourceCsv' },
+    { attr: 'data-id-source-xml', prop: 'sourceXml' },
+  ];
+}
+
+function addDataIdAttr(element, attr) {
+  if (!Array.isArray(element.dataIdAttrs)) element.dataIdAttrs = [];
+  if (!element.dataIdAttrs.includes(attr)) element.dataIdAttrs.push(attr);
 }
 
 function validateInputs(inputs) {
@@ -144,12 +240,18 @@ function printHuman(report, inputs) {
     `elements compared: ${report.stats.compared}`,
     `missing: ${report.stats.missing}`,
     `mismatched: ${report.stats.mismatched}`,
+    `accepted: ${report.stats.accepted || 0}`,
     `errors: ${report.errors.length}`,
+    `warnings: ${report.warnings.length}`,
   ];
   for (const issue of report.errors.slice(0, 40)) {
     lines.push(`- ${issue.code}${issue.id ? ` ${issue.id}` : ''}: ${issue.message}`);
   }
   if (report.errors.length > 40) lines.push(`- ... ${report.errors.length - 40} more errors`);
+  for (const issue of report.warnings.slice(0, 20)) {
+    lines.push(`~ ${issue.code}${issue.id ? ` ${issue.id}` : ''}: ${issue.message}`);
+  }
+  if (report.warnings.length > 20) lines.push(`~ ... ${report.warnings.length - 20} more warnings`);
   console.log(lines.join('\n'));
 }
 
@@ -163,6 +265,8 @@ async function main() {
   validateInputs(inputs);
   const reference = await captureHtmlGeometry(inputs.referenceHtml);
   const candidate = await captureHtmlGeometry(inputs.candidateHtml);
+  const evidence = loadReverseHtmlEvidence(inputs.reverseHtmlDir);
+  enrichCaptureWithReverseModelSourceMetadata(reference, evidence.reverseModel);
   const report = compareVisualGeometry({ reference, candidate, tolerance: inputs.tolerance });
   if (inputs.outFile) {
     fs.mkdirSync(path.dirname(inputs.outFile), { recursive: true });
@@ -184,5 +288,6 @@ module.exports = {
   parseArgs,
   resolveInputs,
   captureHtmlGeometry,
+  enrichCaptureWithReverseModelSourceMetadata,
   usage,
 };

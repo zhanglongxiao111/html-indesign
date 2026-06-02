@@ -4,7 +4,7 @@ const {
   sourcePackageFromDocument,
   sourceNodeForSnapshotItem,
   gridLayoutFromCssVars,
-} = require('../../src/paged-html/source-metadata');
+} = require('../../src/adapters/html/reader/source-metadata');
 
 test('sourcePackageFromDocument reads generated deck metadata', () => {
   const sourcePackage = sourcePackageFromDocument({

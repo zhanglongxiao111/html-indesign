@@ -1,12 +1,76 @@
 # 协议字段注册表实施计划
 
-状态：已收口，待执行
+状态：实施完成，待收尾集成（worktree：`.worktrees/protocol-field-registry`，分支：`codex/protocol-field-registry`）
 
 来源：GPT Pro 外部审查回复，经本地仓库核对后整理为正式执行版
 
 关联规格：
 
 - `docs/superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md`
+
+执行进度：
+
+- [x] 创建隔离 worktree：`.worktrees/protocol-field-registry`
+- [x] 创建执行分支：`codex/protocol-field-registry`
+- [x] 设置 worktree 本地 `core.autocrlf=false`，避免 Windows CRLF 检出破坏 LF 敏感测试
+- [x] 阶段 0 前置依赖检查：`rg --version`
+- [x] 阶段 0 前置依赖安装：`npm install`
+- [x] 阶段 0 前置基线测试：`npm test`，357 pass / 0 fail
+- [x] 阶段 0：冻结现有事实源与基线测试（implementation：`983ddb3`；spec review 通过；code quality review 通过）
+- [x] 阶段 1：实现协议字段注册表核心 API（implementation：`fa30750`；修复：`f13b7ae`、`e569799`、`355df73`；spec review 通过；code quality review 通过；controller 验证：protocol 24/24、npm test 381/381）
+- [x] 阶段 2：登记当前事实字段，不接入强门禁（implementation：`68cde6b`；spec fixes：`9e05f2a`、`e5ad1cd`；quality fix：`d30df31`；spec review 通过；code quality review 通过；controller 验证：protocol focused 16/16、protocol 33/33、npm test 390/390）
+- [x] 阶段 3：能力矩阵和生命周期策略门禁（implementation：`8648f27`；spec fixes：`50386a6`、`b22aa2c`；quality fixes：`b2fe754`、`d304e75`、`3f9d8ae`、`01cf80d`、`7e4d017`；spec review 通过；code quality review 通过；controller 验证：stage focused 51/51、protocol 57/57、npm test 414/414）
+- [x] 阶段 4：字段扫描和仅警告门禁（implementation：`f8b2e9b`；spec fix：`5c33f35`；quality fixes：`4347e0a`、`6cd173d`、`b9880d8`；spec review 通过；code quality review 通过；controller 验证：stage focused 18/18、protocol 75/75、npm test 432/432）
+- [x] 阶段 5：接入语义模型和标签白名单（implementation：`a8b4c0d`；spec fixes：`44ffe16`、`ad1ed4d`、`0687952`、`27deff8`、`d0994b1`、`e5fc097`；quality fixes：`6ca7c7e`、`e77dcf3`、`16147a1`、`9ca607a`、`5cec7c2`、`b2f40db`；controller 复验通过：raw label strict/warn 探针通过，validator 9/9、author-package 18/18、focused 78/78、focused 89/89、stage broad 149/149、blocker focused 82/82、`git diff --check` 通过、`npm test` 474/474 通过；quality re-review agent `019e8132-919f-7353-ab5e-0fa4338f821e` BLOCKED 项已修复；post-fix review agent `019e81ac-0c8a-7e83-ba2d-2a956d015450` PASS，focused 82/82 + protocol/model 28/28）
+- [x] 阶段 6：退役字段集中登记与清理（implementation `af0065f`；implementation agent `019e81b1-af6e-7472-831a-dbfac7ae53d0` 完成；spec review agent `019e81b6-ff27-7380-a7f7-5b64ea04a8cd` PASS；quality review agent `019e81bb-599b-7ed1-a695-24d605de7265` BLOCKED：direction 空值静默当 read、retired policy 缺枚举校验、no-fallback grep 过脆弱；quality fix `75c941d`，controller 复验通过：fix focused 31/31、stage focused 70/70、protocol/semantic 105/105、`git diff --check` 通过；quality re-review agent `019e81c4-f70d-7651-ad97-a5ec8455052e` PASS；`npm test` 481/481）
+- [x] 阶段 7：按域接入强校验（implementation `4b6ced8`；implementation agent `019e81cc-0141-7d83-982c-086c43cded14` 完成；controller 复验通过：focused 31/31、protocol/semantic 124/124、`git diff --check` 通过；spec review agent `019e81d9-162c-70f0-901e-b7c637e6d1d1` BLOCKED：`source.metadata` 域过宽、非法输入静默成功、`visualStyle` canonical/native 能力过度声明；spec fix `9730e67`，spec fix agent `019e81df-6b1a-7ca2-a49f-94fec02eb72f` DONE；controller 复验通过：focused 33/33、protocol/semantic 128/128、`git diff --check` 通过；spec re-review agent `019e81e8-04fa-7873-8ddb-21c6874d155a` PASS；quality review agent `019e81ef-af41-7473-b76d-959c08a6d0e6` BLOCKED：`SOURCE_METADATA_PATHS` 含未登记/未扫描的 `items[].effectiveLabel.*` 假路径，allowlist 事实漂移；quality fix `21f8d20`，quality fix agent `019e81f5-c348-74e1-90d8-33519d28def2` DONE；controller 复验通过：focused 34/34、protocol/semantic 129/129、reverse-model 25/25、`git diff --check` 通过；quality re-review agent `019e81fb-0c5b-7e93-935b-49df784abb4e` PASS；`npm test` 496/496）
+- [x] 阶段 8：目录重构为适配器 / 写出器（implementation `5579da6`；implementation agent `019e8200-7c8e-72e0-b338-63eeca33fb25` DONE；controller 复验通过：baseline-imports 2/2、旧路径扫描 `NO_MATCHES`、旧目录与 PPTX 入口不存在、`git diff --check` 通过、`npm test` 497/497；spec review agent `019e820c-0621-70e2-9041-9d3c00080938` PASS；quality review agent `019e8210-de9d-7922-86d5-07e3e63a8b6c` BLOCKED：缺少退役公共 API 负向契约测试，无法防止 `pagedHtml`、`indesignReverse`、`adapters.pptx` 或 semanticModel writer/adapter 入口回流；quality fix `c1b5a87`，quality fix agent `019e8215-82bb-7ad2-bf15-586a56790de6` DONE；controller 复验通过：public API focused 4/4、旧路径扫描 `NO_MATCHES`、`git diff --check` 通过、`npm test` 498/498；quality re-review agent `019e821a-0e1f-7540-b605-90cb7e59605d` PASS）
+- [x] 阶段 9：拆分大文件并保持行为可验证（implementation `f8381bf`；implementation agent `019e821e-3b0e-7213-9ce1-84be3c8289e6` DONE；controller 复验通过：browser snapshot focused 23/23、writer focused 52/52、HTML writer focused 65/65、public API 4/4、旧路径扫描 `NO_MATCHES`、`git diff --check` 通过、`npm test` 498/498；spec review agent `019e8230-f006-7cb1-9fd9-b4289178b1ae` BLOCKED：`browser-snapshot.js` 仍集中 style capture / authored style / source node / candidate traversal / inline runs / table assembly，`author-html-tree.js` 仍集中 asset / PDF / vector / table / rich text 渲染热点；spec fix `a330556`，spec fix agent `019e8237-9e81-7440-b536-2231b1edb9bc` DONE：`browser-snapshot.js` 降至 170 行、`author-html-tree.js` 降至 41 行；controller 复验通过：browser focused 24/24、HTML writer focused 66/66、writer focused 52/52、public API 4/4、retired-fields 7/7、旧路径与 active API 扫描通过、`git diff --check` 通过、`npm test` 500/500；spec re-review agent `019e8249-03cd-7da0-8d68-55abbfcc3d06` PASS；quality review agent `019e824f-b8f8-7f32-8058-23b9cb5e4be9` BLOCKED：缺失 page selector 静默输出空快照、反向作者表格丢弃 rowspan/colspan/runs、browser snapshot 仍保留裸数组兼容分支；quality fix `64243ff`，quality fix agent `019e8257-8dd9-7011-a6ae-a3c167b8bba3` DONE：缺失页面选择器与非法 capture shape 显式失败，表格写出保留 rowspan/colspan/runs；controller 复验通过：quality focused 54/54、browser focused 26/26、HTML writer focused 67/67、旧路径与 active API 扫描通过、`git diff --check` 通过、`npm test` 503/503；quality re-review agent `019e8262-db22-7a52-81ca-cfcdd8ebe966` PASS）
+- [x] 阶段 10：PPTX 预留适配器 / 写出器契约（implementation `19010cd`；implementation agent `019e8269-0c60-7f32-b72d-40fa9c8929b6` DONE；TDD RED 已确认：`api.adapters.pptx` 缺失与 README 缺失导致 `pptx-contracts` 失败；controller 复验通过：pptx contracts 6/6、capability/public-api/baseline 19/19、旧目录不存在、无 PPTX package I/O 或 HTML/InDesign-PPTX 专用转换器、`git diff --check` 通过、`npm test` 509/509；spec review agent `019e8271-5a62-7c80-a2f9-aa13e399eeea` PASS；quality review agent `019e8275-e3f8-75f1-8456-9e7c9d616d93` BLOCKED：`PptxContractCapabilities.fieldStrategies` 成为 registry 之外的第二/局部能力事实源，禁区扫描未编码进测试，`index.js` spread merge 可能静默覆盖 contract 导出；quality fix `74c9cec`，quality fix agent `019e827c-23bd-7db0-ba91-12e6d508b2a2` DONE：移除局部字段能力镜像、增加 active runtime/package 禁区扫描、显式列出 PPTX public surface；controller 复验通过：quality focused 25/25、baseline/pptx/public-api 12/12、旧目录不存在、active PPTX scan clean、`git diff --check` 通过、`npm test` 511/511；quality re-review agent `019e8285-93dc-7393-92cb-e250252aa122` PASS）
+- [x] 阶段 11：字段文档生成与长期规范收口（implementation `0dc79d0`；implementation agent `019e828d-9b4a-7730-9d59-88279d50376e` DONE；TDD RED 已确认：缺少 `src/protocol/docs/generate-field-docs` 导致 `generated-docs` 失败，追加 unknown fieldClass 与 retired 属性输出覆盖先红后绿；controller 复验通过：生成 `PROTOCOL_FIELD_REGISTRY.md` 幂等、generated-docs 5/5、过时静态事实源表述扫描无命中、`git diff --check` 通过、`npm test` 516/516；spec review agent `019e8297-3288-7ea3-a112-ef73b99c5510` ERRORED：gpt-5.4 xhigh usage limit，无有效审核产出；replacement spec review agent `019e8301-1929-72c1-a5a2-b12dc6a36c08` PASS：确认生成器从 registry/capability API 取字段与能力、CLI UTF-8 写出、生成文档结构符合要求、长期规范已指向 `PROTOCOL_FIELD_REGISTRY.md` 且过时临时事实源表述无命中；quality review agent `019e8304-ce6f-72a1-ae5c-1d40598f288e` BLOCKED：`generateFieldDocsMarkdown(null)` 静默回退默认 registry，缺少 `PROTOCOL_FIELD_REGISTRY.md` 与 generator 字节级同步测试，CLI/缺 capability 关键回归面未进入自动测试；quality fix `385fca2`，quality fix agent `019e8308-8f83-7593-888d-fae0227eb2a1` DONE：库函数强制显式 registry、默认 registry 仅用于 CLI、增加生成文档字节级同步、CLI `--out` 与 UTF-8 输出、缺 capability 明确失败测试；controller 复验通过：生成器写出、generated-docs 10/10、null registry 拒绝、generated-docs+capability 25/25、DOC_SYNC_OK、兜底/过时表述扫描无命中、`git diff --check` 通过、`npm test` 521/521；quality re-review agent `019e830e-720f-7133-8398-053972036761` PASS）
+- [x] 阶段 12：最终 E2E 和真实 InDesign 验证（verification agent `019e8312-3642-77d3-bc47-99e0a2febf48` DONE_WITH_CONCERNS；verification fix `0127e37`：真实 E2E 暴露 reverse roundtrip final validation failures 后做共享链路修复；agent 自报通过：`npm test` 526/526、authoring lint 普通/strict 0 error 0 warning、assemble check PASS、真实 E2E 输出 `test/workspace/indesign-e2e-20260601-202502` PASS、reverse roundtrip 输出 `test/workspace/indesign-e2e-20260601-202528` PASS、second-pass 输出 `test/workspace/indesign-e2e-20260601-202558` PASS、roundtrip audit PASS、reverse visual audit PASS with accepted 35、`git diff --check` PASS、worktree clean；controller 复验通过：focused regression 76/76、authoring lint 普通/strict 0 error 0 warning、assemble check PASS、`npm test` 526/526、真实 E2E 输出 `test/workspace/indesign-e2e-20260601-203030` PASS、reverse roundtrip 输出 `test/workspace/indesign-e2e-20260601-203057` PASS、second-pass 输出 `test/workspace/indesign-e2e-20260601-203135` PASS、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35（background 7、border 16、generated text 4、text metrics 7、table height 1）、`git diff --check` PASS、worktree clean；spec review agent `019e832c-f934-7e12-a338-8c463781ed45` PASS：确认所有第 12 gate 已通过，`0127e37` 为共享链路修复非 fixture 补丁，退役字段未回流，产物均在 `test/workspace/`，accepted warnings 可解释且 errors/missing/mismatched 为 0；quality review agent `019e8331-d3fc-76c1-a254-bb1d10753870` BLOCKED：visual audit accepted-missing 仅凭 `-background`/`-border-*`/`-text` 后缀会吞掉真实缺失元素，accepted geometry mismatch 对任意 table/inline text 漂移过宽，损坏 source `deck.config.json` 被静默吞掉并 fallback；quality fix `b208d45`，quality fix agent `019e8337-089f-7923-afd0-50f6e4450a70` DONE：收紧 reverse visual accepted gates，坏 source config 显式 `SOURCE_CONFIG_PARSE_FAILED`，新增负向测试；controller 复验通过：focused quality tests 28/28、regression group 80/80、普通 `body-text` 缺失负例保持 error、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS accepted 35、`npm test` 530/530、authoring lint 普通/strict 0 error 0 warning、assemble check PASS、修复后真实 E2E 输出 `test/workspace/indesign-e2e-20260601-205733` PASS、修复后 reverse roundtrip 输出 `test/workspace/indesign-e2e-20260601-205801` PASS、修复后 second-pass 输出 `test/workspace/indesign-e2e-20260601-205833` PASS、基于新 reverse 输出 roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35（background 7、border 16、generated text 4、text metrics 7、table height 1）、`git diff --check` PASS、worktree clean；quality re-review agent `019e8345-cd7d-7af2-ab38-620d06a6091e` RUNNING）
+
+  - 2026-06-01 质量复审补充：quality re-review agent `019e8345-cd7d-7af2-ab38-620d06a6091e` BLOCKED。阻塞点：`src/writers/html/audit/visual-geometry-audit.js` 仍保留 `explicitGeneratedKind()` / `visualAccept` 快速接受通道，且 `scripts/audit-reverse-visual.js` 捕获未进入协议字段注册表的 `data-id-visual-accept`、`data-id-generated-fragment`、`data-id-generated-kind`，构成 registry 外第二事实源；复现为普通缺失 `body-text` 只要带 `generatedKind: "text"` 或 `visualAccept: "text"` 即被 accepted warning 吞掉。已确认前轮 table/inline 几何漂移与坏 source config 两项阻塞关闭。下一步：派 gpt-5.5 xhigh 修复 agent 移除未登记显式接受旁路，改用结构化证据判定并补负向测试。
+  - 2026-06-01 质量阻塞二次修复：quality fix agent `019e834b-d6c1-7481-ba3a-f515b6f98b02` RUNNING（gpt-5.5 xhigh）。范围限定为移除未登记 `visualAccept` / `generatedKind` accepted bypass、补结构化接受正例和未登记字段负例、保持前轮 table/inline/source config 修复不回退。
+  - 2026-06-01 质量阻塞二次修复结果：quality fix agent `019e834b-d6c1-7481-ba3a-f515b6f98b02` DONE，commit `1eff17f`。修复内容：移除 `explicitGeneratedKind()` / `generatedAcceptedCode()` / `normalizeGeneratedKind()`，从 reverse visual capture 清理未登记 `data-id-visual-accept`、`data-id-generated-fragment`、`data-id-generated-kind`，accepted missing 正例改为全页背景、边框碎片、annotation text fragment 的结构化证据；新增负例证明普通 missing text 即使携带 `generatedKind` 或 `visualAccept` 也必须 hard error。agent 自报验证：focused 29/29、regression group 81/81、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit 0 errors accepted 35、`npm test` 531/531、`git diff --check` clean、worktree clean。下一步：controller 复验并重新派 gpt-5.4 xhigh quality re-review。
+  - 2026-06-01 controller 二次修复复验：通过。`rg` 确认 `src/` 与 `scripts/` 无 `visualAccept` / `data-id-visual-accept` / `data-id-generated-fragment` / `data-id-generated-kind` / `explicitGeneratedKind` 等 active acceptance authority 命中；直接探针确认普通 missing `body-text` 携带 `generatedKind: "text"` 或 `visualAccept: "text"` 均 hard error 且 accepted 0；focused quality tests 29/29、regression group 81/81、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35、`npm test` 531/531、`git diff --check` PASS、worktree clean。下一步：quality re-review agent 复审 `1eff17f`。
+  - 2026-06-01 质量复审二次：quality re-review agent `019e8352-4694-74b1-9c3b-10db268e21a6` RUNNING（gpt-5.4 xhigh）。复审重点：确认 `1eff17f` 关闭未登记 accepted authority、没有新增兜底/第二事实源/fixture hardcode/legacy 双路径，并确认 table/inline geometry 与 source config 修复未回退。
+  - 2026-06-01 质量复审二次结果：quality re-review agent `019e8352-4694-74b1-9c3b-10db268e21a6` BLOCKED。`1eff17f` 已关闭 `visualAccept/generatedKind` 后门，且 focused 29/29 未回退；但 accepted authority 仍依赖未登记字段和 CSS class：`data-id-vector` / `data-id-source-csv` / `data-id-source-xml` 在 strict registry 校验中报 `DATA_ID_FIELD_NOT_REGISTERED`，却可分别触发背景缺失与 table height drift accepted；`classList: ["page-number"]` 即使没有 `paragraphStyle: "folio"` 也能触发 text metrics accepted。结论：accepted 路径仍未完全收口到协议注册表事实，违反“协议字段必须集中登记”“失败要早于假成功”“兜底默认有害”。下一步：派 gpt-5.5 xhigh 修复 agent，将 accepted authority 收口到已登记 canonical/label/style facts，或先集中登记确属协议事实的字段，并移除 CSS class 单独授权。
+  - 2026-06-01 registry authority 修复：quality fix agent `019e8358-3500-7a01-9d95-0740af50ea72` RUNNING（gpt-5.5 xhigh）。范围：将 `data-id-vector` / `data-id-source-csv` / `data-id-source-xml` 收进 registry 或从 accepted authority 清理，移除 `page-number` CSS class 单独授权，补 RED/GREEN 测试并保持生成字段文档同步。
+  - 2026-06-01 registry authority 修复结果：quality fix agent `019e8358-3500-7a01-9d95-0740af50ea72` DONE，commit `b1ddedf`。修复内容：将 `data-id-vector` 登记到 `items[].vectorGeometry.kind`，将 `data-id-source-csv` / `data-id-source-xml` 登记为 source metadata，重新生成 `docs/规范/PROTOCOL_FIELD_REGISTRY.md`；`isPageNumberText()` 移除 `page-number` CSS class 单独授权，仅保留 `paragraphStyle: "folio"`；新增 strict data-id、table source hint、class-only page-number 负例。agent 自报验证：focused protocol/docs/audit 49/49、executor/reverse 83/83、review repro attrs strict valid true、class-only page-number hard error、roundtrip audit 7/7 errors 0、reverse visual accepted 35 errors 0、`npm test` 534/534、diff checks clean、worktree clean。下一步：controller 复验并重新派 quality re-review。
+  - 2026-06-01 controller registry authority 复验：通过。`validateDataIdFields(..., { strict: true })` 对 `data-id-role` / `data-id-vector` / `data-id-object-style` / `data-id-paragraph-style` / `data-id-table-style` / `data-id-source-csv` / `data-id-source-xml` 返回 valid true、unknown 0、errors 0；直接复现确认 class-only `page-number` text metrics drift 与仅 candidate 携带 source hint 的 table height drift 均 hard error、accepted 0；重新生成 `PROTOCOL_FIELD_REGISTRY.md` 后无 diff；focused protocol/docs/audit 49/49、executor/reverse 83/83、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35、`npm test` 534/534、`git diff --check` PASS、worktree clean。下一步：quality re-review agent 复审 `b1ddedf`。
+  - 2026-06-01 registry authority 质量复审：quality re-review agent `019e8361-f60d-7141-b034-121793b37ccf` RUNNING（gpt-5.4 xhigh）。复审重点：确认 `b1ddedf` 关闭未登记字段与 CSS class accepted authority，registry/docs 同步，无兜底、第二事实源、fixture hardcode 或 legacy/generated/visualAccept 旁路回流。
+  - 2026-06-01 registry authority 质量复审结果：quality re-review agent `019e8361-f60d-7141-b034-121793b37ccf` BLOCKED。已确认 `data-id-vector` / `data-id-source-csv` / `data-id-source-xml` 注册、reverse visual class-only `page-number` 负例、`visualAccept/generatedKind` 后门均关闭；但仍有两处 authority 泄漏：`AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED` 只要求 candidate 带注册 source metadata，reference 无同一 source 证据也能自授权 accepted；`src/adapters/html/validators/authoring-validator.js` 与 `src/semantic-model/layout.js` 仍把 class-only `page-number` 当作 folio 事实，绕过 `data-id-paragraph-style="folio"`。下一步：派 gpt-5.5 xhigh 修复 agent，要求 source metadata 双侧一致、移除 validator/layout 中 class-only `page-number` 权限并补负例。
+  - 2026-06-01 authority leakage 修复：quality fix agent `019e8368-def3-70e1-aec2-6b3675cebfb5` RUNNING（gpt-5.5 xhigh）。范围：table height accepted 必须要求 reference/candidate 双侧注册 source metadata 证据；`authoring-validator` 与 `semantic-model/layout` 移除 class-only `page-number` 权限，仅允许 `data-id-paragraph-style="folio"`；补 RED/GREEN 负例与正例。
+  - 2026-06-01 authority leakage 修复结果：quality fix agent `019e8368-def3-70e1-aec2-6b3675cebfb5` DONE，commit `3de2234`。修复内容：reverse visual table height accepted 改为 reference/candidate 双侧 source metadata 证据并补 audit evidence；`authoring-validator` 与 `semantic-model/layout` 移除 class-only `page-number` 跳过逻辑，仅 `data-id-paragraph-style="folio"` 继续作为注册 folio 事实；新增 candidate-only source hint、class-only page-number grid warning、used-snap guide 负例与 folio 正例。agent 自报验证：focused 30/30、protocol/docs/audit 50/50、executor/reverse 84/84、direct repro 均关闭、roundtrip audit 0 errors、reverse visual 0 errors、`npm test` 540/540、diff checks clean、worktree clean。下一步：controller 复验并重新派 quality re-review。
+  - 2026-06-01 controller authority leakage 复验：通过。核对 `3de2234` diff 为 8 files / 348 insertions / 10 deletions；focused tests 30/30、protocol/docs/audit 50/50、executor/reverse 84/84；直接探针确认仅 candidate 携带 `data-id-source-csv` 的 table height drift 为 hard error、accepted 0；authoring validator 对 class-only `page-number` 继续报告 `GRID_ALIGNMENT_OFF`，只有注册 `data-id-paragraph-style="folio"` 才跳过 folio 网格检查；`semantic-model/layout` used-snap 对 class-only page-number 保留 24/36 guides，对注册 folio 省略对应 guides；active authority 扫描确认 `classList.includes('page-number')`、`data-id-visual-accept`、`explicitGeneratedKind` 无命中，`visualAccept` 仅剩负向测试；roundtrip audit 7/7 warnings 0 errors 0；reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35；`npm test` 540/540；`git diff --check` PASS、worktree clean。下一步：quality re-review agent 复审 `3de2234`。
+  - 2026-06-01 authority leakage 质量复审：quality re-review agent `019e8375-7757-7853-9ef8-dc99bcefad87` RUNNING（gpt-5.4 xhigh）。复审重点：确认 `3de2234` 关闭 table height candidate-only source 自授权和 validator/layout class-only `page-number` authority，继续严查 registry 外第二事实源、suffix/name/generated/visualAccept 旁路、fixture hardcode、静默兜底、legacy/compat 双路径。
+  - 2026-06-01 authority leakage 质量复审结果：quality re-review agent `019e8375-7757-7853-9ef8-dc99bcefad87` BLOCKED。class-only `page-number` authority 已确认关闭，且 focused tests 与 active `visualAccept/generatedKind` 扫描通过；但 table height accepted 仍有两处高风险 authority 泄漏：`scripts/audit-reverse-visual.js` 会用 `authoring-report.json` 的 generic asset alias 重写 candidate `sourceCsv/sourceXml`，使 registry 外报告成为 accepted 事实源；`visual-geometry-audit.js` 对 `data-id-source-csv/xml` 使用任一字段匹配即 accepted，导致一个注册 source 字段漂移时仍可被另一个字段掩盖。下一步：派 gpt-5.5 xhigh 修复 agent，要求停止 alias 报告重写 accepted authority，并将 table source metadata 比对改为完整注册集合一致，补 stale alias rewrite 与 csv/xml partial mismatch 负例。
+  - 2026-06-01 controller 复现质量阻塞：已复现。alias-map direct probe 显示 candidate `sourceCsv` 被 `authoring-report.assets.entries` 从 `assets/fake.csv` 改写为 `../real/ref.csv`，随后 `compareVisualGeometry()` 返回 `ok: true`、`AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED`、accepted 1；csv/xml partial mismatch direct probe 显示 csv 漂移但 xml 一致时仍返回 `ok: true`、`AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED`、accepted 1。修复 agent `019e837d-a3ad-7cf3-a19e-4d00243bd328` RUNNING（gpt-5.5 xhigh），范围限定为停止 registry 外 alias accepted authority、完整比对注册 table source metadata 集合、补 RED/GREEN 负例与正例。
+  - 2026-06-01 source metadata authority 修复结果：quality fix agent `019e837d-a3ad-7cf3-a19e-4d00243bd328` DONE，commit `32f08e5`。修复内容：删除 `canonicalizeCaptureSourceMetadata()` / authoring-report generic asset alias 重写运行路径和导出；`AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED` 改为要求 reference/candidate 的注册 `data-id-source-csv/xml` 集合和值完全一致；`rewriteResourceAttrs()` 不再重写 `data-id-source-csv/xml`，作者包保留协议事实原值。新增 stale alias、csv/xml partial mismatch、candidate extra source、完整 match、source attr preserve 测试。agent 自报验证：focused 49/49、`npm test` 544/544、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS accepted 35 errors 0、diff checks clean、worktree clean。controller 已复验：旧 canonicalize export 不存在，alias source mismatch hard error accepted 0，csv/xml partial mismatch hard error accepted 0，完整 csv+xml match 仍 accepted 1；focused 49/49；roundtrip audit 7/7 warnings 0 errors 0；reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35；作者包 `data-id-source-csv/xml` 保留原始 `../smoke-assets/...` 协议路径。下一步：controller 跑全量 `npm test`、diff/status，再派 gpt-5.4 xhigh quality re-review。
+  - 2026-06-01 controller source metadata authority 完整复验：通过。`npm test` 544/544；`git diff --check` PASS；`git diff --cached --check` PASS；`git status --short --branch` 仅 `## codex/protocol-field-registry`。下一步：quality re-review agent 复审 `32f08e5`，重点确认 accepted authority 不再依赖 authoring-report alias，table source metadata 必须完整注册集合一致，且 source attr preserve 不破坏资源打包边界。
+  - 2026-06-01 source metadata authority 质量复审：quality re-review agent `019e838a-ceb0-78f3-8f20-8cab889c49f4` RUNNING（gpt-5.4 xhigh）。复审重点：确认 `32f08e5` 关闭 authoring-report/generic asset alias accepted authority 和 table source partial-match accepted，并严查 candidate-only、extra field、未登记字段、path normalization 兜底、资源打包隐式同步路径。
+  - 2026-06-01 source metadata authority 质量复审结果：quality re-review agent `019e838a-ceb0-78f3-8f20-8cab889c49f4` BLOCKED。前两项阻塞已确认关闭，资源打包收集 `data-id-source-*` 也未回流 accepted authority；但 `visual-geometry-audit.js` 的 `normalizeSourceMetadataValue()` 仍对 registered source values 做 `\\` -> `/` 路径归一化（并经 `optionalString()` trim），使 reference `..\\data\\metrics.csv/xml` 与 candidate `../data/metrics.csv/xml` 在 table height drift 下被 accepted。controller 用 `String.raw` probe 复现 `ok: true`、`AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED`、accepted 1。下一步：派 gpt-5.5 xhigh 修复 agent，把 table source accepted authority 收口为原始注册属性值精确一致；若未来要 separator-insensitive，必须在 protocol registry 层显式定义，而不是 audit 局部兜底。
+  - 2026-06-01 exact source value 修复：quality fix agent `019e8391-7d6b-7750-9d1e-58fb8c8fda88` RUNNING（gpt-5.5 xhigh）。范围限定为 table source accepted authority 原始注册属性值精确一致，补 slash/backslash 与 whitespace-trim-only mismatch 负例，保持完整 raw match 正例和前轮 source authority 负例不回退。
+  - 2026-06-01 exact source value 修复结果：quality fix agent `019e8391-7d6b-7750-9d1e-58fb8c8fda88` DONE，commit `166b107`。修复内容：`sourceCsv/sourceXml` 不再通过 `optionalString().trim()` 或 `\\` -> `/` 路径归一化参与 accepted authority；新增 `registeredSourceMetadataValue()` 只用 trim 判断空值但返回原始字符串；table height accepted 保持注册 source 集合/cardinality 完整一致且值为 raw exact match。新增 slash/backslash mismatch 与 whitespace-only mismatch 负例。agent 自报验证：新增测试先 RED 后 GREEN，focused 60/60、direct `String.raw` probe hard error accepted 0、`npm test` 546/546、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS accepted 35 errors 0、diff/status clean。下一步：controller 复验并重新派 quality re-review。
+  - 2026-06-01 controller exact source value 复验：通过。direct probes 确认 slash/backslash mismatch hard error accepted 0、whitespace mismatch hard error accepted 0、raw exact match 仍 `AUTHOR_VISUAL_TABLE_HEIGHT_ACCEPTED` accepted 1；`rg` 确认 `normalizeSourceMetadataValue`、`replace(/\\/g, '/')` source accepted path、`optionalString(value.sourceCsv/sourceXml)` 无命中；focused audit/cli/author-html-tree/asset-reference-policy 60/60；roundtrip audit 7/7 warnings 0 errors 0；reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35；`npm test` 546/546；`git diff --check` PASS；`git diff --cached --check` PASS；worktree clean。下一步：quality re-review agent 复审 `166b107`。
+  - 2026-06-01 exact source value 质量复审：quality re-review agent `019e8399-29db-7372-aeb2-86cbc848d8c8` RUNNING（gpt-5.4 xhigh）。复审重点：确认 `166b107` 关闭 path normalization / trim-as-equality blocker，并严查 authoring-report alias、asset packager alias、candidate-only、partial-match、extra-field、未登记字段或 fixture hardcode 是否仍可进入 accepted authority。
+  - 2026-06-02 exact source value 质量复审结果：quality re-review agent `019e8399-29db-7372-aeb2-86cbc848d8c8` ERRORED：gpt-5.4 xhigh usage limit，无有效审核产出，不作为质量结论。下一步：启动 replacement quality re-review agent 继续复审 `166b107`。
+  - 2026-06-02 exact source value replacement 质量复审：quality re-review agent `019e845a-8a24-7351-a1a7-01dd32d513ab` RUNNING（gpt-5.4 xhigh）。复审重点同上：确认 raw exact source authority，无 path normalization、trim-as-equality、authoring-report/asset alias、candidate-only、partial-match、extra-field、未登记字段或 fixture hardcode 进入 accepted authority。
+  - 2026-06-02 exact source value replacement 质量复审结果：quality re-review agent `019e845a-8a24-7351-a1a7-01dd32d513ab` PASS。结论：`166b107` 已关闭 exact source value blocker；`registeredSourceMetadataValue()` 只用 trim 判断空值并返回 raw string，accepted 判定仍要求 active registry + sourceMetadata fieldClass + 完整集合/cardinality + raw exact value match；CLI 不再读取 `authoring-report.json`，candidate source 只来自 DOM `data-id-source-*`，reverse-model source enrichment 只作用 reference；`author-resource-paths` 不重写 `data-id-source-*`，asset packager/report alias 未回流 visual audit accepted authority。复审验证：focused audit/cli/author-html-tree/asset-reference-policy/current-field-facts/validate-data-id 77/77；direct probes slash/backslash mismatch hard error accepted 0、whitespace-only mismatch hard error accepted 0、raw exact match accepted 1；stale authoring-report alias、generatedKind/visualAccept、missing dataIdAttrs、candidate-only、partial mismatch、candidate extra source、class-only page-number 负例均仍在；worktree clean。下一步：按 subagent-driven-development 流程派最终整体验收 reviewer。
+  - 2026-06-02 最终整体验收 review：final code review agent `019e8460-e55a-7be0-9418-f66f4bca3b8b` RUNNING（gpt-5.4 xhigh）。范围：从 merge-base `4e46f31` 到当前 HEAD，整体审查阶段 0-12 是否满足协议注册表、多格式能力矩阵、退役清理、目录重构、PPTX contract、生成文档、真实 E2E 和 accepted authority 收口要求。
+  - 2026-06-02 最终整体验收 review 结果：final code review agent `019e8460-e55a-7be0-9418-f66f4bca3b8b` BLOCKED。Critical：active HTML `data-id-*` carriers 仍有未登记字段，`src/protocol` 尚未成为单一事实源；controller 复现 `scanDataIdFields + validateDataIdFields(..., { strict: true })` 扫描 `test/fixtures/e2e/architecture-report/deck.html` 返回 15 个 `DATA_ID_FIELD_NOT_REGISTERED`：`data-id-source-package-config`、`data-id-source-package-schema`、`data-id-semantic-preset`、`data-id-parent-page`、`data-id-parent-page-name`、`data-id-margin`、`data-id-column-gutter`、`data-id-row-gutter`、`data-id-baseline`、`data-id-source-file`、`data-id-object`、`data-id-asset-kind`、`data-id-ignore`、`data-id-crop`、`data-id-fit`；同一文件 `npm run lint:authoring -- -- --html ... --strict` 仍为 Errors 0 Warnings 0，说明 strict authoring lint 未接入 registry scanner。High：`data-id-parent-page-display-name`、`data-id-margins`、`data-id-reverse-mode` 等 live/legacy carriers 未受 registry lifecycle 管理。下一步：派 gpt-5.5 xhigh 修复 agent，要求登记或删除所有 active carriers、生成文档同步、strict lint 接入 registry validation，并清理/登记 live legacy dual paths。
+  - 2026-06-02 registry coverage 修复：final blocker fix agent `019e846a-f3c1-7ce3-9f64-6abd0c3c82ad` RUNNING（gpt-5.5 xhigh）。范围：登记或删除所有 active HTML `data-id-*` carrier，strict authoring lint 接入 registry validation，处理 `data-id-parent-page-display-name` / `data-id-margins` / `data-id-reverse-mode` lifecycle，重新生成字段文档并验证主 fixture strict registry pass。
+  - 2026-06-02 registry coverage 修复结果：final blocker fix agent `019e846a-f3c1-7ce3-9f64-6abd0c3c82ad` DONE，commit `cefa85f`。修复内容：新增/扩展 registry 字段覆盖 active HTML `data-id-*` carrier；`lint:authoring` 接入 `scanDataIdFields + validateDataIdFields`，strict 下 unknown/retired fail、非 strict warning；`data-id-parent-page-display-name`、`data-id-margins`、`data-id-authoring-grid` 登记 retired 并移除运行读取/写出路径；`data-id-reverse-mode` 登记为 observation，默认 structured 不再写出；重新生成 `PROTOCOL_FIELD_REGISTRY.md`。agent 自报验证：主 fixture direct scanner valid true / accepted 29 / unknown 0 / retired 0 / errors 0；protocol/generated docs 22/22、lint/semantic/html-writer 33/33、strict authoring lint OK、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit PASS accepted 35 errors 0、`npm test` 553/553、diff/status clean。下一步：controller 复验并重新派最终整体验收 review。
+  - 2026-06-02 registry coverage controller 复验：通过。证据：主 fixture direct scanner valid true / accepted 29 / unknown 0 / retired 0 / errors 0；strict authoring lint OK；unknown `data-id-made-up` 临时负例 strict lint 以 `DATA_ID_FIELD_NOT_REGISTERED` 和 exit 1 失败；focused registry/lint/semantic/writer tests 55/55；roundtrip audit 7/7 warnings 0 errors 0；reverse visual audit PASS pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35；`npm test` 553/553；`git diff --check`、`git diff --cached --check` 和 worktree status clean。controller 抽查确认 `data-id-parent-page-display-name`、`data-id-margins`、`data-id-authoring-grid` 仅保留 retired registry/docs/tests，`data-id-reverse-mode` 保留为 observation/reporting 或非 structured 输出，不作为结构化编译事实。下一步：重新派最终整体验收 reviewer。
+  - 2026-06-02 registry coverage 后最终复审：final re-review agent `019e8481-dca5-7f83-b504-6dbfa165bf0f` RUNNING（gpt-5.4 xhigh）。范围：复核 `cefa85f` 是否关闭 active `data-id-*` 注册覆盖、strict lint registry gate、retired lifecycle 和 `data-id-reverse-mode` observation-only 问题，并抽查整分支无 fallback/legacy 双路径、旧目录回流、PPTX 越界或生成文档失配。
+  - 2026-06-02 registry coverage 后最终复审结果：final re-review agent `019e8481-dca5-7f83-b504-6dbfa165bf0f` PASS。复审确认 strict lint 直接使用 registry scanner，无第二 data-id validator allowlist；runtime `src/**/*.js` 无 live unregistered `data-id-*` carrier；`data-id-parent-page-display-name`、`data-id-margins`、`data-id-authoring-grid` 仅在 retired registry/docs/tests；`data-id-reverse-mode` 为 observation-only，默认 structured 不写出且 roundtrip audit 拒绝泄漏；生成 registry 文档与测试一致，PPTX 仍为 adapter/contract-only，旧 `src/paged-html` / `src/indesign-reverse` 路径未回流。复审命令：focused tests 102/102、strict authoring lint accepted 29 unknown 0 retired 0、roundtrip audit 7/7 warnings 0 errors 0、reverse visual audit compared 102 accepted 35 errors 0、`npm test` 553/553、diff/status clean。剩余非代码风险：`docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 与 `docs/规范/REVERSE_EXPORT.md` 仍有旧路径示例；controller 按“文档与代码不一致顺手修正文档”收口后再做最终验证。
+  - 2026-06-02 长期规范路径纠偏：controller 已将 `AGENTS.md` 仓库地图、`docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 模块职责/当前实现关系/模块布局、`docs/规范/REVERSE_EXPORT.md` Node 侧反向编译器模块示例从旧 `src/paged-html`、`src/indesign-reverse` 更新为当前 `src/adapters/html`、`src/writers/indesign`、`src/adapters/indesign`、`src/writers/html` 边界；历史 review / AI 协作过程材料保留旧路径作为追溯信息，不作为当前规范。下一步：运行文档纠偏验证、提交，并进入最终 completion verification。
+  - 2026-06-02 长期规范路径纠偏复审：docs re-review agent `019e848d-99cd-75a1-a9e4-af8c6bc3f07b` BLOCKED（gpt-5.4 xhigh）。已确认 `AGENTS.md`、`HTML_INDESIGN_LIBRARY_SPEC.md`、`REVERSE_EXPORT.md` 的旧路径修正方向正确，但 `docs/规范/SEMANTIC_PROTOCOL.md` 仍用 `paged-html` / `indesign-reverse` 模块名描述当前主线或 blueprint 迁移链路：第 19、107 行应改为经 `blueprintMigrationToSemanticModel` 进入 `src/adapters/indesign` 归一化并由 `src/writers/html` 输出 inferred/observation HTML；第 157 行应改为 `src/adapters/html` 负责 HTML snapshot/read、`src/writers/indesign` 负责 semantic model -> instructions。下一步：派 gpt-5.5 xhigh docs fix agent 做最小长期规范收口。
+  - 2026-06-02 长期规范旧路径 blocker 修复：docs blocker fix agent DONE（gpt-5.5 xhigh）。结果：`docs/规范/SEMANTIC_PROTOCOL.md` 的 blueprint migration 与 HTML-to-InDesign 主线边界已改为当前 `src/adapters/*` / `src/writers/*` 架构；同步清理 `docs/规范/REVERSE_EXPORT.md` 来源策略表中同一 current fact 的旧 `indesign-reverse` 路径命中；未修改历史过程材料或实现代码。
+  - 2026-06-02 长期规范旧路径 blocker 复审：docs blocker re-review agent 待启动（gpt-5.4 xhigh）。范围：复核 commit `50ebfab` 是否关闭 `SEMANTIC_PROTOCOL.md` / `REVERSE_EXPORT.md` 当前规范事实中的退役模块名描述，且不误改历史过程材料或实现代码。
+  - 2026-06-02 长期规范旧路径 blocker 复审结果：docs blocker re-review agent `019e8497-2948-70a2-92dc-50f297bf4914` PASS。确认 `SEMANTIC_PROTOCOL.md` 第 19/107 行 blueprint migration 已改为 `blueprintMigrationToSemanticModel` -> `src/adapters/indesign` -> `src/writers/html`；第 157 行 HTML-to-InDesign 主线已改为 `src/adapters/html` snapshot/read 与 `src/writers/indesign` semantic model -> JSON instructions；`REVERSE_EXPORT.md` 来源策略同步更新；`AGENTS.md` + `docs/规范/` 对旧 `src/paged-html`、`src/indesign-reverse`、裸 `paged-html` / `indesign-reverse` 当前事实命中为 0；`50ebfab` 与计划记录未改 `src/` 实现代码。剩余非阻断风险：现存 CLI 脚本名 `scripts/indesign-reverse-export.js` 仍含 reverse 命名，但不是退役 `src/indesign-reverse` 模块路径或架构归属陈述，本轮不扩大为 CLI 重命名。
+  - 2026-06-02 最终 completion verification：通过。最终验证证据：当前规范旧路径门禁 `AGENTS.md docs/规范` 无命中；strict authoring lint 0 error 0 warning；focused registry/lint/semantic/reverse tests 102/102；`npm test` 553/553；最新真实 InDesign E2E `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` PASS，输出 `test/workspace/indesign-e2e-20260602-031554`（7 pages、129 pageItems、9 links、0 oversetTextFrames、INDD/PDF/IDML/preview 均生成）；基于最新真实输出的 roundtrip audit 7/7 warnings 0 errors 0；reverse visual audit pages 7/7 compared 102 missing 0 mismatched 0 errors 0 accepted 35；`git diff --check`、`git diff --cached --check` 和 worktree status clean。
 
 执行原则：
 
@@ -18,11 +82,12 @@
 - 计划中的伪代码和移动命令是执行依据，不是免核对复制文本；每个阶段开始前必须用当前仓库实际导出、文件名、测试命令核对一次。
 - 本仓库在 Windows / PowerShell 环境执行，门禁命令必须使用 `rg`、PowerShell 或 Node 测试；不得把 Unix `grep`、`test`、`mkdir -p`、`mv` 当作最终可运行命令。
 - `rg` 是本计划的显式执行依赖；阶段 0 前必须运行 `rg --version` 确认可用，不能把“命令不存在”误判为“没有命中”。
-- 执行过程中必须实时更新本文 checklist；每个阶段结束前必须跑该阶段验证并提交一次可回溯提交。
+- 执行必须在隔离 worktree 中完成，不能直接在 `main` 工作区改代码。
+- 执行过程中必须实时更新本文 checklist；每个阶段结束前必须在 worktree 分支跑该阶段验证并提交一次可回溯提交。
 
 ## 正式实施计划：协议字段注册表与多格式能力矩阵
 
-> **给执行 Agent：** 必须使用 `executing-plans` 按任务执行，并实时更新 checkbox。本文直接在主分支推进，不写 PR 计划；如果执行平台要求隔离工作区，只作为本地执行保护，不改变“主分支直接落地”的项目决策。
+> **给执行 Agent：** 必须先使用 `using-git-worktrees` 创建隔离工作区，再使用 `executing-plans` 按任务执行，并实时更新 checkbox。本文在 worktree 分支推进，不直接在 `main` 工作区实施；最终合并、PR 或清理分支由收尾阶段决定。
 
 **目标：** 实现协议字段注册表、多格式能力矩阵、字段生命周期门禁，并把当前 HTML / InDesign / 未来 PPTX 的转换边界重构为清晰的读取器、标准化器、语义模型、写出器、执行器架构。
 
@@ -39,6 +104,35 @@
 - 目录大重构被保留为本计划目标：`src/paged-html/` 和 `src/indesign-reverse/` 只能阶段内短暂存在，阶段 8 完成时必须删除。
 - 伪代码必须在执行阶段结合当前仓库核对后落地；如果发现函数名、导出名或文件名已经变化，优先修正计划 checklist，再改代码。
 - 长期规范与生成文档的关系必须等注册表覆盖现有字段后再切换；不得在 registry 还不完整时删除现有静态事实说明。
+
+### 0.1 Worktree 执行约定
+
+执行前必须从 `main` 创建隔离 worktree：
+
+```powershell
+git status --short
+git branch --show-current
+git check-ignore -q .worktrees
+if ($LASTEXITCODE -ne 0) { throw ".worktrees/ must be ignored before creating worktree" }
+git worktree add .worktrees\protocol-field-registry -b codex/protocol-field-registry
+Set-Location .worktrees\protocol-field-registry
+```
+
+约定：
+
+- worktree 路径：`.worktrees/protocol-field-registry`
+- 分支名：`codex/protocol-field-registry`
+- `main` 工作区只作为源基线和最终集成目标；实施代码、测试、文档生成、checklist 更新和阶段提交都在 worktree 分支完成。
+- 如果目标 worktree 或分支已存在，停止并先检查 `git worktree list --porcelain` 与 `git status --short`，不得覆盖或删除已有工作。
+- 创建 worktree 后先运行：
+
+```powershell
+rg --version
+npm install
+npm test
+```
+
+预期：`rg` 可用，依赖安装成功，`npm test` PASS。若失败，不进入阶段 0；先区分是 worktree 创建问题、依赖问题，还是 `main` 基线已经损坏。
 
 ## 1. 摘要
 
@@ -560,7 +654,7 @@ src/indesign-reverse/
   npm test
   ```
   
-  预期： PASS。若失败，不进入阶段 1；先区分是当前 main 已坏，还是测试新增错误。
+  预期： PASS。若失败，不进入阶段 1；先区分是 worktree 基线继承了 `main` 的既有问题，还是测试新增错误。
 
 - **步骤 0.6：输出字段盘点清单。**
   
@@ -611,7 +705,7 @@ src/indesign-reverse/
 
 回退 / 停止条件：
 
-- 如果阶段 0 基线失败，停止后续重构，先修复当前 main 或修正测试对当前事实的理解。
+- 如果阶段 0 基线失败，停止后续重构，先在 worktree 中修复基线问题，或回到 `main` 确认当前事实后修正测试理解。
 
 ---
 
@@ -939,50 +1033,78 @@ src/indesign-reverse/
   const { normalizeFieldEntry, validateFieldEntry } = require('./field-entry');
   
   function createFieldRegistry(entries = []) {
-   const normalized = entries.map((entry) => {
-     const validation = validateFieldEntry(entry);
-     if (!validation.valid) {
-       const codes = validation.errors.map((error) => error.code).join(',');
-       throw new Error(`FIELD_ENTRY_INVALID:${codes}`);
-     }
-     return normalizeFieldEntry(entry);
-   });
-  
-   const byPath = new Map();
-   const byHtmlAttr = new Map();
-  
-   for (const entry of normalized) {
-     for (const fieldPath of entry.allPaths) {
-       if (byPath.has(fieldPath)) throw new Error(`FIELD_PATH_DUPLICATED:${fieldPath}`);
-       byPath.set(fieldPath, entry);
-     }
-     for (const attr of htmlAttrsFor(entry)) {
-       if (byHtmlAttr.has(attr)) throw new Error(`HTML_ATTR_DUPLICATED:${attr}`);
-       byHtmlAttr.set(attr, entry);
-     }
-   }
-  
-   return {
-     entries: normalized.slice(),
-     getByPath: (fieldPath) => byPath.get(fieldPath) || null,
-     getByHtmlAttr: (attr) => byHtmlAttr.get(attr) || null,
-     listByOwner: (owner) => normalized.filter((entry) => entry.owner === owner),
-     listByClass: (fieldClass) => normalized.filter((entry) => entry.fieldClass === fieldClass),
-     listByLifecycle: (lifecycle) => normalized.filter((entry) => entry.lifecycle === lifecycle),
-   };
+    const normalized = entries.map((entry) => {
+      const validation = validateFieldEntry(entry);
+      if (!validation.valid) {
+        const codes = validation.errors.map((error) => error.code).join(',');
+        throw new Error(`FIELD_ENTRY_INVALID:${codes}`);
+      }
+      return normalizeFieldEntry(entry);
+    });
+
+    const byPath = new Map();
+    const byHtmlAttr = new Map();
+    const byRetiredHtmlAttr = new Map();
+
+    for (const entry of normalized) {
+      for (const fieldPath of entry.allPaths) {
+        if (byPath.has(fieldPath)) throw new Error(`FIELD_PATH_DUPLICATED:${fieldPath}`);
+        byPath.set(fieldPath, entry);
+      }
+      for (const attr of htmlAttrsFor(entry)) {
+        if (byHtmlAttr.has(attr)) throw new Error(`HTML_ATTR_DUPLICATED:${attr}`);
+        byHtmlAttr.set(attr, entry);
+      }
+      for (const retiredHtmlAttr of retiredHtmlAttrsFor(entry)) {
+        const attr = retiredHtmlAttr && retiredHtmlAttr.name;
+        if (!attr) continue;
+        if (byRetiredHtmlAttr.has(attr)) throw new Error(`RETIRED_HTML_ATTR_DUPLICATED:${attr}`);
+        byRetiredHtmlAttr.set(attr, retiredHtmlAttrRecord(entry, retiredHtmlAttr));
+      }
+    }
+
+    return {
+      entries: normalized.slice(),
+      getByPath: (fieldPath) => byPath.get(fieldPath) || null,
+      getByHtmlAttr: (attr) => byHtmlAttr.get(attr) || null,
+      getRetiredHtmlAttr: (attr) => byRetiredHtmlAttr.get(attr) || null,
+      listByOwner: (owner) => normalized.filter((entry) => entry.owner === owner),
+      listByClass: (fieldClass) => normalized.filter((entry) => entry.fieldClass === fieldClass),
+      listByLifecycle: (lifecycle) => normalized.filter((entry) => entry.lifecycle === lifecycle),
+    };
   }
-  
+
   function htmlAttrsFor(entry) {
-   const html = entry.html || {};
-   return [
-     ...(html.readAttrs || []),
-     ...(html.writeAttrs || []),
-     ...(html.retiredAttrs || []).map((item) => item.name).filter(Boolean),
-   ];
+    const html = entry.html || {};
+    return [
+      ...(html.readAttrs || []),
+      ...(html.writeAttrs || []),
+      ...(html.persistAttrs || []),
+    ];
+  }
+
+  function retiredHtmlAttrsFor(entry) {
+    if (entry.lifecycle !== 'retired') return [];
+    return ((entry.retired || {}).htmlAttrs || []);
+  }
+
+  function retiredHtmlAttrRecord(entry, retiredHtmlAttr) {
+    return {
+      canonicalPath: entry.canonicalPath,
+      owner: entry.owner,
+      fieldClass: entry.fieldClass,
+      lifecycle: entry.lifecycle,
+      name: retiredHtmlAttr.name,
+      readPolicy: retiredHtmlAttr.readPolicy,
+      writePolicy: retiredHtmlAttr.writePolicy,
+      replacedBy: retiredHtmlAttr.replacedBy,
+      reason: retiredHtmlAttr.reason,
+      entry,
+    };
   }
   
   module.exports = {
-   createFieldRegistry,
+    createFieldRegistry,
   };
   ```
   
@@ -1070,16 +1192,22 @@ src/indesign-reverse/
   ```js
   const { fieldRegistry } = require('../../src/protocol');
   
-  test('registry contains current PDF page number facts and retired data-id-page alias', () => {
+  test('registry contains current PDF page number facts separate from retired data-id-page facts', () => {
    const field = fieldRegistry.getByPath('items[].asset.placement.pageNumber');
   
    assert.equal(field.fieldClass, 'canonical');
    assert.equal(field.lifecycle, 'active');
    assert.deepEqual(field.html.readAttrs, ['data-id-pdf-page']);
-  
-   const retired = field.html.retiredAttrs.find((item) => item.name === 'data-id-page');
-   assert.equal(retired.readPolicy, 'observe-only');
-   assert.equal(retired.writePolicy, 'forbidden');
+   assert.equal(fieldRegistry.getByHtmlAttr('data-id-page'), null);
+
+   const retiredLookup = fieldRegistry.getRetiredHtmlAttr('data-id-page');
+   assert.equal(retiredLookup.canonicalPath, 'retired.htmlAttrs.dataIdPage');
+   assert.equal(retiredLookup.fieldClass, 'observation');
+   assert.equal(retiredLookup.lifecycle, 'retired');
+   assert.equal(retiredLookup.name, 'data-id-page');
+   assert.equal(retiredLookup.readPolicy, 'observe-only');
+   assert.equal(retiredLookup.writePolicy, 'forbidden');
+   assert.equal(retiredLookup.replacedBy, 'data-id-pdf-page');
   });
   
   test('registry contains sourceNode as sourceMetadata not canonical', () => {
@@ -1153,12 +1281,6 @@ src/indesign-reverse/
      html: {
        readAttrs: ['data-id-pdf-page'],
        writeAttrs: ['data-id-pdf-page'],
-       retiredAttrs: [{
-         name: 'data-id-page',
-         readPolicy: 'observe-only',
-         writePolicy: 'forbidden',
-         reason: 'ambiguous-with-page-identity',
-       }],
      },
      indesign: {
        snapshotPaths: ['placedAsset.placement.pageNumber', 'graphic.pdfAttributes.pageNumber'],
@@ -1177,6 +1299,36 @@ src/indesign-reverse/
   ];
   ```
   
+  `src/protocol/fields/retired.js` 单独登记退役 HTML 属性；它不属于
+  active PDF page number 字段，也不进入 `getByHtmlAttr()`：
+
+  ```js
+  module.exports = [
+   {
+     canonicalPath: 'retired.htmlAttrs.dataIdPage',
+     currentPaths: [],
+     fieldClass: 'observation',
+     lifecycle: 'retired',
+     owner: 'asset-placement',
+     type: 'attribute',
+     capabilities: {
+       html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+       indesign: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+       pptx: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+     },
+     retired: {
+       htmlAttrs: [{
+         name: 'data-id-page',
+         replacedBy: 'data-id-pdf-page',
+         readPolicy: 'observe-only',
+         writePolicy: 'forbidden',
+         reason: 'ambiguous-with-page-identity',
+       }],
+     },
+   },
+  ];
+  ```
+
   `src/protocol/fields/source-metadata.js` 示例：
   
   ```js
@@ -1415,12 +1567,12 @@ src/indesign-reverse/
   const { fieldRegistry, lifecyclePolicyFor } = require('../../src/protocol');
   
   test('retired fields are observe-only and write-forbidden', () => {
-   const policy = lifecyclePolicyFor(fieldRegistry, 'html.data-id-page');
-  
+   const policy = lifecyclePolicyFor(fieldRegistry, 'retired.htmlAttrs.dataIdPage');
+
    assert.equal(policy.lifecycle, 'retired');
    assert.equal(policy.readPolicy, 'observe-only');
    assert.equal(policy.writePolicy, 'forbidden');
-   assert.equal(policy.replacedBy, 'html.data-id-pdf-page');
+   assert.equal(policy.replacedBy, 'data-id-pdf-page');
   });
   ```
 
@@ -1436,7 +1588,7 @@ src/indesign-reverse/
 
 - **步骤 3.7：实现 retired lifecycle 查询。**
   
-  在 `src/protocol/registry.js` 里索引 `retiredPath` 和 `html.retiredAttrs[].name`，导出 `getRetiredByPath`。在 `src/protocol/field-query.js` 增加：
+  retired lifecycle 必须以阶段 2 的 retired entry 为唯一事实源：`retired.htmlAttrs.dataIdPage`。不得把旧 HTML 属性名拼成 currentPath，不得从 active entry 读取退役属性策略，不得让 `data-id-page` 进入 `getByHtmlAttr()`。如需按退役 HTML 属性名查询，只能复用 `getRetiredHtmlAttr()` 这类独立 retired metadata surface。在 `src/protocol/field-query.js` 增加：
   
   ```js
   function lifecyclePolicyFor(registry, fieldPath) {
@@ -1449,9 +1601,6 @@ src/indesign-reverse/
        replacedBy: active.replacedBy || null,
      };
    }
-  
-   const retired = registry.getRetiredByPath && registry.getRetiredByPath(fieldPath);
-   if (retired) return retired;
   
    throw new Error(`FIELD_NOT_REGISTERED:${fieldPath}`);
   }
@@ -3396,7 +3545,7 @@ rg returns no active import references
 
 ## 10. 执行时的阶段提交建议
 
-用户要求不写 PR，直接主分支执行；仍建议每个阶段形成可回滚提交点：
+用户要求在 worktree 中执行；每个阶段必须在 `codex/protocol-field-registry` 分支形成可回滚提交点：
 
 ```text
 test: capture current protocol field facts
@@ -3411,4 +3560,4 @@ feat: add pptx adapter contracts
 docs: generate protocol field registry spec
 ```
 
-每个提交前必须运行该阶段指定测试；完成整项前必须运行第 9 节全部验证命令。
+每个提交前必须运行该阶段指定测试；完成整项前必须运行第 9 节全部验证命令。最终如何集成到 `main` 不在阶段提交中假定，完成后使用收尾流程决定直接合并、创建 PR 或保留 worktree 分支。

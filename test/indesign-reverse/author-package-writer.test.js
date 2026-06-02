@@ -2,8 +2,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { writeReverseAuthorPackage } = require('../../src/indesign-reverse');
+const { reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
+const { writeReverseAuthorPackage } = require('../../src/writers/html');
 const { checkAuthorPackageEntry } = require('../../src/authoring');
+
+function captureThrow(fn) {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  assert.fail('Expected function to throw');
+}
 
 test('writeReverseAuthorPackage splits tagged model into author source package', () => {
   const outDir = path.resolve('test/workspace/reverse-author-package-test');
@@ -75,6 +85,9 @@ test('writeReverseAuthorPackage still splits observation models by page', () => 
   assert.match(pageHtml, /data-id-reverse-mode="observation"/);
   assert.match(pageHtml, /data-id-observed="true"/);
   assert.match(pageHtml, /class="observed-text id-object"/);
+
+  const candidates = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/semantic-candidates.json'), 'utf8'));
+  assert.equal(candidates.presetId, null);
 
   const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
   assert.match(overrides, /\[id="observed-title"\]/);
@@ -320,6 +333,51 @@ test('writeReverseAuthorPackage preserves source package config metadata', () =>
   assert.equal(config.profile, 'architecture-report');
 });
 
+test('writeReverseAuthorPackage fails visibly when source deck config is invalid JSON', () => {
+  const root = path.resolve('test/workspace/reverse-author-invalid-source-config-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'deck.config.json'), '{ invalid-json');
+
+  const error = captureThrow(() => writeReverseAuthorPackage(taggedModel(), { outDir, sourceRoot, mode: 'structured' }));
+
+  assert.equal(error.code, 'SOURCE_CONFIG_PARSE_FAILED');
+  assert.match(error.message, /^SOURCE_CONFIG_PARSE_FAILED:/);
+  assert.match(error.message, /deck\.config\.json/);
+  assert.equal(fs.existsSync(path.join(outDir, 'deck.config.json')), false);
+  assert.equal(fs.existsSync(path.join(outDir, 'deck.html')), false);
+});
+
+test('writeReverseAuthorPackage preserves source page ids when reverse page semantic is absent', () => {
+  const root = path.resolve('test/workspace/reverse-author-source-page-id-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'architecture-report',
+    title: '建筑汇报',
+    profile: 'architecture-report',
+    unitMode: 'presentation',
+    targetSize: 'source',
+    entry: 'deck.html',
+    styles: ['styles/tokens.css'],
+    pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
+    assets: { root: 'assets' },
+  }, null, 2));
+  writeFixtureFile(path.join(sourceRoot, 'styles/tokens.css'), ':root { --ink: #123456; }');
+  const model = taggedModel();
+  model.pages[0].semantic = null;
+
+  writeReverseAuthorPackage(model, { outDir, sourceRoot, mode: 'structured' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  assert.deepEqual(config.pages, [{ id: 'agenda', file: 'pages/01-agenda.html' }]);
+  assert.match(pageHtml, /data-page="agenda"/);
+});
+
 test('writeReverseAuthorPackage writes clean structured author markup', () => {
   const outDir = path.resolve('test/workspace/reverse-author-clean-markup-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -344,6 +402,57 @@ test('writeReverseAuthorPackage writes clean structured author markup', () => {
   assert.doesNotMatch(pageHtml, /data-id-semantic="unknown"/);
   assert.match(pageHtml, /\sdata-id-object(\s|>)/);
   assert.doesNotMatch(pageHtml, /data-id-object=""/);
+});
+
+test('writeReverseAuthorPackage accepts model profile sourced only from reverse options', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-option-profile-chain-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'option-profile.indd', mode: 'structured' },
+    document: {
+      name: 'option-profile.indd',
+      labels: [
+        {
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'document',
+          id: 'option-profile',
+          title: 'Option Profile',
+          sourcePackage: {
+            schemaVersion: 1,
+            config: 'deck.config.json',
+            entry: 'deck.html',
+          },
+        },
+      ],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [
+          {
+            protocol: 'html-indesign',
+            version: 1,
+            kind: 'page',
+            id: 'page-1',
+          },
+        ],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'structured', profile: 'architecture-report' });
+
+  assert.equal(model.profile, 'architecture-report');
+  assert.equal(model.sourcePackage.profile, 'architecture-report');
+
+  const result = writeReverseAuthorPackage(model, { outDir, mode: 'structured' });
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+
+  assert.equal(result.ok, true);
+  assert.equal(config.profile, 'architecture-report');
+  assert.equal(checkAuthorPackageEntry(path.join(outDir, 'deck.config.json')).ok, true);
 });
 
 test('writeReverseAuthorPackage writes semantic candidate report', () => {
@@ -405,6 +514,51 @@ test('writeReverseAuthorPackage writes semantic candidate report', () => {
         count: 1,
       },
     ],
+  });
+});
+
+test('writeReverseAuthorPackage fails visibly when structured author package has no semantic preset source', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-missing-preset-source-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  delete model.profile;
+  delete model.sourcePackage.profile;
+
+  const error = captureThrow(() => writeReverseAuthorPackage(model, { outDir, mode: 'structured' }));
+
+  assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+  assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:profile-required/);
+  assert.equal(fs.existsSync(outDir), false);
+});
+
+test('writeReverseAuthorPackage fails visibly when structured author package profile is unknown', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-bad-profile-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  model.profile = 'missing-profile';
+
+  const error = captureThrow(() => writeReverseAuthorPackage(model, { outDir, mode: 'structured' }));
+
+  assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+  assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:missing-profile/);
+  assert.equal(fs.existsSync(outDir), false);
+});
+
+test('writeReverseAuthorPackage rejects explicit empty semantic presets instead of loading profile fallback', () => {
+  const root = path.resolve('test/workspace/reverse-author-empty-preset-test');
+  fs.rmSync(root, { recursive: true, force: true });
+
+  [null, {}, []].forEach((semanticPreset, index) => {
+    const outDir = path.join(root, String(index));
+    const error = captureThrow(() => writeReverseAuthorPackage(taggedModel(), {
+      outDir,
+      mode: 'structured',
+      semanticPreset,
+    }));
+
+    assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+    assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:semanticPreset/);
+    assert.equal(fs.existsSync(outDir), false);
   });
 });
 
@@ -486,11 +640,13 @@ function taggedModel() {
     kind: 'DocumentModel',
     id: 'architecture-report',
     title: '建筑汇报',
+    profile: 'architecture-report',
     reverseMode: 'structured',
     sourcePackage: {
       schemaVersion: 1,
       config: 'deck.config.json',
       entry: 'deck.html',
+      profile: 'architecture-report',
       styleFiles: ['styles/tokens.css', 'styles/layout.css', 'styles/components.css', 'styles/pages.css'],
       pageFiles: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
       assetRoot: 'assets',
@@ -581,6 +737,7 @@ function resourceModel() {
     unitMode: 'presentation',
     sourcePackage: {
       entry: 'deck.html',
+      profile: 'architecture-report',
       assetRoot: 'assets',
     },
     styles: {},

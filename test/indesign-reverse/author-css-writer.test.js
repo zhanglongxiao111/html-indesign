@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { writeAuthorCssFiles } = require('../../src/indesign-reverse/author-css-writer');
+const { writeAuthorCssFiles } = require('../../src/writers/html/author-css-writer');
 
 test('writeAuthorCssFiles emits valid fallback selectors for numeric InDesign ids', () => {
   const css = writeAuthorCssFiles({

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { renderSnapshot, compileInstructions, validateInstructions } = require('../../src/paged-html');
+const { renderSnapshot } = require('../../src/adapters/html');
+const { compileInstructions, validateInstructions } = require('../../src/writers/indesign');
 const { createTinyPdf, createTinySvg } = require('./executor-fixture-writer');
 
 async function writeCompilerExecutorWorkspace(workspaceDir = path.resolve(__dirname, '../workspace/compiler-executor-e2e')) {

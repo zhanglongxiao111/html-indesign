@@ -5,7 +5,7 @@ const path = require('path');
 const {
   prepareAuthorAssets,
   shouldConsiderGeneratedPreviewPath,
-} = require('../../src/indesign-reverse/asset-reference-policy');
+} = require('../../src/writers/html/asset-reference-policy');
 
 test('prepareAuthorAssets references NAS assets by default without copying source files', () => {
   const outDir = path.resolve('test/workspace/asset-reference-policy-test');

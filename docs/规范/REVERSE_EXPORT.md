@@ -4,7 +4,7 @@
 
 反向导出把 InDesign 文档转换为固定语义 HTML。
 
-第一阶段目标不是任意 InDesign 文件无损还原，而是建立可验证的双向闭环：
+当前目标不是任意 InDesign 文件无损还原，而是建立可验证的双向闭环：
 
 ```text
 带标签 InDesign
@@ -19,7 +19,7 @@
 
 反向导出每次都必须按当前项目语义库复核 `html_indesign` 标签。符合白名单的字段进入有效标签；不符合白名单的字段只能作为观察标签保留，不参与后续 HTML-to-InDesign 编译。
 
-反向模型字段必须与统一语义模型和协议字段注册表保持一致。注册表实现前，以当前规范中的静态字段表作为事实源；注册表实现后，反向导出新增字段必须先在注册表登记能力、生命周期和写回策略，不能只在 writer 或 JSX 快照里临时增加。
+反向模型字段必须与统一语义模型和协议字段注册表保持一致。当前字段事实源是 `PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry；反向导出新增字段必须先在注册表登记能力、生命周期和写回策略，不能只在 writer 或 JSX 快照里临时增加。
 
 ## 2. 导出模式
 
@@ -111,7 +111,7 @@
 | 人工 InDesign，按协议打标签 | 有规范脚本标签 | 高 | 正式支持 |
 | 人工 InDesign，只使用模板但无标签 | 有母版和样式，语义不完整 | 中 | 输出观察 HTML 和模板线索 |
 | 普通未标注 InDesign | 只有视觉对象 | 低 | 输出观察 HTML，等待 Agent 语义化 |
-| 历史 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `blueprintMigrationToSemanticModel` 进入 `indesign-reverse`，输出 inferred/observation HTML |
+| 历史 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `blueprintMigrationToSemanticModel` 进入 `src/adapters/indesign` 归一化为统一语义模型，再由 `src/writers/html` 输出 inferred/observation HTML |
 
 首次来自人类用户的 InDesign 文档通常语义混乱，可能混入旧模板、复制来的脚本标签或不符合本项目协议的自定义标签。反向导出不得信任这些标签的存在本身，只能信任通过当前语义库白名单复核的字段。Agent 拿到观察 HTML 后，应根据页面视觉、图层、样式、资源和用户意图重建符合白名单的语义，再导回结构化 InDesign。
 
@@ -194,19 +194,7 @@ PDF 反向导出必须保留：
 | `vectorGeometry` | item 顶层 | 路径类型、闭合状态、锚点、左右控制点，只描述几何 |
 | `visualStyle` | item 顶层 | 填充、描边、透明度、线端、线连接和混合外观 |
 
-`visualStyle` 中的矢量扩展字段使用以下规范名：
-
-| 字段 | 值 | 说明 |
-| ---- | -- | ---- |
-| `lineStartMarker` / `lineEndMarker` | `{ "type": "...", "rawName": "..." }` | 线头/线尾标记；`type` 为标准归一类型，`rawName` 只用于追溯 InDesign 原始名称 |
-| `strokeLineCap` | `butt` / `round` / `square` | 描边端帽 |
-| `strokeLineJoin` | `miter` / `round` / `bevel` | 描边连接 |
-| `strokeMiterLimit` | number | 斜接限制 |
-| `strokeAlignment` | `center` / `inside` / `outside` | 描边对齐 |
-| `fillTint` / `strokeTint` | 0-100 number | InDesign 色调，不替代颜色字段 |
-| `blendMode` | kebab-case string | 非 normal 混合模式 |
-
-`lineStartMarker.type` / `lineEndMarker.type` 当前标准值为 `arrow`、`circle`、`square`、`diamond`、`bar`、`custom`。新增类型必须先扩展规范和测试，不能直接把 InDesign 原始枚举名写成协议主字段。
+`visualStyle` 中的矢量扩展字段、标准枚举值、当前路径和格式能力以 `PROTOCOL_FIELD_REGISTRY.md` 为准。InDesign 原始枚举名只能作为追溯信息保留；新增标准类型必须先扩展 registry 和测试，不能直接把 InDesign 原始枚举名写成协议主字段。
 
 如果路径点无法提取，导出器只能在确认对象确实是线条时根据几何边界生成开放线段；其他对象不得静默伪装成矢量路径，必须进入观察报告或降级规则。
 
@@ -245,9 +233,9 @@ PDF 反向导出必须保留：
 
 完整中间模型。
 
-`reverse-model.json` 必须是统一语义模型的序列化结果，而不是独立的第三套结构。反向导出可以在语义模型外附加 snapshot、诊断和 unresolved 信息，但 `document`、`parentPages`、`pages`、`styles`、`layers`、`assets`、`items` 的字段含义必须和 `HTML_INDESIGN_LIBRARY_SPEC.md` 中的 Canonical Mapping Model 保持一致。
+`reverse-model.json` 必须是统一语义模型的序列化结果，而不是独立的第三套结构。反向导出可以在语义模型外附加 snapshot、诊断和 unresolved 信息，但 `document`、`parentPages`、`pages`、`styles`、`layers`、`assets`、`items` 的字段含义必须和 `HTML_INDESIGN_LIBRARY_SPEC.md` 中的 Canonical Mapping Model 保持一致；具体字段事实以 `PROTOCOL_FIELD_REGISTRY.md` 为准。
 
-旧 blueprint 输入也必须先转换成 `reverse-model.json`，不得直接绕过模型调用旧 `generator.js` 生成最终 HTML。
+旧 blueprint 输入也必须先转换成 `reverse-model.json`，不得直接绕过模型恢复已退役的旧模板 HTML 生成器或旧槽位 builder。
 
 用途：
 
@@ -355,7 +343,7 @@ PDF 反向导出必须保留：
 
 ### 5.1 InDesign 侧快照脚本
 
-新增脚本：
+当前脚本：
 
 ```text
 _indesign_scripts/export_to_html_snapshot.jsx
@@ -376,17 +364,18 @@ _indesign_scripts/export_to_html_snapshot.jsx
 
 ### 5.2 Node 侧反向编译器
 
-新增模块：
+当前模块：
 
 ```text
-src/indesign-reverse/
-  snapshot-reader.js
-  label-protocol.js
-  reverse-model.js
-  blueprint-migration.js
-  html-writer.js
-  asset-exporter.js
-  report.js
+src/adapters/indesign/
+  reader/snapshot-reader.js
+  normalizer/label-whitelist.js
+  normalizer/snapshot-to-model.js
+  normalizer/blueprint-migration.js
+src/writers/html/
+  visual-html-writer.js
+  author-package-writer.js
+  audit/author-audit.js
 ```
 
 职责：
@@ -400,7 +389,7 @@ src/indesign-reverse/
 
 ### 5.3 CLI 封装
 
-新增脚本：
+当前脚本：
 
 ```text
 scripts/indesign-reverse-export.js
@@ -515,7 +504,7 @@ HTML -> InDesign -> HTML
 - 文本内容。
 - 表格结构。
 
-视觉比较作为后续增强，不作为第一阶段硬门槛。
+视觉比较已进入反向作者包审核链路。交付前或作为规范样例时，应运行 `npm run audit:reverse-visual`；允许的 accepted 差异必须有结构化证据和报告说明，missing、mismatched 和 errors 必须为 0。
 
 ## 10. 实施顺序
 

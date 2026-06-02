@@ -5,7 +5,7 @@ const {
   pageMargins,
   pageGuides,
   itemBounds,
-} = require('../../src/paged-html/layout');
+} = require('../../src/semantic-model/layout');
 
 test('resolveLayout maps presentation source pixels to pt target size', () => {
   const layout = resolveLayout({
@@ -39,6 +39,37 @@ test('pageGuides creates gutter-aware grid guides', () => {
   }, { width: 100, height: 60 }, { top: 10, right: 10, bottom: 10, left: 10 }, layout);
   assert.deepEqual(guides.filter((guide) => guide.orientation === 'vertical').map((guide) => guide.position), [27, 31, 48, 52, 69, 73]);
   assert.deepEqual(guides.filter((guide) => guide.orientation === 'horizontal').map((guide) => guide.position), [27, 33]);
+});
+
+test('pageGuides includes used-snap guides for page-number class text unless it is registered folio', () => {
+  const layout = { unitMode: 'print', targetUnit: 'mm', scale: 1 };
+  const dimensions = { width: 100, height: 60 };
+  const margins = { top: 10, right: 10, bottom: 10, left: 10 };
+  const guides = pageGuides({
+    attributes: { 'data-id-guide-mode': 'used-snap' },
+    computedStyle: {},
+    items: [{
+      id: 'class-page-number',
+      role: 'text',
+      tagName: 'span',
+      classList: ['page-number'],
+      attributes: {},
+      boundsMm: { x: 24, y: 46, width: 12, height: 6 },
+    }, {
+      id: 'registered-folio',
+      role: 'text',
+      tagName: 'span',
+      classList: ['page-number'],
+      attributes: { 'data-id-paragraph-style': 'folio' },
+      boundsMm: { x: 80, y: 46, width: 8, height: 6 },
+    }],
+  }, dimensions, margins, layout);
+
+  const vertical = guides.filter((guide) => guide.orientation === 'vertical').map((guide) => guide.position);
+  const horizontal = guides.filter((guide) => guide.orientation === 'horizontal').map((guide) => guide.position);
+
+  assert.deepEqual(vertical, [10, 24, 36, 90]);
+  assert.deepEqual(horizontal, [10, 46, 50]);
 });
 
 test('pageGuides ignores retired semantic grid alias fields', () => {

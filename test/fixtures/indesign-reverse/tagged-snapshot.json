@@ -12,6 +12,7 @@
         "version": 1,
         "kind": "document",
         "id": "architecture-report",
+        "profile": "architecture-report",
         "source": "html-to-indesign",
         "unitMode": "presentation",
         "coordinateUnit": "pt",

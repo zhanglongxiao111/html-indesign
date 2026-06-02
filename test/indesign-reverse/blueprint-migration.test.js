@@ -2,8 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   blueprintMigrationToSemanticModel,
-  semanticModelToHtml,
-} = require('../../src/indesign-reverse');
+} = require('../../src/adapters/indesign');
+const { semanticModelToHtml } = require('../../src/writers/html');
 
 function sampleBlueprint() {
   return {

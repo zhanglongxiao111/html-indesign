@@ -25,30 +25,21 @@ HI.placeAssetInFrame = function (doc, frame, asset, placed, baseFolder, report) 
 
     var placement = placed || asset.placement || {};
     if (!HI.configurePlacePreferences(asset, placement, report)) return false;
-    var outerBounds = null;
-    var fittedBounds = null;
     var manualContentBounds = placed && placed.contentBounds && String(placed.fit || "").toLowerCase() === "manual";
     try {
-        if (placed && placed.contentBounds) {
-            outerBounds = frame.geometricBounds;
-            frame.geometricBounds = HI.boundsToGeometricBounds(placed.contentBounds);
-        }
         frame.place(file);
         report.counts.placedAssets += 1;
         HI.applyPlacedGraphicLayerOptions(frame, placement, report, asset);
         if (manualContentBounds) {
             try { frame.fit(FitOptions.CONTENT_TO_FRAME); } catch (_) {}
+            if (frame.allGraphics && frame.allGraphics.length) {
+                frame.allGraphics[0].geometricBounds = HI.boundsToGeometricBounds(placed.contentBounds);
+            }
         } else {
             HI.applyFitting(frame, (placed && placed.fit) || (asset.placement && asset.placement.fit), (placed && placed.position) || (asset.placement && asset.placement.position));
         }
-        try {
-            if (outerBounds && frame.allGraphics && frame.allGraphics.length) fittedBounds = frame.allGraphics[0].geometricBounds;
-            if (outerBounds) frame.geometricBounds = outerBounds;
-            if (fittedBounds && frame.allGraphics && frame.allGraphics.length) frame.allGraphics[0].geometricBounds = fittedBounds;
-        } catch (_) {}
         return true;
     } catch (error) {
-        try { if (outerBounds) frame.geometricBounds = outerBounds; } catch (_) {}
         HI.addMessage(report, "error", "ASSET_PLACE_FAILED", String(error), { assetId: asset.id, path: file.fsName });
         return false;
     }

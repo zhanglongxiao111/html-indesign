@@ -7,7 +7,7 @@ const {
   sanitizeStyleName,
   stableAutoName,
   firstClassName,
-} = require('../../src/paged-html/style-utils');
+} = require('../../src/shared/style-utils');
 
 test('normalizeCssColor converts browser rgb colors to hex swatches', () => {
   assert.deepEqual(normalizeCssColor('rgb(18, 52, 86)'), { hex: '#123456', name: '颜色-18-52-86' });

@@ -127,6 +127,9 @@ test('compileReverseSnapshotToHtml writes historical blueprint through reverse p
   assert.match(html, /data-id-reverse-mode="inferred"/);
   assert.match(html, /data-id-source="blueprint-migration"/);
   assert.match(html, /data-id-migration-slot="true"/);
+
+  const candidates = JSON.parse(fs.readFileSync(path.join(outDir, 'author/reports/semantic-candidates.json'), 'utf8'));
+  assert.equal(candidates.presetId, null);
 });
 
 function writeFixtureFile(filePath, content) {

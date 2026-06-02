@@ -1,6 +1,40 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { pageItemsToAuthorHtml } = require('../../src/indesign-reverse/author-html-tree');
+const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tree');
+const { rewriteResourceAttrs } = require('../../src/writers/html/author-resource-paths');
+
+test('author HTML tree exposes focused rendering helpers', () => {
+  const assetRenderer = require('../../src/writers/html/author-asset-renderer');
+  const pdfRenderer = require('../../src/writers/html/author-pdf-renderer');
+  const vectorRenderer = require('../../src/writers/html/author-vector-renderer');
+  const tableRenderer = require('../../src/writers/html/author-table-renderer');
+  const richTextRenderer = require('../../src/writers/html/author-rich-text-renderer');
+
+  assert.equal(typeof assetRenderer.renderPlacedAssetFrameNode, 'function');
+  assert.equal(typeof pdfRenderer.renderPdfObjectNode, 'function');
+  assert.equal(typeof vectorRenderer.renderVectorSvgNode, 'function');
+  assert.equal(typeof tableRenderer.tableContent, 'function');
+  assert.equal(typeof richTextRenderer.ownContent, 'function');
+});
+
+test('rewriteResourceAttrs preserves registered table source metadata protocol values', () => {
+  const attrs = {
+    src: '../images/site.png',
+    'data-id-source-csv': '../data/metrics.csv',
+    'data-id-source-xml': '../data/metrics.xml',
+  };
+  const assetPathMap = new Map([
+    ['../images/site.png', 'assets/images/site.png'],
+    ['../data/metrics.csv', 'assets/data/metrics.csv'],
+    ['../data/metrics.xml', 'assets/data/metrics.xml'],
+  ]);
+
+  rewriteResourceAttrs(attrs, { assetPathMap });
+
+  assert.equal(attrs.src, 'assets/images/site.png');
+  assert.equal(attrs['data-id-source-csv'], '../data/metrics.csv');
+  assert.equal(attrs['data-id-source-xml'], '../data/metrics.xml');
+});
 
 test('pageItemsToAuthorHtml nests children under source parent items', () => {
   const page = {
@@ -123,6 +157,25 @@ test('pageItemsToAuthorHtml restores original source inner html when text is unc
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
   assert.match(html, /<h1 class="cover-title pstyle-cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报<\/span><\/h1>/);
+});
+
+test('pageItemsToAuthorHtml adds stable item ids when preserving trusted source nodes', () => {
+  const page = {
+    id: 'cover-page',
+    items: [
+      {
+        id: 'p1-el2',
+        role: 'text',
+        sourceNode: { tagName: 'h1', id: null, classList: ['cover-title'], attributes: { 'data-id-paragraph-style': 'cover-title' } },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: { text: '冰球场首层平面排布汇报', runs: [] },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
+
+  assert.match(html, /<h1 id="p1-el2" class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面排布汇报<\/h1>/);
 });
 
 test('pageItemsToAuthorHtml merges observed text style into sourced text nodes', () => {
@@ -939,6 +992,45 @@ test('pageItemsToAuthorHtml formats tables with editable thead and tbody', () =>
   assert.match(html, /<th data-id-paragraph-style="表头文字">指标<\/th>/);
   assert.match(html, /<tbody>\n\s+<tr>/);
   assert.match(html, /<td data-id-paragraph-style="表格正文">243\.75m<\/td>/);
+});
+
+test('pageItemsToAuthorHtml preserves merged table cells and inline cell markup', () => {
+  const page = {
+    id: 'table-page',
+    items: [
+      {
+        id: 'metrics-table',
+        role: 'table',
+        sourceNode: { tagName: 'table', id: 'metrics-table', classList: ['metrics-table'], attributes: {} },
+        structure: { parentId: 'table-page', order: 1 },
+        table: {
+          rows: [
+            {
+              cells: [
+                {
+                  text: 'Merged Cells',
+                  paragraphStyle: 'body',
+                  rowSpan: 2,
+                  colSpan: 3,
+                  runs: [
+                    { text: 'Merged', characterStyle: 'cell-emphasis' },
+                    { text: 'Cells', tagName: 'strong', classList: ['value'], attributes: { 'data-id-character-style': 'value' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<td[^>]*rowspan="2"[^>]*>/);
+  assert.match(html, /<td[^>]*colspan="3"[^>]*>/);
+  assert.match(html, /<td[^>]*data-id-paragraph-style="body"[^>]*>/);
+  assert.match(html, /<span data-id-character-style="cell-emphasis">Merged<\/span> <strong class="value" data-id-character-style="value">Cells<\/strong>/);
 });
 
 test('pageItemsToAuthorHtml folds generated text companions back into sourced annotation objects', () => {

@@ -2,18 +2,76 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { renderSnapshot } = require('../../src/paged-html');
+const { renderSnapshot } = require('../../src/adapters/html');
+
+test('browser snapshot reader exposes focused browser-context scripts', () => {
+  const { browserSnapshotScriptPaths } = require('../../src/adapters/html/reader/browser-snapshot-scripts');
+
+  assert.deepEqual(
+    browserSnapshotScriptPaths.map((scriptPath) => path.basename(scriptPath)),
+    [
+      'browser-style-capture.js',
+      'browser-element-capture.js',
+      'browser-snapshot-capture.js',
+    ],
+  );
+  assert.equal(browserSnapshotScriptPaths.every((scriptPath) => fs.existsSync(scriptPath)), true);
+});
 
 test('renderSnapshot captures fixed-size paged HTML pages', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
 
+  assert.equal(Boolean(snapshot.sourcePackageInput), true);
+  assert.equal(typeof snapshot.sourcePackageInput, 'object');
+  assert.equal(snapshot.sourcePackageInput.assetRoot, 'assets');
   assert.equal(snapshot.pages.length, 2);
   assert.equal(snapshot.pages[0].id, 'page-1');
   assert.equal(snapshot.pages[0].widthMm, 528);
   assert.equal(snapshot.pages[0].heightMm, 297);
   assert.equal(snapshot.pages[0].items.some((item) => item.role === 'text' && item.text.includes('项目标题')), true);
   assert.equal(snapshot.pages[1].items.some((item) => item.role === 'text' && item.text.includes('第二页')), true);
+});
+
+test('renderSnapshot rejects missing page selector instead of returning an empty snapshot', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');
+
+  await assert.rejects(
+    () => renderSnapshot({ htmlPath, pageSelector: '.definitely-missing-page-selector' }),
+    (error) => {
+      assert.match(error.message, /No pages captured/);
+      assert.match(error.message, /\.definitely-missing-page-selector/);
+      assert.match(error.message, /basic-deck\.html/);
+      return true;
+    },
+  );
+});
+
+test('renderSnapshot rejects bare-array browser capture payloads', async () => {
+  const outDir = path.resolve('test/workspace/browser-invalid-capture-shape');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<script>
+  Object.defineProperty(window, 'htmlIndesignBrowserSnapshotCapture', {
+    configurable: true,
+    get() { return undefined; },
+    set(api) {
+      api.collectBrowserSnapshot = () => [];
+      Object.defineProperty(window, 'htmlIndesignBrowserSnapshotCapture', { value: api, configurable: true });
+    }
+  });
+</script>
+<style>.page { width: 800px; height: 450px; }</style>
+<section class="page" id="page-1">
+  <p data-id-paragraph-style="body">Invalid capture payload fixture</p>
+</section>`, 'utf8');
+
+  await assert.rejects(
+    () => renderSnapshot({ htmlPath }),
+    /Browser snapshot capture returned invalid payload shape/,
+  );
 });
 
 test('renderSnapshot computes element bounds in page millimeters', async () => {

@@ -127,15 +127,7 @@ PPTX Reader:
 
   html: {
     readAttrs: ['data-id-pdf-page'],
-    writeAttrs: ['data-id-pdf-page'],
-    retiredAttrs: [
-      {
-        name: 'data-id-page',
-        readPolicy: 'observe-only',
-        writePolicy: 'forbidden',
-        reason: 'ambiguous-with-page-identity'
-      }
-    ]
+    writeAttrs: ['data-id-pdf-page']
   },
 
   indesign: {
@@ -332,14 +324,27 @@ extensions.<format>.*
 
 ```js
 {
-  canonicalPath: 'items[].asset.placement.pageNumber',
-  retiredPath: 'html.data-id-page',
+  canonicalPath: 'retired.htmlAttrs.dataIdPage',
+  currentPaths: [],
+  fieldClass: 'observation',
   lifecycle: 'retired',
-  replacedBy: 'html.data-id-pdf-page',
-  readPolicy: 'observe-only',
-  writePolicy: 'forbidden'
+  owner: 'asset-placement',
+  type: 'attribute',
+  retired: {
+    htmlAttrs: [{
+      name: 'data-id-page',
+      replacedBy: 'data-id-pdf-page',
+      readPolicy: 'observe-only',
+      writePolicy: 'forbidden',
+      reason: 'ambiguous-with-page-identity'
+    }]
+  }
 }
 ```
+
+退役 HTML 属性只能通过独立 retired surface 查询，例如
+`fieldRegistry.getRetiredHtmlAttr('data-id-page')`。`getByHtmlAttr()`
+只返回 current HTML 属性，不能把 `data-id-page` 映射回 PDF 页码字段。
 
 ## 6. 能力矩阵
 
@@ -600,5 +605,4 @@ PPTX 未来载体：
 - 静态字段表最终可以由 registry 生成。
 
 - 新格式只增加 adapter/writer，不增加两两转换器。
-
 

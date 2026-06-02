@@ -1,11 +1,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/indesign-reverse');
+const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
+const { validateSemanticModel } = require('../../src/semantic-model');
+
+function captureThrow(fn) {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  assert.fail('Expected function to throw');
+}
 
 test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
-  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured' });
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', profile: 'architecture-report' });
 
   assert.equal(model.kind, 'DocumentModel');
   assert.equal(model.id, 'architecture-report');
@@ -24,6 +34,95 @@ test('reverseSnapshotToSemanticModel restores tagged InDesign as DocumentModel',
   assert.equal(model.pages[0].items[0].sourceNode.tagName, 'h2');
   assert.deepEqual(model.pages[0].items[0].layout.grid, { col: 1, span: 4, row: 1, rowSpan: 1 });
   assert.equal(model.pages[0].items[0].structure.parentId, 'agenda-page');
+});
+
+test('reverseSnapshotToSemanticModel tagged fixture output is strict-valid as a semantic model', () => {
+  const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });
+
+  assert.equal(model.valid, true);
+
+  const strict = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strict.valid, true);
+  assert.deepEqual(strict.fieldValidation.unknown, []);
+});
+
+test('validateSemanticModel rejects nested unknown effectiveLabel style refs', () => {
+  const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });
+  const item = model.pages
+    .flatMap((page) => page.items || [])
+    .find((candidate) => candidate.effectiveLabel && candidate.effectiveLabel.styleRefs);
+
+  assert.ok(item, 'fixture should retain effectiveLabel styleRefs');
+
+  item.effectiveLabel.styleRefs.ghost = true;
+
+  const strict = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strict.valid, false);
+  assert.equal(
+    strict.fieldValidation.unknown.includes('items[].effectiveLabel.styleRefs.ghost'),
+    true,
+  );
+});
+
+test('reverseSnapshotToSemanticModel fails visibly when an explicit semantic profile is missing', () => {
+  assert.throws(
+    () => reverseSnapshotToSemanticModel({
+      metadata: { sourceDocument: 'bad-profile.indd', mode: 'structured', profile: 'missing-profile' },
+      document: { name: 'bad-profile.indd', labels: [] },
+      pages: [
+        {
+          id: '1',
+          index: 0,
+          labels: [],
+          bounds: { x: 0, y: 0, width: 800, height: 450 },
+          items: [],
+        },
+      ],
+    }, { strictFields: true }),
+    /SEMANTIC_PRESET_LOAD_FAILED:missing-profile/,
+  );
+});
+
+test('reverseSnapshotToSemanticModel fails visibly when structured reverse has no semantic preset source', () => {
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'missing-profile-source.indd', mode: 'structured' },
+    document: { name: 'missing-profile-source.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'structured', strictFields: true }));
+
+  assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+  assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:profile-required/);
+});
+
+test('reverseSnapshotToSemanticModel rejects an explicit empty semantic preset instead of loading fallback profile', () => {
+  for (const semanticPreset of [null, {}]) {
+    const error = captureThrow(() => reverseSnapshotToSemanticModel({
+      metadata: { sourceDocument: 'empty-preset.indd', mode: 'structured', profile: 'architecture-report' },
+      document: { name: 'empty-preset.indd', labels: [] },
+      pages: [
+        {
+          id: '1',
+          index: 0,
+          labels: [],
+          bounds: { x: 0, y: 0, width: 800, height: 450 },
+          items: [],
+        },
+      ],
+    }, { mode: 'structured', strictFields: true, semanticPreset }));
+
+    assert.equal(error.code, 'SEMANTIC_PRESET_LOAD_FAILED');
+    assert.match(error.message, /SEMANTIC_PRESET_LOAD_FAILED:semanticPreset/);
+  }
 });
 
 test('reverseSnapshotToSemanticModel preserves parent page decorative items', () => {
@@ -75,6 +174,380 @@ test('reverseSnapshotToSemanticModel preserves parent page decorative items', ()
   assert.equal(model.pages[0].parentPageName, 'A-正文');
 });
 
+test('reverseSnapshotToSemanticModel output is strict-valid for registered reverse surfaces', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'strict-valid.indd', mode: 'structured' },
+    document: {
+      name: 'strict-valid.indd',
+      labels: [{
+        protocol: 'html-indesign',
+        version: 1,
+        kind: 'document',
+        id: 'strict-doc',
+        title: 'Strict reverse document',
+        unitMode: 'presentation',
+        coordinateUnit: 'pt',
+        sourcePackage: { config: 'deck.config.json', profile: 'architecture-report' },
+      }],
+    },
+    parentPages: [
+      {
+        name: 'A-Parent',
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'parentPage', id: 'parent-a' }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [{
+          id: 'parent-rule',
+          type: 'GraphicLine',
+          bounds: { x: 40, y: 420, width: 720, height: 0 },
+          layerName: 'Decor',
+          vectorGeometry: {
+            kind: 'line',
+            paths: [{
+              points: [
+                { anchor: { x: 40, y: 420 } },
+                { anchor: { x: 760, y: 420 } },
+              ],
+            }],
+          },
+          visualStyle: {
+            strokeColor: '#c8102e',
+            strokeWeight: 2,
+          },
+          labels: [],
+        }],
+      },
+    ],
+    layers: [{ name: 'Text', visible: true, printable: true }],
+    styles: {
+      paragraphStyles: [
+        { name: 'Title', safeName: 'title', css: 'font-size:32pt' },
+      ],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'page',
+          id: 'page-1',
+          semantic: 'agenda-page',
+          sourceFile: 'pages/01-agenda.html',
+          sourceNode: { tagName: 'section', id: 'page-1' },
+          grid: { columns: 12 },
+        }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        guides: [{ axis: 'x', position: 40 }],
+        items: [
+          {
+            id: 'title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            layerName: 'Text',
+            paragraphStyleName: 'Title',
+            text: 'Title',
+            textRuns: [{ text: 'Title', characterStyle: null }],
+            visualStyle: {
+              fillColor: '#ffffff',
+              strokeColor: '#123456',
+              strokeWeight: 1,
+              opacity: 90,
+              cornerRadius: 8,
+            },
+            effects: { transparency: { opacity: 90 } },
+            textFrameStyle: { insetSpacing: 8 },
+            inlineStyle: 'font-size:32pt',
+            zIndex: 1,
+            firstLineFont: 'Title Composite',
+            labels: [{
+              protocol: 'html-indesign',
+              version: 1,
+              kind: 'item',
+              id: 'title',
+              role: 'text',
+              semantic: 'page-title',
+              layout: { grid: { col: 1, span: 4, row: 1 } },
+              sourceFile: 'pages/01-agenda.html',
+              sourceText: 'Title',
+              sourceHtml: '<h1>Title</h1>',
+              htmlTag: 'h1',
+              className: 'page-title',
+              sourceNode: { tagName: 'h1', id: 'title', classList: ['page-title'] },
+              sourceRuns: [{ text: 'Title', tagName: 'span', classList: [], attributes: {} }],
+            }],
+          },
+          {
+            id: 'hero',
+            type: 'Rectangle',
+            bounds: { x: 0, y: 0, width: 800, height: 450 },
+            placedAsset: {
+              name: 'hero.pdf',
+              path: '\\\\server\\share\\hero.pdf',
+              status: 'NORMAL',
+              graphicType: 'PDF',
+              imageTypeName: 'Adobe PDF',
+              cropped: false,
+              placement: {
+                pageNumber: 2,
+                crop: 'trim',
+                transparentBackground: true,
+                visibleLayers: ['base'],
+                hiddenLayers: ['notes'],
+                layers: [{ name: 'base', currentVisibility: true, originalVisibility: true }],
+              },
+              preview: {
+                path: 'D:\\tmp\\hero.png',
+                relativePath: 'previews/hero.png',
+                source: 'indesign-frame-export',
+                format: 'png',
+              },
+            },
+            labels: [{
+              protocol: 'html-indesign',
+              version: 1,
+              kind: 'item',
+              id: 'hero',
+              role: 'graphic',
+              semantic: 'hero-image',
+            }],
+          },
+        ],
+      },
+    ],
+  }, {
+    mode: 'structured',
+    strictFields: true,
+    semanticPreset: {
+      semantics: {
+        'agenda-page': {},
+        'page-title': { roles: ['text'] },
+        'hero-image': { roles: ['graphic'] },
+      },
+    },
+  });
+
+  const strictResult = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strictResult.valid, true);
+  assert.deepEqual(strictResult.fieldValidation.unknown, []);
+
+  model.pages[0].items[0].adapterPrivateGhost = true;
+  model.pages[0].effectiveLabel.ghost = true;
+  model.pages[0].observedLabel.ghost = true;
+  model.styles.paragraphStyles.Title.ghost = true;
+  model.parentPages[0].ghost = true;
+  model.layers[0].ghost = true;
+  const rejected = validateSemanticModel(model, { strictFields: true });
+  assert.equal(rejected.valid, false);
+  for (const path of [
+    'pages[].items[].adapterPrivateGhost',
+    'pages[].effectiveLabel.ghost',
+    'pages[].observedLabel.ghost',
+    'styles.paragraphStyles[].ghost',
+    'parentPages[].ghost',
+    'layers[].ghost',
+  ]) {
+    assert.equal(
+      rejected.errors.some((error) => (
+        error.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be a strict model field error`,
+    );
+  }
+});
+
+test('reverseSnapshotToSemanticModel surfaces observation label field warnings', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'observed-label.indd', mode: 'observation' },
+    document: { name: 'observed-label.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [
+          {
+            protocol: 'html-indesign',
+            version: 1,
+            kind: 'page',
+            id: 'page-1',
+            copiedTemplateSlot: 'old-slot',
+          },
+        ],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.equal(model.valid, true);
+  assert.equal(model.errors.length, 0);
+  assert.equal(model.report.warningCount, 1);
+  assert.equal(model.report.errorCount, 0);
+  assert.equal(model.warnings[0].code, 'LABEL_FIELD_NOT_REGISTERED');
+  assert.equal(model.warnings[0].path, 'copiedTemplateSlot');
+  assert.equal(model.warnings[0].labelKind, 'page');
+  assert.equal(model.fieldValidation.length, 1);
+  assert.equal(model.fieldValidation[0].labelKind, 'page');
+  assert.deepEqual(model.fieldValidation[0].unknown, ['copiedTemplateSlot']);
+  assert.equal(model.pages[0].observedLabel.copiedTemplateSlot, 'old-slot');
+});
+
+test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'strict-label.indd', mode: 'structured' },
+    document: { name: 'strict-label.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Title',
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'title',
+                role: 'text',
+                unknownPayload: 'bad',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  }, { strictFields: true, profile: 'architecture-report' });
+
+  assert.equal(model.valid, false);
+  assert.equal(model.errors.length, 1);
+  assert.equal(model.errors[0].code, 'LABEL_FIELD_NOT_REGISTERED');
+  assert.equal(model.errors[0].path, 'unknownPayload');
+  assert.equal(model.errors[0].labelKind, 'item');
+  assert.equal(model.report.errorCount, 1);
+  assert.equal(
+    model.fieldValidation.some((validation) => (
+      validation.labelKind === 'item'
+      && validation.valid === false
+      && validation.unknown.includes('unknownPayload')
+    )),
+    true,
+  );
+});
+
+test('reverseSnapshotToSemanticModel surfaces structured label field warnings by default', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'structured-label-warning.indd', mode: 'structured' },
+    document: { name: 'structured-label-warning.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'title',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Title',
+            labels: [
+              {
+                protocol: 'html-indesign',
+                version: 1,
+                kind: 'item',
+                id: 'title',
+                role: 'text',
+                semantic: 'page-title',
+                unknownPayload: 'bad',
+                parentPageId: 'report-parent',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured', profile: 'architecture-report' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(model.valid, true);
+  assert.equal(model.errors.length, 0);
+  assert.equal(model.report.warningCount, 2);
+  assert.equal(model.report.errorCount, 0);
+  assert.equal(item.semantic, 'page-title');
+  assert.equal(item.labelStatus, 'partial');
+  assert.equal(item.effectiveLabel.unknownPayload, undefined);
+  assert.equal(item.effectiveLabel.parentPageId, undefined);
+  assert.equal(item.observedLabel.unknownPayload, 'bad');
+  assert.equal(item.observedLabel.parentPageId, 'report-parent');
+  assert.equal(item.rejectedFields.unknownPayload, 'label-field-not-registered');
+  assert.equal(item.rejectedFields.parentPageId, 'label-field-kind-not-allowed');
+  assert.equal(
+    model.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && warning.path === 'unknownPayload'
+      && warning.labelKind === 'item'
+    )),
+    true,
+  );
+  assert.equal(
+    model.warnings.some((warning) => (
+      warning.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
+      && warning.path === 'parentPageId'
+      && warning.labelKind === 'item'
+    )),
+    true,
+  );
+  assert.equal(
+    model.fieldValidation.some((validation) => (
+      validation.labelKind === 'item'
+      && validation.unknown.includes('unknownPayload')
+      && validation.disallowed.some((entry) => entry.path === 'parentPageId')
+    )),
+    true,
+  );
+});
+
+test('reverseSnapshotToSemanticModel accepts registered page parent label fields through effective label', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'parent-label.indd', mode: 'structured' },
+    document: { name: 'parent-label.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [
+          {
+            protocol: 'html-indesign',
+            version: 1,
+            kind: 'page',
+            id: 'page-1',
+            parentPageId: 'report-parent',
+            parentPageName: '汇报母版',
+          },
+        ],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { strictFields: true, profile: 'architecture-report' });
+
+  assert.equal(model.valid, true);
+  assert.equal(model.errors.length, 0);
+  assert.equal(model.report, null);
+  assert.equal(model.pages[0].parentPageId, 'report-parent');
+  assert.equal(model.pages[0].parentPageName, '汇报母版');
+  assert.equal(model.pages[0].effectiveLabel.parentPageId, 'report-parent');
+  assert.equal(model.pages[0].effectiveLabel.parentPageName, '汇报母版');
+});
+
 test('reverseSnapshotToSemanticModel preserves observed visual style and placed asset per item', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'visual.indd', mode: 'structured' },
@@ -124,7 +597,7 @@ test('reverseSnapshotToSemanticModel preserves observed visual style and placed 
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const card = model.pages[0].items.find((item) => item.id === 'card-frame');
   assert.equal(card.role, 'shape');
@@ -185,7 +658,7 @@ test('reverseSnapshotToSemanticModel preserves placed asset preview page and lay
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const item = model.pages[0].items[0];
   assert.equal(item.role, 'graphic');
@@ -231,7 +704,7 @@ test('reverseSnapshotToSemanticModel preserves observed item effects', () => {
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const veil = model.pages[0].items[0];
   assert.equal(veil.effects.gradientFeather.scope, 'fill');
@@ -272,7 +745,7 @@ test('reverseSnapshotToSemanticModel preserves observed text style per text item
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const title = model.pages[0].items[0];
   assert.equal(title.role, 'text');
@@ -308,7 +781,7 @@ test('reverseSnapshotToSemanticModel infers generic PageItem with text as text i
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const title = model.pages[0].items[0];
   assert.equal(title.role, 'text');
@@ -340,7 +813,7 @@ test('reverseSnapshotToSemanticModel decodes InDesign special character tokens i
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const note = model.pages[0].items[0];
   assert.equal(note.content.text, '整体观感“偏冰冷”');
@@ -381,7 +854,7 @@ test('reverseSnapshotToSemanticModel omits observed items from hidden InDesign l
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   assert.deepEqual(model.layers.map((layer) => [layer.name, layer.visible]), [['Comments', false], ['text', true]]);
   assert.deepEqual(model.pages[0].items.map((item) => item.id), ['visible-title']);
@@ -540,7 +1013,7 @@ test('reverseSnapshotToSemanticModel preserves observed character runs per text 
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const title = model.pages[0].items[0];
   assert.equal(title.content.text, '冰球场首层平面\n排布汇报');
@@ -623,7 +1096,7 @@ test('reverseSnapshotToSemanticModel maps InDesign display style names back to s
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const copy = model.pages[0].items[0];
   const table = model.pages[0].items[1];
@@ -639,12 +1112,15 @@ test('reverseSnapshotToSemanticModel maps InDesign display style names back to s
 test('reverseSnapshotToSemanticModel preserves native InDesign table structure', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'table.indd', mode: 'structured' },
-    document: { name: 'table.indd', labels: [] },
+    document: {
+      name: 'table.indd',
+      labels: [{ protocol: 'html-indesign', version: 1, kind: 'document', id: 'table-doc' }],
+    },
     pages: [
       {
         id: '1',
         index: 0,
-        labels: [],
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'page', id: 'page-1' }],
         bounds: { x: 0, y: 0, width: 800, height: 450 },
         items: [
           {
@@ -708,7 +1184,7 @@ test('reverseSnapshotToSemanticModel preserves native InDesign table structure',
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   const table = model.pages[0].items[0];
   assert.equal(table.role, 'table');
@@ -721,6 +1197,10 @@ test('reverseSnapshotToSemanticModel preserves native InDesign table structure',
   assert.equal(table.table.rows[0].cells[0].header, true);
   assert.equal(table.table.rows[0].cells[0].paragraphStyle, '表头文字');
   assert.equal(table.table.rows[0].cells[0].borders.left.color, '#cfd6d2');
+
+  const strict = validateSemanticModel(model, { strictFields: true });
+  assert.equal(strict.valid, true);
+  assert.deepEqual(strict.fieldValidation.unknown, []);
 });
 
 test('reverseSnapshotToSemanticModel preserves reverse style resources composite fonts and z order', () => {
@@ -774,7 +1254,7 @@ test('reverseSnapshotToSemanticModel preserves reverse style resources composite
         ],
       },
     ],
-  }, { mode: 'structured' });
+  }, { mode: 'structured', profile: 'architecture-report' });
 
   assert.equal(model.styles.compositeFonts['建筑复合字体'].romanWeight, '400');
   assert.equal(model.styles.paragraphStyles['正文列表'].css, 'font-size:12pt; color:#123456');

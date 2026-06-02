@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { validateInstructions } = require('../../src/paged-html');
+const { validateInstructions } = require('../../src/writers/indesign');
 const { writeExecutorSmokeWorkspace } = require('./executor-fixture-writer');
 
 test('writeExecutorSmokeWorkspace writes valid instructions and local placeable assets', () => {

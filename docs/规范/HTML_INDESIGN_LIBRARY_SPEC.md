@@ -10,7 +10,7 @@
 Paged HTML <-> InDesign Document
 ```
 
-第一阶段目标：
+当前基础目标：
 
 ```text
 Paged HTML
@@ -19,7 +19,7 @@ Paged HTML
 -> InDesign Document
 ```
 
-第一阶段不做任意长网页自动分页，也不做模板选择或母版推理。HTML 必须已经分页，每个 HTML 页面对应一个 InDesign 页面。浏览器负责计算每页内部布局，InDesign 页面使用相同物理尺寸承接布局结果。
+当前不做任意长网页自动分页，也不做模板选择或母版推理。HTML 必须已经分页，每个 HTML 页面对应一个 InDesign 页面。浏览器负责计算每页内部布局，InDesign 页面使用相同物理尺寸承接布局结果。
 
 ## 2. 核心原则
 
@@ -134,21 +134,11 @@ Semantic Model -> HTML Writer -> fixed semantic HTML
 Semantic Model -> Instruction Compiler -> InDesign Build Instructions -> InDesign Executor
 ```
 
-当前已实现主线仍是：
+当前主线是：
 
 ```text
-Paged HTML
--> Browser Layout Snapshot
--> Style/Element Compiler
--> InDesign Build Instructions
--> InDesign Executor
-```
-
-这条链路会逐步迁移为：
-
-```text
-Paged HTML -> Semantic Model -> InDesign
-InDesign -> Semantic Model -> Paged HTML
+Paged HTML -> HTML Adapter -> Semantic Model -> InDesign Writer -> InDesign Build Instructions -> InDesign Executor
+InDesign Snapshot -> InDesign Adapter -> Semantic Model -> HTML Writer -> Fixed Semantic HTML / Author Package
 ```
 
 `Build Instructions` 只是 InDesign 执行器消费的命令格式，不是长期事实模型。反向导出、回环校验、模板/母版保真都必须以 `Semantic Model` 和标签协议为依据。
@@ -158,11 +148,12 @@ InDesign -> Semantic Model -> Paged HTML
 未来 PPTX、PDF 页面包或其他分页文档格式只能作为格式适配器接入：
 
 ```text
-HTML Adapter <-> Semantic Model <-> InDesign Adapter
-PPTX Adapter <-> Semantic Model <-> HTML/InDesign Adapter
+HTML Adapter -> Semantic Model -> InDesign Writer
+InDesign Adapter -> Semantic Model -> HTML Writer
+PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 ```
 
-字段边界必须由协议字段注册表统一管理。注册表实现前，本文的 Canonical Mapping Model、`SEMANTIC_PROTOCOL.md`、`LABEL_PROTOCOL.md` 和 `REVERSE_EXPORT.md` 中的静态字段表仍是当前行为事实源；注册表实现后，重复字段表应迁移为注册表集中维护或生成文档。
+字段边界必须由协议字段注册表统一管理。当前字段事实源是 `PROTOCOL_FIELD_REGISTRY.md` 及其生成来源 `src/protocol/` registry；本文、`SEMANTIC_PROTOCOL.md`、`LABEL_PROTOCOL.md` 和 `REVERSE_EXPORT.md` 只保留原则、边界和关键示例，不维护重复静态字段表。
 
 新增字段必须先确认属于哪一类：
 
@@ -180,10 +171,10 @@ PPTX Adapter <-> Semantic Model <-> HTML/InDesign Adapter
 
 | 层级 | 职责 | 典型模块 |
 | ---- | ---- | -------- |
-| HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/paged-html/*` |
+| HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/adapters/html/*` |
 | Semantic Model | 保存双向共享事实：页面、母版、样式、图层、对象、资源、标签、网格 | `src/semantic-model/*` |
-| InDesign Adapter | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/indesign-reverse/*`、`src/paged-html/instructions-compiler.js` |
-| HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/indesign-reverse/html-writer.js` |
+| InDesign Adapter / Writer | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/adapters/indesign/*`、`src/writers/indesign/instructions-compiler.js` |
+| HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/writers/html/*` |
 | InDesign Executor | 只执行已验证 instructions，创建 InDesign 原生对象 | `_indesign_scripts/*` |
 
 ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推理。
@@ -213,58 +204,22 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 模型不是 InDesign build instructions。instructions 可以从模型派生，但不能反过来成为唯一事实来源。
 
-本章字段表描述当前模型边界。字段注册表实现后，本章应引用注册表生成结果或只保留模型结构说明，避免字段定义在多个文档里分叉。
+完整字段清单、当前路径、生命周期和 HTML/InDesign/PPTX 读写持久化能力由 `PROTOCOL_FIELD_REGISTRY.md` 生成并维护。本章只描述模型边界和关键结构规则，不能作为第二份字段事实源。
 
-### 5.1 DocumentModel
+### 5.1 模型域
 
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 文档 ID |
-| `title` | string | 文档标题 |
-| `pageSize.widthMm` | number | 页面宽度 |
-| `pageSize.heightMm` | number | 页面高度 |
-| `facingPages` | boolean | 是否对页 |
-| `bleed` | `{top,right,bottom,left}` | 出血，单位 mm |
-| `colorIntent` | enum: `rgb`, `cmyk`, `mixed` | 颜色策略 |
-| `unitMode` | enum: `print`, `presentation` | 坐标和页面尺寸策略 |
-| `coordinateUnit` | enum: `pt`, `mm` | 语义模型和标签中裸数字几何值的统一单位；`presentation` 默认 `pt`，`print` 默认 `mm` |
-| `labels` | `LabelModel[]` | 文档级协议标签 |
-| `parentPages` | `ParentPageModel[]` | InDesign 母版页 / HTML 跨页重复模板 |
-| `pages` | `PageModel[]` | 页面列表 |
-| `layers` | `LayerModel[]` | 层列表 |
-| `styles` | `StyleModel` | 样式资源 |
-| `assets` | `AssetModel[]` | 外部资源 |
+| 模型域 | 职责 |
+| ------ | ---- |
+| Document / Page | 文档级设置、页面顺序、页面尺寸、单位策略、页面标签、边距和参考线 |
+| ParentPage | InDesign 母版页与 HTML 跨页重复模板，不承载页面结构模板 |
+| Style | 色板、字体、段落样式、字符样式、对象样式、框架样式、表格样式和单元格样式 |
+| Asset | 原始资源、可置入路径、资源类型、链接状态和资源级诊断 |
+| PageItem | 文本、图框、形状、线、表格、组和 fallback 对象 |
+| Label | HTML `data-id-*` 与 InDesign `html_indesign` 标签的可回读协议事实 |
 
-### 5.2 PageModel
+字段新增、改名、退役和格式能力变更必须先进入 registry，再由 `PROTOCOL_FIELD_REGISTRY.md` 反映到规范读者可见的字段清单。
 
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 页面 ID |
-| `index` | number | 页面顺序 |
-| `label` | string | 页面标签 |
-| `semantic` | string | 页面语义 |
-| `parentPageId` | string | 应用的 InDesign 母版页稳定 ID |
-| `parentPageName` | string | 应用的 InDesign 母版页显示名 |
-| `layout` | string | HTML/Agent 侧页面结构模板稳定 token，不自动对应 InDesign 母版 |
-| `widthMm` | number | 页面宽度 |
-| `heightMm` | number | 页面高度 |
-| `rectPx` | `RectPx` | 浏览器页面 box |
-| `mmPerPxX` | number | X 方向单位换算 |
-| `mmPerPxY` | number | Y 方向单位换算 |
-| `margins` | `{top,right,bottom,left}` | 页边距；来自 `.page` padding 或 `data-id-margin` |
-| `guides` | `GuideModel[]` | 页面参考线；当前主要来自页面级网格 |
-| `items` | `PageItemModel[]` | 页面对象 |
-
-### 5.3 ParentPageModel
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 母版页 ID |
-| `name` | string | InDesign 母版页名称 |
-| `semantic` | string | 母版语义 |
-| `provides` | string[] | 提供的跨页重复结构，如 `folio`、`header-line` |
-| `items` | `PageItemModel[]` | 母版页对象 |
-| `labels` | `LabelModel[]` | 母版标签 |
+### 5.2 页面和母版边界
 
 母版页只承载跨页重复结构：页码、页眉页脚、章节标识、固定装饰线、永远重复的背景元素和页面参考线。
 
@@ -282,107 +237,19 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 换言之，模板只承载稳定重复层；页面结构模板负责约束 Agent 可以在何处组织内容；空占位框默认只是线索，不是内容。
 
-### 5.4 StyleModel
-
-| 字段 | InDesign 目标 | 说明 |
-| ---- | ------------- | ---- |
-| `swatches` | Swatches | 颜色资源 |
-| `fonts` | Fonts | 字体引用和 fallback |
-| `compositeFonts` | Composite Fonts | 中英混排复合字体 |
-| `paragraphStyles` | Paragraph Styles | 块级文本样式 |
-| `characterStyles` | Character Styles | 局部文字样式 |
-| `objectStyles` | Object Styles | 框、形状、图片框样式 |
-| `frameStyles` | TextFrame/Graphic fitting preferences | 语义层框架样式 |
-| `tableStyles` | Table Styles | 表格样式 |
-| `cellStyles` | Cell Styles | 单元格样式 |
-
-每个样式资源应能携带稳定 token 和 InDesign 显示名。token 用于 HTML/Agent 协议，显示名用于 InDesign 面板。
-
-### 5.5 PageItemModel
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 稳定对象 ID |
-| `role` | enum: `text`, `graphic`, `shape`, `line`, `table`, `group`, `fallback` | 对象角色 |
-| `sourceSelector` | string | HTML 来源选择器 |
-| `tagName` | string | HTML 标签名 |
-| `semantic` | string | 稳定语义 token |
-| `htmlClass` | string | HTML class |
-| `boundsMm` | `RectMm` | 页面内几何位置 |
-| `zIndex` | number | 页面内叠放顺序 |
-| `layer` | string | 目标层 |
-| `styleRefs` | `StyleRefs` | 样式引用 |
-| `transform` | `TransformModel` | transform 信息 |
-| `opacity` | number | 透明度 |
-| `content` | object | 文本、资源、表格等内容 |
-| `labels` | `LabelModel[]` | InDesign/HTML 双向标签 |
-| `fallback` | `FallbackModel` | fallback 信息 |
-
-### 5.6 StyleRefs
-
-| 字段 | 含义 |
-| ---- | ---- |
-| `swatch` | 主色板引用 |
-| `paragraphStyle` | 段落样式引用 |
-| `characterStyles` | 字符样式引用列表 |
-| `objectStyle` | 对象样式引用 |
-| `frameStyle` | 框架样式引用 |
-| `tableStyle` | 表格样式引用 |
-| `cellStyle` | 单元格样式引用 |
+### 5.3 样式引用
 
 样式引用必须能区分稳定 token 和 InDesign 显示名。推荐结构为 `{ "token": "page-title", "displayName": "页面标题" }`；仅写字符串属于历史简写，只能作为迁移输入，不能作为双向协议的唯一表达。
 
-### 5.7 AssetModel
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `id` | string | 资源 ID |
-| `src` | string | 原始路径或 URL |
-| `resolvedPath` | string | 本地可置入路径 |
-| `kind` | enum: `raster`, `pdf`, `psd`, `ai`, `svg`, `vector`, `fallback`, `unknown` | 资源类型 |
-| `mimeType` | string | MIME 类型 |
-| `fileName` | string | 文件名 |
-| `linked` | boolean | 是否作为 InDesign link 保留 |
-| `naturalWidthPx` | number | 浏览器自然宽度 |
-| `naturalHeightPx` | number | 浏览器自然高度 |
-| `pageCount` | number | PDF/AI 页数或画板数 |
-| `colorProfile` | string | 色彩配置 |
-| `transparent` | boolean | 是否含透明通道 |
-| `warnings` | string[] | 资源级 warning |
-
-### 5.8 GraphicFrameModel 与 PlacedGraphicModel
+### 5.4 GraphicFrameModel 与 PlacedGraphicModel
 
 图形框和置入内容必须分开建模。InDesign 中 frame bounds 和 graphic content transform 是两个不同层级。
 
-| 模型 | 字段 | 含义 |
-| ---- | ---- | ---- |
-| `GraphicFrameModel` | `boundsMm` | 图片框/图纸框位置和大小 |
-| `GraphicFrameModel` | `objectStyle` | 框自身样式 |
-| `GraphicFrameModel` | `frameStyle` | fitting、clip、inset 等框架设置 |
-| `PlacedGraphicModel` | `assetId` | 被置入资源 |
-| `PlacedGraphicModel` | `fit` | `cover`、`contain`、`fill`、`none` |
-| `PlacedGraphicModel` | `position` | `center`、`top-left` 等 |
-| `PlacedGraphicModel` | `crop` | 裁切框信息 |
-| `PlacedGraphicModel` | `scaleX` / `scaleY` | 内容缩放 |
-| `PlacedGraphicModel` | `offsetX` / `offsetY` | 内容在框内偏移 |
-| `PlacedGraphicModel` | `rotation` | 内容旋转 |
-| `PlacedGraphicModel` | `pageNumber` | PDF 页码 |
-| `PlacedGraphicModel` | `artboard` | AI/SVG 画板或导入区域 |
-| `PlacedGraphicModel` | `layerComp` | PSD layer comp |
-| `PlacedGraphicModel` | `preserveVector` | 是否优先保留矢量 |
+图形框负责页面内位置、框自身样式、裁切和 fitting 策略；置入内容负责资源引用、PDF 页码、AI/SVG 画板、PSD layer comp、内容缩放、偏移和旋转。`data-id-pdf-page`、`asset.placement.pageNumber`、InDesign PDF place preference 之间的字段事实和格式能力以 `PROTOCOL_FIELD_REGISTRY.md` 为准。
 
-### 5.9 LabelModel
+### 5.5 LabelModel
 
 标签协议详见 `LABEL_PROTOCOL.md`。模型层只要求标签可序列化、可验证、可回写。
-
-| 字段 | 类型 | 含义 |
-| ---- | ---- | ---- |
-| `protocol` | string | 固定为 `html-indesign` |
-| `version` | number | 标签协议版本 |
-| `kind` | string | `document`、`page`、`parentPage`、`item`、`style`、`layer`、`guide` |
-| `id` | string | 稳定 ID |
-| `source` | string | `html-to-indesign`、`manual-tagged`、`blueprint-migration`、`agent-semanticized` |
-| `payload` | object | kind 特定字段 |
 
 ## 6. 输入约束
 
@@ -577,7 +444,7 @@ CSS 颜色应映射为 InDesign 色板。
 | class 内匿名颜色 | `auto-color-<hash>` |
 | inline 匿名颜色 | `auto-color-<hash>` |
 
-颜色值第一阶段使用 RGB hex。后续可扩展 CMYK、Spot、Tint。
+颜色值当前使用 RGB hex。后续可扩展 CMYK、Spot、Tint。
 
 ### 8.2 字体与复合字体
 
@@ -1216,57 +1083,71 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 
 ## 16. 与现有代码的关系
 
-当前文件可按新架构逐步迁移：
+当前实现已按多格式边界落位：
 
-| 当前文件 | 新角色 |
+| 当前文件 | 当前角色 |
 | -------- | ------ |
-| `src/paged-html/` | HTML Adapter 的现有实现：浏览器快照、样式读取、HTML -> instructions |
-| `src/generator.js` | 历史 blueprint -> 模板预览 HTML，只作为迁移参考 |
-| `src/spec-generator.js` | Agent 可读规范生成器，后续从 style model 生成 |
-| `src/validator.js` | 历史模板 validator，保留给旧测试和迁移对照 |
-| `src/builder.js` | 历史模板 builder，保留给旧测试和迁移对照 |
+| `src/adapters/html/` | HTML Adapter：浏览器快照、样式读取、资源发现、HTML snapshot -> semantic model |
+| `src/writers/indesign/` | InDesign Writer：semantic model -> instructions、样式编译、instructions 校验 |
+| `src/adapters/indesign/` | InDesign Adapter：reverse snapshot -> semantic model、标签白名单、历史 blueprint 迁移 |
+| `src/writers/html/` | HTML Writer：reverse author package、visual HTML、source/visual audit |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
-| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/indesign-reverse/blueprint-migration.js` 归一化为 reverse model |
+| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/adapters/indesign/normalizer/blueprint-migration.js` 归一化为 semantic model |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
-第一阶段实现保留现有历史模板能力，并通过 `src/historical-template/*` wrappers 对外暴露给迁移测试。新的浏览器驱动转换代码放在 `src/paged-html/*` 下，可复用工具放在 `src/shared/*` 下；新功能不得继续扩展历史模板路径。
+旧根层 blueprint 模板脚本和 `historicalTemplate` 公共出口已经退役。旧 blueprint 只能作为迁移输入进入 `src/adapters/indesign/normalizer/blueprint-migration.js`，再通过统一语义模型和 writer 输出；不得恢复旧模板 HTML 生成、旧槽位 validator、旧 builder 或公共 wrapper。新的浏览器驱动转换代码放在 `src/adapters/html/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`。
 
-新模块建议：
+当前模块布局：
 
 ```text
 src/
   semantic-model/
-    document-model.js
-    labels.js
-    styles.js
-    assets.js
-    validators.js
-  paged-html/
-    browser-snapshot.js
-    style-compiler.js
-    semantic-model-compiler.js
-    instructions-compiler.js
-    instructions-validator.js
-  indesign-reverse/
-    snapshot-reader.js
-    label-protocol.js
-    reverse-model.js
-    blueprint-migration.js
-    html-writer.js
-    asset-exporter.js
-    report.js
+    index.js
+    layout.js
+    validator.js
+  adapters/
+    html/
+      reader/browser-snapshot.js
+      reader/style-reader.js
+      normalizer/snapshot-to-model.js
+    indesign/
+      reader/snapshot-reader.js
+      normalizer/snapshot-to-model.js
+      normalizer/blueprint-migration.js
+    pptx/
+      contracts.js
+      capabilities.js
+  writers/
+    indesign/
+      style-compiler.js
+      instructions-compiler.js
+      instructions-validator.js
+    html/
+      visual-html-writer.js
+      author-package-writer.js
+      audit/
+        source-roundtrip-diff.js
+        visual-geometry-audit.js
+  protocol/
+    index.js
+    fields/
+    validators/
+    scanners/
   shared/
+    style-utils.js
+    labels.js
+    nas-paths.js
     report.js
     geometry.js
     assets.js
 ```
 
-`instructions-compiler.js` 后续应从“直接消费浏览器快照”迁移为“消费 Semantic Model 并生成 InDesign instructions”。迁移期间可以保留兼容入口，但新增双向能力必须围绕 Semantic Model 和标签协议实现。
+`instructions-compiler.js` 位于 InDesign writer 边界，负责把 Semantic Model 派生为 InDesign instructions。新增双向能力必须围绕 Semantic Model、协议字段注册表和标签协议实现，不得重新引入旧目录 facade 或绕过 adapter/writer 边界。
 
 ## 17. 非目标
 
-第一阶段明确不做：
+当前明确不做：
 
 - 任意长网页自动分页。
 - 自动模板选择。
@@ -1276,9 +1157,9 @@ src/
 - 完整交互网页转换。
 - JavaScript 动态应用状态转换，除非页面在快照前已经稳定渲染。
 - CAD/DWG 原生解析。CAD 图纸应先由外部流程导出为 PDF/AI/SVG/图片。
-- Photoshop/Illustrator 内部图层的完整编辑重建。第一阶段以 linked placement 为主。
+- Photoshop/Illustrator 内部图层的完整编辑重建。当前以 linked placement 为主。
 
-第一阶段可以做：
+当前可以做：
 
 - 分页 HTML 一页对一页转换。
 - Chromium 页内布局测量。
