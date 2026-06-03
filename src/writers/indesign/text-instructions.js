@@ -51,6 +51,19 @@ function textFrameBounds(item, bounds, layout) {
   };
 }
 
+function textFitPolicy(item, options = {}) {
+  if (options.textFit === false) return null;
+  const attributes = item && item.sourceNode && item.sourceNode.attributes || {};
+  const observed = attributes['data-id-observed'] === 'true' || attributes['data-id-reverse-mode'] === 'observation';
+  if (!observed) return null;
+  return {
+    mode: 'expand-frame-to-content',
+    maxGrowX: Number(options.textFitMaxGrowX || 96),
+    maxGrowY: Number(options.textFitMaxGrowY || 48),
+    preservePosition: true,
+  };
+}
+
 function minimumTextFrameHeight(item, layout) {
   const style = item.computedStyle || {};
   const lineHeight = cssLengthToTarget(style.lineHeight, layout)
@@ -85,4 +98,5 @@ function usesAutoInlineWidth(item) {
 module.exports = {
   effectsForInstruction,
   textFrameBounds,
+  textFitPolicy,
 };

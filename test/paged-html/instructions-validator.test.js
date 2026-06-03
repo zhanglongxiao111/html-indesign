@@ -208,6 +208,36 @@ test('validateInstructions rejects mixed page sizes until executor supports per-
   assert.equal(result.errors.some((error) => error.code === 'MIXED_PAGE_SIZE_UNSUPPORTED'), true);
 });
 
+test('validateInstructions rejects invalid text fit modes', () => {
+  const result = validateInstructions({
+    metadata: {},
+    document: { pages: [{ id: 'page-1', width: 100, height: 100 }] },
+    styles: {
+      paragraphStyles: {},
+      characterStyles: {},
+      objectStyles: {},
+      frameStyles: {},
+      tableStyles: {},
+    },
+    assets: [],
+    layers: [],
+    pages: [{
+      id: 'page-1',
+      items: [{
+        id: 'bad-text',
+        type: 'TEXT',
+        bounds: { x: 0, y: 0, width: 20, height: 80 },
+        text: 'bad',
+        runs: [],
+        textFit: { mode: 'shrink-font' },
+      }],
+    }],
+  });
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.code === 'INVALID_TEXT_FIT_MODE'));
+});
+
 test('validateInstructions rejects missing required protocol labels in strict mode', () => {
   const instructions = {
     document: {

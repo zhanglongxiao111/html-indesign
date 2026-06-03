@@ -107,6 +107,43 @@ test('semanticModelToInstructions emits parent pages and page parent references'
   assert.equal(instructions.pages[0].layout, 'contents-grid');
 });
 
+test('semanticModelToInstructions emits bounded text fit for observed reverse text frames', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'text-1',
+        role: 'text',
+        semantic: 'unknown',
+        bounds: { x: 10, y: 20, width: 80, height: 20 },
+        content: { text: '2026年1月26日区委专题会' },
+        sourceNode: { attributes: { 'data-id-observed': 'true', 'data-id-reverse-mode': 'observation' } },
+        structure: { parentId: 'p1', order: 1 },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'text-1');
+
+  assert.deepEqual(item.textFit, {
+    mode: 'expand-frame-to-content',
+    maxGrowX: 96,
+    maxGrowY: 48,
+    preservePosition: true,
+  });
+});
+
 test('semanticModelToInstructions carries placed PDF page crop and layer visibility options', () => {
   const model = {
     kind: 'DocumentModel',

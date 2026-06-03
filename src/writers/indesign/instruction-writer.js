@@ -22,7 +22,7 @@ const {
   tableRowHeightsForInstruction,
   nativeTableBounds,
 } = require('./table-instructions');
-const { effectsForInstruction, textFrameBounds } = require('./text-instructions');
+const { effectsForInstruction, textFrameBounds, textFitPolicy } = require('./text-instructions');
 
 function semanticModelToInstructions(model, options = {}) {
   const layout = model.layoutInfo || {
@@ -123,6 +123,7 @@ function instructionItemFor(modelItem, assets, page, layout, options) {
     effects: effectsForInstruction(modelItem.effects || item.effects || null, page, layout),
   };
   if (base.role === 'text') {
+    const textFit = textFitPolicy(item, options);
     return {
       ...base,
       type: 'TEXT',
@@ -132,6 +133,7 @@ function instructionItemFor(modelItem, assets, page, layout, options) {
       objectStyle: styleRefs.objectStyle,
       frameStyle: styleRefs.frameStyle,
       runs: content.runs || [],
+      ...(textFit ? { textFit } : {}),
     };
   }
   if (base.role === 'graphic') {

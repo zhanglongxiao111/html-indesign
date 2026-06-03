@@ -36,6 +36,7 @@ function validateInstructions(instructions, options = {}) {
       validateBounds(item, errors);
       validateStyleRefs(item, styles, errors);
       validatePlacedAsset(item, assetIds, assetById, errors);
+      validateTextFit(item, errors);
     }
   }
 
@@ -100,6 +101,28 @@ function validateBounds(item, errors) {
       message: `Item '${item.id}' has invalid bounds.`,
       itemId: item.id,
     });
+  }
+}
+
+function validateTextFit(item, errors) {
+  if (!item.textFit) return;
+  const mode = String(item.textFit.mode || '');
+  if (mode !== 'expand-frame-to-content') {
+    errors.push({
+      code: 'INVALID_TEXT_FIT_MODE',
+      message: `Unsupported textFit mode '${mode}'.`,
+      itemId: item.id,
+    });
+  }
+  for (const field of ['maxGrowX', 'maxGrowY']) {
+    if (!Number.isFinite(Number(item.textFit[field])) || Number(item.textFit[field]) < 0) {
+      errors.push({
+        code: 'INVALID_TEXT_FIT_LIMIT',
+        message: `textFit.${field} must be a non-negative number.`,
+        itemId: item.id,
+        field,
+      });
+    }
   }
 }
 
