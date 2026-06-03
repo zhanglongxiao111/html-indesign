@@ -11,6 +11,7 @@ const {
   architectureStyleNameMap,
   loadStyleNameMapForHtml,
   assertPanelNameAuditOk,
+  assertNoTextOverset,
   assertReverseHtmlSemantics,
   auditReverseAuthorPackage,
   auditReverseHtmlSemantics,
@@ -105,6 +106,37 @@ test('assertPanelNameAuditOk rejects English panel-facing names', () => {
     audit: {
       panelAsciiNames: [{ kind: 'swatches', name: 'Black' }],
     },
+  }));
+});
+
+test('assertNoTextOverset rejects build outputs with located text overflow', () => {
+  assert.throws(() => assertNoTextOverset({
+    counts: { oversetTextFrames: 1 },
+    oversetTextFrames: [{
+      itemId: 'page-03-title',
+      pageName: '3',
+      bounds: [12, 24, 48, 240],
+      textLength: 7,
+      visibleText: '1-建筑方案更',
+    }],
+  }), /InDesign text frames are overset/);
+
+  assert.throws(() => assertNoTextOverset({
+    counts: { oversetTextFrames: 1 },
+    warnings: [{
+      code: 'TEXT_OVERSET',
+      details: {
+        itemId: 'page-02-date',
+        pageName: '2',
+        visibleText: '2026',
+        sourceText: '2026年1月26日区委专题会',
+      },
+    }],
+  }), /2026年1月26日区委专题会/);
+
+  assert.doesNotThrow(() => assertNoTextOverset({
+    counts: { oversetTextFrames: 0 },
+    oversetTextFrames: [],
   }));
 });
 

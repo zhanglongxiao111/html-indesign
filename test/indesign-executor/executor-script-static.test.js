@@ -213,6 +213,7 @@ test('item helper creates text graphic shape items and applies z order', () => {
     'HI.clearTextFrameInsets',
     'HI.applyRuns',
     'frame.overflows',
+    'HI.recordOversetTextFrame',
     'page.rectangles.add',
     'page.ovals.add',
     'page.graphicLines.add',
@@ -235,6 +236,17 @@ test('item helper creates text graphic shape items and applies z order', () => {
   ]) {
     assert.match(tableSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+});
+
+test('item helper records located overset text frame diagnostics', () => {
+  const coreSource = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
+  const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+
+  assert.match(coreSource, /oversetTextFrames:\s*\[\]/);
+  assert.match(itemSource, /HI\.recordOversetTextFrame\(report,\s*frame,\s*item,\s*"TEXT_OVERSET"/);
+  assert.match(itemSource, /pageName/);
+  assert.match(itemSource, /visibleText/);
+  assert.match(itemSource, /sourceText/);
 });
 
 test('asset helper does not silently ignore advanced placement options', () => {

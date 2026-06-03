@@ -50,6 +50,7 @@ HI.makeReport = function () {
         messages: [],
         errors: [],
         warnings: [],
+        oversetTextFrames: [],
         counts: {
             pages: 0,
             layers: 0,

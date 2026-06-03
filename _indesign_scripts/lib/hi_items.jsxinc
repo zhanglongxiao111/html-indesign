@@ -36,8 +36,7 @@ HI.createTextFrame = function (doc, page, item, context, report) {
     try { frame.label = HI.itemLabel(item); } catch (_) {}
     HI.writeProtocolLabels(frame, item.labels || [], report, { itemId: item.id, critical: true });
     if (frame.overflows) {
-        report.counts.oversetTextFrames += 1;
-        HI.addMessage(report, "warning", "TEXT_OVERSET", "Text frame is overset", { itemId: item.id });
+        HI.recordOversetTextFrame(report, frame, item, "TEXT_OVERSET", "Text frame is overset");
     }
     report.counts.textFrames += 1;
     return frame;
@@ -159,10 +158,39 @@ HI.createTableFrame = function (doc, page, item, context, report) {
     }
 
     if (frame.overflows) {
-        report.counts.oversetTextFrames += 1;
-        HI.addMessage(report, "warning", "TABLE_FRAME_OVERSET", "Table frame is overset", { itemId: item.id });
+        HI.recordOversetTextFrame(report, frame, item, "TABLE_FRAME_OVERSET", "Table frame is overset");
     }
     return frame;
+};
+
+HI.recordOversetTextFrame = function (report, frame, item, code, message) {
+    report.counts.oversetTextFrames += 1;
+    var bounds = null;
+    var sourceText = HI.textFromRuns(item);
+    var visibleText = "";
+    var pageName = null;
+    try { bounds = frame.geometricBounds; } catch (_) {}
+    try { visibleText = String(frame.texts[0].contents || ""); } catch (_) {
+        try { visibleText = String(frame.contents || ""); } catch (_contentError) {}
+    }
+    try { if (frame.parentPage) pageName = String(frame.parentPage.name); } catch (_) {}
+    var details = {
+        itemId: item.id || null,
+        pageName: pageName,
+        bounds: bounds ? [Number(bounds[0]), Number(bounds[1]), Number(bounds[2]), Number(bounds[3])] : null,
+        textLength: String(sourceText || "").length,
+        visibleText: HI.shortText(visibleText, 120),
+        sourceText: HI.shortText(sourceText, 120)
+    };
+    report.oversetTextFrames.push(details);
+    HI.addMessage(report, "warning", code, message, details);
+};
+
+HI.shortText = function (value, maxLength) {
+    var text = String(value || "");
+    var limit = Number(maxLength || 120);
+    if (text.length <= limit) return text;
+    return text.substring(0, limit) + "...";
 };
 
 HI.assignLayer = function (pageItem, context, layerName) {

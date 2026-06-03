@@ -129,6 +129,7 @@ async function runIndesignE2E(options = {}) {
   const buildCli = runCli(['--json', '--pretty', 'script', 'run', context.buildScriptPath], context.repoRoot);
   const buildResult = parseCliResultJson(buildCli.stdout);
   assertCliResultOk(buildResult, 'InDesign build failed');
+  assertNoTextOverset(buildResult);
 
   fs.writeFileSync(context.exportScriptPath, buildExportJsx({
     runDir: context.runDir,
@@ -315,6 +316,28 @@ function assertPanelNameAuditOk(result) {
   if (Array.isArray(asciiNames) && asciiNames.length > 0) {
     throw new Error(`InDesign panel names still contain English tokens: ${JSON.stringify(asciiNames, null, 2)}`);
   }
+}
+
+function assertNoTextOverset(result) {
+  const count = Number(result && result.counts && result.counts.oversetTextFrames || 0);
+  const directFrames = result && Array.isArray(result.oversetTextFrames) ? result.oversetTextFrames : [];
+  const messages = [
+    ...(result && result.messages || []),
+    ...(result && result.warnings || []),
+  ]
+    .filter((message) => message && (message.code === 'TEXT_OVERSET' || message.code === 'TABLE_FRAME_OVERSET'));
+  const frames = directFrames.length
+    ? directFrames
+    : messages.map((message) => message.details).filter(Boolean);
+  if (count <= 0 && frames.length === 0 && messages.length === 0) return;
+  const error = new Error(`InDesign text frames are overset: ${JSON.stringify({
+    count,
+    frames,
+    messages,
+  }, null, 2)}`);
+  error.oversetTextFrames = frames;
+  error.oversetMessages = messages;
+  throw error;
 }
 
 function auditReverseHtmlSemantics(html) {
@@ -805,6 +828,7 @@ module.exports = {
   parseArgs,
   parseTargetSize,
   assertPanelNameAuditOk,
+  assertNoTextOverset,
   isAllowedBuiltInPanelName,
   runIndesignE2E,
 };
