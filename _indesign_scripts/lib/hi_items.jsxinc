@@ -36,6 +36,9 @@ HI.createTextFrame = function (doc, page, item, context, report) {
     try { frame.label = HI.itemLabel(item); } catch (_) {}
     HI.writeProtocolLabels(frame, item.labels || [], report, { itemId: item.id, critical: true });
     if (frame.overflows) {
+        HI.resolveTextFrameOverflow(report, frame, item);
+    }
+    if (frame.overflows) {
         HI.recordOversetTextFrame(report, frame, item, "TEXT_OVERSET", "Text frame is overset");
     }
     report.counts.textFrames += 1;
@@ -157,6 +160,9 @@ HI.createTableFrame = function (doc, page, item, context, report) {
         report.counts.textFrames += 1;
     }
 
+    if (frame.overflows) {
+        HI.resolveTextFrameOverflow(report, frame, item);
+    }
     if (frame.overflows) {
         HI.recordOversetTextFrame(report, frame, item, "TABLE_FRAME_OVERSET", "Table frame is overset");
     }

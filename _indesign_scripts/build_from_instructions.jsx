@@ -23,6 +23,7 @@
         includeLib("hi_styles.jsxinc");
         includeLib("hi_assets.jsxinc");
         includeLib("hi_tables.jsxinc");
+        includeLib("hi_text_fit.jsxinc");
         includeLib("hi_items.jsxinc");
         includeLib("hi_executor.jsxinc");
 

@@ -17,6 +17,7 @@ test('build_from_instructions.jsx is a thin bootstrap that loads executor libs',
     'hi_styles.jsxinc',
     'hi_assets.jsxinc',
     'hi_tables.jsxinc',
+    'hi_text_fit.jsxinc',
     'hi_items.jsxinc',
     'hi_executor.jsxinc',
   ]) {
@@ -35,6 +36,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
     'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
+    'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'TEXT_FIT_APPLIED', 'TEXT_FIT_UNRESOLVED'],
     'hi_items.jsxinc': ['HI.buildInstructionItems', 'HI.createTextFrame', 'HI.createGraphicFrame'],
     'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.runLegacyBuildInstructions'],
   };
@@ -247,6 +249,26 @@ test('item helper records located overset text frame diagnostics', () => {
   assert.match(itemSource, /pageName/);
   assert.match(itemSource, /visibleText/);
   assert.match(itemSource, /sourceText/);
+});
+
+test('executor loads dedicated text fit helper before item creation', () => {
+  const bootstrap = fs.readFileSync(path.resolve('_indesign_scripts/build_from_instructions.jsx'), 'utf8');
+  const e2e = fs.readFileSync(path.resolve('scripts/indesign-e2e.js'), 'utf8');
+
+  assert.match(bootstrap, /includeLib\("hi_text_fit\.jsxinc"\)/);
+  assert.match(e2e, /includeLib\("hi_text_fit\.jsxinc"\)/);
+});
+
+test('text fit helper expands bounded overset frames and reports unresolved cases', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_text_fit.jsxinc'), 'utf8');
+  const items = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_items.jsxinc'), 'utf8');
+
+  assert.match(source, /HI\.resolveTextFrameOverflow\s*=/);
+  assert.match(source, /TEXT_FIT_APPLIED/);
+  assert.match(source, /TEXT_FIT_UNRESOLVED/);
+  assert.match(source, /maxGrowX/);
+  assert.match(source, /maxGrowY/);
+  assert.match(items, /HI\.resolveTextFrameOverflow\(report,\s*frame,\s*item\)/);
 });
 
 test('asset helper does not silently ignore advanced placement options', () => {

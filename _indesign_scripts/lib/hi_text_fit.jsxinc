@@ -1,0 +1,79 @@
+if (typeof HI === "undefined") HI = {};
+
+HI.resolveTextFrameOverflow = function (report, frame, item) {
+    if (!frame || !frame.overflows || !item || !item.textFit) return false;
+    if (item.textFit.mode !== "expand-frame-to-content") return false;
+
+    var original = null;
+    try { original = frame.geometricBounds; } catch (_) {}
+    if (!original) return false;
+
+    var maxGrowX = Number(item.textFit.maxGrowX || 0);
+    var maxGrowY = Number(item.textFit.maxGrowY || 0);
+    try {
+        frame.fit(FitOptions.FRAME_TO_CONTENT);
+    } catch (fitError) {
+        HI.addMessage(report, "warning", "TEXT_FIT_UNRESOLVED", "Text frame fit failed", {
+            itemId: item.id || null,
+            reason: String(fitError)
+        });
+        return false;
+    }
+
+    var fitted = null;
+    try { fitted = frame.geometricBounds; } catch (_) {}
+    if (!fitted) return false;
+
+    if (item.textFit.preservePosition !== false) {
+        fitted = HI.textFitPreservedPositionBounds(original, fitted);
+        try { frame.geometricBounds = fitted; } catch (_) {}
+    }
+
+    var growX = Math.max(0, HI.boundsWidth(fitted) - HI.boundsWidth(original));
+    var growY = Math.max(0, HI.boundsHeight(fitted) - HI.boundsHeight(original));
+    if (growX <= maxGrowX && growY <= maxGrowY && !frame.overflows) {
+        HI.addMessage(report, "info", "TEXT_FIT_APPLIED", "Text frame expanded to avoid overset", {
+            itemId: item.id || null,
+            originalBounds: HI.boundsArray(original),
+            fittedBounds: HI.boundsArray(fitted),
+            growX: growX,
+            growY: growY
+        });
+        return true;
+    }
+
+    try { frame.geometricBounds = original; } catch (_) {}
+    HI.addMessage(report, "warning", "TEXT_FIT_UNRESOLVED", "Text frame cannot be safely expanded within configured limits", {
+        itemId: item.id || null,
+        originalBounds: HI.boundsArray(original),
+        attemptedBounds: HI.boundsArray(fitted),
+        growX: growX,
+        growY: growY,
+        maxGrowX: maxGrowX,
+        maxGrowY: maxGrowY
+    });
+    return false;
+};
+
+HI.textFitPreservedPositionBounds = function (original, fitted) {
+    var height = HI.boundsHeight(fitted);
+    var width = HI.boundsWidth(fitted);
+    return [
+        Number(original[0]),
+        Number(original[1]),
+        Number(original[0]) + height,
+        Number(original[1]) + width
+    ];
+};
+
+HI.boundsWidth = function (bounds) {
+    return Math.max(0, Number(bounds[3]) - Number(bounds[1]));
+};
+
+HI.boundsHeight = function (bounds) {
+    return Math.max(0, Number(bounds[2]) - Number(bounds[0]));
+};
+
+HI.boundsArray = function (bounds) {
+    return [Number(bounds[0]), Number(bounds[1]), Number(bounds[2]), Number(bounds[3])];
+};
