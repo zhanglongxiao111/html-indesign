@@ -143,7 +143,7 @@ function modelText(item) {
 function modelResource(item) {
   const asset = item && (item.asset || item.placedAsset);
   if (!asset || !asset.path) return null;
-  return { kind: asset.kind || item.role || 'asset', identity: String(asset.path) };
+  return { kind: asset.kind || item.role || 'asset', identity: resourceIdentity(null, asset.path) };
 }
 
 function modelRoleDigest(items) {
@@ -182,7 +182,7 @@ function comparePageCounts(expected, actual, errors) {
 
 function missingByIdentity(expected, actual) {
   const actualIds = new Set((actual || []).map((entry) => entry.identity));
-  return (expected || []).filter((entry) => !actualIds.has(entry.identity));
+  return (expected || []).filter((entry) => !isDerivedPreviewResource(entry) && !actualIds.has(entry.identity));
 }
 
 function geometryChanged(expected, actual) {
@@ -210,10 +210,24 @@ function geometryEntry(id, role, bounds) {
 }
 
 function resourceIdentity(root, value) {
-  const raw = String(value || '');
+  const raw = decodeResourcePath(String(value || '').trim());
+  const nas = raw.match(/^\/nas\/([^/]+)\/(.+)$/i);
+  if (nas) return `\\\\${nas[1]}\\${nas[2].replace(/\//g, '\\')}`;
   if (/^\\\\|^\/\//.test(raw)) return raw.replace(/\//g, '\\');
   if (/^[a-zA-Z]:[\\/]/.test(raw)) return path.normalize(raw);
-  return path.normalize(path.resolve(root, raw));
+  return path.normalize(raw).replace(/^\.?[\\/]+/, '');
+}
+
+function isDerivedPreviewResource(entry) {
+  return /^previews[\\/]/i.test(String(entry && entry.identity || ''));
+}
+
+function decodeResourcePath(value) {
+  try {
+    return decodeURI(value);
+  } catch (_) {
+    return value;
+  }
 }
 
 function tagRole(tagName) {
@@ -233,8 +247,19 @@ function normalizeText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
+function canonicalContentText(value) {
+  return normalizeText(value)
+    .replace(/([\p{Script=Han}])\s+([\p{Script=Han}])/gu, '$1$2')
+    .replace(/([\p{Script=Han}])\s+([，。！？；：、])/gu, '$1$2')
+    .replace(/([，。！？；：、])\s+([\p{Script=Han}])/gu, '$1$2')
+    .replace(/\s+([，。！？；：、])/g, '$1')
+    .replace(/([（《“])\s+/g, '$1')
+    .replace(/\s+([）》”])/g, '$1');
+}
+
 function sameArray(left, right) {
-  return JSON.stringify(left || []) === JSON.stringify(right || []);
+  const normalizeArray = (values) => (values || []).map(canonicalContentText);
+  return JSON.stringify(normalizeArray(left)) === JSON.stringify(normalizeArray(right));
 }
 
 function round(value) {

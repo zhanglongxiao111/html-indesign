@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
 const scriptPath = path.join(root, '_indesign_scripts/build_from_instructions.jsx');
@@ -36,7 +37,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
     'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
-    'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'TEXT_FIT_APPLIED', 'TEXT_FIT_UNRESOLVED'],
+    'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'HI.applyTextFitNudge', 'TEXT_FIT_APPLIED', 'TEXT_FIT_NUDGE_APPLIED', 'TEXT_FIT_UNRESOLVED'],
     'hi_items.jsxinc': ['HI.buildInstructionItems', 'HI.createTextFrame', 'HI.createGraphicFrame'],
     'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.runLegacyBuildInstructions'],
   };
@@ -238,6 +239,21 @@ test('item helper creates text graphic shape items and applies z order', () => {
   ]) {
     assert.match(tableSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+});
+
+test('item helper computes endpoints for horizontal and vertical native lines', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const context = { HI: {} };
+  vm.runInNewContext(source, context);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(context.HI.lineEndPoints({
+    bounds: { x: 10, y: 20, width: 50, height: 0 },
+    rotationAngle: 0,
+  }))), { x1: 10, y1: 20, x2: 60, y2: 20 });
+  assert.deepEqual(JSON.parse(JSON.stringify(context.HI.lineEndPoints({
+    bounds: { x: 10, y: 20, width: 0, height: 50 },
+    rotationAngle: 0,
+  }))), { x1: 10, y1: 20, x2: 10, y2: 70 });
 });
 
 test('item helper records located overset text frame diagnostics', () => {

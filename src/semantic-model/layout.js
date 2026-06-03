@@ -284,10 +284,36 @@ function uniqueGuides(guides) {
 }
 
 function itemBounds(item, page, layout) {
+  if (layout.unitMode === 'presentation') {
+    const authoredBounds = observedAuthoredBounds(item, page, layout);
+    if (authoredBounds) return authoredBounds;
+  }
   if (layout.unitMode !== 'presentation' || !item.rectPx || !page.rectPx) {
     return item.boundsMm;
   }
   return boundsFromRect(item.rectPx, page.rectPx, layout);
+}
+
+function observedAuthoredBounds(item, page, layout) {
+  if (!isObservedReverseItem(item, page)) return null;
+  const style = item && item.authoredStyle || {};
+  if (String(style.position || '').toLowerCase() !== 'absolute') return null;
+  if (![style.left, style.top, style.width, style.height].every((value) => String(value || '').trim())) return null;
+  return {
+    x: cssLengthToTarget(style.left, layout),
+    y: cssLengthToTarget(style.top, layout),
+    width: cssLengthToTarget(style.width, layout),
+    height: cssLengthToTarget(style.height, layout),
+  };
+}
+
+function isObservedReverseItem(item, page) {
+  const pageAttrs = page && page.attributes || {};
+  const itemAttrs = item && item.attributes || {};
+  if (pageAttrs['data-id-observed'] === 'true' || pageAttrs['data-id-reverse-mode'] === 'observation') return true;
+  if (itemAttrs['data-id-observed'] === 'true' || itemAttrs['data-id-reverse-mode'] === 'observation') return true;
+  const classList = item && item.classList || [];
+  return classList.includes('observed-text');
 }
 
 function boundsFromRect(rect, pageRect, layout) {

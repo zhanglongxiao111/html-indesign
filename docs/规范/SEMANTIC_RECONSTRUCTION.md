@@ -228,6 +228,24 @@ InDesign
 - 生成的作者包能通过 authoring lint。
 - 需要交付为样例时，继续跑反向视觉几何审核和真实 InDesign 回环。
 
+### 5.1 人工 InDesign 无丢失回环
+
+人工 InDesign 反向作者包进入 `HTML -> InDesign -> HTML` 回环时，必须生成以下作者包审计报告：
+
+- `source-roundtrip-report.json`：源码 exact diff 和格式漂移报告，作为辅助信号。
+- `content-inventory-report.json`：页面、文字、资源和关键内容库存对照，是无丢失硬门槛。
+- `structure-signature-report.json`：作者 HTML 可编辑结构签名对照。
+
+首轮从人工 InDesign 重建出的作者包，允许源码 exact diff 和源作者结构差异作为 advisory warning 写入报告；这类差异不能掩盖内容丢失。硬失败条件是内容库存丢页、丢文字、丢资源或真实 InDesign 构建出现 overset / unresolved text fit。
+
+二次回环验证第一轮作者包是否稳定。`--second-pass-roundtrip` 必须写出：
+
+- `canonical-source-drift-report.json`
+- `canonical-content-inventory-report.json`
+- `canonical-structure-signature-report.json`
+
+二次回环的硬门槛是 `canonical-content-inventory-report.json` 和 `canonical-structure-signature-report.json` 均为 `ok: true`。源码 exact drift 继续保留为辅助报告；PSD 预览缓存文件名变化、极小浮点排版数值漂移等不改变内容库存和结构签名的变化，不得单独导致二次回环失败。
+
 ## 6. 外部参考项目
 
 语义重建算法参考项目放在仓库外部，不进入本项目源码树：

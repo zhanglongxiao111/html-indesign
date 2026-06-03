@@ -14,6 +14,7 @@ const {
   assertNoTextOverset,
   assertReverseHtmlSemantics,
   auditReverseAuthorPackage,
+  auditSecondPassAuthorStability,
   auditReverseHtmlSemantics,
   isAllowedBuiltInPanelName,
   parseArgs,
@@ -301,6 +302,86 @@ test('auditReverseAuthorPackage attaches content inventory and structure signatu
   assert.equal(audit.structureSignature.ok, true);
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/content-inventory-report.json')), true);
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/structure-signature-report.json')), true);
+});
+
+test('auditReverseAuthorPackage keeps exact source diffs advisory when integrity checks pass', () => {
+  const root = path.resolve('test/workspace/e2e-audit-source-advisory');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeMinimalAuthorPackage(sourceRoot, '<section class="page"><p id="copy" style="left:1px">完整文字</p></section>');
+  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><p id="copy" style="left:2px">完整文字</p></section>');
+
+  const audit = auditReverseAuthorPackage({
+    config: path.join(reverseRoot, 'deck.config.json'),
+    entry: path.join(reverseRoot, 'deck.html'),
+    outDir: reverseRoot,
+    sourceRoot,
+    strictSourceRoundtrip: true,
+  });
+
+  assert.equal(audit.sourceRoundtrip.ok, false);
+  assert.equal(audit.contentInventory.ok, true);
+  assert.equal(audit.structureSignature.ok, true);
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.errors, []);
+  assert.equal(audit.warnings.some((warning) => warning.code === 'SOURCE_ROUNDTRIP_DIFF_ADVISORY'), true);
+});
+
+test('auditReverseAuthorPackage keeps source structure diffs advisory unless strict structure is requested', () => {
+  const root = path.resolve('test/workspace/e2e-audit-structure-advisory');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeMinimalAuthorPackage(sourceRoot, '<section class="page"><section id="group"><p id="copy">完整文字</p></section></section>');
+  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><p id="copy">完整文字</p></section>');
+
+  const advisoryAudit = auditReverseAuthorPackage({
+    config: path.join(reverseRoot, 'deck.config.json'),
+    entry: path.join(reverseRoot, 'deck.html'),
+    outDir: reverseRoot,
+    sourceRoot,
+  });
+  const strictAudit = auditReverseAuthorPackage({
+    config: path.join(reverseRoot, 'deck.config.json'),
+    entry: path.join(reverseRoot, 'deck.html'),
+    outDir: reverseRoot,
+    sourceRoot,
+    strictStructureSignature: true,
+  });
+
+  assert.equal(advisoryAudit.structureSignature.ok, false);
+  assert.equal(advisoryAudit.contentInventory.ok, true);
+  assert.equal(advisoryAudit.ok, true);
+  assert.deepEqual(advisoryAudit.errors, []);
+  assert.equal(advisoryAudit.warnings.some((warning) => warning.code === 'STRUCTURE_SIGNATURE_DIFF_ADVISORY'), true);
+  assert.equal(strictAudit.ok, false);
+  assert.equal(strictAudit.errors.some((error) => error.code === 'STRUCTURE_NODE_PARENT_CHANGED'), true);
+});
+
+test('auditSecondPassAuthorStability allows exact source drift when content and structure are stable', () => {
+  const root = path.resolve('test/workspace/e2e-second-pass-stability');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeMinimalAuthorPackage(sourceRoot, '<section class="page"><p id="copy" style="font-size:18.0001px">完整文字</p></section>');
+  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><p id="copy" style="font-size:18.0002px">完整文字</p></section>');
+
+  const audit = auditSecondPassAuthorStability({
+    sourceRoot,
+    reverseRoot,
+    reportDir: path.join(reverseRoot, 'reports'),
+  });
+
+  assert.equal(audit.ok, true);
+  assert.equal(audit.sourceDrift.stable, false);
+  assert.equal(audit.contentInventory.ok, true);
+  assert.equal(audit.structureSignature.ok, true);
+  assert.deepEqual(audit.errors, []);
+  assert.equal(audit.warnings.some((warning) => warning.code === 'CANONICAL_SOURCE_DRIFT_ADVISORY'), true);
+  assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/canonical-source-drift-report.json')), true);
+  assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/canonical-content-inventory-report.json')), true);
+  assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/canonical-structure-signature-report.json')), true);
 });
 
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {

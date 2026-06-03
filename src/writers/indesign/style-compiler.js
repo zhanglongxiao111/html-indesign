@@ -108,14 +108,14 @@ function compileItemStyles(item, styles, report, options) {
     styleRefs.paragraphStyle = ensureParagraphStyle(styles, item, report, options);
     if (shouldCompileTextFrameObjectStyle(item)) {
       styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
-      styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
+      styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     }
     compiled.content.runs = compileTextRuns(item, styles, styleRefs, report, options);
   }
 
   if (item.role === 'graphic' || item.role === 'shape') {
     styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
-    styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
+    styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     compiled.box = compileBoxModel(item, styles, options);
     warnObjectBorderLimitations(item, compiled.box, report);
     compiled.effects = compileEffects(item, report, addMessage);
@@ -142,7 +142,7 @@ function compileItemStyles(item, styles, report, options) {
     }
     styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
     if (explicitFrameStyleName(item, options)) {
-      styleRefs.frameStyle = ensureFrameStyle(styles, item, options);
+      styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     }
     compiled.content.rows = compileTableRows(item, styles, report, options);
     compiled.content.columnCount = tableColumnCount(compiled.content.rows);
@@ -263,18 +263,9 @@ function ensureParagraphStyle(styles, item, report, options) {
     spaceBefore: styleLengthToPt(style, 'marginTop', options),
     spaceAfter: styleLengthToPt(style, 'marginBottom', options),
   };
-  const name = styleNameForKind(item, 'paragraphStyles', signature, options)
+  const requestedName = styleNameForKind(item, 'paragraphStyles', signature, options)
     || stableAutoName('paragraph', signature);
-  if (!styles.paragraphStyles[name]) {
-    const identity = styleIdentityForKind(item, 'paragraphStyles', name, options);
-    styles.paragraphStyles[name] = {
-      name,
-      token: identity.token,
-      displayName: identity.displayName,
-      labels: [styleProtocolLabel('paragraphStyles', identity)],
-      ...signature,
-    };
-  }
+  const name = ensureNamedStyle(styles, 'paragraphStyles', requestedName, 'paragraph', signature, item, report, options);
   if (!fontName) {
     addMessage(report, 'warning', 'FONT_MISSING', 'Text item has no computed font family', { itemId: item.id });
   }
@@ -297,18 +288,9 @@ function ensureCharacterStyle(styles, run, report, options) {
     textDecoration: style.textDecorationLine || 'none',
     capitalization: capitalizationFor(style),
   };
-  const name = styleNameForKind(run, 'characterStyles', signature, options)
+  const requestedName = styleNameForKind(run, 'characterStyles', signature, options)
     || stableAutoName('character', signature);
-  if (!styles.characterStyles[name]) {
-    const identity = styleIdentityForKind(run, 'characterStyles', name, options);
-    styles.characterStyles[name] = {
-      name,
-      token: identity.token,
-      displayName: identity.displayName,
-      labels: [styleProtocolLabel('characterStyles', identity)],
-      ...signature,
-    };
-  }
+  const name = ensureNamedStyle(styles, 'characterStyles', requestedName, 'character', signature, run, report, options);
   if (!fontName) {
     addMessage(report, 'warning', 'FONT_MISSING', 'Text run has no computed font family', { text: run.text });
   }
@@ -332,18 +314,9 @@ function ensureObjectStyle(styles, item, report, options) {
     opacity: effectiveObjectOpacity(item, fill),
     overflow: style.overflow || 'visible',
   };
-  const name = styleNameForKind(item, 'objectStyles', signature, options)
+  const requestedName = styleNameForKind(item, 'objectStyles', signature, options)
     || stableAutoName('object', signature);
-  if (!styles.objectStyles[name]) {
-    const identity = styleIdentityForKind(item, 'objectStyles', name, options);
-    styles.objectStyles[name] = {
-      name,
-      token: identity.token,
-      displayName: identity.displayName,
-      labels: [styleProtocolLabel('objectStyles', identity)],
-      ...signature,
-    };
-  }
+  const name = ensureNamedStyle(styles, 'objectStyles', requestedName, 'object', signature, item, report, options);
   if (style.transform && style.transform !== 'none' && !isNativeLineCandidate(item)) {
     addMessage(report, 'warning', 'TRANSFORM_NOT_NATIVE', 'CSS transform captured but not compiled to native InDesign transform in this plan', {
       itemId: item.id,
@@ -539,7 +512,7 @@ function tableCellStyleItem(cell) {
   };
 }
 
-function ensureFrameStyle(styles, item, options) {
+function ensureFrameStyle(styles, item, options, report) {
   const style = item.computedStyle || {};
   const signature = {
     fit: style.objectFit || 'fill',
@@ -552,20 +525,81 @@ function ensureFrameStyle(styles, item, options) {
     },
     overflow: style.overflow || 'visible',
   };
-  const name = styleNameForKind(item, 'frameStyles', signature, options)
+  const requestedName = styleNameForKind(item, 'frameStyles', signature, options)
     || classFrameStyleName(item, options)
     || stableAutoName('frame', signature);
-  if (!styles.frameStyles[name]) {
-    const identity = styleIdentityForKind(item, 'frameStyles', name, options);
-    styles.frameStyles[name] = {
+  return ensureNamedStyle(styles, 'frameStyles', requestedName, 'frame', signature, item, report, options);
+}
+
+function ensureNamedStyle(styles, kind, requestedName, prefix, signature, item, report, options) {
+  const collection = styles[kind];
+  const baseName = requestedName || stableAutoName(prefix, signature);
+  const name = compatibleStyleName(collection, baseName, prefix, signature, item, report);
+  if (!collection[name]) {
+    const identity = identityForRegisteredStyle(item, kind, name, baseName, options);
+    collection[name] = {
       name,
       token: identity.token,
       displayName: identity.displayName,
-      labels: [styleProtocolLabel('frameStyles', identity)],
+      labels: [styleProtocolLabel(kind, identity)],
       ...signature,
     };
   }
   return name;
+}
+
+function compatibleStyleName(collection, baseName, prefix, signature, item, report) {
+  if (!collection[baseName] || styleSignatureMatches(collection[baseName], signature)) return baseName;
+  const variantName = `${baseName}-${styleVariantSuffix(prefix, signature)}`;
+  if (!collection[variantName]) {
+    addMessage(report, 'warning', 'STYLE_NAME_CONFLICT', 'Style name reused with different compiled attributes; generated a variant style', {
+      itemId: item && item.id || null,
+      baseName,
+      variantName,
+    });
+    return variantName;
+  }
+  if (styleSignatureMatches(collection[variantName], signature)) return variantName;
+
+  let index = 2;
+  while (collection[`${variantName}-${index}`] && !styleSignatureMatches(collection[`${variantName}-${index}`], signature)) {
+    index += 1;
+  }
+  return `${variantName}-${index}`;
+}
+
+function styleVariantSuffix(prefix, signature) {
+  return stableAutoName(prefix, signature).split('-').pop();
+}
+
+function styleSignatureMatches(style, signature) {
+  const existing = {};
+  for (const key of Object.keys(signature)) {
+    existing[key] = style ? style[key] : undefined;
+  }
+  return stableSignatureKey(existing) === stableSignatureKey(signature);
+}
+
+function stableSignatureKey(value) {
+  return JSON.stringify(sortSignature(value));
+}
+
+function sortSignature(value) {
+  if (Array.isArray(value)) return value.map(sortSignature);
+  if (!value || typeof value !== 'object') return value;
+  return Object.keys(value).sort().reduce((out, key) => {
+    out[key] = sortSignature(value[key]);
+    return out;
+  }, {});
+}
+
+function identityForRegisteredStyle(item, kind, name, baseName, options) {
+  const identity = styleIdentityForKind(item, kind, name, options);
+  if (name === baseName) return identity;
+  return {
+    token: name,
+    displayName: name,
+  };
 }
 
 function ensureSwatch(styles, cssColor) {

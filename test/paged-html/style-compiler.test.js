@@ -199,6 +199,70 @@ test('compileStyles can use human readable Chinese style names from HTML attribu
   assert.equal(styled.styles.paragraphStyles['page-title'], undefined);
 });
 
+test('compileStyles splits reused paragraph style names when computed signatures differ', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      items: [
+        {
+          id: 'date',
+          role: 'text',
+          tagName: 'p',
+          classList: ['observed-text'],
+          attributes: { 'data-id-paragraph-style': '标准正文（18点左对齐）' },
+          text: '2026年1月26日\n区委专题会',
+          computedStyle: {
+            color: 'rgb(102, 102, 102)',
+            fontFamily: '微软雅黑, Arial, sans-serif',
+            fontSize: '18px',
+            lineHeight: '22px',
+            fontWeight: '400',
+            fontStyle: 'normal',
+            textAlign: 'right',
+            marginTop: '0px',
+            marginBottom: '28.3465px',
+          },
+          runs: [],
+        },
+        {
+          id: 'title',
+          role: 'text',
+          tagName: 'p',
+          classList: ['observed-text'],
+          attributes: { 'data-id-paragraph-style': '标准正文（18点左对齐）' },
+          text: '1-建筑方案更新',
+          computedStyle: {
+            color: 'rgb(0, 0, 0)',
+            fontFamily: '微软雅黑, Arial, sans-serif',
+            fontSize: '48px',
+            lineHeight: '60px',
+            fontWeight: '700',
+            fontStyle: 'normal',
+            textAlign: 'left',
+            marginTop: '0px',
+            marginBottom: '0px',
+          },
+          runs: [],
+        },
+      ],
+    }],
+  };
+
+  const styled = compileStyles(snapshot, { layout: { unitMode: 'presentation' } });
+  const date = styled.pages[0].items.find((item) => item.id === 'date');
+  const title = styled.pages[0].items.find((item) => item.id === 'title');
+
+  assert.equal(date.styleRefs.paragraphStyle, '标准正文-18点左对齐');
+  assert.notEqual(title.styleRefs.paragraphStyle, date.styleRefs.paragraphStyle);
+  assert.equal(styled.styles.paragraphStyles[date.styleRefs.paragraphStyle].pointSize, 18);
+  assert.equal(styled.styles.paragraphStyles[title.styleRefs.paragraphStyle].pointSize, 48);
+  assert.equal(styled.report.messages.some((message) => message.code === 'STYLE_NAME_CONFLICT'), true);
+});
+
 test('compileStyles can translate stable style tokens through a styleNameMap', () => {
   const snapshot = {
     metadata: { source: 'inline.html' },

@@ -22,7 +22,13 @@ const {
   tableRowHeightsForInstruction,
   nativeTableBounds,
 } = require('./table-instructions');
-const { effectsForInstruction, textFrameBounds, textFitPolicy } = require('./text-instructions');
+const {
+  effectsForInstruction,
+  runsForInstruction,
+  textForInstruction,
+  textFrameBounds,
+  textFitPolicy,
+} = require('./text-instructions');
 
 function semanticModelToInstructions(model, options = {}) {
   const layout = model.layoutInfo || {
@@ -44,7 +50,7 @@ function semanticModelToInstructions(model, options = {}) {
     const background = ensureItemLabels(pageBackgroundItemFor(rawPage, model.styles || {}, dimensions, options));
     const items = [
       background,
-      ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options)),
+      ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {})),
     ].filter(Boolean).sort((a, b) => a.zIndex - b.zIndex);
     return {
       id: page.id,
@@ -97,9 +103,9 @@ function semanticModelToInstructions(model, options = {}) {
   };
 }
 
-function instructionItemsFor(modelItem, assets, page, layout, options) {
+function instructionItemsFor(modelItem, assets, page, layout, options, styles) {
   const item = modelItem.raw || modelItem;
-  const baseItem = instructionItemFor(modelItem, assets, page, layout, options);
+  const baseItem = instructionItemFor(modelItem, assets, page, layout, options, styles);
   if (!baseItem) return [];
   return [
     baseItem,
@@ -107,7 +113,7 @@ function instructionItemsFor(modelItem, assets, page, layout, options) {
   ].map(ensureItemLabels);
 }
 
-function instructionItemFor(modelItem, assets, page, layout, options) {
+function instructionItemFor(modelItem, assets, page, layout, options, styles) {
   const item = modelItem.raw || modelItem;
   const styleRefs = modelItem.styleRefs || item.styleRefs || {};
   const content = modelItem.content || item.content || { text: item.text || '', runs: item.runs || [] };
@@ -123,16 +129,17 @@ function instructionItemFor(modelItem, assets, page, layout, options) {
     effects: effectsForInstruction(modelItem.effects || item.effects || null, page, layout),
   };
   if (base.role === 'text') {
-    const textFit = textFitPolicy(item, options);
+    const textFit = textFitPolicy(modelItem, options);
+    const text = textForInstruction(modelItem, content);
     return {
       ...base,
       type: 'TEXT',
       bounds: textFrameBounds(item, base.bounds, layout),
-      text: content.text,
+      text,
       paragraphStyle: styleRefs.paragraphStyle,
       objectStyle: styleRefs.objectStyle,
       frameStyle: styleRefs.frameStyle,
-      runs: content.runs || [],
+      runs: runsForInstruction(modelItem, content, text),
       ...(textFit ? { textFit } : {}),
     };
   }
@@ -179,7 +186,7 @@ function instructionItemFor(modelItem, assets, page, layout, options) {
       rowHeights,
     };
   }
-  const line = nativeLineFor(item, base.bounds, layout);
+  const line = nativeLineFor(modelItem, item, base.bounds, layout, styles);
   if (line) {
     return {
       ...base,
@@ -244,32 +251,113 @@ function ensureInstructionSwatch(styles, normalized) {
   }
 }
 
-function nativeLineFor(item, baseBounds, layout) {
-  if (!item || item.role !== 'shape') return null;
-  const classNames = item.classList || [];
-  const objectStyle = item.styleRefs && item.styleRefs.objectStyle;
-  const explicitLine = classNames.includes('line') || /(^|-)line($|-)/.test(String(objectStyle || ''));
-  const edge = item.box && item.box.borders && item.box.borders.top;
-  if (!explicitLine || !visibleBorder(edge)) return null;
+function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles) {
+  const item = modelItem || rawItem;
+  const raw = rawItem || modelItem || {};
+  if (!item) return null;
+  const classNames = item.classList || raw.classList || [];
+  const styleRefs = item.styleRefs || raw.styleRefs || {};
+  const objectStyle = styleRefs.objectStyle;
+  const sourceLine = sourceLineStroke(item) || sourceLineStroke(raw);
+  const objectStyleStroke = objectStyleLineStroke(styles, objectStyle, baseBounds);
+  const explicitLine = (item.role || raw.role) === 'line'
+    || classNames.includes('line')
+    || /(^|-)line($|-)/.test(String(objectStyle || ''))
+    || sourceNodeAttribute(item, 'data-id-vector') === 'line'
+    || sourceNodeAttribute(raw, 'data-id-vector') === 'line';
+  const thinVectorLine = (sourceLine || objectStyleStroke) && lineLikeBounds(baseBounds);
+  const edge = raw.box && raw.box.borders && raw.box.borders.top;
+  const stroke = visibleBorder(edge)
+    ? { color: edge.color, weight: edge.widthPt }
+    : sourceLine || objectStyleStroke;
+  const styleItem = raw || item;
+  const rawBoundsMm = styleItem.boundsMm || baseBounds || {};
+  if ((!explicitLine && !thinVectorLine) || !stroke || !stroke.weight) return null;
   const bounds = layout.unitMode === 'presentation'
     ? {
-      x: styleLengthTarget(item, 'left', baseBounds.x, layout),
-      y: styleLengthTarget(item, 'top', baseBounds.y, layout),
-      width: styleLengthTarget(item, 'width', baseBounds.width, layout),
-      height: styleLengthTarget(item, 'height', 0, layout),
+      x: styleLengthTarget(styleItem, 'left', baseBounds.x, layout),
+      y: styleLengthTarget(styleItem, 'top', baseBounds.y, layout),
+      width: styleLengthTarget(styleItem, 'width', baseBounds.width, layout),
+      height: styleLengthTarget(styleItem, 'height', baseBounds.height, layout),
     }
     : {
-      x: styleLengthMm(item, 'left', item.boundsMm.x),
-      y: styleLengthMm(item, 'top', item.boundsMm.y),
-      width: styleLengthMm(item, 'width', item.boundsMm.width),
-      height: styleLengthMm(item, 'height', 0),
+      x: styleLengthMm(styleItem, 'left', rawBoundsMm.x),
+      y: styleLengthMm(styleItem, 'top', rawBoundsMm.y),
+      width: styleLengthMm(styleItem, 'width', rawBoundsMm.width),
+      height: styleLengthMm(styleItem, 'height', rawBoundsMm.height),
     };
   return {
     bounds,
-    rotationAngle: rotationAngleFor(item),
-    strokeColor: edge.color,
-    strokeWeight: edge.widthPt,
+    rotationAngle: rotationAngleFor(styleItem),
+    strokeColor: stroke.color,
+    strokeWeight: stroke.weight,
   };
+}
+
+function objectStyleLineStroke(styles, objectStyleName, bounds) {
+  if (!lineLikeBounds(bounds) || !objectStyleName) return null;
+  const def = styles && styles.objectStyles && styles.objectStyles[objectStyleName];
+  if (!def || def.fillColor || !def.strokeColor) return null;
+  const weight = Number(def.strokeWeight || 0);
+  if (!Number.isFinite(weight) || weight <= 0) return null;
+  return { color: def.strokeColor, weight };
+}
+
+function lineLikeBounds(bounds) {
+  return Math.abs(Number(bounds && bounds.width || 0)) < 0.01
+    || Math.abs(Number(bounds && bounds.height || 0)) < 0.01;
+}
+
+function sourceLineStroke(item) {
+  const html = sourceHtmlForItem(item);
+  if (!html || !/<path\b/i.test(html)) return null;
+  const stroke = attrValue(html, 'stroke');
+  const width = attrValue(html, 'stroke-width');
+  if (!stroke || stroke === 'none' || !width) return null;
+  const color = normalizeLineStrokeColor(stroke);
+  const weight = Number.parseFloat(width);
+  if (!color || !Number.isFinite(weight) || weight <= 0) return null;
+  return { color, weight };
+}
+
+function sourceHtmlForItem(item) {
+  if (item && item.sourceHtml) return item.sourceHtml;
+  for (const label of item && item.labels || []) {
+    if (label && label.sourceHtml) return label.sourceHtml;
+    if (label && label.sourceNode && label.sourceNode.sourceHtml) return label.sourceNode.sourceHtml;
+  }
+  return '';
+}
+
+function sourceNodeAttribute(item, name) {
+  const direct = item && item.sourceNode && item.sourceNode.attributes;
+  if (direct && direct[name] != null) return direct[name];
+  for (const label of item && item.labels || []) {
+    const attrs = label && label.sourceNode && label.sourceNode.attributes;
+    if (attrs && attrs[name] != null) return attrs[name];
+  }
+  return null;
+}
+
+function attrValue(html, name) {
+  const pattern = new RegExp(`\\b${name}\\s*=\\s*(['"])(.*?)\\1`, 'i');
+  const match = pattern.exec(String(html || ''));
+  return match ? String(match[2] || '').trim().toLowerCase() : null;
+}
+
+function normalizeLineStrokeColor(value) {
+  const text = String(value || '').trim().toLowerCase();
+  const rgb = normalizeCssColor(text);
+  if (rgb) return rgb.name;
+  const hex = text.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!hex) return null;
+  const full = hex[1].length === 3
+    ? hex[1].split('').map((char) => `${char}${char}`).join('')
+    : hex[1];
+  const r = Number.parseInt(full.slice(0, 2), 16);
+  const g = Number.parseInt(full.slice(2, 4), 16);
+  const b = Number.parseInt(full.slice(4, 6), 16);
+  return `颜色-${r}-${g}-${b}`;
 }
 
 function shapeKindFor(item) {

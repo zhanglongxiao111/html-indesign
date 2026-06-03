@@ -144,6 +144,199 @@ test('semanticModelToInstructions emits bounded text fit for observed reverse te
   });
 });
 
+test('semanticModelToInstructions emits bounded text fit for observed source nodes stored in protocol labels', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'text-1',
+        role: 'text',
+        semantic: 'unknown',
+        bounds: { x: 10, y: 20, width: 80, height: 20 },
+        content: { text: '2026年1月26日区委专题会' },
+        labels: [{
+          protocol: 'html-indesign',
+          kind: 'item',
+          sourceNode: {
+            tagName: 'p',
+            classList: ['observed-text', 'id-object'],
+            attributes: { class: 'observed-text id-object' },
+          },
+        }],
+        structure: { parentId: 'p1', order: 1 },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'text-1');
+
+  assert.equal(item.textFit.mode, 'expand-frame-to-content');
+});
+
+test('semanticModelToInstructions preserves observed source html line breaks in text instructions', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'date-1',
+        role: 'text',
+        bounds: { x: 10, y: 20, width: 128, height: 50 },
+        content: {
+          text: '2026年1月26日区委专题会',
+          runs: [{ text: '2026年1月26日区委专题会', characterStyle: null }],
+        },
+        labels: [{
+          protocol: 'html-indesign',
+          kind: 'item',
+          sourceHtml: '2026年1月26日<br>区委专题会',
+          sourceNode: {
+            tagName: 'p',
+            classList: ['observed-text', 'id-object'],
+            attributes: { class: 'observed-text id-object' },
+          },
+        }],
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'date-1');
+
+  assert.equal(item.text, '2026年1月26日\r区委专题会');
+  assert.deepEqual(item.runs, [{ text: '2026年1月26日\r区委专题会', characterStyle: null }]);
+});
+
+test('semanticModelToInstructions emits observed zero-width vector objects as native lines', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'line-1',
+        role: 'line',
+        raw: {
+          id: 'line-1',
+          role: 'line',
+          boundsMm: { x: 120, y: 80, width: 0, height: 109 },
+          computedStyle: {},
+        },
+        bounds: { x: 120, y: 80, width: 0, height: 109 },
+        labels: [{
+          protocol: 'html-indesign',
+          kind: 'item',
+          sourceHtml: '<path d="M0.25 0 L0.25 109" fill="none" stroke="#8ca064" stroke-width="0.5"></path>',
+          sourceNode: {
+            tagName: 'svg',
+            attributes: { 'data-id-vector': 'line', viewBox: '0 0 0.5 109' },
+          },
+        }],
+      }],
+    }],
+    styles: {
+      swatches: {
+        '颜色-140-160-100': { name: '颜色-140-160-100', model: 'process', space: 'RGB', value: '#8ca064' },
+      },
+    },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'line-1');
+
+  assert.equal(item.type, 'LINE');
+  assert.deepEqual(item.bounds, { x: 120, y: 80, width: 0, height: 109 });
+  assert.equal(item.strokeColor, '颜色-140-160-100');
+  assert.equal(item.strokeWeight, 0.5);
+});
+
+test('semanticModelToInstructions emits zero-width stroked object-style shapes as native lines', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'line-style-1',
+        role: 'shape',
+        raw: {
+          id: 'line-style-1',
+          role: 'shape',
+          boundsMm: { x: 120, y: 80, width: 0, height: 33 },
+          computedStyle: {},
+          styleRefs: { objectStyle: '装饰线-细' },
+        },
+        bounds: { x: 120, y: 80, width: 0, height: 33 },
+        styleRefs: { objectStyle: '装饰线-细' },
+        labels: [{
+          protocol: 'html-indesign',
+          kind: 'item',
+          sourceHtml: '<path d="M1 33 L1 0" fill="none" stroke="none" stroke-width="2"></path>',
+          sourceNode: {
+            tagName: 'svg',
+            attributes: { 'data-id-vector': 'polygon', viewBox: '0 0 2 33' },
+          },
+        }],
+      }],
+    }],
+    styles: {
+      objectStyles: {
+        '装饰线-细': {
+          strokeColor: '颜色-153-153-153',
+          strokeWeight: 1,
+          fillColor: null,
+        },
+      },
+      swatches: {
+        '颜色-153-153-153': { name: '颜色-153-153-153', model: 'process', space: 'RGB', value: '#999999' },
+      },
+    },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'line-style-1');
+
+  assert.equal(item.type, 'LINE');
+  assert.equal(item.objectStyle, '装饰线-细');
+  assert.deepEqual(item.bounds, { x: 120, y: 80, width: 0, height: 33 });
+  assert.equal(item.strokeColor, '颜色-153-153-153');
+  assert.equal(item.strokeWeight, 1);
+});
+
 test('semanticModelToInstructions carries placed PDF page crop and layer visibility options', () => {
   const model = {
     kind: 'DocumentModel',

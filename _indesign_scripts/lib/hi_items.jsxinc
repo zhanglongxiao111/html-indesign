@@ -125,9 +125,21 @@ HI.lineEndPoints = function (item) {
     var b = item.bounds || {};
     var angle = Number(item.rotationAngle || 0) * Math.PI / 180;
     var width = Number(b.width || 0);
+    var height = Number(b.height || 0);
+    var length = Math.abs(width) > 0.01 ? width : height;
+    var lineAngle = Math.abs(width) > 0.01 ? angle : angle + Math.PI / 2;
     var x = Number(b.x || 0);
     var y = Number(b.y || 0);
-    return { x1: x, y1: y, x2: x + Math.cos(angle) * width, y2: y + Math.sin(angle) * width };
+    return {
+        x1: HI.linePoint(x),
+        y1: HI.linePoint(y),
+        x2: HI.linePoint(x + Math.cos(lineAngle) * length),
+        y2: HI.linePoint(y + Math.sin(lineAngle) * length)
+    };
+};
+
+HI.linePoint = function (value) {
+    return Math.round(Number(value || 0) * 1000000) / 1000000;
 };
 
 HI.createTableFrame = function (doc, page, item, context, report) {

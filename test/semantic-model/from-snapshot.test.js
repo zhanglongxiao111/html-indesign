@@ -118,6 +118,51 @@ test('snapshotToSemanticModel does not infer item semantic from style tokens', (
   assert.deepEqual(model.pages[0].items.map((item) => item.labels[0].semantic), [null, null]);
 });
 
+test('snapshotToSemanticModel uses authored page-local bounds for observed reverse absolute objects', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      rectPx: { x: 40, y: 1000, width: 1496, height: 841.5 },
+      attributes: {
+        'data-page': 'page-1',
+        'data-id-observed': 'true',
+        'data-id-reverse-mode': 'observation',
+      },
+      computedStyle: {},
+      items: [{
+        id: 'caption',
+        role: 'text',
+        tagName: 'figcaption',
+        classList: ['observed-text', 'id-object'],
+        attributes: { id: 'caption' },
+        rectPx: { x: 1040, y: 1250, width: 216, height: 37 },
+        authoredStyle: {
+          position: 'absolute',
+          left: '100px',
+          top: '200px',
+          width: '216px',
+          height: '37px',
+        },
+        computedStyle: {},
+        text: '材料标题',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  assert.deepEqual(model.pages[0].items[0].bounds, {
+    x: 100,
+    y: 200,
+    width: 216,
+    height: 37,
+  });
+});
+
 test('snapshotToSemanticModel ignores retired parent page display-name alias', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },

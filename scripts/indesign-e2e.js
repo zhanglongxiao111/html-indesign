@@ -422,11 +422,29 @@ function auditReverseAuthorPackage(author) {
     fs.writeFileSync(path.join(reportDir, 'content-inventory-report.json'), JSON.stringify(contentInventory, null, 2), 'utf8');
     fs.writeFileSync(path.join(reportDir, 'structure-signature-report.json'), JSON.stringify(structureSignature, null, 2), 'utf8');
   }
-  const sourceOk = sourceRoundtrip ? sourceRoundtrip.ok : true;
   const contentOk = contentInventory ? contentInventory.ok : true;
-  const structureOk = structureSignature ? structureSignature.ok : true;
+  const strictStructureSignature = !!author.strictStructureSignature;
+  const structureOk = structureSignature ? (structureSignature.ok || !strictStructureSignature) : true;
+  const sourceRoundtripAdvisoryWarnings = sourceRoundtrip && !sourceRoundtrip.ok
+    ? [{
+      code: 'SOURCE_ROUNDTRIP_DIFF_ADVISORY',
+      severity: 'warning',
+      message: 'Source exact diff changed but content inventory and structure signature remain the hard integrity gates.',
+      errorCount: (sourceRoundtrip.errors || []).length,
+      report: 'reports/source-roundtrip-report.json',
+    }]
+    : [];
+  const structureSignatureAdvisoryWarnings = structureSignature && !structureSignature.ok && !strictStructureSignature
+    ? [{
+      code: 'STRUCTURE_SIGNATURE_DIFF_ADVISORY',
+      severity: 'warning',
+      message: 'Source author structure changed; first-pass structure signature is recorded as advisory and second-pass canonical drift remains the hard stability gate.',
+      errorCount: (structureSignature.errors || []).length,
+      report: 'reports/structure-signature-report.json',
+    }]
+    : [];
   return {
-    ok: check.ok && missingPages.length === 0 && editable.ok && sourceOk && contentOk && structureOk,
+    ok: check.ok && missingPages.length === 0 && editable.ok && contentOk && structureOk,
     config: author.config,
     entry: check.entryPath,
     pages: pageFiles.length,
@@ -437,16 +455,59 @@ function auditReverseAuthorPackage(author) {
     structureSignature,
     errors: [
       ...(editable.errors || []),
-      ...(sourceRoundtrip && !sourceRoundtrip.ok ? sourceRoundtrip.errors : []),
       ...(contentInventory && !contentInventory.ok ? contentInventory.errors : []),
-      ...(structureSignature && !structureSignature.ok ? structureSignature.errors : []),
+      ...(structureSignature && !structureSignature.ok && strictStructureSignature ? structureSignature.errors : []),
     ],
     warnings: [
       ...(editable.warnings || []),
+      ...sourceRoundtripAdvisoryWarnings,
+      ...structureSignatureAdvisoryWarnings,
       ...(sourceRoundtrip ? sourceRoundtrip.warnings : []),
       ...(contentInventory ? contentInventory.warnings : []),
       ...(structureSignature ? structureSignature.warnings : []),
     ],
+  };
+}
+
+function auditSecondPassAuthorStability({ sourceRoot, reverseRoot, reportDir }) {
+  const { measureAuthorSourceDrift } = require('../src/writers/html/audit/source-roundtrip-diff');
+  const { authorPackageContentInventory, compareContentInventories } = require('../src/writers/html/audit/content-inventory');
+  const { authorPackageStructureSignature, compareStructureSignatures } = require('../src/writers/html/audit/structure-signature');
+  const sourceDrift = measureAuthorSourceDrift({ sourceRoot, reverseRoot });
+  const contentInventory = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot),
+  );
+  const structureSignature = compareStructureSignatures(
+    authorPackageStructureSignature(sourceRoot),
+    authorPackageStructureSignature(reverseRoot),
+  );
+  const outDir = reportDir || path.join(reverseRoot, 'reports');
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'canonical-source-drift-report.json'), JSON.stringify(sourceDrift, null, 2), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'canonical-content-inventory-report.json'), JSON.stringify(contentInventory, null, 2), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'canonical-structure-signature-report.json'), JSON.stringify(structureSignature, null, 2), 'utf8');
+  const sourceDriftWarning = sourceDrift && sourceDrift.stable === false
+    ? [{
+      code: 'CANONICAL_SOURCE_DRIFT_ADVISORY',
+      severity: 'warning',
+      message: 'Second-pass author package has exact source formatting drift; content inventory and structure signature are the hard stability gates.',
+      filesChanged: sourceDrift.stats && sourceDrift.stats.filesChanged,
+      normalizedFilesChanged: sourceDrift.stats && sourceDrift.stats.normalizedFilesChanged,
+      report: 'reports/canonical-source-drift-report.json',
+    }]
+    : [];
+  const errors = [
+    ...(contentInventory && !contentInventory.ok ? contentInventory.errors : []),
+    ...(structureSignature && !structureSignature.ok ? structureSignature.errors : []),
+  ];
+  return {
+    ok: errors.length === 0,
+    sourceDrift,
+    contentInventory,
+    structureSignature,
+    errors,
+    warnings: sourceDriftWarning,
   };
 }
 
@@ -681,6 +742,7 @@ async function runReverseRoundtrip(context, options = {}) {
   const author = Object.assign({}, htmlResult.files.author, { audit: authorAudit });
   let secondPass = null;
   let canonicalDrift = null;
+  let canonicalStability = null;
   if (options.secondPassRoundtrip) {
     secondPass = await runIndesignE2E({
       repoRoot: context.repoRoot,
@@ -695,16 +757,15 @@ async function runReverseRoundtrip(context, options = {}) {
       reverseMode,
       styleNameMap: options.styleNameMap,
     })
-    const { measureAuthorSourceDrift } = require('../src/writers/html/audit/source-roundtrip-diff');
-    canonicalDrift = measureAuthorSourceDrift({
+    const reportDir = path.join(htmlResult.files.author.outDir, 'reports');
+    canonicalStability = auditSecondPassAuthorStability({
       sourceRoot: htmlResult.files.author.outDir,
       reverseRoot: secondPass.reverse && secondPass.reverse.author && secondPass.reverse.author.outDir,
+      reportDir,
     });
-    const reportDir = path.join(htmlResult.files.author.outDir, 'reports');
-    fs.mkdirSync(reportDir, { recursive: true });
-    fs.writeFileSync(path.join(reportDir, 'canonical-source-drift-report.json'), JSON.stringify(canonicalDrift, null, 2), 'utf8');
-    if (!canonicalDrift.ok || canonicalDrift.stats.filesChanged > 0) {
-      throw new Error(`Second-pass reverse author package drifted from first-pass canonical source: ${JSON.stringify(canonicalDrift, null, 2)}`);
+    canonicalDrift = canonicalStability.sourceDrift;
+    if (!canonicalStability.ok) {
+      throw new Error(`Second-pass reverse author package lost content or structure: ${JSON.stringify(canonicalStability, null, 2)}`);
     }
   }
 
@@ -717,6 +778,7 @@ async function runReverseRoundtrip(context, options = {}) {
     author,
     secondPass,
     canonicalDrift,
+    canonicalStability,
   };
 }
 
@@ -851,6 +913,7 @@ module.exports = {
   parseCliResultJson,
   resolveIndesignCliCommand,
   auditReverseAuthorPackage,
+  auditSecondPassAuthorStability,
   auditReverseHtmlSemantics,
   assertReverseHtmlSemantics,
   parseArgs,

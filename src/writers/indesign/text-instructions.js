@@ -53,15 +53,80 @@ function textFrameBounds(item, bounds, layout) {
 
 function textFitPolicy(item, options = {}) {
   if (options.textFit === false) return null;
-  const attributes = item && item.sourceNode && item.sourceNode.attributes || {};
-  const observed = attributes['data-id-observed'] === 'true' || attributes['data-id-reverse-mode'] === 'observation';
-  if (!observed) return null;
+  if (!isObservedReverseText(item)) return null;
   return {
     mode: 'expand-frame-to-content',
     maxGrowX: Number(options.textFitMaxGrowX || 96),
     maxGrowY: Number(options.textFitMaxGrowY || 48),
     preservePosition: true,
   };
+}
+
+function textForInstruction(item, content = {}) {
+  const sourceHtml = observedSourceHtml(item);
+  if (sourceHtml && /<br\b/i.test(sourceHtml)) return htmlTextWithBreaks(sourceHtml);
+  return content.text;
+}
+
+function runsForInstruction(item, content = {}, text = content.text) {
+  const runs = Array.isArray(content.runs) ? content.runs : [];
+  if (!runs.length) return [];
+  const sourceHtml = observedSourceHtml(item);
+  if (!sourceHtml || !/<br\b/i.test(sourceHtml)) return runs;
+  if (!canReplaceSyntheticRuns(runs, content.text, text)) return runs;
+  return [{ ...runs[0], text }];
+}
+
+function canReplaceSyntheticRuns(runs, contentText, instructionText) {
+  if (!Array.isArray(runs) || runs.length !== 1) return false;
+  if (runs[0].characterStyle) return false;
+  const runText = String(runs[0].text || '');
+  if (runText !== String(contentText || '')) return false;
+  return runText !== String(instructionText || '');
+}
+
+function isObservedReverseText(item) {
+  return sourceNodeIsObserved(item && item.sourceNode)
+    || (item && item.labels || []).some((label) => sourceNodeIsObserved(label && label.sourceNode));
+}
+
+function observedSourceHtml(item) {
+  if (!isObservedReverseText(item)) return null;
+  if (item && typeof item.sourceHtml === 'string') return item.sourceHtml;
+  if (item && item.sourceNode && typeof item.sourceNode.sourceHtml === 'string') return item.sourceNode.sourceHtml;
+  for (const label of item && item.labels || []) {
+    if (label && typeof label.sourceHtml === 'string') return label.sourceHtml;
+    if (label && label.sourceNode && typeof label.sourceNode.sourceHtml === 'string') return label.sourceNode.sourceHtml;
+  }
+  return null;
+}
+
+function htmlTextWithBreaks(html) {
+  return decodeBasicEntities(String(html || '')
+    .replace(/<br\s*\/?>/gi, '\r')
+    .replace(/<[^>]+>/g, ''))
+    .replace(/\r[ \t]+/g, '\r')
+    .replace(/[ \t]+\r/g, '\r');
+}
+
+function decodeBasicEntities(value) {
+  return String(value || '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function sourceNodeIsObserved(sourceNode) {
+  if (!sourceNode) return false;
+  const attributes = sourceNode.attributes || {};
+  if (attributes['data-id-observed'] === 'true' || attributes['data-id-reverse-mode'] === 'observation') return true;
+  const classList = Array.isArray(sourceNode.classList)
+    ? sourceNode.classList
+    : String(attributes.class || '').split(/\s+/);
+  return classList.includes('observed-text');
 }
 
 function minimumTextFrameHeight(item, layout) {
@@ -97,6 +162,8 @@ function usesAutoInlineWidth(item) {
 
 module.exports = {
   effectsForInstruction,
+  runsForInstruction,
   textFrameBounds,
   textFitPolicy,
+  textForInstruction,
 };

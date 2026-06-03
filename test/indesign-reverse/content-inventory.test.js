@@ -63,6 +63,81 @@ test('documentModelContentInventory preserves visible text and source resource i
   assert.equal(inventory.pages[0].resources[0].identity, '\\\\nas\\share\\drawing.pdf');
 });
 
+test('compareContentInventories treats package-relative preview resources as stable across output roots', () => {
+  const root = path.resolve('test/workspace/content-inventory-relative-resource');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="previews/2383-psd.png"></section>');
+  writeAuthorPackage(reverseRoot, '<section class="page"><img src="previews/2383-psd.png"></section>');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories does not treat regenerated preview file names as source content loss', () => {
+  const root = path.resolve('test/workspace/content-inventory-preview-cache');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="previews/2383-psd.png"><img src="assets/source.png"></section>');
+  writeAuthorPackage(reverseRoot, '<section class="page"><img src="previews/1087-psd.png"><img src="assets/source.png"></section>');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories treats /nas URLs and UNC paths as the same host resource', () => {
+  const root = path.resolve('test/workspace/content-inventory-nas-resource');
+  const sourceRoot = path.join(root, 'source');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="/nas/daga-nas5/share/%E4%B8%AD.png"></section>');
+  const expected = authorPackageContentInventory(sourceRoot);
+  const actual = {
+    kind: 'AuthorContentInventory',
+    pages: [{
+      id: 'page-1',
+      size: { width: 0, height: 0 },
+      textDigest: [],
+      resources: [{ kind: 'image', identity: '\\\\daga-nas5\\share\\中.png' }],
+      itemRoles: [],
+      geometry: [],
+    }],
+    summary: { pages: 1, texts: 0, resources: 1, geometryItems: 0 },
+  };
+
+  const diff = compareContentInventories(expected, actual);
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories treats CJK line wrap spaces as equivalent text', () => {
+  const diff = compareContentInventories(
+    inventoryWithText(['团队最终采用暖色清水 混凝土为立面主材料， 局部采用阳极氧化铝板 点缀']),
+    inventoryWithText(['团队最终采用暖色清水混凝土为立面主材料，局部采用阳极氧化铝板点缀'])
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories still reports real text loss after CJK whitespace normalization', () => {
+  const diff = compareContentInventories(
+    inventoryWithText(['团队最终采用暖色清水 混凝土为立面主材料']),
+    inventoryWithText(['团队最终采用暖色清水'])
+  );
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors[0].code, 'CONTENT_TEXT_CHANGED');
+});
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
@@ -79,4 +154,19 @@ function writeAuthorPackage(root, pageHtml) {
 function writeFile(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, 'utf8');
+}
+
+function inventoryWithText(textDigest) {
+  return {
+    kind: 'AuthorContentInventory',
+    pages: [{
+      id: 'page-1',
+      size: { width: 0, height: 0 },
+      textDigest,
+      resources: [],
+      itemRoles: [],
+      geometry: [],
+    }],
+    summary: { pages: 1, texts: textDigest.length, resources: 0, geometryItems: 0 },
+  };
 }

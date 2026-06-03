@@ -200,7 +200,9 @@ Agent 新写或大改分页 HTML 后，应先跑 `npm run lint:authoring -- <dec
 
 ### 9.4 E2E 输出和回环
 
-`npm run e2e:indesign` 默认读取 `test/fixtures/e2e/architecture-report/deck.html`，输出到 `test/workspace/indesign-e2e-<时间戳>/`。它会生成 `instructions.json`，调用真实 InDesign 构建，导出 `INDD`、`PDF`、`IDML`，并尽量生成 PDF 预览 contact sheet。加 `--reverse-roundtrip` 时还会生成 `reverse-snapshot.json`、`reverse-html/deck.visual.html` 和 `reverse-html/author/`。其中 `reverse-html/author/deck.html` 是由反向源码包组装出来的编辑入口，顶层 `reverse-html/deck.html` 仅保留为视觉兼容入口。加 `--second-pass-roundtrip` 时，会把第一次回读出的 `reverse-html/author/deck.html` 再次送入 HTML-to-InDesign，并再次反向回读，用于验证 `HTML -> InDesign -> HTML -> InDesign -> HTML` 的源码包稳定性。
+`npm run e2e:indesign` 默认读取 `test/fixtures/e2e/architecture-report/deck.html`，输出到 `test/workspace/indesign-e2e-<时间戳>/`。它会生成 `instructions.json`，调用真实 InDesign 构建，导出 `INDD`、`PDF`、`IDML`，并尽量生成 PDF 预览 contact sheet。加 `--reverse-roundtrip` 时还会生成 `reverse-snapshot.json`、`reverse-html/deck.visual.html` 和 `reverse-html/author/`。其中 `reverse-html/author/deck.html` 是由反向源码包组装出来的编辑入口，顶层 `reverse-html/deck.html` 仅保留为视觉兼容入口。
+
+反向作者包审计会在 `reverse-html/author/reports/` 写出 `source-roundtrip-report.json`、`content-inventory-report.json` 和 `structure-signature-report.json`。内容库存是无丢失硬门槛；首轮源码 exact diff 和源作者结构差异只作为辅助 warning，不能替代内容库存判断。加 `--second-pass-roundtrip` 时，会把第一次回读出的 `reverse-html/author/deck.html` 再次送入 HTML-to-InDesign，并再次反向回读，用于验证 `HTML -> InDesign -> HTML -> InDesign -> HTML` 的作者包稳定性；二次回环硬门槛是 `canonical-content-inventory-report.json` 与 `canonical-structure-signature-report.json` 均通过，`canonical-source-drift-report.json` 只记录源码级格式漂移。
 
 ### 9.5 E2E 参数约定
 
