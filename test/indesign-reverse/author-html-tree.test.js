@@ -320,6 +320,34 @@ test('pageItemsToAuthorHtml adds style classes without inventing generic object 
   assert.doesNotMatch(html, /chapter-1-title"[^>]+--grid-col/);
 });
 
+test('pageItemsToAuthorHtml writes generated style refs as protocol attributes', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'observed-title',
+        role: 'text',
+        styleRefs: { paragraphStyle: '封面项目标题', objectStyle: '基本文本框架' },
+        content: { text: '标题' },
+        structure: { parentId: 'observed-page', order: 1 },
+      },
+      {
+        id: 'observed-panel',
+        role: 'shape',
+        styleRefs: { objectStyle: '基本图形框架', frameStyle: '图片框' },
+        structure: { parentId: 'observed-page', order: 2 },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.match(html, /<p[^>]+id="observed-title"[^>]+data-id-paragraph-style="封面项目标题"/);
+  assert.match(html, /<p[^>]+id="observed-title"[^>]+data-id-object-style="基本文本框架"/);
+  assert.match(html, /<div[^>]+id="observed-panel"[^>]+data-id-object-style="基本图形框架"/);
+  assert.match(html, /<div[^>]+id="observed-panel"[^>]+data-id-frame-style="图片框"/);
+});
+
 test('pageItemsToAuthorHtml restores missing nonvisual source ancestor wrappers', () => {
   const page = {
     id: 'analysis-page',
@@ -706,6 +734,7 @@ test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable s
           strokeStyle: 'Dashed',
           opacity: 90,
         },
+        styleRefs: { objectStyle: '装饰线' },
         vectorGeometry: {
           kind: 'polygon',
           paths: [
@@ -725,6 +754,8 @@ test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable s
   }, { mode: 'observation' });
 
   assert.match(html, /<svg[^>]+id="vector-1"[^>]+data-id-vector="polygon"/);
+  assert.match(html, /<svg[^>]+id="vector-1"[^>]+data-id-role="shape"/);
+  assert.match(html, /<svg[^>]+id="vector-1"[^>]+data-id-object-style="装饰线"/);
   assert.match(html, /viewBox="0 0 200 80"/);
   assert.match(html, /<path[^>]+d="M0 0 L200 0 L200 80 Z"/);
   assert.match(html, /fill="#8ca064"/);
@@ -804,8 +835,50 @@ test('pageItemsToAuthorHtml gives zero-height vector lines a non-zero viewBox', 
     ],
   }, { mode: 'observation' });
 
+  assert.match(html, /<svg[^>]+id="axis-line"[^>]+data-id-role="line"/);
   assert.match(html, /viewBox="0 0 180 2"/);
   assert.match(html, /<path[^>]+d="M0 1 L180 1"/);
+});
+
+test('pageItemsToAuthorHtml does not duplicate sourced svg aspect ratio attributes', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'source-vector',
+        role: 'shape',
+        sourceNode: {
+          tagName: 'svg',
+          id: 'source-vector',
+          classList: ['id-object'],
+          attributes: {
+            id: 'source-vector',
+            preserveaspectratio: 'none',
+            viewbox: '0 0 10 10',
+            'data-id-object': '',
+            'data-id-vector': 'line',
+          },
+        },
+        bounds: { x: 0, y: 0, width: 10, height: 10 },
+        vectorGeometry: {
+          kind: 'line',
+          paths: [
+            {
+              closed: false,
+              points: [
+                { anchor: { x: 0, y: 0 } },
+                { anchor: { x: 10, y: 10 } },
+              ],
+            },
+          ],
+        },
+        labels: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.equal((html.match(/preserveAspectRatio=/g) || []).length, 1);
+  assert.equal((html.match(/viewBox=/g) || []).length, 1);
 });
 
 test('pageItemsToAuthorHtml omits degenerate invisible vector leftovers', () => {

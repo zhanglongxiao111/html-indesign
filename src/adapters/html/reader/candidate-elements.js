@@ -10,11 +10,20 @@ function roleFromItem(item) {
     authoredStyle: item.authoredStyle,
   });
   if (source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown') return 'graphic';
+  const protocolRole = protocolRoleFromAttributes(attributes);
+  if (protocolRole) return protocolRole;
   if (attributes['data-id-paragraph-style']) return 'text';
   if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'figcaption'].includes(tagName)) return 'text';
   if (['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return 'graphic';
   if (tagName === 'table') return 'table';
   return 'shape';
+}
+
+function protocolRoleFromAttributes(attributes) {
+  const role = String(attributes && attributes['data-id-role'] || '').trim().toLowerCase();
+  return ['text', 'graphic', 'shape', 'table', 'line', 'background', 'decoration'].includes(role)
+    ? role
+    : '';
 }
 
 function selectorFor(item) {

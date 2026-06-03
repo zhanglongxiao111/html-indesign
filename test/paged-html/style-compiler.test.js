@@ -255,6 +255,50 @@ test('compileStyles can translate stable style tokens through a styleNameMap', (
   });
 });
 
+test('compileStyles does not infer paragraph styles from object style classes', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      items: [{
+        id: 'empty-frame',
+        role: 'text',
+        tagName: 'p',
+        classList: ['ostyle--基本图形框架-', 'observed-text', 'id-object'],
+        attributes: {
+          'data-id-object-style': '[基本图形框架]',
+        },
+        text: '',
+        computedStyle: {
+          color: 'rgb(0, 0, 0)',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '12px',
+          lineHeight: '16px',
+          fontWeight: '400',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          borderTopColor: 'rgb(255, 10, 13)',
+          borderTopWidth: '2px',
+          borderTopStyle: 'solid',
+        },
+        authoredStyle: {
+          borderTopWidth: '2pt',
+        },
+      }],
+    }],
+  };
+
+  const styled = compileStyles(snapshot);
+  const item = styled.pages[0].items[0];
+
+  assert.match(item.styleRefs.paragraphStyle, /^自动段落-\d{8}$/);
+  assert.equal(item.styleRefs.objectStyle, '基本图形框架');
+  assert.equal(styled.styles.paragraphStyles['ostyle-基本图形框架'], undefined);
+});
+
 test('compileStyles maps visual CSS pixels to points in presentation mode', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

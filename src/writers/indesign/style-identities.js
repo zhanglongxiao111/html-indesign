@@ -1,7 +1,7 @@
 const { createProtocolLabel } = require('../../shared/labels');
 const {
-  firstClassName,
   explicitName,
+  sanitizeStyleName,
 } = require('../../shared/style-utils');
 
 function explicitFrameStyleName(item, options) {
@@ -20,14 +20,14 @@ function styleNameForKind(item, kind, signature, options) {
   const mapped = mappedStyleName(token, kind, options);
   if (mapped) return mapped;
   if (token) return token;
-  const className = firstClassName(item);
+  const className = styleClassNameForKind(item, kind);
   const mappedClass = mappedStyleName(className, kind, options);
   if (mappedClass) return mappedClass;
-  return signature ? null : firstClassName(item);
+  return shouldUseUnmappedClassName(className, kind, options) ? className : null;
 }
 
 function classFrameStyleName(item, options) {
-  const className = firstClassName(item);
+  const className = styleClassNameForKind(item, 'frameStyles');
   if (!className) return null;
   return mappedStyleName(`${className}-frame`, 'frameStyles', options)
     || mappedStyleName(className, 'frameStyles', options)
@@ -42,7 +42,7 @@ function styleIdentityForKind(item, kind, name, options) {
   const attributes = item && item.attributes || {};
   const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
   const explicitToken = styleTokenForKind(attributes, kind);
-  const className = firstClassName(item);
+  const className = styleClassNameForKind(item, kind);
   const token = explicitToken || className || name;
   const displayName = explicitDisplay || mappedStyleName(token, kind, options) || name;
   return {
@@ -88,6 +88,58 @@ function styleTokenAttributes(kind) {
     tableStyles: ['data-id-table-style'],
   };
   return byKind[kind] || [];
+}
+
+function styleClassNameForKind(item, kind) {
+  const ownPrefix = styleClassPrefix(kind);
+  for (const value of item && item.classList || []) {
+    const className = sanitizeStyleName(value);
+    if (!className) continue;
+    const prefix = detectedStyleClassPrefix(className);
+    if (prefix) {
+      if (prefix !== ownPrefix) continue;
+      const stripped = sanitizeStyleName(className.slice(prefix.length));
+      if (stripped) return stripped;
+      continue;
+    }
+    if (isUtilityClass(className)) continue;
+    return className;
+  }
+  return null;
+}
+
+function detectedStyleClassPrefix(className) {
+  const lower = String(className || '').toLowerCase();
+  return ['cellstyle-', 'pstyle-', 'cstyle-', 'ostyle-', 'fstyle-', 'tstyle-']
+    .find((prefix) => lower.startsWith(prefix)) || null;
+}
+
+function styleClassPrefix(kind) {
+  const byKind = {
+    paragraphStyles: 'pstyle-',
+    characterStyles: 'cstyle-',
+    objectStyles: 'ostyle-',
+    frameStyles: 'fstyle-',
+    tableStyles: 'tstyle-',
+    cellStyles: 'cellstyle-',
+  };
+  return byKind[kind] || null;
+}
+
+function isUtilityClass(className) {
+  return [
+    'id-object',
+    'observed-text',
+    'id-parent-page-object',
+    'grid-item',
+  ].includes(String(className || '').toLowerCase());
+}
+
+function shouldUseUnmappedClassName(className, kind, options) {
+  if (!className) return false;
+  if (kind === 'frameStyles') return false;
+  if (!options || !options.styleNameMap) return true;
+  return !/[A-Za-z]/.test(className);
 }
 
 module.exports = {

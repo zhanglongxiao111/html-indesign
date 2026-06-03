@@ -146,6 +146,13 @@ test('parseArgs accepts reverse roundtrip flag', () => {
   assert.equal(options.targetSize, 'qhd');
 });
 
+test('parseArgs accepts explicit reverse roundtrip mode', () => {
+  const options = parseArgs(['--reverse-roundtrip', '--reverse-mode=observation'], 'D:/AI/html-indesign');
+
+  assert.equal(options.reverseRoundtrip, true);
+  assert.equal(options.reverseMode, 'observation');
+});
+
 test('parseArgs accepts second pass roundtrip gate flag', () => {
   const options = parseArgs(['--reverse-roundtrip', '--second-pass-roundtrip'], 'D:/AI/html-indesign');
 

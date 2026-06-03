@@ -17,6 +17,7 @@ function attrsForItem(item, sourceNode, options) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, tag));
   sanitizeRetiredAssetAttrs(attrs, item);
   rewriteResourceAttrs(attrs, options);
+  addStyleProtocolAttrs(attrs, item);
   const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
   if (sourceNode.id) {
     attrs.id = sourceNode.id;
@@ -85,6 +86,21 @@ function addObservedLabelAttrs(attrs, item) {
   if (reasons.length) attrs['data-id-observed-reasons'] = reasons.join(' ');
 }
 
+function addStyleProtocolAttrs(attrs, item) {
+  const refs = item && item.styleRefs || {};
+  const pairs = [
+    ['paragraphStyle', 'data-id-paragraph-style'],
+    ['characterStyle', 'data-id-character-style'],
+    ['objectStyle', 'data-id-object-style'],
+    ['frameStyle', 'data-id-frame-style'],
+    ['tableStyle', 'data-id-table-style'],
+    ['cellStyle', 'data-id-cell-style'],
+  ];
+  for (const [key, attr] of pairs) {
+    if (!attrs[attr] && refs[key]) attrs[attr] = refs[key];
+  }
+}
+
 module.exports = {
   attrsForItem,
   sourceNodeForItem,
@@ -93,4 +109,5 @@ module.exports = {
   cssVarsStyle,
   addParentPageAttrs,
   addObservedLabelAttrs,
+  addStyleProtocolAttrs,
 };

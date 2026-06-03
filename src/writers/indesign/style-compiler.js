@@ -5,7 +5,6 @@ const {
   normalizeCssColorFromBackgroundImage,
   parseCssLinearGradient,
   stableAutoName,
-  firstClassName,
 } = require('../../shared/style-utils');
 const {
   styleLengthToPt,
@@ -130,7 +129,6 @@ function compileItemStyles(item, styles, report, options) {
 
   if (item.role === 'table') {
     const tableStyleName = styleNameForKind(item, 'tableStyles', null, options)
-      || firstClassName(item)
       || 'default-table';
     styleRefs.tableStyle = tableStyleName;
     if (!styles.tableStyles[styleRefs.tableStyle]) {
@@ -266,7 +264,6 @@ function ensureParagraphStyle(styles, item, report, options) {
     spaceAfter: styleLengthToPt(style, 'marginBottom', options),
   };
   const name = styleNameForKind(item, 'paragraphStyles', signature, options)
-    || firstClassName(item)
     || stableAutoName('paragraph', signature);
   if (!styles.paragraphStyles[name]) {
     const identity = styleIdentityForKind(item, 'paragraphStyles', name, options);
@@ -301,7 +298,6 @@ function ensureCharacterStyle(styles, run, report, options) {
     capitalization: capitalizationFor(style),
   };
   const name = styleNameForKind(run, 'characterStyles', signature, options)
-    || firstClassName(run)
     || stableAutoName('character', signature);
   if (!styles.characterStyles[name]) {
     const identity = styleIdentityForKind(run, 'characterStyles', name, options);
@@ -337,7 +333,6 @@ function ensureObjectStyle(styles, item, report, options) {
     overflow: style.overflow || 'visible',
   };
   const name = styleNameForKind(item, 'objectStyles', signature, options)
-    || firstClassName(item)
     || stableAutoName('object', signature);
   if (!styles.objectStyles[name]) {
     const identity = styleIdentityForKind(item, 'objectStyles', name, options);

@@ -5,6 +5,7 @@ const { rewriteResourceAttrs } = require('./author-resource-paths');
 const {
   addObservedLabelAttrs,
   addParentPageAttrs,
+  addStyleProtocolAttrs,
   sourceNodeForItem,
   sourceStyleForItem,
 } = require('./author-node-attrs');
@@ -36,9 +37,13 @@ function vectorAttrsForItem(item, sourceNode, options) {
   rewriteResourceAttrs(attrs, options);
   if (sourceNode.id) attrs.id = sourceNode.id;
   else attrs.id = item.id;
+  delete attrs.viewbox;
+  delete attrs.preserveaspectratio;
   attrs.viewBox = vectorViewBox(item);
   attrs.preserveAspectRatio = 'none';
   attrs['data-id-vector'] = item.vectorGeometry && item.vectorGeometry.kind || 'path';
+  if (!attrs['data-id-role'] && item.role) attrs['data-id-role'] = item.role;
+  addStyleProtocolAttrs(attrs, item);
   const classes = new Set(authorClassesForItem(item, sourceNode.classList || [], attrs));
   if (!hasSourceNode(sourceNode) && item.role !== 'text' && !item.virtual) classes.add('id-object');
   if (options.mode === 'observation') classes.add('id-object');

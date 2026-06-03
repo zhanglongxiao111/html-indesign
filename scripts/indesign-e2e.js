@@ -77,6 +77,10 @@ function parseArgs(argv, repoRoot) {
       options.skipPreview = true;
     } else if (arg === '--reverse-roundtrip') {
       options.reverseRoundtrip = true;
+    } else if (arg === '--reverse-mode') {
+      options.reverseMode = parseReverseMode(argv[++index]);
+    } else if (arg.startsWith('--reverse-mode=')) {
+      options.reverseMode = parseReverseMode(arg.slice('--reverse-mode='.length));
     } else if (arg === '--second-pass-roundtrip') {
       options.secondPassRoundtrip = true;
     } else if (arg === '--help' || arg === '-h') {
@@ -90,7 +94,7 @@ function parseArgs(argv, repoRoot) {
 
 function usage() {
   return [
-    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--second-pass-roundtrip]',
+    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--reverse-mode structured|inferred|observation] [--second-pass-roundtrip]',
     'npm: npm run e2e:indesign -- -- --target-size qhd --reverse-roundtrip --second-pass-roundtrip',
     '',
     'Default HTML: test/fixtures/e2e/architecture-report/deck.html',
@@ -98,6 +102,12 @@ function usage() {
     'Default target size: same as captured browser source pixels',
     'Default output: test/workspace/indesign-e2e-<timestamp>/',
   ].join('\n');
+}
+
+function parseReverseMode(value) {
+  const mode = String(value || '').trim();
+  if (['structured', 'inferred', 'observation'].includes(mode)) return mode;
+  throw new Error(`Unsupported reverse mode: ${value}`);
 }
 
 async function runIndesignE2E(options = {}) {
@@ -587,6 +597,7 @@ ${closeBlock}
 }
 
 async function runReverseRoundtrip(context, options = {}) {
+  const reverseMode = options.reverseMode || 'structured';
   fs.writeFileSync(context.reverseScriptPath, buildReverseSnapshotJsx({
     repoRoot: context.repoRoot,
     outputPath: context.reverseSnapshotPath,
@@ -600,11 +611,14 @@ async function runReverseRoundtrip(context, options = {}) {
   const htmlResult = compileReverseSnapshotToHtml({
     snapshotPath: context.reverseSnapshotPath,
     outDir: context.reverseOutDir,
-    mode: 'structured',
+    mode: reverseMode,
     sourceRoot: path.dirname(context.htmlPath),
   });
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
-  const htmlAudit = assertReverseHtmlSemantics(fs.readFileSync(reverseHtmlPath, 'utf8'), reverseHtmlPath);
+  const reverseHtml = fs.readFileSync(reverseHtmlPath, 'utf8');
+  const htmlAudit = reverseMode === 'observation'
+    ? auditReverseHtmlSemantics(reverseHtml)
+    : assertReverseHtmlSemantics(reverseHtml, reverseHtmlPath);
   const authorAudit = auditReverseAuthorPackage({
     ...htmlResult.files.author,
     sourceRoot: path.dirname(context.htmlPath),
@@ -627,6 +641,7 @@ async function runReverseRoundtrip(context, options = {}) {
       skipPreview: true,
       reverseRoundtrip: true,
       secondPassRoundtrip: false,
+      reverseMode,
       styleNameMap: options.styleNameMap,
     })
     const { measureAuthorSourceDrift } = require('../src/writers/html/audit/source-roundtrip-diff');
