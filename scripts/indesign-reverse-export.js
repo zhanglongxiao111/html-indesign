@@ -11,6 +11,7 @@ const {
   semanticModelToHtml,
   writeReverseAuthorPackage,
 } = require('../src/writers/html');
+const { reconstructSemanticModel } = require('../src/semantic-reconstruction');
 const { auditReverseAuthorPackage } = require('../src/writers/html/audit/author-audit');
 
 function parseArgs(argv) {
@@ -22,6 +23,7 @@ function parseArgs(argv) {
     sourceRoot: null,
     assetPolicy: 'reference',
     nasPublicRoot: '/nas',
+    reconstructAlgorithms: [],
     help: false,
   };
 
@@ -64,6 +66,11 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg.startsWith('--nas-public-root=')) {
       out.nasPublicRoot = arg.slice('--nas-public-root='.length);
+    } else if (arg === '--reconstruct') {
+      out.reconstructAlgorithms = parseAlgorithmList(readValue(argv, index, arg));
+      index += 1;
+    } else if (arg.startsWith('--reconstruct=')) {
+      out.reconstructAlgorithms = parseAlgorithmList(arg.slice('--reconstruct='.length));
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -76,14 +83,21 @@ function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
 
   const inputFormat = options.blueprintPath ? 'historical-blueprint' : 'reverse-snapshot';
-  const model = options.blueprintPath
+  const observedModel = options.blueprintPath
     ? blueprintMigrationToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
     : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), { mode: options.mode });
+  const reconstruction = reconstructSemanticModel(observedModel, {
+    mode: options.mode,
+    inputFormat,
+    algorithms: options.reconstructAlgorithms || [],
+  });
+  const model = reconstruction.model;
   const outDir = path.resolve(options.outDir);
   const visualHtml = semanticModelToHtml(model, { outputDir: outDir });
-  const report = createReport(model, { ...options, inputFormat });
+  const report = createReport(model, { ...options, inputFormat, reconstruction: reconstruction.report });
   const modeHtmlName = `deck.${options.mode}.html`;
   const modeReportName = `${options.mode}-report.json`;
+  const reconstructionReportName = 'reconstruction-report.json';
 
   fs.mkdirSync(outDir, { recursive: true });
   const authorResult = writeReverseAuthorPackage(model, {
@@ -99,6 +113,7 @@ function compileReverseSnapshotToHtml(options) {
   fs.writeFileSync(path.join(outDir, modeHtmlName), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'deck.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
+  fs.writeFileSync(path.join(outDir, reconstructionReportName), JSON.stringify(reconstruction.report, null, 2), 'utf8');
   const finalReport = { ...report, authorAudit };
   fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(finalReport, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(finalReport, null, 2), 'utf8');
@@ -111,6 +126,7 @@ function compileReverseSnapshotToHtml(options) {
       visualHtml: path.join(outDir, 'deck.visual.html'),
       modeHtml: path.join(outDir, modeHtmlName),
       model: path.join(outDir, 'reverse-model.json'),
+      reconstructionReport: path.join(outDir, reconstructionReportName),
       report: path.join(outDir, 'report.json'),
       modeReport: path.join(outDir, modeReportName),
       author: {
@@ -145,6 +161,7 @@ function createReport(model, options) {
     ok: true,
     mode: options.mode,
     inputFormat: options.inputFormat,
+    reconstruction: options.reconstruction,
     pages: model.pages.length,
     parentPages: model.parentPages.length,
     items: model.pages.reduce((sum, page) => sum + page.items.length, 0),
@@ -184,8 +201,15 @@ function readValue(argv, index, flag) {
   return value;
 }
 
+function parseAlgorithmList(value) {
+  return String(value || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 function usage() {
-  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <historical-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas]';
+  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <historical-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas] [--reconstruct page-object-graph,caption-structure,figure-grid,text-block]';
 }
 
 if (require.main === module) {

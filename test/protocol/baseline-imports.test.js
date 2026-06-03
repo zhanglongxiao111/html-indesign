@@ -11,6 +11,7 @@ test('public entry exposes protocol adapters semanticModel and writers after ref
   assert.equal(typeof api.adapters.html.snapshotToSemanticModel, 'function');
   assert.equal(typeof api.adapters.indesign.reverseSnapshotToSemanticModel, 'function');
   assert.equal(typeof api.adapters.indesign.blueprintMigrationToSemanticModel, 'function');
+  assert.equal(typeof api.semanticReconstruction.reconstructSemanticModel, 'function');
   assert.equal(typeof api.writers.indesign.semanticModelToInstructions, 'function');
   assert.equal(typeof api.writers.indesign.compileStyles, 'function');
   assert.equal(typeof api.writers.html.semanticModelToHtml, 'function');

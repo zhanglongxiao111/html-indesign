@@ -52,6 +52,46 @@ test('semanticModelToHtml rejects pages without explicit geometry', () => {
   );
 });
 
+test('semanticModelToHtml skips virtual author structure containers', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'visual-virtual-container',
+    title: 'visual-virtual-container',
+    reverseMode: 'observation',
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'page-1-figure-grid-1',
+            role: 'container',
+            virtual: true,
+            tagName: 'section',
+            sourceNode: { tagName: 'section', id: 'page-1-figure-grid-1', classList: ['figure-grid'], attributes: {} },
+            structure: { parentId: 'page-1', order: 0 },
+            content: { text: '' },
+          },
+          {
+            id: 'image-1',
+            role: 'graphic',
+            semantic: 'unknown',
+            tagName: 'figure',
+            bounds: { x: 100, y: 80, width: 240, height: 160 },
+            structure: { parentId: 'page-1-figure-grid-1', order: 1 },
+            content: { text: '' },
+            asset: { name: 'hero.png', path: 'D:\\assets\\hero.png' },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.doesNotMatch(html, /page-1-figure-grid-1/);
+  assert.match(html, /id="image-1"/);
+});
+
 test('semanticModelToHtml renders observed shapes and placed image assets', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',

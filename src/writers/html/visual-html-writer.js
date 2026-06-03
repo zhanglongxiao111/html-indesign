@@ -101,7 +101,7 @@ function pageToHtml(page, model, options) {
     `style="${attr(pageStyle(page))}"`,
   ].filter(Boolean);
 
-  const items = (page.items || []).map((item) => itemToHtml(item, model, options)).join('\n');
+  const items = (page.items || []).filter((item) => !item.virtual).map((item) => itemToHtml(item, model, options)).join('\n');
   return [`  <section ${attrs.join(' ')}>`, items, '  </section>'].join('\n');
 }
 

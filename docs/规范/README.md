@@ -15,6 +15,8 @@
 | `SEMANTIC_PROTOCOL.md` | 固定语义 HTML 协议 |
 | `LABEL_PROTOCOL.md` | HTML `data-id-*` 与 InDesign `html_indesign` 脚本标签协议 |
 | `REVERSE_EXPORT.md` | InDesign 反向导出、观察模式和语义化迁移规范 |
+| `SEMANTIC_RECONSTRUCTION.md` | 语义重建层、算法边界、报告和候选算法 |
+| `SEMANTIC_OBJECT_GRAPH.md` | 语义重建第一阶段页面对象图证据层规范 |
 | `FONT_POLICY.md` | 项目公共字体库、字体 token、映射和预检规范 |
 
 相关架构设计：

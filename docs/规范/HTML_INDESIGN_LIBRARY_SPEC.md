@@ -130,6 +130,10 @@ InDesign Adapter
   - InDesign object snapshot
   - parent page/style/layer extraction
 
+Semantic Reconstruction
+  - observed model to author semantic model
+  - inference evidence/confidence/unresolved report
+
 Semantic Model -> HTML Writer -> fixed semantic HTML
 Semantic Model -> Instruction Compiler -> InDesign Build Instructions -> InDesign Executor
 ```
@@ -138,7 +142,7 @@ Semantic Model -> Instruction Compiler -> InDesign Build Instructions -> InDesig
 
 ```text
 Paged HTML -> HTML Adapter -> Semantic Model -> InDesign Writer -> InDesign Build Instructions -> InDesign Executor
-InDesign Snapshot -> InDesign Adapter -> Semantic Model -> HTML Writer -> Fixed Semantic HTML / Author Package
+InDesign Snapshot -> InDesign Adapter -> Semantic Model -> Semantic Reconstruction -> HTML Writer -> Fixed Semantic HTML / Author Package
 ```
 
 `Build Instructions` 只是 InDesign 执行器消费的命令格式，不是长期事实模型。反向导出、回环校验、模板/母版保真都必须以 `Semantic Model` 和标签协议为依据。
@@ -149,7 +153,7 @@ InDesign Snapshot -> InDesign Adapter -> Semantic Model -> HTML Writer -> Fixed 
 
 ```text
 HTML Adapter -> Semantic Model -> InDesign Writer
-InDesign Adapter -> Semantic Model -> HTML Writer
+InDesign Adapter -> Semantic Model -> Semantic Reconstruction -> HTML Writer
 PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 ```
 
@@ -174,6 +178,7 @@ PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 | HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/adapters/html/*` |
 | Semantic Model | 保存双向共享事实：页面、母版、样式、图层、对象、资源、标签、网格 | `src/semantic-model/*` |
 | InDesign Adapter / Writer | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/adapters/indesign/*`、`src/writers/indesign/instructions-compiler.js` |
+| Semantic Reconstruction | 从观察模型重建可编辑作者语义模型，输出证据、置信度和 unresolved 报告 | `src/semantic-reconstruction/*` |
 | HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/writers/html/*` |
 | InDesign Executor | 只执行已验证 instructions，创建 InDesign 原生对象 | `_indesign_scripts/*` |
 
@@ -1090,6 +1095,7 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | `src/adapters/html/` | HTML Adapter：浏览器快照、样式读取、资源发现、HTML snapshot -> semantic model |
 | `src/writers/indesign/` | InDesign Writer：semantic model -> instructions、样式编译、instructions 校验 |
 | `src/adapters/indesign/` | InDesign Adapter：reverse snapshot -> semantic model、标签白名单、历史 blueprint 迁移 |
+| `src/semantic-reconstruction/` | Semantic Reconstruction：observed model -> reconstructed author model、证据、置信度和 unresolved 报告 |
 | `src/writers/html/` | HTML Writer：reverse author package、visual HTML、source/visual audit |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
 | `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/adapters/indesign/normalizer/blueprint-migration.js` 归一化为 semantic model |
@@ -1106,6 +1112,9 @@ src/
     index.js
     layout.js
     validator.js
+  semantic-reconstruction/
+    index.js
+    reconstruct.js
   adapters/
     html/
       reader/browser-snapshot.js
@@ -1143,7 +1152,7 @@ src/
     assets.js
 ```
 
-`instructions-compiler.js` 位于 InDesign writer 边界，负责把 Semantic Model 派生为 InDesign instructions。新增双向能力必须围绕 Semantic Model、协议字段注册表和标签协议实现，不得重新引入旧目录 facade 或绕过 adapter/writer 边界。
+`instructions-compiler.js` 位于 InDesign writer 边界，负责把 Semantic Model 派生为 InDesign instructions。新增双向能力必须围绕 Semantic Model、Semantic Reconstruction、协议字段注册表和标签协议实现，不得重新引入旧目录 facade 或绕过 adapter/writer 边界。
 
 ## 17. 非目标
 

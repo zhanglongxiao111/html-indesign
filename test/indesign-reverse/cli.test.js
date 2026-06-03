@@ -43,6 +43,16 @@ test('parseArgs accepts reverse asset reference options', () => {
   assert.equal(args.nasPublicRoot, '/nas');
 });
 
+test('parseArgs accepts reconstruction algorithms', () => {
+  const args = parseArgs([
+    '--snapshot', 'reverse.json',
+    '--out', 'out-dir',
+    '--reconstruct', 'page-object-graph,caption-structure,figure-grid,text-block',
+  ]);
+
+  assert.deepEqual(args.reconstructAlgorithms, ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block']);
+});
+
 test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   const outDir = path.resolve('test/workspace/reverse-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -56,7 +66,11 @@ test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   assert.equal(result.ok, true);
   assert.equal(fs.existsSync(path.join(outDir, 'deck.html')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'reverse-model.json')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'reconstruction-report.json')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'report.json')), true);
+  assert.equal(result.files.reconstructionReport, path.join(outDir, 'reconstruction-report.json'));
+  assert.equal(result.report.reconstruction.status, 'observed-only');
+  assert.equal(result.report.reconstruction.summary.reconstructedItems, 0);
 });
 
 test('compileReverseSnapshotToHtml writes visual HTML and author package', () => {
@@ -130,6 +144,22 @@ test('compileReverseSnapshotToHtml writes historical blueprint through reverse p
 
   const candidates = JSON.parse(fs.readFileSync(path.join(outDir, 'author/reports/semantic-candidates.json'), 'utf8'));
   assert.equal(candidates.presetId, null);
+});
+
+test('compileReverseSnapshotToHtml can run page object graph reconstruction', () => {
+  const outDir = path.resolve('test/workspace/reverse-cli-object-graph-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const result = compileReverseSnapshotToHtml({
+    snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
+    outDir,
+    mode: 'observation',
+    reconstructAlgorithms: ['page-object-graph'],
+  });
+
+  assert.deepEqual(result.report.reconstruction.algorithms, ['page-object-graph']);
+  assert.equal(result.report.reconstruction.passes[0].name, 'page-object-graph');
+  assert.equal(fs.existsSync(path.join(outDir, 'reconstruction-report.json')), true);
 });
 
 function writeFixtureFile(filePath, content) {

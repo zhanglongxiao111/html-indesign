@@ -13,6 +13,7 @@ const adapters = {
   }),
 };
 const semanticModel = require('./src/semantic-model');
+const semanticReconstruction = require('./src/semantic-reconstruction');
 const writers = {
   html: require('./src/writers/html'),
   indesign: require('./src/writers/indesign'),
@@ -22,5 +23,6 @@ module.exports = {
   protocol,
   adapters,
   semanticModel,
+  semanticReconstruction,
   writers,
 };

@@ -4,6 +4,7 @@ function buildAuthorTree(page) {
   const rootId = page.id;
   const nodes = new Map();
   const roots = [];
+  const sourceIndexes = new Map((page.items || []).map((item, index) => [item && item.id, index]));
   const items = sortedItems(page.items || []);
   const itemIds = new Set(items.map((item) => item.id));
   const companionTextByBase = new Map();
@@ -15,7 +16,11 @@ function buildAuthorTree(page) {
     if (companionTextBaseId(item, itemIds)) continue;
     if (shouldOmitAuthorItem(item)) continue;
     const companion = companionTextByBase.get(item.id);
-    nodes.set(item.id, { item: companion ? Object.assign({}, item, { authorTextCompanion: companion }) : item, children: [] });
+    nodes.set(item.id, {
+      item: companion ? Object.assign({}, item, { authorTextCompanion: companion }) : item,
+      children: [],
+      sourceIndex: sourceIndexes.get(item.id),
+    });
   }
   const parentOverrides = attachSourceAncestorNodes(nodes, rootId);
   for (const node of nodes.values()) {
@@ -26,8 +31,8 @@ function buildAuthorTree(page) {
       roots.push(node);
     }
   }
-  for (const node of nodes.values()) node.children.sort((a, b) => structureOrder(a.item) - structureOrder(b.item));
-  return roots.sort((a, b) => structureOrder(a.item) - structureOrder(b.item));
+  for (const node of nodes.values()) node.children.sort((a, b) => nodeOrder(a) - nodeOrder(b));
+  return roots.sort((a, b) => nodeOrder(a) - nodeOrder(b));
 }
 
 function attachSourceAncestorNodes(nodes, rootId) {
@@ -38,7 +43,7 @@ function attachSourceAncestorNodes(nodes, rootId) {
     let parentId = node.item.structure && node.item.structure.parentId || rootId;
     for (const ancestor of chain) {
       const key = sourceAncestorKey(ancestor);
-      ensureVirtualAncestorNode(nodes, key, ancestor, node.item);
+      ensureVirtualAncestorNode(nodes, key, ancestor, node.item, node.sourceIndex);
       if (!parentOverrides.has(key)) parentOverrides.set(key, parentId);
       parentId = key;
     }
@@ -60,11 +65,11 @@ function sourceAncestorKey(ancestor) {
   return `source:${ancestor.tagName || 'div'}:${classes}:${JSON.stringify(ancestor.attributes || {})}`;
 }
 
-function ensureVirtualAncestorNode(nodes, key, ancestor, sourceItem) {
+function ensureVirtualAncestorNode(nodes, key, ancestor, sourceItem, sourceIndex) {
   const existing = nodes.get(key);
   if (existing) {
-    const existingOrder = structureOrder(existing.item);
-    const sourceOrder = structureOrder(sourceItem);
+    const existingOrder = structureOrder(existing.item, existing.sourceIndex);
+    const sourceOrder = structureOrder(sourceItem, sourceIndex);
     if (sourceOrder < existingOrder) existing.item.structure.order = sourceOrder - 0.001;
     return;
   }
@@ -81,10 +86,11 @@ function ensureVirtualAncestorNode(nodes, key, ancestor, sourceItem) {
         classList: Array.isArray(ancestor.classList) ? ancestor.classList.slice() : [],
         attributes: { ...(ancestor.attributes || {}) },
       },
-      structure: { parentId: null, order: structureOrder(sourceItem) - 0.001 },
+      structure: { parentId: null, order: structureOrder(sourceItem, sourceIndex) - 0.001 },
       content: { text: '' },
     },
     children: [],
+    sourceIndex,
   });
 }
 
@@ -111,12 +117,20 @@ function isGeneratedLabel(item) {
 }
 
 function sortedItems(items) {
-  return items.slice().sort((a, b) => structureOrder(a) - structureOrder(b));
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => structureOrder(a.item, a.index) - structureOrder(b.item, b.index))
+    .map((entry) => entry.item);
 }
 
-function structureOrder(item) {
+function nodeOrder(node) {
+  return structureOrder(node.item, node.sourceIndex);
+}
+
+function structureOrder(item, sourceIndex) {
   const order = item.structure && Number(item.structure.order);
-  return Number.isFinite(order) ? order : 0;
+  if (Number.isFinite(order)) return order;
+  return Number.isFinite(sourceIndex) ? sourceIndex + 1 : 0;
 }
 
 module.exports = {

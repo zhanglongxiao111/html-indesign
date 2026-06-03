@@ -10,6 +10,7 @@
 带标签 InDesign
 -> reverse snapshot
 -> semantic model
+-> semantic reconstruction
 -> 固定语义 HTML
 -> HTML-to-InDesign
 -> 带标签 InDesign
@@ -42,6 +43,7 @@
 
 - `deck.html`
 - `reverse-model.json`
+- `reconstruction-report.json`
 - `report.json`
 - `assets/`
 
@@ -52,7 +54,7 @@
 要求：
 
 - 不要求标签。
-- 尽量保留视觉、坐标、图层、样式和资源。
+- 尽量保留视觉、坐标、样式、资源和可见性事实；InDesign 文档图层名只作为观察事实。
 - 所有未识别语义都标记为 `unknown`。
 
 用途：
@@ -85,7 +87,7 @@
 要求：
 
 - 不要求完整 `html_indesign` 标签。
-- 可以读取旧 blueprint、旧槽位标签、母版、图层、参考线、样式、分组和几何关系。
+- 可以读取旧 blueprint、旧槽位标签、母版、参考线、样式、分组和几何关系；InDesign 文档图层名只作为观察事实，不能作为语义评分依据。
 - 每个推断出的槽位、语义、class 或容器关系必须有置信度和证据。
 - 不得把推断结果冒充原始 authoring HTML。
 
@@ -100,6 +102,7 @@
 - `deck.html`
 - `deck.inferred.html`
 - `reverse-model.json`
+- `reconstruction-report.json`
 - `report.json`
 - `inferred-report.json`
 
@@ -113,7 +116,7 @@
 | 普通未标注 InDesign | 只有视觉对象 | 低 | 输出观察 HTML，等待 Agent 语义化 |
 | 历史 blueprint 模板 | 由 `extract_blueprint.jsx` 抽出 | 中 | 通过 `blueprintMigrationToSemanticModel` 进入 `src/adapters/indesign` 归一化为统一语义模型，再由 `src/writers/html` 输出 inferred/observation HTML |
 
-首次来自人类用户的 InDesign 文档通常语义混乱，可能混入旧模板、复制来的脚本标签或不符合本项目协议的自定义标签。反向导出不得信任这些标签的存在本身，只能信任通过当前语义库白名单复核的字段。Agent 拿到观察 HTML 后，应根据页面视觉、图层、样式、资源和用户意图重建符合白名单的语义，再导回结构化 InDesign。
+首次来自人类用户的 InDesign 文档通常语义混乱，可能混入旧模板、复制来的脚本标签或不符合本项目协议的自定义标签。反向导出不得信任这些标签的存在本身，只能信任通过当前语义库白名单复核的字段。Agent 拿到观察 HTML 后，应根据页面视觉、样式、资源、对象关系和用户意图重建符合白名单的语义，再导回结构化 InDesign。
 
 ## 4. 产物目录
 
@@ -125,6 +128,7 @@ reverse-export-<timestamp>/
   deck.<mode>.html
   deck.html                  # compatibility alias of visual output
   reverse-model.json
+  reconstruction-report.json
   report.json
   <mode>-report.json
   author/
@@ -154,6 +158,14 @@ reverse-export-<timestamp>/
 `author/deck.html` 是可编辑作者源码包的组装结果。Agent 和人类后续维护应优先修改 `author/pages/*.html` 与 `author/styles/*.css`，再由组装器重建 `author/deck.html`。
 
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
+
+需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：
+
+```powershell
+node scripts/indesign-reverse-export.js --snapshot <reverse-snapshot.json> --out <dir> --mode observation --reconstruct page-object-graph,caption-structure,figure-grid,text-block
+```
+
+其中 `page-object-graph` 只写证据报告；`caption-structure` 只把高置信图片/置入资源说明文字写成 `figure + figcaption` 父子结构；`figure-grid` 再把明确同组的 captioned figure 包成 `section.figure-grid`；`text-block` 把同列、同样式、垂直连续的页级文字框包成 `section.text-block`。这些 pass 都不把未知语义伪装成白名单语义。
 
 ### 4.1.1 母版、页面模板和占位框
 
@@ -269,7 +281,22 @@ PDF 反向导出必须保留：
 }
 ```
 
-### 4.3 `report.json`
+### 4.3 `reconstruction-report.json`
+
+语义重建报告。
+
+`reconstruction-report.json` 由 `src/semantic-reconstruction/` 生成，记录语义重建层实际执行了什么算法、识别了什么、哪些对象仍然 unresolved。
+
+当前脚手架状态为 `observed-only`：表示没有执行语义算法，只统计 unknown 或被拒绝标签的对象。这个状态不得被解释为作者包已经语义化。
+
+规则：
+
+- 语义算法只能处理 `reverse-model.json` 代表的中间模型。
+- 不以 `deck.visual.html`、`deck.html` 或 `reverse-overrides.css` 为事实源。
+- 每个推断必须有证据、置信度和来源。
+- 低置信度对象必须进入 unresolved，不能伪造白名单语义。
+
+### 4.4 `report.json`
 
 诊断报告。
 
@@ -286,7 +313,7 @@ PDF 反向导出必须保留：
 - inferred 模式中的推断来源、置信度和证据。
 - 标签复核摘要：接受、局部接受、降级观察的数量和原因。
 
-### 4.4 structured 标签矩阵
+### 4.5 structured 标签矩阵
 
 结构化模式按对象重要性决定缺失标签的处理方式：
 
@@ -303,7 +330,7 @@ PDF 反向导出必须保留：
 
 核心对象缺标签时，`structured` 模式不得用视觉猜测补语义；应失败或要求改用 `observation` 模式。
 
-### 4.5 标签白名单与观察标签
+### 4.6 标签白名单与观察标签
 
 `html_indesign` 标签不是通行证。反向导出必须把标签拆成两类事实：
 
@@ -322,7 +349,7 @@ PDF 反向导出必须保留：
 
 报告必须记录每个观察标签的降级原因，帮助 Agent 判断是保留、重建还是删除。
 
-### 4.6 NAS 原位资源引用
+### 4.7 NAS 原位资源引用
 
 事务所内部项目默认使用主机名 UNC 路径引用公共素材，例如：
 
@@ -372,6 +399,9 @@ src/adapters/indesign/
   normalizer/label-whitelist.js
   normalizer/snapshot-to-model.js
   normalizer/blueprint-migration.js
+src/semantic-reconstruction/
+  index.js
+  reconstruct.js
 src/writers/html/
   visual-html-writer.js
   author-package-writer.js
@@ -383,8 +413,10 @@ src/writers/html/
 - 校验 InDesign 侧 snapshot。
 - 把脚本标签恢复为 semantic model。
 - 把无标签对象转换为 observed item。
+- 调用语义重建层，把 observed model 转换为 reconstructed author model。
 - 生成 `deck.html`。
 - 生成 `reverse-model.json`。
+- 生成 `reconstruction-report.json`。
 - 生成 `report.json`。
 
 ### 5.3 CLI 封装
@@ -401,14 +433,19 @@ scripts/indesign-reverse-export.js
 node scripts/indesign-reverse-export.js --mode structured --out test/workspace/reverse-export
 node scripts/indesign-reverse-export.js --mode observation --out test/workspace/reverse-observed
 node scripts/indesign-reverse-export.js --blueprint test/artifacts/blueprint.json --mode inferred --out test/workspace/reverse-blueprint
+node scripts/indesign-reverse-export.js --mode observation --out test/workspace/reverse-observed --reconstruct page-object-graph,caption-structure,figure-grid,text-block
 ```
+
+`--reconstruct page-object-graph` 会启用页面对象图证据层，只把对象图 pass 写入 `reconstruction-report.json`。继续追加 `caption-structure,figure-grid,text-block` 时，会把高置信图注、图片矩阵结构和连续文本块落实到作者 HTML，但仍不改写白名单语义。
 
 内部流程：
 
 ```text
 indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 -> read reverse-snapshot.json
--> compile to deck.html / reverse-model.json / report.json
+-> reverseSnapshotToSemanticModel
+-> reconstructSemanticModel
+-> write deck.html / reverse-model.json / reconstruction-report.json / report.json
 ```
 
 旧 blueprint 输入流程：
@@ -416,8 +453,9 @@ indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 ```text
 read blueprint.json
 -> blueprintMigrationToSemanticModel
+-> reconstructSemanticModel
 -> semanticModelToHtml
--> write deck.html / deck.inferred.html / reverse-model.json / report.json / inferred-report.json
+-> write deck.html / deck.inferred.html / reverse-model.json / reconstruction-report.json / report.json / inferred-report.json
 ```
 
 ## 6. 模板和母版
@@ -455,7 +493,7 @@ read blueprint.json
 
 如果输入是旧 blueprint，可先使用 `inferred` 模式获得槽位名、样式和资源线索，再进入补标流程。
 
-另一条可选路径是 Agent 直接观察 InDesign 文档，根据页面结构、图层、样式和对象关系推断合规语义，并通过脚本或工具给对象写入白名单标签，再导出 HTML。该路径适合人类已经在 InDesign 中完成大量整理、但没有稳定 HTML 作者包的场景。
+另一条可选路径是 Agent 直接观察 InDesign 文档，根据页面结构、样式、资源和对象关系推断合规语义，并通过脚本或工具给对象写入白名单标签，再导出 HTML。该路径适合人类已经在 InDesign 中完成大量整理、但没有稳定 HTML 作者包的场景。
 
 默认仍推荐 Agent 修改 HTML，因为 HTML 更适合审阅、diff、测试和版本管理。无论选择哪条路径，最终写回 InDesign 的都只能是通过当前语义库复核的标签。
 

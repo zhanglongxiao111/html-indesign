@@ -1,7 +1,12 @@
 const { isVoidTag } = require('./author-attribute-writer');
 const { buildAuthorTree } = require('./author-tree-builder');
 const { tagForAsset } = require('./author-asset-attrs');
-const { renderPlacedAssetFrameNode, shouldRenderPlacedAssetFrame } = require('./author-asset-renderer');
+const {
+  renderAssetFigureNode,
+  renderPlacedAssetFrameNode,
+  shouldRenderAssetFigureNode,
+  shouldRenderPlacedAssetFrame,
+} = require('./author-asset-renderer');
 const { attrsForItem, sourceNodeForItem } = require('./author-node-attrs');
 const { isPdfObjectItem, renderPdfObjectNode } = require('./author-pdf-renderer');
 const { ownContent } = require('./author-rich-text-renderer');
@@ -20,6 +25,9 @@ function renderNode(node, options, depth) {
   const tag = safeTag(sourceNode.tagName || tagForAsset(item) || item.tagName || tagForRole(item.role));
   if (shouldRenderPlacedAssetFrame(item, sourceNode, options, tag)) {
     return renderPlacedAssetFrameNode(node, options, depth, renderNode);
+  }
+  if (shouldRenderAssetFigureNode(item, sourceNode, tag)) {
+    return renderAssetFigureNode(node, options, depth, renderNode);
   }
   if (isPdfObjectItem(item, sourceNode, tag)) {
     return renderPdfObjectNode(node, options, depth, renderNode);

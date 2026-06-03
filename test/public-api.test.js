@@ -13,6 +13,7 @@ test('public API exposes protocol adapters semanticModel and writers entry point
   assert.equal(typeof api.adapters.indesign.reverseSnapshotToSemanticModel, 'function');
   assert.equal(typeof api.adapters.indesign.blueprintMigrationToSemanticModel, 'function');
   assert.equal(typeof api.semanticModel.validateSemanticModel, 'function');
+  assert.equal(typeof api.semanticReconstruction.reconstructSemanticModel, 'function');
   assert.equal(typeof api.writers.indesign.compileStyles, 'function');
   assert.equal(typeof api.writers.indesign.compileInstructions, 'function');
   assert.equal(typeof api.writers.indesign.validateInstructions, 'function');
