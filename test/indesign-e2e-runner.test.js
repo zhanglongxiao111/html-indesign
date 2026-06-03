@@ -265,7 +265,7 @@ test('auditReverseAuthorPackage attaches source roundtrip report when sourceRoot
   const reverseRoot = path.join(root, 'reverse');
   fs.rmSync(root, { recursive: true, force: true });
   writeMinimalAuthorPackage(sourceRoot, '<section class="page"><h1>Contents</h1></section>');
-  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><h1>CONTENTS</h1></section>');
+  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><h1>Contents</h1></section>');
 
   const audit = auditReverseAuthorPackage({
     config: path.join(reverseRoot, 'deck.config.json'),
@@ -276,8 +276,31 @@ test('auditReverseAuthorPackage attaches source roundtrip report when sourceRoot
 
   assert.equal(audit.ok, true);
   assert.equal(audit.sourceRoundtrip.ok, true);
-  assert.deepEqual(audit.sourceRoundtrip.warnings.map((issue) => issue.code), ['ROUNDTRIP_TEXT_CHANGED']);
+  assert.deepEqual(audit.sourceRoundtrip.warnings, []);
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/source-roundtrip-report.json')), true);
+});
+
+test('auditReverseAuthorPackage attaches content inventory and structure signature reports', () => {
+  const root = path.resolve('test/workspace/e2e-audit-integrity');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeMinimalAuthorPackage(sourceRoot, '<section class="page"><section id="block" class="text-block"><p id="copy">完整文字</p></section></section>');
+  writeMinimalAuthorPackage(reverseRoot, '<section class="page"><section id="block" class="text-block"><p id="copy">完整文字</p></section></section>');
+
+  const audit = auditReverseAuthorPackage({
+    config: path.join(reverseRoot, 'deck.config.json'),
+    entry: path.join(reverseRoot, 'deck.html'),
+    outDir: reverseRoot,
+    sourceRoot,
+    strictSourceRoundtrip: true,
+  });
+
+  assert.equal(audit.ok, true);
+  assert.equal(audit.contentInventory.ok, true);
+  assert.equal(audit.structureSignature.ok, true);
+  assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/content-inventory-report.json')), true);
+  assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/structure-signature-report.json')), true);
 });
 
 test('architecture E2E instructions use Chinese panel-facing resource names', async () => {

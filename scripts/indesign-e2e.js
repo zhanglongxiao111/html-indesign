@@ -375,6 +375,8 @@ function auditReverseAuthorPackage(author) {
   const { checkAuthorPackageEntry } = require('../src/authoring');
   const { auditReverseAuthorPackage: auditEditableAuthorPackage } = require('../src/writers/html/audit/author-audit');
   const { auditAuthorSourceRoundtrip } = require('../src/writers/html/audit/source-roundtrip-diff');
+  const { authorPackageContentInventory, compareContentInventories } = require('../src/writers/html/audit/content-inventory');
+  const { authorPackageStructureSignature, compareStructureSignatures } = require('../src/writers/html/audit/structure-signature');
   let check;
   try {
     check = checkAuthorPackageEntry(author.config);
@@ -403,22 +405,47 @@ function auditReverseAuthorPackage(author) {
     fs.mkdirSync(reportDir, { recursive: true });
     fs.writeFileSync(path.join(reportDir, 'source-roundtrip-report.json'), JSON.stringify(sourceRoundtrip, null, 2), 'utf8');
   }
+  let contentInventory = null;
+  let structureSignature = null;
+  if (author.sourceRoot) {
+    const reportDir = path.join(outDir, 'reports');
+    fs.mkdirSync(reportDir, { recursive: true });
+    contentInventory = compareContentInventories(
+      authorPackageContentInventory(author.sourceRoot),
+      authorPackageContentInventory(outDir),
+      { strictGeometry: false },
+    );
+    structureSignature = compareStructureSignatures(
+      authorPackageStructureSignature(author.sourceRoot),
+      authorPackageStructureSignature(outDir),
+    );
+    fs.writeFileSync(path.join(reportDir, 'content-inventory-report.json'), JSON.stringify(contentInventory, null, 2), 'utf8');
+    fs.writeFileSync(path.join(reportDir, 'structure-signature-report.json'), JSON.stringify(structureSignature, null, 2), 'utf8');
+  }
   const sourceOk = sourceRoundtrip ? sourceRoundtrip.ok : true;
+  const contentOk = contentInventory ? contentInventory.ok : true;
+  const structureOk = structureSignature ? structureSignature.ok : true;
   return {
-    ok: check.ok && missingPages.length === 0 && editable.ok && sourceOk,
+    ok: check.ok && missingPages.length === 0 && editable.ok && sourceOk && contentOk && structureOk,
     config: author.config,
     entry: check.entryPath,
     pages: pageFiles.length,
     missingPages,
     editable,
     sourceRoundtrip,
+    contentInventory,
+    structureSignature,
     errors: [
       ...(editable.errors || []),
       ...(sourceRoundtrip && !sourceRoundtrip.ok ? sourceRoundtrip.errors : []),
+      ...(contentInventory && !contentInventory.ok ? contentInventory.errors : []),
+      ...(structureSignature && !structureSignature.ok ? structureSignature.errors : []),
     ],
     warnings: [
       ...(editable.warnings || []),
       ...(sourceRoundtrip ? sourceRoundtrip.warnings : []),
+      ...(contentInventory ? contentInventory.warnings : []),
+      ...(structureSignature ? structureSignature.warnings : []),
     ],
   };
 }
