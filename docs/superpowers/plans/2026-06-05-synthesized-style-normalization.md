@@ -79,10 +79,10 @@ npm run audit:effective-diff -- --expected test/workspace/human-indesign-nested-
 - 已用该反向作者包执行真实 InDesign E2E、反向回读和二次回环：47 页、505 条 instructions item、57 个资源、overset text frame 0。
 - 一轮与二轮回读的合成样式审计均通过：`styleCount=33`、`referenceCount=280`、`issueCount=0`。
 - 二轮结构稳定审计通过：errors 0、warnings 0。
-- 当前有效 diff：`EDI=7552`、`P0=0`、`P1=692`、`P2=632`。相比执行前基线 `P1=825`，已下降 133；P0 仍为 0。
-- 当前剩余 P1 主要分布：visual style 395、bounds 135、missing 95、extra 59、vector geometry 4、asset placement 3、field 1。
-- 当前剩余样式字段热点：`fillColor=160`、`blendMode=64`、`lineEndMarker=48`、`strokeStyle=52`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`。
-- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框。
+- 当前有效 diff：`EDI=5952`、`P0=0`、`P1=532`、`P2=632`。相比执行前基线 `P1=825`，已下降 293；P0 仍为 0。
+- 当前剩余 P1 主要分布：visual style 235、bounds 135、missing 95、extra 59、vector geometry 4、asset placement 3、field 1。
+- 当前剩余样式字段热点：`blendMode=64`、`strokeStyle=52`、`lineEndMarker=48`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`。
+- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`。
 - 尚未达成：真实人工 ID 的 P1 清零、样式相关 P1 清零、剩余 P1 机器可读责任层级报告、E2E 报告自动内嵌合成样式审计。
 
 ## Planned File Changes

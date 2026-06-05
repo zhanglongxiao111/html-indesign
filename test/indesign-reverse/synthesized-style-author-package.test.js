@@ -78,3 +78,72 @@ test('author package preserves synthesized style token and Chinese display name'
   assert.match(componentsCss, /\.synth-synth_line_001\s*\{/);
   assert.doesNotMatch(componentsCss, /\.synth-synth_line_001\s*\{[^}]*border:/);
 });
+
+test('author package writes synthesized text fill as color instead of background', () => {
+  const outDir = path.resolve('test/workspace/synthesized-text-style-author-package');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'synth-text-style-doc',
+    title: '合成文字样式测试',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    styles: {
+      synthesized: [{
+        token: 'synth_text_001',
+        displayName: '文字样式 01',
+        kind: 'text',
+        fingerprint: 'text:abc',
+        source: 'observed-style-atom',
+        properties: {
+          fontFamily: '微软雅黑',
+          fontWeight: '700',
+          pointSize: 45,
+          leading: 72,
+          fillColor: '#0d0d0d',
+          tracking: 120,
+          justification: 'right',
+        },
+      }],
+    },
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 800,
+      height: 450,
+      labels: [],
+      items: [{
+        id: 'title-a',
+        role: 'text',
+        sourceType: 'TextFrame',
+        bounds: { x: 100, y: 120, width: 400, height: 80 },
+        content: { text: '永定湾展示中心建筑设计概念方案' },
+        styleRefs: {
+          synthesizedToken: 'synth_text_001',
+          synthesizedName: '文字样式 01',
+        },
+        textStyle: {
+          fontFamily: '微软雅黑',
+          fontWeight: '700',
+          pointSize: 45,
+          leading: 72,
+          fillColor: '#0d0d0d',
+          tracking: 120,
+          justification: 'right',
+        },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: null,
+          strokeWeight: null,
+        },
+      }],
+    }],
+  }, { outDir, mode: 'observation' });
+
+  const componentsCss = fs.readFileSync(path.join(outDir, 'styles/components.css'), 'utf8');
+  assert.match(componentsCss, /\/\* 文字样式 01 \*\//);
+  assert.match(componentsCss, /\.synth-synth_text_001\s*\{[^}]*color:#0d0d0d/);
+  assert.doesNotMatch(componentsCss, /\.synth-synth_text_001\s*\{[^}]*background-color:/);
+});

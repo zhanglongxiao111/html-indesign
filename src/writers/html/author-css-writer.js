@@ -62,6 +62,7 @@ function synthesizedStyleCss(styles) {
 function synthesizedStyleDeclarations(style) {
   if (style && style.kind === 'line') return '';
   const properties = style && style.properties || {};
+  if (style && style.kind === 'text') return synthesizedTextStyleDeclarations(properties);
   const declarations = [];
   if (properties.fillColor) declarations.push(`background-color:${properties.fillColor}`);
   if (properties.strokeColor && Number(properties.strokeWeight) > 0) {
@@ -72,6 +73,21 @@ function synthesizedStyleDeclarations(style) {
   if (blendMode) declarations.push(blendMode);
   const opacity = Number(properties.opacity);
   if (Number.isFinite(opacity) && opacity >= 0 && opacity < 100) declarations.push(`opacity:${formatNumber(opacity / 100)}`);
+  return declarations.join('; ');
+}
+
+function synthesizedTextStyleDeclarations(properties) {
+  const declarations = [];
+  if (properties.fontFamily) declarations.push(`font-family:"${properties.fontFamily}", Arial, sans-serif`);
+  if (properties.fontWeight) declarations.push(`font-weight:${properties.fontWeight}`);
+  if (properties.fontStyle) declarations.push(`font-style:${properties.fontStyle}`);
+  if (properties.pointSize != null) declarations.push(`font-size:${px(properties.pointSize)}`);
+  if (properties.leading != null) declarations.push(`line-height:${px(properties.leading)}`);
+  if (properties.fillColor) declarations.push(`color:${properties.fillColor}`);
+  if (properties.tracking != null && Number(properties.tracking) !== 0) {
+    declarations.push(`letter-spacing:${formatNumber(Number(properties.tracking) / 1000)}em`);
+  }
+  if (properties.justification) declarations.push(`text-align:${properties.justification}`);
   return declarations.join('; ');
 }
 
@@ -168,6 +184,12 @@ function styleCollectionCss(collection, prefix) {
 function px(value) {
   const number = Number(value);
   return `${Number.isFinite(number) ? Math.round(number * 1000) / 1000 : 0}px`;
+}
+
+function formatNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0';
+  return String(Math.round(number * 10000) / 10000);
 }
 
 function cssString(value) {
