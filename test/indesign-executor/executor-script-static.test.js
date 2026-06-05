@@ -382,8 +382,8 @@ test('style helper preserves authored dashed stroke style names for InDesign', (
   vm.runInNewContext(stylesSource, context);
 
   assert.equal(context.HI.strokeStyleName('dashed'), '$ID/Dashed');
-  assert.equal(context.HI.strokeStyleName('虚线（3 和 2）'), '$ID/Dashed');
-  assert.equal(context.HI.strokeStyleName('12 8'), '$ID/Dashed');
+  assert.equal(context.HI.strokeStyleName('虚线（3 和 2）'), '虚线（3 和 2）');
+  assert.equal(context.HI.strokeStyleName('12 8'), '12 8');
   assert.equal(context.HI.strokeStyleName('点线'), '$ID/Dotted');
   assert.equal(context.HI.strokeStyleName('实底'), '$ID/Solid');
   assert.equal(context.HI.strokeStyleName('自定义线型'), '自定义线型');

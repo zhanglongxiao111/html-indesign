@@ -154,8 +154,8 @@ HI.ensureFrameStyles = function (frameStyles, report) {
 HI.strokeStyleName = function (value) {
     var text = String(value || ""), key = text.toLowerCase().replace(/^\s+|\s+$/g, "");
     if (!key || key === "solid" || key === "none" || text === String.fromCharCode(23454, 24213)) return "$ID/Solid";
-    if (key === "dashed" || key.indexOf("dash") >= 0 || text.indexOf(String.fromCharCode(34394)) >= 0 || /^\s*\d+(\.\d+)?\s+\d+/.test(text)) return "$ID/Dashed";
-    if (key === "dotted" || key.indexOf("dot") >= 0 || text.indexOf(String.fromCharCode(28857)) >= 0) return "$ID/Dotted";
+    if (key === "dashed" || key === String.fromCharCode(34394, 32447)) return "$ID/Dashed";
+    if (key === "dotted" || key === String.fromCharCode(28857, 32447)) return "$ID/Dotted";
     return text;
 };
 HI.cssLengthToMm = function (value) {
