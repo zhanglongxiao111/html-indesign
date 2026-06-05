@@ -128,6 +128,7 @@ const ITEM_FIELD_PATHS = Object.freeze({
   sourceRuns: 'items[].sourceRuns',
   textFrameStyle: 'items[].textFrameStyle',
   inlineStyle: 'items[].inlineStyle',
+  styleOverrides: 'items[].styleOverrides',
   zIndex: 'items[].zIndex',
   firstLineFont: 'items[].firstLineFont',
   labelStatus: 'pages[].items[].labelStatus',
@@ -163,6 +164,8 @@ const ITEM_STYLE_REFS_FIELD_PATHS = Object.freeze({
   tableStyle: 'items[].styleRefs.tableStyle',
   cellStyle: 'items[].styleRefs.cellStyle',
   layer: 'items[].styleRefs.layer',
+  synthesizedToken: 'items[].styleRefs.synthesizedToken',
+  synthesizedName: 'items[].styleRefs.synthesizedName',
 });
 
 const LABEL_STYLE_REFS_FIELD_PATHS = Object.freeze({
@@ -180,6 +183,8 @@ const LABEL_STYLE_REFS_FIELD_PATHS = Object.freeze({
   cellStyleToken: 'items[].styleRefs.cellStyle',
   layer: 'items[].styleRefs.layer',
   layerToken: 'items[].styleRefs.layer',
+  synthesizedToken: 'items[].styleRefs.synthesizedToken',
+  synthesizedName: 'items[].styleRefs.synthesizedName',
 });
 
 const ITEM_VISUAL_STYLE_FIELD_PATHS = Object.freeze({

@@ -109,6 +109,8 @@ const ITEM_EFFECTIVE_LABEL_STYLE_REFS_FIELD_PATHS = Object.freeze({
   cellStyleToken: 'items[].styleRefs.cellStyle',
   layer: 'items[].styleRefs.layer',
   layerToken: 'items[].styleRefs.layer',
+  synthesizedToken: 'items[].styleRefs.synthesizedToken',
+  synthesizedName: 'items[].styleRefs.synthesizedName',
 });
 
 const STYLE_COLLECTION_KEYS = new Set([
@@ -119,15 +121,19 @@ const STYLE_COLLECTION_KEYS = new Set([
   'tableStyles',
   'cellStyles',
   'compositeFonts',
+  'synthesized',
 ]);
 
 const STYLE_RESOURCE_KEYS = new Set([
   'name',
+  'kind',
   'token',
   'displayName',
   'safeName',
   'css',
   'source',
+  'fingerprint',
+  'properties',
 ]);
 
 const STYLE_INDESIGN_FEATURE_KEYS = new Set([

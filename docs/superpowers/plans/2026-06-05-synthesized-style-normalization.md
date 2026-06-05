@@ -114,10 +114,10 @@ npm run audit:effective-diff -- --expected test/workspace/human-indesign-nested-
 
 ### 0. 准备执行环境
 
-- [ ] 确认执行目录是隔离 worktree，且不把临时文件写到用户主目录。
-- [ ] 运行 `git status --short --branch`，记录当前分支和脏文件。
-- [ ] 运行 `npm test`，确认主分支基线通过。
-- [ ] 重新生成真实人工 ID 当前 effective diff 基线，保存为 `test/workspace/.../effective-diff-audit-before-synth-style.json`。
+- [x] 本轮用户已明确授权直接在 `main` 执行；确认不把临时文件写到用户主目录。
+- [x] 运行 `git status --short --branch`，记录当前分支和脏文件：`main...origin/main [ahead 10]`，工作区干净。
+- [x] 运行 `npm test`，确认主分支基线通过：675 个测试通过，0 失败。
+- [x] 重新生成真实人工 ID 当前 effective diff 基线，保存为 `test/workspace/human-indesign-nested-parent-fix-20260605/effective-diff-audit-before-synth-style.json`：P0=0、P1=825、P2=632、二轮稳定通过；P1 分类为 visual style 528、bounds 135、missing 95、extra 59、vector geometry 4、asset placement 3、field 1。
 
 验收命令：
 
@@ -134,12 +134,12 @@ npm run audit:effective-diff -- --expected <original-reverse-snapshot.json> --ac
 
 ### 1. 登记合成样式协议字段
 
-- [ ] 在 `src/protocol/fields/styles.js` 登记 `styles.synthesized[]` 字段族。
-- [ ] 登记 `items[].styleRefs.synthesizedToken` 和 `items[].styleRefs.synthesizedName`。
-- [ ] 登记 `items[].styleOverrides`，按 text/object/line/frame/asset 子域拆分。
-- [ ] 更新 `src/protocol/scanners/model-surface-paths.js`，让扫描器知道新增模型表面。
-- [ ] 添加协议测试，先让新增字段缺失时失败。
-- [ ] 重新生成 `docs/规范/PROTOCOL_FIELD_REGISTRY.md`。
+- [x] 在 `src/protocol/fields/styles.js` 登记 `styles.synthesized[]` 字段族。
+- [x] 登记 `items[].styleRefs.synthesizedToken` 和 `items[].styleRefs.synthesizedName`；`synthesizedName` 不重复占用已有 `data-id-style-name`，HTML 显示名继续走 `styleRefs.displayName`。
+- [x] 登记 `items[].styleOverrides`，按 text/object/line/frame/asset 子域拆分。
+- [x] 更新 `src/protocol/scanners/model-surface-paths.js`，让扫描器知道新增模型表面。
+- [x] 添加协议测试，先让新增字段缺失时失败。
+- [x] 重新生成 `docs/规范/PROTOCOL_FIELD_REGISTRY.md`。
 
 建议测试文件：`test/protocol/synthesized-style-fields.test.js`
 
@@ -161,7 +161,7 @@ test('synthesized style fields are registered with lifecycle and capabilities', 
 
 ```powershell
 node --test test/protocol/synthesized-style-fields.test.js
-npm run protocol:generate
+node src/protocol/docs/generate-field-docs.js --out docs/规范/PROTOCOL_FIELD_REGISTRY.md
 git diff -- docs/规范/PROTOCOL_FIELD_REGISTRY.md
 ```
 

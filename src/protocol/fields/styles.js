@@ -4,6 +4,12 @@ const STYLE_REF_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
 });
 
+const SYNTHESIZED_STYLE_CAPABILITIES = Object.freeze({
+  html: { read: 'native', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
+
 function styleRefCarrier(canonicalPath, currentPaths, htmlAttr, type = 'string') {
   return {
     canonicalPath,
@@ -27,7 +33,115 @@ function styleRefCarrier(canonicalPath, currentPaths, htmlAttr, type = 'string')
   };
 }
 
+function synthesizedStyleField(canonicalPath, currentPaths, type, extra = {}) {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'synthesized-styles',
+    type,
+    capabilities: SYNTHESIZED_STYLE_CAPABILITIES,
+    ...extra,
+  };
+}
+
 module.exports = [
+  synthesizedStyleField(
+    'styles.synthesized',
+    ['reverseModel.styles.synthesized', 'document.sourcePackage.styles.synthesized'],
+    'array',
+  ),
+  synthesizedStyleField(
+    'styles.synthesized[].token',
+    ['reverseModel.styles.synthesized[].token', 'document.sourcePackage.styles.synthesized[].token'],
+    'string',
+  ),
+  synthesizedStyleField(
+    'styles.synthesized[].displayName',
+    [
+      'reverseModel.styles.synthesized[].displayName',
+      'document.sourcePackage.styles.synthesized[].displayName',
+    ],
+    'string',
+  ),
+  synthesizedStyleField(
+    'styles.synthesized[].kind',
+    ['reverseModel.styles.synthesized[].kind', 'document.sourcePackage.styles.synthesized[].kind'],
+    'string',
+  ),
+  synthesizedStyleField(
+    'styles.synthesized[].fingerprint',
+    [
+      'reverseModel.styles.synthesized[].fingerprint',
+      'document.sourcePackage.styles.synthesized[].fingerprint',
+    ],
+    'string',
+  ),
+  synthesizedStyleField(
+    'styles.synthesized[].source',
+    ['reverseModel.styles.synthesized[].source', 'document.sourcePackage.styles.synthesized[].source'],
+    'string',
+  ),
+  synthesizedStyleField(
+    'styles.synthesized[].properties',
+    [
+      'reverseModel.styles.synthesized[].properties',
+      'document.sourcePackage.styles.synthesized[].properties',
+    ],
+    'object',
+  ),
+  synthesizedStyleField(
+    'items[].styleRefs.synthesizedToken',
+    [
+      'labels[].styleRefs.synthesizedToken',
+      'sourceNode.attributes.data-id-style-token',
+    ],
+    'string',
+    {
+      html: {
+        readAttrs: ['data-id-style-token'],
+        writeAttrs: ['data-id-style-token'],
+      },
+      indesign: {
+        labelPaths: ['styleRefs.synthesizedToken'],
+        labelKinds: ['item'],
+      },
+      pptx: {
+        customDataPaths: ['htmlIndesign.items[].styleRefs.synthesizedToken'],
+      },
+    },
+  ),
+  synthesizedStyleField(
+    'items[].styleRefs.synthesizedName',
+    [
+      'labels[].styleRefs.synthesizedName',
+    ],
+    'string',
+    {
+      indesign: {
+        labelPaths: ['styleRefs.synthesizedName'],
+        labelKinds: ['item'],
+      },
+      pptx: {
+        customDataPaths: ['htmlIndesign.items[].styleRefs.synthesizedName'],
+      },
+    },
+  ),
+  synthesizedStyleField(
+    'items[].styleOverrides',
+    ['labels[].styleOverrides', 'reverseModel.pages[].items[].styleOverrides'],
+    'object',
+    {
+      indesign: {
+        labelPaths: ['styleOverrides'],
+        labelKinds: ['item'],
+      },
+      pptx: {
+        customDataPaths: ['htmlIndesign.items[].styleOverrides'],
+      },
+    },
+  ),
   {
     canonicalPath: 'items[].styleRefs.paragraphStyle',
     currentPaths: ['items[].paragraphStyle', 'labels[].paragraphStyle', 'labels[].paragraphStyleToken'],

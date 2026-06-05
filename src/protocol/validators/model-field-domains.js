@@ -1,6 +1,7 @@
 const MODEL_FIELD_DOMAIN_NAMES = Object.freeze([
   'asset.placement',
   'source.metadata',
+  'styles',
   'styleRefs',
   'labels',
   'visualStyle.vectorGeometry',
@@ -11,6 +12,8 @@ const MODEL_FIELD_DOMAIN_ALIASES = Object.freeze({
   'asset-placement': 'asset.placement',
   sourceMetadata: 'source.metadata',
   'source metadata': 'source.metadata',
+  'synthesized-styles': 'styles',
+  synthesizedStyles: 'styles',
   'style-refs': 'styleRefs',
   'visualStyle/vectorGeometry': 'visualStyle.vectorGeometry',
   'visual-style.vector-geometry': 'visualStyle.vectorGeometry',
@@ -71,6 +74,12 @@ const DOMAIN_DEFINITIONS = Object.freeze({
   'source.metadata': Object.freeze({
     paths: SOURCE_METADATA_PATHS,
     prefixes: childPrefixes(SOURCE_METADATA_PATHS),
+  }),
+  styles: Object.freeze({
+    owners: new Set(['synthesized-styles']),
+    prefixes: [
+      'styles.',
+    ],
   }),
   styleRefs: Object.freeze({
     owners: new Set(['style-refs']),
