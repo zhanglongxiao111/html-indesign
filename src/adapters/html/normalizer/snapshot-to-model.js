@@ -29,6 +29,16 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   if (sourcePackage && Array.isArray(sourcePackage.synthesizedStyles)) {
     styles.synthesized = sourcePackage.synthesizedStyles;
   }
+  const synthesizedWarnings = synthesizedStyleReferenceWarnings(pages, parentPages, styles.synthesized);
+  if (options.strictSynthesizedStyles && synthesizedWarnings.length > 0) {
+    const firstWarning = synthesizedWarnings[0];
+    const error = new Error(
+      `${firstWarning.code}: ${synthesizedWarnings.map((warning) => warning.token).join(', ')}`,
+    );
+    error.code = firstWarning.code;
+    error.warnings = synthesizedWarnings;
+    throw error;
+  }
   return {
     kind: 'DocumentModel',
     id: documentId,
@@ -56,7 +66,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     layers: [],
     styles,
     assets: styled.assets || [],
-    warnings: styled.warnings || [],
+    warnings: (styled.warnings || []).concat(synthesizedWarnings),
     report: styled.report || null,
   };
 }
@@ -372,6 +382,10 @@ function lengthNumber(value) {
   return match ? Number(match[1]) : null;
 }
 
+function arrayOrEmpty(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function contentForItem(item) {
   if (item.content) return item.content;
   if (item.text != null) return { text: item.text, runs: item.runs || [] };
@@ -427,6 +441,49 @@ function sourceAncestorNodesForItem(item) {
 function styledSnapshotForLayout(snapshot, options, layout) {
   if (snapshot.styles && stylesCompatibleWithLayout(snapshot.styleLayout, layout)) return snapshot;
   return compileStyles(snapshot, { ...options, layout });
+}
+
+function synthesizedStyleReferenceWarnings(pages, parentPages, synthesizedStyles) {
+  const registered = new Map((Array.isArray(synthesizedStyles) ? synthesizedStyles : [])
+    .filter((style) => style && style.token)
+    .map((style) => [String(style.token), style]));
+  const warnings = [];
+  for (const scope of [
+    ...arrayOrEmpty(parentPages).map((page) => ({ kind: 'parentPage', page })),
+    ...arrayOrEmpty(pages).map((page) => ({ kind: 'page', page })),
+  ]) {
+    for (const item of arrayOrEmpty(scope.page.items)) {
+      const refs = item && item.styleRefs || {};
+      const token = refs.synthesizedToken;
+      if (!token) continue;
+      const registeredStyle = registered.get(String(token));
+      if (!registeredStyle) {
+        warnings.push({
+          code: 'SYNTHESIZED_STYLE_TOKEN_UNREGISTERED',
+          message: `Synthesized style token is missing from the source package registry: ${token}`,
+          scope: scope.kind,
+          pageId: scope.page.id || null,
+          itemId: item.id || null,
+          token: String(token),
+        });
+        continue;
+      }
+      const actualName = refs.synthesizedName;
+      const expectedName = registeredStyle.displayName;
+      if (!actualName || !expectedName || String(actualName) === String(expectedName)) continue;
+      warnings.push({
+        code: 'SYNTHESIZED_STYLE_NAME_MISMATCH',
+        message: `Synthesized style display name does not match registry for token: ${token}`,
+        scope: scope.kind,
+        pageId: scope.page.id || null,
+        itemId: item.id || null,
+        token: String(token),
+        expectedName: String(expectedName),
+        actualName: String(actualName),
+      });
+    }
+  }
+  return warnings;
 }
 
 function stylesCompatibleWithLayout(styleLayout, layout) {

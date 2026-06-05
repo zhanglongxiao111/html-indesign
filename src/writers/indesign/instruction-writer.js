@@ -35,8 +35,10 @@ const {
   filterEffectiveParentPages,
   parentPageKeySet,
 } = require('../../semantic-model/parent-pages');
+const { applySynthesizedStyleInstructions } = require('./synthesized-style-instructions');
 
 function semanticModelToInstructions(model, options = {}) {
+  model = applySynthesizedStyleInstructions(model);
   const layout = model.layoutInfo || {
     unitMode: model.unitMode || 'print',
     targetUnit: model.coordinateUnit || 'mm',

@@ -26,6 +26,36 @@ const LINE_STYLE_FIELDS = Object.freeze([
   'strokeWeight',
 ]);
 
+const OBJECT_STYLE_FIELDS = Object.freeze([
+  'blendMode',
+  'cornerRadius',
+  'fillColor',
+  'fillOpacity',
+  'opacity',
+  'strokeAlignment',
+  'strokeColor',
+  'strokeLineCap',
+  'strokeLineJoin',
+  'strokeMiterLimit',
+  'strokeOpacity',
+  'strokeStyle',
+  'strokeTint',
+  'strokeWeight',
+]);
+
+const ASSET_PLACEMENT_FIELDS = Object.freeze([
+  'pageNumber',
+  'crop',
+  'transparentBackground',
+  'visibleLayers',
+  'hiddenLayers',
+  'layers',
+  'contentBounds',
+  'contentScale',
+  'contentOffset',
+  'fit',
+]);
+
 function styleAtomForItem(item) {
   if (!isPlainObject(item)) {
     return null;
@@ -35,6 +65,12 @@ function styleAtomForItem(item) {
   }
   if (isTextItem(item)) {
     return textStyleAtom(item);
+  }
+  if (isAssetItem(item)) {
+    return assetStyleAtom(item);
+  }
+  if (isObjectItem(item)) {
+    return objectStyleAtom(item);
   }
   return null;
 }
@@ -59,6 +95,25 @@ function lineStyleAtom(item) {
   };
 }
 
+function objectStyleAtom(item) {
+  const visualStyle = isPlainObject(item.visualStyle) ? item.visualStyle : {};
+  return {
+    kind: 'object',
+    properties: pickDefined(visualStyle, OBJECT_STYLE_FIELDS),
+    overrideCandidates: {},
+  };
+}
+
+function assetStyleAtom(item) {
+  const asset = isPlainObject(item.asset) ? item.asset : {};
+  const placement = isPlainObject(asset.placement) ? asset.placement : {};
+  return {
+    kind: 'asset',
+    properties: pickDefined(placement, ASSET_PLACEMENT_FIELDS),
+    overrideCandidates: {},
+  };
+}
+
 function isTextItem(item) {
   return item.type === 'TextFrame'
     || item.kind === 'text'
@@ -71,6 +126,14 @@ function isLineItem(item) {
     || item.sourceType === 'GraphicLine'
     || item.kind === 'line'
     || item.vectorGeometry?.kind === 'line';
+}
+
+function isAssetItem(item) {
+  return isPlainObject(item.asset) && isPlainObject(item.asset.placement);
+}
+
+function isObjectItem(item) {
+  return isPlainObject(item.visualStyle);
 }
 
 function pickDefined(source, keys) {

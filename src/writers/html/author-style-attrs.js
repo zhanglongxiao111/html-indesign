@@ -22,12 +22,14 @@ function authorClassesForItem(item, sourceClasses, sourceAttrs = {}) {
   const frameStyle = sourceAttrs['data-id-frame-style'] || refs.frameStyle;
   const tableStyle = sourceAttrs['data-id-table-style'] || refs.tableStyle;
   const cellStyle = sourceAttrs['data-id-cell-style'] || refs.cellStyle;
+  const synthesizedToken = sourceAttrs['data-id-style-token'] || refs.synthesizedToken;
   if (paragraphStyle) classes.add(`pstyle-${safeClass(paragraphStyle)}`);
   if (characterStyle) classes.add(`cstyle-${safeClass(characterStyle)}`);
   if (objectStyle) classes.add(`ostyle-${safeClass(objectStyle)}`);
   if (frameStyle) classes.add(`fstyle-${safeClass(frameStyle)}`);
   if (tableStyle) classes.add(`tstyle-${safeClass(tableStyle)}`);
   if (cellStyle) classes.add(`cellstyle-${safeClass(cellStyle)}`);
+  if (synthesizedToken) classes.add(`synth-${safeClass(synthesizedToken)}`);
   return Array.from(classes).filter(Boolean);
 }
 

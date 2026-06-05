@@ -44,6 +44,41 @@ function lineItem(id, visualStyle = {}) {
   };
 }
 
+function shapeItem(id, visualStyle = {}, effects = null) {
+  return {
+    id,
+    role: 'shape',
+    type: 'Rectangle',
+    visualStyle: {
+      fillColor: '#eeeeee',
+      strokeColor: '#111111',
+      strokeWeight: 1,
+      strokeStyle: '实底',
+      blendMode: 'multiply',
+      opacity: 80,
+      ...visualStyle,
+    },
+    effects,
+  };
+}
+
+function assetItem(id, placement = {}) {
+  return {
+    id,
+    role: 'graphic',
+    type: 'Rectangle',
+    asset: {
+      path: '\\\\server\\share\\drawing.pdf',
+      placement: {
+        pageNumber: 2,
+        crop: 'media',
+        visibleLayers: ['A-墙体'],
+        ...placement,
+      },
+    },
+  };
+}
+
 test('merges identical text atoms into one synthesized style with Chinese display name', () => {
   const result = normalizeSynthesizedStyles({
     kind: 'DocumentModel',
@@ -125,5 +160,43 @@ test('builds one line style for identical dashed arrows with a Chinese name', ()
       strokeStyle: '虚线（3 和 2）',
       strokeWeight: 0.2834645669,
     },
+  });
+});
+
+test('merges identical object visual atoms into one synthesized object style', () => {
+  const registry = buildSynthesizedStyleRegistry([
+    shapeItem('shape-a'),
+    shapeItem('shape-b'),
+  ]);
+
+  assert.equal(registry.styles.length, 1);
+  assert.equal(registry.styles[0].kind, 'object');
+  assert.equal(registry.styles[0].displayName, '对象样式 01');
+  assert.deepEqual(registry.styles[0].properties, {
+    blendMode: 'multiply',
+    fillColor: '#eeeeee',
+    opacity: 80,
+    strokeColor: '#111111',
+    strokeStyle: '实底',
+    strokeWeight: 1,
+  });
+});
+
+test('creates asset placement atoms without using source file path in the fingerprint', () => {
+  const first = synthesizedStyleFingerprint(assetItem('asset-a'));
+  const second = synthesizedStyleFingerprint({
+    ...assetItem('asset-b'),
+    asset: {
+      ...assetItem('asset-b').asset,
+      path: '\\\\other\\share\\another.pdf',
+    },
+  });
+
+  assert.equal(first.kind, 'asset');
+  assert.equal(first.fingerprint, second.fingerprint);
+  assert.deepEqual(first.properties, {
+    crop: 'media',
+    pageNumber: 2,
+    visibleLayers: ['A-墙体'],
   });
 });

@@ -1,4 +1,5 @@
 const { isDegenerateInvisibleVector } = require('./vector-svg');
+const { blendModeCss } = require('./css-blend-mode');
 
 function writeAuthorCssFiles(model) {
   return {
@@ -39,11 +40,37 @@ function layoutCss(model) {
 function componentsCss(model) {
   const styles = model.styles || {};
   return [
+    synthesizedStyleCss(styles.synthesized),
     styleCollectionCss(styles.paragraphStyles, 'pstyle'),
     styleCollectionCss(styles.characterStyles, 'cstyle'),
     styleCollectionCss(styles.objectStyles, 'ostyle'),
     '',
   ].filter(Boolean).join('\n');
+}
+
+function synthesizedStyleCss(styles) {
+  return (Array.isArray(styles) ? styles : []).map((style) => {
+    if (!style || !style.token) return '';
+    const declarations = synthesizedStyleDeclarations(style.properties || {});
+    return [
+      `/* ${String(style.displayName || style.token)} */`,
+      `.synth-${safeClass(style.token)} { ${declarations} }`,
+    ].join('\n');
+  }).filter(Boolean).join('\n');
+}
+
+function synthesizedStyleDeclarations(properties) {
+  const declarations = [];
+  if (properties.fillColor) declarations.push(`background-color:${properties.fillColor}`);
+  if (properties.strokeColor && Number(properties.strokeWeight) > 0) {
+    declarations.push(`border:${px(properties.strokeWeight)} solid ${properties.strokeColor}`);
+  }
+  if (Number(properties.cornerRadius) > 0) declarations.push(`border-radius:${px(properties.cornerRadius)}`);
+  const blendMode = blendModeCss(properties.blendMode);
+  if (blendMode) declarations.push(blendMode);
+  const opacity = Number(properties.opacity);
+  if (Number.isFinite(opacity) && opacity >= 0 && opacity < 100) declarations.push(`opacity:${formatNumber(opacity / 100)}`);
+  return declarations.join('; ');
 }
 
 function pagesCss(model) {
