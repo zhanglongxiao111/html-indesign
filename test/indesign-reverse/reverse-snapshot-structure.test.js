@@ -47,6 +47,177 @@ test('compareReverseSnapshotStructures detects vector paint marker and geometry 
   assert.equal(diff.errors.some((issue) => issue.field === 'lineEndMarker'), true);
 });
 
+test('compareReverseSnapshotStructures ignores hidden stroke metadata on non-line frames', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'text-frame-with-hidden-line-style',
+      type: 'TextFrame',
+      visualStyle: {
+        strokeColor: null,
+        strokeWeight: null,
+        strokeStyle: '虚线（3 和 2）',
+        strokeLineCap: 'round',
+        strokeLineJoin: 'miter',
+        strokeMiterLimit: 4,
+        lineEndMarker: { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' },
+      },
+      vectorGeometry: null,
+    }),
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'text-frame-with-hidden-line-style',
+      type: 'TextFrame',
+      visualStyle: {
+        strokeColor: null,
+        strokeWeight: null,
+        strokeStyle: '实底',
+        strokeLineCap: 'butt',
+        strokeLineJoin: 'round',
+        strokeMiterLimit: 1,
+        lineEndMarker: null,
+      },
+      vectorGeometry: null,
+    }),
+  ]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
+test('compareReverseSnapshotStructures matches degenerate polygons to native graphic lines', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'polygon-line',
+      type: 'Polygon',
+      bounds: { x: 120, y: 80, width: 0, height: 220 },
+      visualStyle: {
+        fillColor: null,
+        strokeColor: '#ff7832',
+        strokeWeight: 5,
+        strokeStyle: '垂直线',
+        strokeAlignment: 'center',
+      },
+      vectorGeometry: {
+        kind: 'polygon',
+        paths: [{
+          closed: false,
+          points: [
+            point(120, 80),
+            point(120, 300),
+          ],
+        }],
+      },
+    }),
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'generated-line',
+      type: 'GraphicLine',
+      bounds: { x: 120.01, y: 80.01, width: 0, height: 220.01 },
+      visualStyle: {
+        fillColor: null,
+        strokeColor: '#ff7832',
+        strokeWeight: 5,
+        strokeStyle: '垂直线',
+        strokeAlignment: null,
+      },
+      vectorGeometry: {
+        kind: 'line',
+        paths: [{
+          closed: false,
+          points: [
+            point(120.01, 80.01),
+            point(120.01, 300.02),
+          ],
+        }],
+      },
+    }),
+  ]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual, { geometryTolerance: 0.05 });
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
+test('compareReverseSnapshotStructures treats placed rectangles and graphic frames as asset frames', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'pdf-frame',
+    type: 'GraphicFrame',
+    bounds: { x: 120, y: 80, width: 200, height: 120 },
+    labels: [],
+    visualStyle: {
+      fillColor: null,
+      strokeColor: null,
+      strokeWeight: null,
+    },
+    placedAsset: { path: '\\\\nas\\share\\plan.pdf', placement: { pageNumber: 3 } },
+  }]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'pdf-frame',
+    type: 'Rectangle',
+    bounds: { x: 120, y: 80, width: 200, height: 120 },
+    labels: [],
+    visualStyle: {
+      fillColor: null,
+      strokeColor: null,
+      strokeWeight: 0,
+    },
+    placedAsset: { path: '\\\\nas\\share\\plan.pdf', placement: { pageNumber: 3 } },
+  }]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
+test('compareReverseSnapshotStructures ignores no-paint no-content page items', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'hidden-grid-line',
+      type: 'GraphicLine',
+      visualStyle: {
+        fillColor: null,
+        strokeColor: null,
+        strokeWeight: null,
+        strokeStyle: '虚线（3 和 2）',
+        lineEndMarker: { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' },
+      },
+    }),
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
+test('compareReverseSnapshotStructures still reports missing visible line items', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'visible-line',
+      type: 'GraphicLine',
+      visualStyle: {
+        fillColor: null,
+        strokeColor: '#111111',
+        strokeWeight: 1,
+        strokeStyle: '实底',
+      },
+    }),
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_ITEM_MISSING'), true);
+});
+
 test('reverseSnapshotStructureSignature records filled-vector coverage candidates', () => {
   const signature = reverseSnapshotStructureSignature(snapshotWithItems([
     vectorItem({
@@ -196,6 +367,33 @@ test('compareReverseSnapshotStructures matches unlabeled text by content and pos
   assert.equal(diff.errors[0].itemId, expected.pages[0].items[0].id);
 });
 
+test('compareReverseSnapshotStructures matches text frames by effective text before reporting text drift', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    {
+      id: 'source-copy',
+      type: 'TextFrame',
+      bounds: { x: 42.52, y: 226.35, width: 333.07, height: 301.27 },
+      text: '团队最终采用暖色清水\n      混凝土为立面主材料，\n      ',
+      visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+    },
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([
+    {
+      id: 'roundtrip-copy',
+      type: 'TextFrame',
+      bounds: { x: 42.52, y: 226.35, width: 333.07, height: 301.27 },
+      text: '团队最终采用暖色清水\n混凝土为立面主材料，',
+      visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+    },
+  ]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_ITEM_MISSING'), false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_ITEM_EXTRA'), false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_TEXT_CHANGED'), true);
+});
+
 test('compareReverseSnapshotStructures can match an unlabeled source item to a labeled roundtrip item by fingerprint', () => {
   const expected = reverseSnapshotStructureSignature(snapshotWithItems([
     {
@@ -331,6 +529,50 @@ test('compareReverseSnapshotStructures ignores generated preview package path dr
   assert.deepEqual(diff.errors, []);
 });
 
+test('compareReverseSnapshotStructures matches pathless embedded images to generated asset previews', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'embedded-source',
+    type: 'Rectangle',
+    bounds: { x: 22.68, y: 214.02, width: 272.19, height: 337.32 },
+    visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+    placedAsset: {
+      name: null,
+      path: null,
+      status: null,
+      graphicType: 'Image',
+      imageTypeName: null,
+      bounds: { x: -74.83, y: 209.3, width: 470.55, height: 356.45 },
+      cropped: true,
+      placement: {
+        contentOffset: { x: -97.51, y: -4.72 },
+        contentScale: { x: 1.73, y: 1.06 },
+        frameBounds: { x: 22.68, y: 214.02, width: 272.19, height: 337.32 },
+      },
+    },
+  }]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'embedded-roundtrip',
+    type: 'Rectangle',
+    bounds: { x: 22.68, y: 214.02, width: 272.19, height: 337.32 },
+    visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+    placedAsset: {
+      name: 'embedded-roundtrip-asset.png',
+      path: 'D:\\runs\\second\\author\\previews\\embedded-roundtrip-asset.png',
+      status: 'NORMAL',
+      graphicType: 'Image',
+      imageTypeName: 'PNG',
+      bounds: { x: 22.68, y: 214.02, width: 272.19, height: 337.32 },
+      cropped: false,
+      placement: null,
+    },
+  }]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
 test('compareReverseSnapshotStructures ignores stroke alignment when stroke is not visible', () => {
   const expected = reverseSnapshotStructureSignature(snapshotWithItems([
     vectorItem({
@@ -380,14 +622,18 @@ test('compareReverseSnapshotStructures still reports stroke alignment when strok
     vectorItem({
       id: 'stroked-shape',
       type: 'Rectangle',
+      bounds: { x: 100, y: 120, width: 120, height: 80 },
       visualStyle: { fillColor: null, strokeColor: '#111111', strokeWeight: 1, strokeAlignment: 'center' },
+      vectorGeometry: rectangleGeometry(100, 120, 120, 80),
     }),
   ]));
   const actual = reverseSnapshotStructureSignature(snapshotWithItems([
     vectorItem({
       id: 'stroked-shape',
       type: 'Rectangle',
+      bounds: { x: 100, y: 120, width: 120, height: 80 },
       visualStyle: { fillColor: null, strokeColor: '#111111', strokeWeight: 1, strokeAlignment: 'inside' },
+      vectorGeometry: rectangleGeometry(100, 120, 120, 80),
     }),
   ]));
 

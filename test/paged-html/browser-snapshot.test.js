@@ -136,6 +136,30 @@ test('renderSnapshot preserves authored border shorthand when a side override ex
   assert.equal(chapter.authoredStyle.borderLeftWidth, '3mm');
 });
 
+test('renderSnapshot preserves subpixel authored border widths from inline shorthand', async () => {
+  const outDir = path.resolve('test/workspace/browser-subpixel-border');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .caption { position:absolute; left:20px; top:20px; width:200px; height:40px; }
+</style>
+<section class="page" id="page-1">
+  <p id="fine-caption" class="caption" style="border:0.2835px solid #fff">细线标题</p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const item = snapshot.pages[0].items.find((candidate) => candidate.id === 'fine-caption');
+
+  assert.ok(item);
+  assert.equal(item.authoredStyle.borderTopWidth, '0.2835px');
+  assert.equal(item.authoredStyle.borderRightWidth, '0.2835px');
+  assert.equal(item.authoredStyle.borderBottomWidth, '0.2835px');
+  assert.equal(item.authoredStyle.borderLeftWidth, '0.2835px');
+});
+
 test('renderSnapshot captures paint-only legend swatches as shape items', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
@@ -276,6 +300,28 @@ test('renderSnapshot preserves source text when CSS text-transform changes visua
   assert.equal(eyebrow.sourceNode.id, null);
   assert.match(eyebrow.sourceNode.sourceHtml, /Contents <span data-id-character-style="accent">Pdf<\/span>/);
   assert.deepEqual(eyebrow.runs.map((run) => run.text), ['Pdf']);
+});
+
+test('renderSnapshot preserves hard line breaks from br elements', async () => {
+  const outDir = path.resolve('test/workspace/browser-hard-line-breaks');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .copy { position:absolute; left:20px; top:20px; width:240px; height:80px; }
+</style>
+<section class="page" id="page-1">
+  <p id="copy" class="copy" data-id-paragraph-style="body">第一行<br><span data-id-character-style="accent">第二行<br>第三行</span></p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const copy = snapshot.pages[0].items.find((item) => item.id === 'copy');
+
+  assert.ok(copy);
+  assert.equal(copy.text, '第一行\n第二行\n第三行');
+  assert.deepEqual(copy.runs.map((run) => run.text), ['第二行\n第三行']);
 });
 
 test('renderSnapshot keeps PDF source node separate from its preview wrapper', async () => {

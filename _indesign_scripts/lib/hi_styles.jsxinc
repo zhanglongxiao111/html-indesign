@@ -133,7 +133,7 @@ HI.ensureObjectStyles = function (doc, objectStyles, report) {
         try { var strokeSwatch = HI.strokeSwatchFor(doc, def.strokeColor, def.strokeWeight); if (strokeSwatch) style.strokeColor = strokeSwatch; } catch (_) {}
         try { if (def.strokeWeight !== null && typeof def.strokeWeight !== "undefined") style.strokeWeight = Number(def.strokeWeight); } catch (_) {}
         try { if (def.strokeStyle) style.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(def.strokeStyle)); } catch (_) {}
-        try { if (def.strokeAlignment === "inside") style.strokeAlignment = StrokeAlignment.INSIDE_ALIGNMENT; } catch (_) {}
+        HI.applyStrokeAlignment(style, def.strokeAlignment);
         HI.applyCornerRadius(style, def.cornerRadius);
         HI.applyOpacity(style, def.opacity); HI.applyBlendMode(style, def.blendMode, report);
         HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "object", critical: false });

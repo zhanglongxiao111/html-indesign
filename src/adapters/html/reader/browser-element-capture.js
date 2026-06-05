@@ -16,7 +16,15 @@
   }
 
   function sourceText(el) {
-    return String(el.textContent || '');
+    return textWithHardBreaks(el);
+  }
+
+  function textWithHardBreaks(node) {
+    if (!node) return '';
+    if (node.nodeType === 3) return String(node.nodeValue || '');
+    if (node.nodeType !== 1) return '';
+    if (String(node.tagName || '').toLowerCase() === 'br') return '\n';
+    return Array.from(node.childNodes || []).map(textWithHardBreaks).join('');
   }
 
   function sourceNodeFor(el, pageEl, extra) {

@@ -152,6 +152,73 @@ test('compileInstructions keeps placement options on each graphic use', () => {
   assert.deepEqual(graphics.map((item) => item.placed.pageNumber), [1, 2]);
 });
 
+test('compileInstructions emits explicit opacity override for placed graphic frames', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    assets: [{
+      id: 'asset-plan-pdf',
+      src: './assets/plan.pdf',
+      kind: 'pdf',
+      placement: { fit: 'manual', pageNumber: 3, crop: 'content' },
+      sourceSelector: '#plan-frame',
+    }],
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 420,
+      heightMm: 236.25,
+      items: [{
+        id: 'plan-frame',
+        role: 'graphic',
+        tagName: 'figure',
+        classList: ['id-object'],
+        sourceSelector: '#plan-frame',
+        boundsMm: { x: 10, y: 20, width: 120, height: 80 },
+        zIndex: 1,
+        attributes: {
+          'data-id-object': '',
+          'data-id-object-style': '装饰线·细',
+          'data-id-object-style-name': '装饰线·细',
+          'data-id-asset-kind': 'pdf',
+          'data-id-asset-path': './assets/plan.pdf',
+          'data-id-pdf-page': '3',
+          'data-id-fit': 'manual',
+          'data-id-crop': 'content',
+          'data-id-stroke-weight': '0',
+          'data-id-stroke-style': '实底',
+        },
+        computedStyle: {
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          borderTopColor: 'rgba(0, 0, 0, 0)',
+          borderTopWidth: '0px',
+          borderTopStyle: 'solid',
+          borderRightColor: 'rgba(0, 0, 0, 0)',
+          borderRightWidth: '0px',
+          borderRightStyle: 'solid',
+          borderBottomColor: 'rgba(0, 0, 0, 0)',
+          borderBottomWidth: '0px',
+          borderBottomStyle: 'solid',
+          borderLeftColor: 'rgba(0, 0, 0, 0)',
+          borderLeftWidth: '0px',
+          borderLeftStyle: 'solid',
+          borderRadius: '0px',
+          opacity: '0.42',
+          objectFit: 'fill',
+          objectPosition: '50% 50%',
+        },
+        styleRefs: { objectStyle: null, frameStyle: null },
+      }],
+    }],
+    warnings: [],
+  };
+
+  const instructions = compileInstructions(snapshot);
+  const graphic = instructions.pages[0].items.find((item) => item.id === 'plan-frame');
+
+  assert.equal(instructions.styles.objectStyles[graphic.objectStyle].opacity, 0.42);
+  assert.equal(graphic.styleOverride.opacity, 42);
+});
+
 test('compileInstructions emits padded graphic content bounds separately from the visible frame', () => {
   const snapshot = {
     metadata: { source: 'inline.html' },

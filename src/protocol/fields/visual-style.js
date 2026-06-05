@@ -64,6 +64,8 @@ module.exports = [
     },
     html: {
       styleProps: ['border-color', 'stroke'],
+      readAttrs: ['data-id-stroke-color'],
+      writeAttrs: ['data-id-stroke-color'],
     },
     indesign: {
       snapshotPaths: ['visualStyle.strokeColor'],
@@ -83,6 +85,8 @@ module.exports = [
     },
     html: {
       styleProps: ['border-width', 'stroke-width'],
+      readAttrs: ['data-id-stroke-weight'],
+      writeAttrs: ['data-id-stroke-weight'],
     },
     indesign: {
       snapshotPaths: ['visualStyle.strokeWeight'],
@@ -176,6 +180,16 @@ module.exports = [
   visualStyleField('items[].visualStyle.strokeMiterLimit', 'number', {
     html: {
       styleProps: ['stroke-miterlimit'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.strokeAlignment', 'string', {
+    currentPaths: [
+      'reverseModel.pages[].items[].visualStyle.strokeAlignment',
+      'sourceNode.attributes.data-id-stroke-alignment',
+    ],
+    html: {
+      readAttrs: ['data-id-stroke-alignment'],
+      writeAttrs: ['data-id-stroke-alignment'],
     },
   }),
   {

@@ -152,7 +152,10 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
   const attrs = [
     'data-id-role',
     'data-id-vector',
+    'data-id-stroke-color',
+    'data-id-stroke-weight',
     'data-id-stroke-style',
+    'data-id-stroke-alignment',
     'data-id-line-start-marker-raw-name',
     'data-id-line-end-marker-raw-name',
     'data-id-object-style',
@@ -178,6 +181,18 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
   const strokeStyleField = fieldRegistry.getByHtmlAttr('data-id-stroke-style');
   assert.equal(strokeStyleField.canonicalPath, 'items[].visualStyle.strokeStyle');
   assert.equal(strokeStyleField.fieldClass, 'canonical');
+
+  const strokeColorField = fieldRegistry.getByHtmlAttr('data-id-stroke-color');
+  assert.equal(strokeColorField.canonicalPath, 'items[].visualStyle.strokeColor');
+  assert.equal(strokeColorField.fieldClass, 'canonical');
+
+  const strokeWeightField = fieldRegistry.getByHtmlAttr('data-id-stroke-weight');
+  assert.equal(strokeWeightField.canonicalPath, 'items[].visualStyle.strokeWeight');
+  assert.equal(strokeWeightField.fieldClass, 'canonical');
+
+  const strokeAlignmentField = fieldRegistry.getByHtmlAttr('data-id-stroke-alignment');
+  assert.equal(strokeAlignmentField.canonicalPath, 'items[].visualStyle.strokeAlignment');
+  assert.equal(strokeAlignmentField.fieldClass, 'canonical');
 
   const markerStartField = fieldRegistry.getByHtmlAttr('data-id-line-start-marker-raw-name');
   assert.equal(markerStartField.canonicalPath, 'items[].visualStyle.lineStartMarker.rawName');

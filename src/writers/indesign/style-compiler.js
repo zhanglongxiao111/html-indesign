@@ -308,7 +308,7 @@ function ensureObjectStyle(styles, item, report, options) {
   const style = item.computedStyle || {};
   const fill = ensureFillSwatch(styles, style);
   const fillColor = fill && fill.name;
-  const uniformBorder = uniformBorderForObject(item, options);
+  const uniformBorder = protocolStrokeForObject(item, styles, options) || uniformBorderForObject(item, options);
   const strokeColor = uniformBorder ? uniformBorder.color : null;
   const blendMode = normalizeBlendMode(style.mixBlendMode);
   const signature = {
@@ -317,7 +317,7 @@ function ensureObjectStyle(styles, item, report, options) {
     strokeColor,
     strokeWeight: uniformBorder ? uniformBorder.widthPt : 0,
     strokeStyle: uniformBorder ? uniformBorder.style : 'none',
-    strokeAlignment: uniformBorder ? 'inside' : null,
+    strokeAlignment: uniformBorder && uniformBorder.widthPt > 0 ? (uniformBorder.alignment || 'inside') : null,
     cornerRadius: cornerRadiusValue(item, options),
     opacity: effectiveObjectOpacity(item, fill),
     ...(blendMode ? { blendMode } : {}),
@@ -612,8 +612,25 @@ function identityForRegisteredStyle(item, kind, name, baseName, options) {
 }
 
 function ensureSwatch(styles, cssColor) {
-  const normalized = normalizeCssColor(cssColor);
+  const normalized = normalizeCssColor(cssColor) || normalizeHexColor(cssColor);
   return ensureNormalizedSwatch(styles, normalized);
+}
+
+function normalizeHexColor(value) {
+  const text = String(value || '').trim().toLowerCase();
+  const short = text.match(/^#([0-9a-f]{3})$/i);
+  const full = text.match(/^#([0-9a-f]{6})$/i);
+  const hex = short
+    ? short[1].split('').map((char) => `${char}${char}`).join('')
+    : full && full[1];
+  if (!hex) return null;
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return {
+    hex: `#${hex}`,
+    name: `颜色-${r}-${g}-${b}`,
+  };
 }
 
 function ensureFillSwatch(styles, style) {
@@ -671,6 +688,54 @@ function visibleStroke(item, prop, options) {
     && Number(itemLengthToPt(item, prop, options) || 0) > 0;
 }
 
+function protocolStrokeForObject(item, styles, options) {
+  const attrs = item && item.attributes || {};
+  if (!hasProtocolStrokeFact(attrs)) return null;
+  const widthPt = protocolStrokeWeight(attrs, options);
+  const color = widthPt > 0 ? ensureSwatch(styles, attrs['data-id-stroke-color']) : null;
+  const style = widthPt > 0
+    ? (attrs['data-id-stroke-style'] || cssBorderStyle(item) || 'solid')
+    : 'none';
+  return {
+    color,
+    widthPt,
+    style,
+    alignment: normalizedStrokeAlignment(attrs['data-id-stroke-alignment']),
+  };
+}
+
+function hasProtocolStrokeFact(attrs) {
+  return Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-weight')
+    || Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-color')
+    || Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-style')
+    || Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-alignment');
+}
+
+function protocolStrokeWeight(attrs, options) {
+  if (!Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-weight')) return 0;
+  const value = attrs['data-id-stroke-weight'];
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return 0;
+  if (/[a-z%]/i.test(text)) {
+    const converted = options && options.layout && options.layout.unitMode === 'presentation'
+      ? styleLengthToPt({ strokeWeight: text }, 'strokeWeight', options)
+      : styleLengthToPt({ strokeWeight: text }, 'strokeWeight', {});
+    return Number.isFinite(Number(converted)) ? Number(converted) : 0;
+  }
+  const number = Number(text);
+  return Number.isFinite(number) && number > 0 ? round(number, 4) : 0;
+}
+
+function cssBorderStyle(item) {
+  const style = item && item.computedStyle || {};
+  return style.borderTopStyle || style.borderRightStyle || style.borderBottomStyle || style.borderLeftStyle || null;
+}
+
+function normalizedStrokeAlignment(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return ['inside', 'outside', 'center'].includes(key) ? key : null;
+}
+
 function uniformBorderForObject(item, options) {
   const box = compileBoxModel(item, createEmptyStyleModel(), options);
   const edges = [box.borders.top, box.borders.right, box.borders.bottom, box.borders.left];
@@ -679,7 +744,7 @@ function uniformBorderForObject(item, options) {
   const uniform = edges.every((edge) => edge.color === first.color
     && edge.style === first.style
     && Math.abs(Number(edge.widthPt || 0) - Number(first.widthPt || 0)) < 0.01);
-  return uniform ? first : null;
+  return uniform ? { ...first, alignment: null } : null;
 }
 
 function visibleCompiledBorder(edge) {

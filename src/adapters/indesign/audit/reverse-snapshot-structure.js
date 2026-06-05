@@ -110,7 +110,9 @@ function ensureSignature(input, options) {
 
 function pageSignature(page, options) {
   const sourceItems = Array.isArray(page.auditItems) && page.auditItems.length ? page.auditItems : (page.items || []);
-  const items = uniqueItemIds(sourceItems.map((item, index) => itemSignature(item, page, index)));
+  const items = uniqueItemIds(sourceItems
+    .map((item, index) => itemSignature(item, page, index))
+    .filter(hasEffectiveItemFootprint));
   return {
     id: String(page.id || page.name || `page-${Number(page.index || 0) + 1}`),
     index: numberOrNull(page.index),
@@ -125,6 +127,8 @@ function pageSignature(page, options) {
 
 function itemSignature(item, page, index) {
   const identity = protocolItemIdentity(item);
+  const visualStyle = visualStyleSignature(item.visualStyle, item);
+  const vectorGeometry = vectorGeometrySignature(item.vectorGeometry, item);
   const signature = {
     key: null,
     id: null,
@@ -132,7 +136,7 @@ function itemSignature(item, page, index) {
     identityKind: identity.kind,
     rawId: item.id != null ? String(item.id) : null,
     pageId: String(page.id || page.name || ''),
-    type: item.type || null,
+    type: canonicalItemType(item),
     layerName: item.layerName || null,
     visible: item.visible !== false,
     printable: item.printable !== false,
@@ -144,9 +148,9 @@ function itemSignature(item, page, index) {
     zIndex: numberOrNull(item.zIndex),
     text: normalizeText(item.text),
     asset: placedAssetSignature(item.placedAsset),
-    visualStyle: visualStyleSignature(item.visualStyle, item),
+    visualStyle,
     effects: normalizeDeep(item.effects || null),
-    vectorGeometry: vectorGeometrySignature(item.vectorGeometry),
+    vectorGeometry,
   };
   signature.fingerprint = structuralFingerprint(signature, index);
   signature.id = identity.value || signature.fingerprint;
@@ -209,16 +213,33 @@ function firstLabel(labels, kind) {
 
 function placedAssetSignature(asset) {
   if (!asset) return null;
+  const path = placedAssetPathSignature(asset);
+  const embeddedPreview = path === 'embedded-image-preview';
   return {
-    name: asset.name || null,
-    path: assetPathSignature(asset.path),
-    status: asset.status || null,
+    name: embeddedPreview ? null : (asset.name || null),
+    path,
+    status: embeddedPreview ? null : (asset.status || null),
     graphicType: asset.graphicType || null,
-    imageTypeName: asset.imageTypeName || null,
-    bounds: normalizeBounds(asset.bounds),
-    cropped: typeof asset.cropped === 'boolean' ? asset.cropped : null,
-    placement: normalizeDeep(asset.placement || null),
+    imageTypeName: embeddedPreview ? null : (asset.imageTypeName || null),
+    bounds: embeddedPreview ? null : normalizeBounds(asset.bounds),
+    cropped: embeddedPreview ? null : (typeof asset.cropped === 'boolean' ? asset.cropped : null),
+    placement: embeddedPreview ? null : normalizeDeep(asset.placement || null),
   };
+}
+
+function placedAssetPathSignature(asset) {
+  const path = assetPathSignature(asset && asset.path);
+  if (isPathlessEmbeddedImageAsset(asset)) return 'embedded-image-preview';
+  if (path && /^generated-preview:.*-asset\.png$/i.test(path) && isImageAsset(asset)) return 'embedded-image-preview';
+  return path;
+}
+
+function isPathlessEmbeddedImageAsset(asset) {
+  return Boolean(asset && !asset.path && isImageAsset(asset));
+}
+
+function isImageAsset(asset) {
+  return String(asset && asset.graphicType || '').toLowerCase() === 'image';
 }
 
 function visualStyleSignature(visualStyle, item = null) {
@@ -227,7 +248,18 @@ function visualStyleSignature(visualStyle, item = null) {
   for (const field of VISUAL_STYLE_FIELDS) {
     out[field] = normalizeVisualValue(field, style[field]);
   }
-  if (!hasVisibleStrokeStyle(out) || isNativeGraphicLine(item)) out.strokeAlignment = null;
+  const visibleStroke = hasVisibleStrokeStyle(out);
+  const lineLikeItem = isLineLikeItem(item);
+  if (!visibleStroke) {
+    out.strokeWeight = null;
+    out.strokeStyle = null;
+    out.strokeLineCap = null;
+    out.strokeLineJoin = null;
+    out.strokeMiterLimit = null;
+    out.lineStartMarker = null;
+    out.lineEndMarker = null;
+  }
+  if (!visibleStroke || lineLikeItem) out.strokeAlignment = null;
   return out;
 }
 
@@ -247,8 +279,44 @@ function hasVisibleStrokeStyle(style) {
   return Boolean(style && style.strokeColor && Number(style.strokeWeight || 0) > 0);
 }
 
-function isNativeGraphicLine(item) {
-  return String(item && item.type || '').toLowerCase() === 'graphicline';
+function hasEffectiveItemFootprint(item) {
+  if (!item) return false;
+  if (normalizeText(item.text).trim()) return true;
+  if (item.asset) return true;
+  if (item.effects) return true;
+  return hasFillPaint(item) || hasStrokePaint(item);
+}
+
+function canonicalItemType(item) {
+  if (isLineLikeItem(item)) return 'GraphicLine';
+  if (item && item.placedAsset) return 'GraphicFrame';
+  return item && item.type || null;
+}
+
+function isLineLikeItem(item) {
+  if (!item) return false;
+  const type = String(item.type || '');
+  if (type === 'GraphicLine') return true;
+  if (!['Polygon', 'Rectangle'].includes(type)) return false;
+  if (item.placedAsset) return false;
+  const visual = item.visualStyle || {};
+  if (visual.fillColor) return false;
+  return hasLineLikeBounds(item.bounds) || hasLineLikeGeometry(item.vectorGeometry);
+}
+
+function hasLineLikeBounds(bounds) {
+  if (!bounds) return false;
+  const width = Math.abs(Number(bounds.width || 0));
+  const height = Math.abs(Number(bounds.height || 0));
+  return width <= 0.01 || height <= 0.01;
+}
+
+function hasLineLikeGeometry(vectorGeometry) {
+  if (!vectorGeometry) return false;
+  const paths = vectorGeometry.paths || [];
+  if (paths.length !== 1) return false;
+  const path = paths[0] || {};
+  return path.closed !== true && (path.points || []).length === 2;
 }
 
 function normalizeVisualValue(field, value) {
@@ -267,10 +335,10 @@ function markerSignature(value) {
   };
 }
 
-function vectorGeometrySignature(vectorGeometry) {
+function vectorGeometrySignature(vectorGeometry, item = null) {
   if (!vectorGeometry) return null;
   return {
-    kind: vectorGeometry.kind || null,
+    kind: isLineLikeItem(item) ? 'line' : (vectorGeometry.kind || null),
     paths: (vectorGeometry.paths || []).map((path) => ({
       closed: Boolean(path && path.closed),
       points: (path && path.points || []).map(vectorPointSignature),
@@ -508,7 +576,7 @@ function structuralMatchScore(expected, actual, options) {
   const expectedText = normalizeText(expected.text);
   const actualText = normalizeText(actual.text);
   if (expectedText || actualText) {
-    if (expectedText !== actualText) return 0;
+    if (effectiveText(expectedText) !== effectiveText(actualText)) return 0;
     score += expectedText.length > 20 ? 10 : 8;
   } else if (sameType && expected.type === 'TextFrame') {
     score += 4;
@@ -871,6 +939,15 @@ function compactText(value) {
   const text = normalizeText(value).replace(/\s+/g, ' ').trim();
   if (text.length <= 80) return text;
   return `${text.slice(0, 40)}...${text.slice(-20)}`;
+}
+
+function effectiveText(value) {
+  return normalizeText(value)
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n')
+    .replace(/\n+$/g, '')
+    .trim();
 }
 
 function numberOrZero(value) {

@@ -235,6 +235,73 @@ test('compileStyles maps non-normal CSS mix-blend-mode into object styles', () =
   assert.equal(styled.styles.objectStyles['blend-card'].blendMode, 'multiply');
 });
 
+test('compileStyles preserves observed subpixel stroke weight and center alignment in presentation mode', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 800,
+      heightMm: 450,
+      items: [{
+        id: 'fine-caption',
+        role: 'text',
+        tagName: 'p',
+        classList: ['observed-text', 'id-object'],
+        attributes: {
+          'data-id-object-style': '[基本文本框架]',
+          'data-id-object-style-name': '[基本文本框架]',
+          'data-id-stroke-color': '#ffffff',
+          'data-id-stroke-weight': '0.2834645669',
+          'data-id-stroke-style': '实底',
+          'data-id-stroke-alignment': 'center',
+        },
+        text: '建筑的鸟瞰图',
+        computedStyle: {
+          color: 'rgb(102, 102, 102)',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '24px',
+          lineHeight: '24px',
+          fontWeight: '400',
+          fontStyle: 'normal',
+          textAlign: 'right',
+          backgroundColor: 'rgb(255, 255, 255)',
+          borderTopColor: 'rgb(255, 255, 255)',
+          borderTopWidth: '1px',
+          borderTopStyle: 'solid',
+          borderRightColor: 'rgb(255, 255, 255)',
+          borderRightWidth: '1px',
+          borderRightStyle: 'solid',
+          borderBottomColor: 'rgb(255, 255, 255)',
+          borderBottomWidth: '1px',
+          borderBottomStyle: 'solid',
+          borderLeftColor: 'rgb(255, 255, 255)',
+          borderLeftWidth: '1px',
+          borderLeftStyle: 'solid',
+          opacity: '0.6',
+          borderRadius: '0px',
+        },
+        authoredStyle: {
+          borderTopWidth: '0.2835px',
+          borderRightWidth: '0.2835px',
+          borderBottomWidth: '0.2835px',
+          borderLeftWidth: '0.2835px',
+        },
+        runs: [],
+      }],
+    }],
+  };
+
+  const styled = compileStyles(snapshot, { layout: { unitMode: 'presentation', scale: 1, targetUnit: 'pt' } });
+  const item = styled.pages[0].items[0];
+  const objectStyle = styled.styles.objectStyles[item.styleRefs.objectStyle];
+
+  assert.equal(objectStyle.strokeColor, '颜色-255-255-255');
+  assert.equal(objectStyle.strokeWeight, 0.2835);
+  assert.equal(objectStyle.strokeStyle, '实底');
+  assert.equal(objectStyle.strokeAlignment, 'center');
+});
+
 test('compileStyles selects CJK fonts and InDesign font style names for Chinese text', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

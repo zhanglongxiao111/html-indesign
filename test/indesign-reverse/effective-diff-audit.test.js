@@ -102,7 +102,7 @@ test('auditEffectiveDiff treats line indentation and trailing blank text differe
 
   assert.equal(report.ok, true);
   assert.equal(report.p0.count, 0);
-  assert.equal(report.p2.count, 2);
+  assert.equal(report.p2.count, 1);
 });
 
 test('audit-effective-diff CLI writes a gate report with baseline and stability inputs', () => {

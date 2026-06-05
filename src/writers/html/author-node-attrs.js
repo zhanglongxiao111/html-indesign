@@ -101,6 +101,7 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
   for (const [key, attr] of pairs) {
     if (!attrs[attr] && refs[key]) attrs[attr] = refs[key];
   }
+  addVisualStyleProtocolAttrs(attrs, item && item.visualStyle);
   if (!attrs['data-id-style-token'] && refs.synthesizedToken) {
     attrs['data-id-style-token'] = refs.synthesizedToken;
   }
@@ -121,6 +122,38 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
   if (!attrs['data-id-paragraph-composer'] && textStyle.composer) {
     attrs['data-id-paragraph-composer'] = textStyle.composer;
   }
+}
+
+function addVisualStyleProtocolAttrs(attrs, visualStyle) {
+  if (!visualStyle || typeof visualStyle !== 'object' || Array.isArray(visualStyle)) return;
+  setAttrIfMissing(attrs, 'data-id-stroke-color', visualStyle.strokeColor);
+  if (Object.prototype.hasOwnProperty.call(visualStyle, 'strokeWeight')) {
+    setAttrIfMissing(attrs, 'data-id-stroke-weight', visualStyle.strokeWeight == null ? 0 : visualStyle.strokeWeight);
+  }
+  setAttrIfMissing(attrs, 'data-id-stroke-style', visualStyle.strokeStyle);
+  setAttrIfMissing(attrs, 'data-id-stroke-alignment', visualStyle.strokeAlignment);
+  const startRawName = markerRawName(visualStyle.lineStartMarker);
+  const endRawName = markerRawName(visualStyle.lineEndMarker);
+  setAttrIfMissing(attrs, 'data-id-line-start-marker-raw-name', startRawName);
+  setAttrIfMissing(attrs, 'data-id-line-end-marker-raw-name', endRawName);
+}
+
+function setAttrIfMissing(attrs, name, value) {
+  if (attrs[name] || value === null || typeof value === 'undefined' || value === '') return;
+  attrs[name] = formatAttrValue(value);
+}
+
+function markerRawName(marker) {
+  if (!marker || typeof marker !== 'object') return null;
+  return marker.rawName || null;
+}
+
+function formatAttrValue(value) {
+  const number = Number(value);
+  if (Number.isFinite(number) && String(value).trim() !== '') {
+    return String(Math.round(number * 10000) / 10000);
+  }
+  return String(value);
 }
 
 module.exports = {

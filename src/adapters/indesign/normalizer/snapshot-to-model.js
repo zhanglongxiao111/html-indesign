@@ -80,8 +80,55 @@ function reversePage(page, styleMaps, context = {}) {
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
     labels: page.labels || [],
-    items: (page.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, { ...context, pageId: page.id || null })),
+    items: effectiveReversePageItems(page)
+      .filter((item) => shouldKeepReverseItem(item, context))
+      .map((item) => reverseItem(item, styleMaps, { ...context, pageId: page.id || null })),
   };
+}
+
+function effectiveReversePageItems(page = {}) {
+  const topLevel = Array.isArray(page.items) ? page.items : [];
+  const auditById = auditItemsById(page.auditItems || []);
+  const out = topLevel.map((item) => mergeAuditTreeItem(item, auditById.get(String(item && item.id || ''))));
+  const seen = new Set(out.map((item) => String(item && item.id || '')));
+  for (const item of page.auditItems || []) {
+    if (!shouldExposeAuditChildItem(item)) continue;
+    const id = String(item && item.id || '');
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    out.push(item);
+  }
+  return out;
+}
+
+function auditItemsById(items) {
+  const out = new Map();
+  for (const item of items || []) {
+    const id = String(item && item.id || '');
+    if (!id || out.has(id)) continue;
+    out.set(id, item);
+  }
+  return out;
+}
+
+function mergeAuditTreeItem(item, auditItem) {
+  if (!auditItem) return item;
+  return {
+    ...item,
+    ...auditItem,
+    labels: item.labels || auditItem.labels || [],
+  };
+}
+
+function shouldExposeAuditChildItem(item = {}) {
+  const parentType = String(item.parent && item.parent.type || '');
+  if (parentType !== 'Group') return false;
+  const type = String(item.type || '');
+  if (type === 'PDF' || type === 'Image') return false;
+  if (item.placedAsset) return true;
+  const visual = item.visualStyle || {};
+  if (visual.fillColor) return true;
+  return Boolean(visual.strokeColor && Number(visual.strokeWeight || 0) > 0);
 }
 
 function reverseItem(item, styleMaps = {}, context = {}) {

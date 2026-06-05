@@ -289,6 +289,11 @@ function itemModelFor(item, page, layout) {
   const semantic = attrs['data-id-semantic'] || null;
   const bounds = itemBounds(item, page, layout);
   const vectorFacts = vectorFactsFromSvgItem(item, bounds) || {};
+  const visualStyle = mergeVisualStyleFacts(
+    visualStyleFromComputedStyle(item),
+    item.visualStyle || vectorFacts.visualStyle || null,
+    visualStyleFromProtocolAttrs(attrs),
+  );
   const sourceFile = attrs['data-id-source-file']
     || page.sourceFile
     || (page.attributes && page.attributes['data-id-source-file'])
@@ -335,7 +340,7 @@ function itemModelFor(item, page, layout) {
     content: contentForItem(item),
     table: item.table || null,
     vectorGeometry: item.vectorGeometry || vectorFacts.vectorGeometry || null,
-    visualStyle: item.visualStyle || vectorFacts.visualStyle || null,
+    visualStyle,
     effects: item.effects || null,
     labels: [createProtocolLabel({
       kind: 'item',
@@ -355,6 +360,48 @@ function itemModelFor(item, page, layout) {
       layout: itemLayout,
     })],
   };
+}
+
+function mergeVisualStyleFacts(...facts) {
+  const entries = facts.filter(Boolean);
+  if (!entries.length) return null;
+  return Object.assign({}, ...entries);
+}
+
+function visualStyleFromComputedStyle(item) {
+  const style = item && item.computedStyle || {};
+  const out = {};
+  const opacity = cssOpacityPercent(style.opacity);
+  if (opacity !== null && opacity < 100) out.opacity = opacity;
+  return Object.keys(out).length ? out : null;
+}
+
+function visualStyleFromProtocolAttrs(attrs = {}) {
+  const out = {};
+  if (attrs['data-id-stroke-color']) out.strokeColor = attrs['data-id-stroke-color'];
+  if (Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-weight')) {
+    out.strokeWeight = numberOrZero(attrs['data-id-stroke-weight']);
+  }
+  if (attrs['data-id-stroke-style']) out.strokeStyle = attrs['data-id-stroke-style'];
+  if (attrs['data-id-stroke-alignment']) out.strokeAlignment = attrs['data-id-stroke-alignment'];
+  const startRawName = attrs['data-id-line-start-marker-raw-name'];
+  const endRawName = attrs['data-id-line-end-marker-raw-name'];
+  if (startRawName) out.lineStartMarker = { type: null, rawName: startRawName };
+  if (endRawName) out.lineEndMarker = { type: null, rawName: endRawName };
+  return Object.keys(out).length ? out : null;
+}
+
+function numberOrZero(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function cssOpacityPercent(value) {
+  if (value === null || typeof value === 'undefined' || value === '') return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  const percent = number <= 1 ? number * 100 : number;
+  return Math.max(0, Math.min(100, Math.round(percent * 10000) / 10000));
 }
 
 function nearestSourceParentId(item, page) {

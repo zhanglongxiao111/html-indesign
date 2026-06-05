@@ -395,6 +395,56 @@ test('writeReverseAuthorPackage writes observed InDesign paragraph composer prot
   assert.match(pageHtml, /id="date-caption"[^>]+data-id-paragraph-composer="Adobe 段落排版器"/);
 });
 
+test('writeReverseAuthorPackage writes observed stroke facts as protocol attrs', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-stroke-facts-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'stroke-fact-test',
+    title: 'Stroke Fact Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'fine-caption',
+            role: 'text',
+            semantic: 'unknown',
+            tagName: 'p',
+            bounds: { x: 10, y: 20, width: 200, height: 40 },
+            styleRefs: { objectStyle: '[基本文本框架]' },
+            visualStyle: {
+              fillColor: '#ffffff',
+              strokeColor: '#ffffff',
+              strokeWeight: 0.2834645669,
+              strokeStyle: '实底',
+              strokeAlignment: 'center',
+              opacity: 60,
+            },
+            textStyle: { pointSize: 24, fillColor: '#666666' },
+            content: { text: '建筑的鸟瞰图', runs: [] },
+          },
+        ],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-1.html'), 'utf8');
+  assert.match(pageHtml, /id="fine-caption"[^>]+data-id-stroke-color="#ffffff"/);
+  assert.match(pageHtml, /id="fine-caption"[^>]+data-id-stroke-weight="0\.2835"/);
+  assert.match(pageHtml, /id="fine-caption"[^>]+data-id-stroke-style="实底"/);
+  assert.match(pageHtml, /id="fine-caption"[^>]+data-id-stroke-alignment="center"/);
+});
+
 test('writeReverseAuthorPackage writes observed page margins and panel style names as protocol facts', () => {
   const outDir = path.resolve('test/workspace/reverse-author-stability-facts-test');
   fs.rmSync(outDir, { recursive: true, force: true });

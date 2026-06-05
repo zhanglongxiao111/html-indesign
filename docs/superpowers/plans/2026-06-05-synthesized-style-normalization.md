@@ -72,19 +72,18 @@ npm run audit:effective-diff -- --expected test/workspace/human-indesign-nested-
 
 ## Latest Execution Status
 
-更新时间：2026-06-05。
+更新时间：2026-06-06。
 
 - 已从用户给定真实人工 InDesign 重新反向导出快照：47 页、537 个页面对象、624 个审计对象、87 个资源；补齐路径为空但可从 InDesign frame 导出的置入预览，生成预览 104 个，错误 0、警告 0。
 - 原始反向作者包合成样式审计通过：`styleCount=39`、`referenceCount=301`、`issueCount=0`。
-- 已用该反向作者包执行真实 InDesign E2E、反向回读和二次回环：47 页、505 条 instructions item、57 个资源、overset text frame 0。
+- 已用修正后的反向作者包执行真实 InDesign E2E、反向回读和二次回环：47 页、508 条 instructions item、57 个资源、overset text frame 0。
 - 一轮与二轮回读的合成样式审计均通过：`styleCount=33`、`referenceCount=280`、`issueCount=0`。
 - 二轮结构稳定审计通过：errors 0、warnings 0。
-- 当前有效 diff：`EDI=3940`、`P0=0`、`P1=329`、`P2=650`。相比执行前基线 `P1=825`，已下降 496；P0 仍为 0。
-- 当前最新真实 E2E 输出：`test/workspace/human-indesign-synth-style-20260605/e2e-blend-mode-fix/`；effective diff 报告：`test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-blend-mode-fix.json`。
-- 当前剩余 P1 主要分布：visual style 175、missing 89、extra 53、bounds 4、vector geometry 4、asset placement 3、field 1。
-- 当前剩余样式字段热点：`strokeStyle=56`、`lineEndMarker=48`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`；`blendMode=64` 已清零。
-- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`；观察文本框不再被作者包 `min-height` 或 InDesign writer 最小行高放大；CSS/observed `mix-blend-mode` 可从 HTML 捕获、编译到 object style / styleOverride，并由 InDesign executor 应用。
-- 尚未达成：真实人工 ID 的 P1 清零、样式相关 P1 清零、剩余 P1 机器可读责任层级报告、E2E 报告自动内嵌合成样式审计。
+- 当前有效 diff：`EDI=575`、`P0=0`、`P1=0`、`P2=575`。相比执行前基线 `P1=825`，P1 已清零；P0 仍为 0。
+- 当前最新真实 E2E 输出：`test/workspace/human-indesign-synth-style-20260605/e2e-group-child-zindex/`；effective diff 报告：`test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-group-child-zindex.json`。
+- 当前剩余差异全部为 P2 规范化差异，主要是样式面板显示名、局部文本尾随空白等规范化差异；有效对象数、非背景矢量填充、描边、箭头、资源置入和二轮稳定性均已通过门禁。
+- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`；观察文本框不再被作者包 `min-height` 或 InDesign writer 最小行高放大；CSS/observed `mix-blend-mode` 可从 HTML 捕获、编译到 object style / styleOverride，并由 InDesign executor 应用；`<br>` 回读保留硬换行；PDF/图片图框透明度在资源置入后重新应用；反向观察模型保留有效组内子对象，并使用 audit 树全局 zIndex；结构审计把带置入资源的 `Rectangle` / `GraphicFrame` 统一视为图框，且忽略无可见描边的 `strokeWeight=0/null` 差异。
+- 尚未达成：E2E 报告自动内嵌合成样式审计、文档和 AGENTS 长期规范同步、退役代码全量扫描收口。
 
 ## Planned File Changes
 
@@ -239,9 +238,9 @@ node --test test/semantic-model/synthesized-styles.test.js
 ### 3. 接入 InDesign 反向 normalizer
 
 - [x] 在 `src/adapters/indesign/normalizer/snapshot-to-model.js` 中调用合成样式层。
-- [ ] 保留原始 InDesign 样式名作为观察事实和优先样式来源。
-- [ ] 有有效原始样式时，优先把原始样式映射为 styleRef；合成样式只补齐未样式化或样式不完整对象。
-- [ ] 原始样式内无法表达的局部属性进入 `styleOverrides`。
+- [x] 保留原始 InDesign 样式名作为观察事实和优先样式来源。
+- [x] 有有效原始样式时，优先把原始样式映射为 styleRef；合成样式只补齐未样式化或样式不完整对象。
+- [x] 原始样式内无法表达的局部属性进入 `styleOverrides`。
 - [x] 不把图层名、对象名或页面号纳入 fingerprint。
 - [x] 对 shape/text/image/pdf/line 都覆盖测试；语义模型层覆盖 text、line、shape/object、asset placement，反向 normalizer 覆盖 line。
 
@@ -382,10 +381,10 @@ npm test
 
 - [x] 审查 `_indesign_scripts/lib/hi_styles.jsxinc` 中当前虚线样式映射，修复把 `虚线（3 和 2）` 退化为普通虚线或实线的问题。
 - [x] 必要时新增 `_indesign_scripts/lib/hi_stroke_styles.jsxinc`，专门创建和复用精确 stroke style；当前先收窄既有 `HI.strokeStyleName`，未新增 include。
-- [ ] 支持 line end marker、arrow、stroke alignment、line cap、line join，并用真实 ID effective diff 证明收敛；当前仍有 `lineEndMarker=48`、`strokeAlignment=30` 的 P1 差异。
+- [x] 支持 line end marker、arrow、stroke alignment、line cap、line join，并用真实 ID effective diff 证明收敛：最终 effective diff `P1=0`。
 - [x] 支持 blend mode：`mix-blend-mode` 已进入 HTML 捕获、object style、styleOverride 和 executor；真实 ID `blendMode=64` 已清零。
-- [ ] 支持 opacity、fill/stroke tint；当前仍有 `opacity=2` 的 P1 差异。
-- [ ] 保留 PDF/图片相对于 frame 的 crop、scale、offset、fit policy；当前已修复 pathless frame 预览导出，但仍有 asset placement P1=3。
+- [x] 支持 opacity、fill/stroke tint；PDF/图片图框透明度已在资源置入后重新应用，最终 effective diff `P1=0`。
+- [x] 保留 PDF/图片相对于 frame 的 crop、scale、offset、fit policy；最终 effective diff `P1=0`。
 - [x] 增加 executor 静态测试，验证精确虚线名不再被粗略映射。
 
 建议测试文件：`test/indesign-executor/synthesized-style-executor-static.test.js`
@@ -419,8 +418,8 @@ npm test
 
 - [x] 确认合成样式不会改变 observed text frame 的原始 bounds；当前真实 ID bounds P1 已从 135 降到 4。
 - [x] 若观察文本行高大于原始框高，作者包 CSS 和 InDesign instructions 都保留原始 frame bounds；内容适配继续通过 `textFit` 显式处理。
-- [ ] overset 只作为显式报告项，不能通过扩大文本框假装成功。
-- [ ] 对剩余 4 个 bounds P1 添加分类，判断是否由样式应用、文本 fit 或坐标单位造成。
+- [x] overset 只作为显式报告项，不能通过扩大文本框假装成功；最新真实 E2E overset text frame 0。
+- [x] 对剩余 bounds P1 添加分类，判断是否由样式应用、文本 fit 或坐标单位造成；最终 effective diff `P1=0`。
 
 建议测试文件：`test/paged-html/text-frame-bounds-after-synth-style.test.js`
 
@@ -512,9 +511,9 @@ npm run audit:effective-diff -- --expected <original-reverse-snapshot.json> --ac
 - [x] 使用用户给定的真实人工 ID 重新导出反向快照：`test/workspace/human-indesign-synth-style-20260605/original-rerun-preview-fix/reverse-snapshot.json`。
 - [x] 从反向 HTML 作者包再次导回 InDesign：`test/workspace/human-indesign-synth-style-20260605/e2e-preview-fix/output.indd`。
 - [x] 对回环后的 InDesign 再反向导出，并执行二次回环：`test/workspace/human-indesign-synth-style-20260605/e2e-preview-fix/second-pass/reverse-snapshot.json`。
-- [x] 执行 effective diff：最新报告 `test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-blend-mode-fix.json`，当前 `P0=0`、`P1=329`、`P2=650`、`EDI=3940`，二轮稳定审计通过。
-- [ ] 对 P1 做逐类收敛，优先处理样式、线条、资源置入和样式导致的 missing/extra。
-- [ ] 若 P1 未清零，输出 `remaining-p1-classification.json`，其中每一类都有责任层级、数量、样例 item id 和下一步文件入口。
+- [x] 执行 effective diff：最新报告 `test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-group-child-zindex.json`，当前 `P0=0`、`P1=0`、`P2=575`、`EDI=575`，二轮稳定审计通过。
+- [x] 对 P1 做逐类收敛，优先处理样式、线条、资源置入和样式导致的 missing/extra；最终 effective diff `P1=0`。
+- [x] 若 P1 未清零，输出 `remaining-p1-classification.json`，其中每一类都有责任层级、数量、样例 item id 和下一步文件入口；本轮 P1 已清零，无需输出剩余 P1 分类报告。
 
 验收命令：
 
@@ -599,9 +598,9 @@ npm run audit:effective-diff -- --expected <original-reverse-snapshot.json> --ac
 - [x] InDesign 反向模型能生成稳定合成样式。
 - [x] HTML 作者包能保存和回读合成样式。
 - [x] InDesign Writer 能生成中文原生样式并应用 token identity。
-- [ ] Executor 精确保留虚线、箭头、混合模式、填充、描边和资源置入属性。
+- [x] Executor 精确保留虚线、箭头、混合模式、填充、描边和资源置入属性。
 - [ ] 合成样式审计命令可运行，且纳入真实 E2E 报告；当前命令可运行并已人工接入验收，尚未自动写入 E2E 报告。
-- [ ] 真实人工 ID 的样式相关 P1 为 0。
+- [x] 真实人工 ID 的样式相关 P1 为 0。
 - [x] 二轮回环稳定审计错误为 0。
 - [ ] 文档和 AGENTS 已同步。
 - [ ] 退役代码和粗略映射已清理。

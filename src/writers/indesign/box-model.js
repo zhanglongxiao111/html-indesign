@@ -16,9 +16,16 @@ function trackingValue(style, options) {
 
 function itemLengthToPt(item, prop, options) {
   if (isPresentationLayout(options)) {
-    return cssLengthToPresentationPt(item && item.computedStyle && item.computedStyle[prop], options);
+    return cssLengthToPresentationPt(presentationLengthStyleValue(item, prop), options);
   }
   return cssLengthToPt(lengthStyleValue(item, prop));
+}
+
+function presentationLengthStyleValue(item, prop) {
+  const authored = item && item.authoredStyle && item.authoredStyle[prop];
+  const parsed = parseCssLength(authored);
+  if (parsed && parsed.unit === 'px') return authored;
+  return item && item.computedStyle && item.computedStyle[prop];
 }
 
 function cssLengthToPresentationPt(value, options) {

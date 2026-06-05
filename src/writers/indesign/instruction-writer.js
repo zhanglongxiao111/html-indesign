@@ -232,11 +232,14 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     const asset = assetForItem(item, assets);
     const placement = asset ? placementForItem(item, asset) : null;
     const contentBounds = graphicContentBounds(item, base.bounds, layout, placement);
+    const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
     return {
       ...base,
       type: 'GRAPHIC',
       objectStyle: styleRefs.objectStyle,
       frameStyle: styleRefs.frameStyle,
+      ...(visualStyle ? { visualStyle } : {}),
+      ...(styleOverride ? { styleOverride } : {}),
       contentBounds,
       placed: asset ? {
         assetId: asset.id,

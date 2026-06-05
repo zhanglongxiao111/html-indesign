@@ -389,6 +389,17 @@ test('line style overrides are applied after native line stroke fields', () => {
   assert.match(body, /HI\.applyObjectStyle\(doc,\s*line,\s*item\.objectStyle,\s*report\)[\s\S]*if \(item\.strokeColor\) line\.strokeColor[\s\S]*if \(item\.strokeWeight !== null[\s\S]*HI\.applyStyleOverride\(doc,\s*line,\s*item\.styleOverride,\s*report\)/);
 });
 
+test('graphic frame style overrides are reapplied after placing assets', () => {
+  const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const start = itemSource.indexOf('HI.createGraphicFrame = function');
+  const body = itemSource.slice(
+    start,
+    itemSource.indexOf('HI.createShapeFrame', start),
+  );
+
+  assert.match(body, /HI\.placeAssetInFrame\(doc,\s*rect,\s*asset,\s*placed,\s*context\.baseFolder,\s*report\)[\s\S]*HI\.applyStyleOverride\(doc,\s*rect,\s*item\.styleOverride,\s*report\)/);
+});
+
 test('style helper preserves authored dashed stroke style names for InDesign', () => {
   const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
   const context = { HI: {} };
@@ -400,6 +411,13 @@ test('style helper preserves authored dashed stroke style names for InDesign', (
   assert.equal(context.HI.strokeStyleName('点线'), '$ID/Dotted');
   assert.equal(context.HI.strokeStyleName('实底'), '$ID/Solid');
   assert.equal(context.HI.strokeStyleName('自定义线型'), '自定义线型');
+});
+
+test('style helper applies full stroke alignment values to object styles', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+
+  assert.match(stylesSource, /HI\.applyStrokeAlignment\(style,\s*def\.strokeAlignment\)/);
+  assert.doesNotMatch(stylesSource, /if \(def\.strokeAlignment === "inside"\) style\.strokeAlignment = StrokeAlignment\.INSIDE_ALIGNMENT/);
 });
 
 test('blend mode helper maps CSS and observed blend modes into explicit executor calls', () => {

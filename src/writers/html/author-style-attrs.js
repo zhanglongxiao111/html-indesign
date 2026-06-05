@@ -39,6 +39,8 @@ function visualStyleCss(visualStyle) {
   if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
   if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
     styles.push(`border:${px(visualStyle.strokeWeight)} solid ${visualStyle.strokeColor}`);
+  } else if (hasExplicitStrokeFact(visualStyle)) {
+    styles.push('border:0 solid transparent');
   }
   if (Number(visualStyle.cornerRadius) > 0) styles.push(`border-radius:${px(visualStyle.cornerRadius)}`);
   const blendMode = blendModeCss(visualStyle.blendMode);
@@ -46,6 +48,11 @@ function visualStyleCss(visualStyle) {
   const opacity = Number(visualStyle.opacity);
   if (Number.isFinite(opacity) && opacity >= 0 && opacity < 100) styles.push(`opacity:${formatNumber(opacity / 100)}`);
   return styles.join(';');
+}
+
+function hasExplicitStrokeFact(visualStyle) {
+  return Object.prototype.hasOwnProperty.call(visualStyle, 'strokeColor')
+    || Object.prototype.hasOwnProperty.call(visualStyle, 'strokeWeight');
 }
 
 function textStyleCss(textStyle) {

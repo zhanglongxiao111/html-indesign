@@ -91,6 +91,7 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
     } else {
         HI.placeAssetInFrame(doc, rect, asset, placed, context.baseFolder, report);
     }
+    HI.applyStyleOverride(doc, rect, item.styleOverride, report);
     report.counts.graphicFrames += 1;
     return rect;
 };
