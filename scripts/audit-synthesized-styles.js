@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+
+const fs = require('node:fs');
+const path = require('node:path');
+const { auditSynthesizedStyles } = require('../src/adapters/indesign/audit/synthesized-style-audit');
+
+function main(argv = process.argv.slice(2)) {
+  const args = parseArgs(argv);
+  if (!args.model) {
+    throw new Error('SYNTHESIZED_STYLE_AUDIT_MODEL_REQUIRED: pass --model <semantic-model.json>');
+  }
+  const modelPath = path.resolve(args.model);
+  const model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+  const report = auditSynthesizedStyles(model);
+  const json = JSON.stringify(report, null, 2);
+  if (args.out) {
+    const outPath = path.resolve(args.out);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+    fs.writeFileSync(outPath, `${json}\n`, 'utf8');
+  }
+  process.stdout.write(`${json}\n`);
+  if (!report.ok) {
+    process.exitCode = 1;
+  }
+}
+
+function parseArgs(argv) {
+  const args = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--') {
+      continue;
+    }
+    if (arg === '--model') {
+      args.model = argv[++index];
+    } else if (arg === '--out') {
+      args.out = argv[++index];
+    } else {
+      throw new Error(`SYNTHESIZED_STYLE_AUDIT_ARG_UNKNOWN:${arg}`);
+    }
+  }
+  return args;
+}
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    process.stderr.write(`${error.message || String(error)}\n`);
+    process.exitCode = 1;
+  }
+}
+
+module.exports = {
+  main,
+  parseArgs,
+};
