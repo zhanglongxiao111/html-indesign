@@ -79,10 +79,11 @@ npm run audit:effective-diff -- --expected test/workspace/human-indesign-nested-
 - 已用该反向作者包执行真实 InDesign E2E、反向回读和二次回环：47 页、505 条 instructions item、57 个资源、overset text frame 0。
 - 一轮与二轮回读的合成样式审计均通过：`styleCount=33`、`referenceCount=280`、`issueCount=0`。
 - 二轮结构稳定审计通过：errors 0、warnings 0。
-- 当前有效 diff：`EDI=4580`、`P0=0`、`P1=393`、`P2=650`。相比执行前基线 `P1=825`，已下降 432；P0 仍为 0。
-- 当前剩余 P1 主要分布：visual style 239、missing 89、extra 53、bounds 4、vector geometry 4、asset placement 3、field 1。
-- 当前剩余样式字段热点：`blendMode=64`、`strokeStyle=56`、`lineEndMarker=48`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`。
-- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`；观察文本框不再被作者包 `min-height` 或 InDesign writer 最小行高放大。
+- 当前有效 diff：`EDI=3940`、`P0=0`、`P1=329`、`P2=650`。相比执行前基线 `P1=825`，已下降 496；P0 仍为 0。
+- 当前最新真实 E2E 输出：`test/workspace/human-indesign-synth-style-20260605/e2e-blend-mode-fix/`；effective diff 报告：`test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-blend-mode-fix.json`。
+- 当前剩余 P1 主要分布：visual style 175、missing 89、extra 53、bounds 4、vector geometry 4、asset placement 3、field 1。
+- 当前剩余样式字段热点：`strokeStyle=56`、`lineEndMarker=48`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`；`blendMode=64` 已清零。
+- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`；观察文本框不再被作者包 `min-height` 或 InDesign writer 最小行高放大；CSS/observed `mix-blend-mode` 可从 HTML 捕获、编译到 object style / styleOverride，并由 InDesign executor 应用。
 - 尚未达成：真实人工 ID 的 P1 清零、样式相关 P1 清零、剩余 P1 机器可读责任层级报告、E2E 报告自动内嵌合成样式审计。
 
 ## Planned File Changes
@@ -382,7 +383,8 @@ npm test
 - [x] 审查 `_indesign_scripts/lib/hi_styles.jsxinc` 中当前虚线样式映射，修复把 `虚线（3 和 2）` 退化为普通虚线或实线的问题。
 - [x] 必要时新增 `_indesign_scripts/lib/hi_stroke_styles.jsxinc`，专门创建和复用精确 stroke style；当前先收窄既有 `HI.strokeStyleName`，未新增 include。
 - [ ] 支持 line end marker、arrow、stroke alignment、line cap、line join，并用真实 ID effective diff 证明收敛；当前仍有 `lineEndMarker=48`、`strokeAlignment=30` 的 P1 差异。
-- [ ] 支持 blend mode、opacity、fill/stroke tint。
+- [x] 支持 blend mode：`mix-blend-mode` 已进入 HTML 捕获、object style、styleOverride 和 executor；真实 ID `blendMode=64` 已清零。
+- [ ] 支持 opacity、fill/stroke tint；当前仍有 `opacity=2` 的 P1 差异。
 - [ ] 保留 PDF/图片相对于 frame 的 crop、scale、offset、fit policy；当前已修复 pathless frame 预览导出，但仍有 asset placement P1=3。
 - [x] 增加 executor 静态测试，验证精确虚线名不再被粗略映射。
 
@@ -510,7 +512,7 @@ npm run audit:effective-diff -- --expected <original-reverse-snapshot.json> --ac
 - [x] 使用用户给定的真实人工 ID 重新导出反向快照：`test/workspace/human-indesign-synth-style-20260605/original-rerun-preview-fix/reverse-snapshot.json`。
 - [x] 从反向 HTML 作者包再次导回 InDesign：`test/workspace/human-indesign-synth-style-20260605/e2e-preview-fix/output.indd`。
 - [x] 对回环后的 InDesign 再反向导出，并执行二次回环：`test/workspace/human-indesign-synth-style-20260605/e2e-preview-fix/second-pass/reverse-snapshot.json`。
-- [x] 执行 effective diff：`test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-preview-fix.json`，当前 `P0=0`、`P1=692`、`P2=632`。
+- [x] 执行 effective diff：最新报告 `test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-blend-mode-fix.json`，当前 `P0=0`、`P1=329`、`P2=650`、`EDI=3940`，二轮稳定审计通过。
 - [ ] 对 P1 做逐类收敛，优先处理样式、线条、资源置入和样式导致的 missing/extra。
 - [ ] 若 P1 未清零，输出 `remaining-p1-classification.json`，其中每一类都有责任层级、数量、样例 item id 和下一步文件入口。
 

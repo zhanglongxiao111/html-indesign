@@ -47,6 +47,7 @@
     'borderLeftStyle',
     'borderRadius',
     'opacity',
+    'mixBlendMode',
     'objectFit',
     'objectPosition',
     'overflow',
@@ -133,6 +134,7 @@
       'paddingLeft',
       'overflow',
       'opacity',
+      'mixBlendMode',
     ]) {
       if (frameStyle[prop]) out[prop] = frameStyle[prop];
     }

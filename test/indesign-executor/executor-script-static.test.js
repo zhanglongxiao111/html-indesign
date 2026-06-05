@@ -32,6 +32,7 @@ function executorLibNames() {
     'hi_parent_pages.jsxinc',
     'hi_fonts.jsxinc',
     'hi_styles.jsxinc',
+    'hi_blend_modes.jsxinc',
     'hi_vector_styles.jsxinc',
     'hi_assets.jsxinc',
     'hi_tables.jsxinc',
@@ -49,6 +50,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_parent_pages.jsxinc': ['HI.ensureParentPages', 'HI.applyParentPageToParentPage', 'HI.buildParentPageItems', 'HI.applyParentPage'],
     'hi_fonts.jsxinc': ['HI.resolveFont', 'HI.fontStyleNameFor', 'HI.fontByName'],
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
+    'hi_blend_modes.jsxinc': ['HI.applyBlendMode', 'HI.blendModeKey', 'HI.blendModeValue'],
     'hi_vector_styles.jsxinc': ['HI.applyStrokeOpacity', 'HI.applyLineMarker', 'HI.lineMarkerName'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
     'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
@@ -398,6 +400,20 @@ test('style helper preserves authored dashed stroke style names for InDesign', (
   assert.equal(context.HI.strokeStyleName('点线'), '$ID/Dotted');
   assert.equal(context.HI.strokeStyleName('实底'), '$ID/Solid');
   assert.equal(context.HI.strokeStyleName('自定义线型'), '自定义线型');
+});
+
+test('blend mode helper maps CSS and observed blend modes into explicit executor calls', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  const blendSource = fs.readFileSync(path.join(libDir, 'hi_blend_modes.jsxinc'), 'utf8');
+  const context = { HI: {} };
+  vm.runInNewContext(blendSource, context);
+
+  assert.match(stylesSource, /HI\.applyBlendMode\(style,\s*def\.blendMode,\s*report\)/);
+  assert.match(stylesSource, /HI\.applyBlendMode\(pageItem,\s*override\.blendMode,\s*report\)/);
+  assert.equal(context.HI.blendModeKey('multiply'), 'multiply');
+  assert.equal(context.HI.blendModeKey('正片叠底'), 'multiply');
+  assert.equal(context.HI.blendModeKey('saturation'), 'saturation');
+  assert.equal(context.HI.blendModeKey('normal'), '');
 });
 
 test('item helper records located overset text frame diagnostics', () => {

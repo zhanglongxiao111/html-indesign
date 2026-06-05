@@ -597,6 +597,7 @@ test('semanticModelToInstructions preserves observed vector paths and paint as n
           strokeWeight: 4,
           strokeOpacity: 75,
           strokeStyle: '虚线（3 和 2）',
+          blendMode: 'multiply',
           strokeLineCap: 'round',
           strokeLineJoin: 'bevel',
           strokeMiterLimit: 6,
@@ -662,6 +663,7 @@ test('semanticModelToInstructions preserves observed vector paths and paint as n
   assert.equal(line.styleOverride.strokeWeight, 4);
   assert.equal(line.styleOverride.strokeOpacity, 75);
   assert.equal(line.styleOverride.strokeStyle, '虚线（3 和 2）');
+  assert.equal(line.styleOverride.blendMode, 'multiply');
   assert.equal(line.styleOverride.strokeLineCap, 'round');
   assert.equal(line.styleOverride.strokeLineJoin, 'bevel');
   assert.equal(line.styleOverride.strokeMiterLimit, 6);

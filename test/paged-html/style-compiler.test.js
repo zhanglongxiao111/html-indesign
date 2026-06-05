@@ -189,6 +189,52 @@ test('compileStyles keeps fill alpha separate from object opacity', async () => 
   assert.equal(metricCard.strokeAlignment, 'inside');
 });
 
+test('compileStyles maps non-normal CSS mix-blend-mode into object styles', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'blend-card',
+        role: 'shape',
+        tagName: 'div',
+        classList: ['blend-card'],
+        attributes: { 'data-id-object': '', 'data-id-object-style': 'blend-card' },
+        text: '',
+        boundsMm: { x: 10, y: 10, width: 30, height: 20 },
+        computedStyle: {
+          backgroundColor: 'rgb(200, 16, 46)',
+          borderTopColor: 'rgba(0, 0, 0, 0)',
+          borderTopWidth: '0px',
+          borderTopStyle: 'none',
+          borderRightColor: 'rgba(0, 0, 0, 0)',
+          borderRightWidth: '0px',
+          borderRightStyle: 'none',
+          borderBottomColor: 'rgba(0, 0, 0, 0)',
+          borderBottomWidth: '0px',
+          borderBottomStyle: 'none',
+          borderLeftColor: 'rgba(0, 0, 0, 0)',
+          borderLeftWidth: '0px',
+          borderLeftStyle: 'none',
+          borderRadius: '0px',
+          opacity: '1',
+          overflow: 'visible',
+          mixBlendMode: 'multiply',
+        },
+        authoredStyle: {},
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+
+  assert.equal(styled.styles.objectStyles['blend-card'].blendMode, 'multiply');
+});
+
 test('compileStyles selects CJK fonts and InDesign font style names for Chinese text', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

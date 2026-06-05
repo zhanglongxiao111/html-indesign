@@ -148,6 +148,36 @@ test('renderSnapshot captures paint-only legend swatches as shape items', async 
   assert.equal(swatches.every((item) => item.computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'), true);
 });
 
+test('renderSnapshot captures authored CSS mix-blend-mode for drawable objects', async () => {
+  const outDir = path.resolve('test/workspace/browser-blend-mode');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .multiply-card {
+    position: absolute;
+    left: 20px;
+    top: 30px;
+    width: 120px;
+    height: 60px;
+    background: #c8102e;
+    mix-blend-mode: multiply;
+  }
+</style>
+<section class="page" id="page-1">
+  <div id="blend-card" class="multiply-card" data-id-object data-id-object-style="blend-card"></div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const item = snapshot.pages[0].items.find((candidate) => candidate.id === 'blend-card');
+
+  assert.ok(item);
+  assert.equal(item.computedStyle.mixBlendMode, 'multiply');
+  assert.equal(item.authoredStyle.mixBlendMode, 'multiply');
+});
+
 test('snapshotToSemanticModel captures authored SVG path geometry and vector paint facts', async () => {
   const outDir = path.resolve('test/workspace/browser-vector-geometry');
   fs.rmSync(outDir, { recursive: true, force: true });

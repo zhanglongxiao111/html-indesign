@@ -6,6 +6,7 @@ const {
   parseCssLinearGradient,
   stableAutoName,
 } = require('../../shared/style-utils');
+const { normalizeBlendMode } = require('../../shared/blend-mode');
 const {
   styleLengthToPt,
   trackingValue,
@@ -309,6 +310,7 @@ function ensureObjectStyle(styles, item, report, options) {
   const fillColor = fill && fill.name;
   const uniformBorder = uniformBorderForObject(item, options);
   const strokeColor = uniformBorder ? uniformBorder.color : null;
+  const blendMode = normalizeBlendMode(style.mixBlendMode);
   const signature = {
     fillColor,
     fillOpacity: fill && fill.alpha != null ? fill.alpha : null,
@@ -318,6 +320,7 @@ function ensureObjectStyle(styles, item, report, options) {
     strokeAlignment: uniformBorder ? 'inside' : null,
     cornerRadius: cornerRadiusValue(item, options),
     opacity: effectiveObjectOpacity(item, fill),
+    ...(blendMode ? { blendMode } : {}),
   };
   const requestedName = styleNameForKind(item, 'objectStyles', signature, options)
     || stableAutoName('object', signature);
@@ -342,6 +345,7 @@ function shouldCompileTextFrameObjectStyle(item) {
     || visibleStroke(item, 'borderBottomWidth', {})
     || visibleStroke(item, 'borderLeftWidth', {})
     || Number(style.opacity || 1) < 1
+    || normalizeBlendMode(style.mixBlendMode)
     || (style.borderRadius && style.borderRadius !== '0px')
   );
 }

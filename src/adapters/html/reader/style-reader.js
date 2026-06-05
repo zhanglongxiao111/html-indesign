@@ -41,6 +41,7 @@ const SNAPSHOT_STYLE_PROPS = [
   'borderLeftStyle',
   'borderRadius',
   'opacity',
+  'mixBlendMode',
   'objectFit',
   'objectPosition',
   'overflow',

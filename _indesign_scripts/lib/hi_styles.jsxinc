@@ -135,7 +135,7 @@ HI.ensureObjectStyles = function (doc, objectStyles, report) {
         try { if (def.strokeStyle) style.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(def.strokeStyle)); } catch (_) {}
         try { if (def.strokeAlignment === "inside") style.strokeAlignment = StrokeAlignment.INSIDE_ALIGNMENT; } catch (_) {}
         HI.applyCornerRadius(style, def.cornerRadius);
-        HI.applyOpacity(style, def.opacity);
+        HI.applyOpacity(style, def.opacity); HI.applyBlendMode(style, def.blendMode, report);
         HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "object", critical: false });
         out[name] = style;
     }
@@ -261,7 +261,7 @@ HI.applyStyleOverride = function (doc, pageItem, override, report) {
         }
     } catch (_) {}
     HI.applyVectorStrokeStyleOverride(doc, pageItem, override, report);
-    HI.applyOpacity(pageItem, override.opacity);
+    HI.applyOpacity(pageItem, override.opacity); HI.applyBlendMode(pageItem, override.blendMode, report);
 };
 
 HI.applyItemEffects = function (pageItem, effects, bounds, report) {

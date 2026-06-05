@@ -1,6 +1,7 @@
 const { createReport, addMessage } = require('../../shared/report');
 const { parseCssLength, round } = require('../../shared/geometry');
 const { normalizeCssColor } = require('../../shared/style-utils');
+const { normalizeBlendMode } = require('../../shared/blend-mode');
 const {
   itemBounds,
   cssLengthToTarget,
@@ -535,6 +536,8 @@ function vectorStyleOverride(visualStyle, styles, report, item) {
     out.strokeOpacity = Number(visualStyle.strokeOpacity);
   }
   if (visualStyle.opacity !== null && typeof visualStyle.opacity !== 'undefined') out.opacity = Number(visualStyle.opacity);
+  const blendMode = normalizeBlendMode(visualStyle.blendMode);
+  if (blendMode) out.blendMode = blendMode;
   if (visualStyle.strokeStyle !== null && typeof visualStyle.strokeStyle !== 'undefined') {
     const strokeStyle = executableStrokeStyle(visualStyle.strokeStyle);
     if (strokeStyle) out.strokeStyle = strokeStyle;

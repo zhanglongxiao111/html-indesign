@@ -1,0 +1,47 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.applyBlendMode = function (target, value, report) {
+    var key = HI.blendModeKey(value);
+    if (!key) return;
+    var mode = HI.blendModeValue(key);
+    if (!mode) {
+        if (report) HI.addMessage(report, "warning", "BLEND_MODE_UNSUPPORTED", "Unsupported blend mode.", { blendMode: value });
+        return;
+    }
+    try {
+        target.transparencySettings.blendingSettings.blendMode = mode;
+    } catch (error) {
+        if (report) HI.addMessage(report, "warning", "BLEND_MODE_APPLY_FAILED", String(error), { blendMode: value });
+    }
+};
+
+HI.blendModeKey = function (value) {
+    var raw = String(value || "").replace(/^\s+|\s+$/g, "");
+    if (!raw) return "";
+    if (raw === String.fromCharCode(27491, 29255, 21472, 24213)) return "multiply";
+    var key = raw.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
+    if (key === "normal") return "";
+    if (key === "multiply" || key === "screen" || key === "overlay" || key === "darken" || key === "lighten" || key === "color-dodge" || key === "color-burn" || key === "hard-light" || key === "soft-light" || key === "difference" || key === "exclusion" || key === "hue" || key === "saturation" || key === "color" || key === "luminosity") return key;
+    return "";
+};
+
+HI.blendModeValue = function (key) {
+    try {
+        if (key === "multiply") return BlendMode.MULTIPLY;
+        if (key === "screen") return BlendMode.SCREEN;
+        if (key === "overlay") return BlendMode.OVERLAY;
+        if (key === "darken") return BlendMode.DARKEN;
+        if (key === "lighten") return BlendMode.LIGHTEN;
+        if (key === "color-dodge") return BlendMode.COLOR_DODGE;
+        if (key === "color-burn") return BlendMode.COLOR_BURN;
+        if (key === "hard-light") return BlendMode.HARD_LIGHT;
+        if (key === "soft-light") return BlendMode.SOFT_LIGHT;
+        if (key === "difference") return BlendMode.DIFFERENCE;
+        if (key === "exclusion") return BlendMode.EXCLUSION;
+        if (key === "hue") return BlendMode.HUE;
+        if (key === "saturation") return BlendMode.SATURATION;
+        if (key === "color") return BlendMode.COLOR;
+        if (key === "luminosity") return BlendMode.LUMINOSITY;
+    } catch (_) {}
+    return null;
+};
