@@ -46,7 +46,7 @@ test('writeAuthorCssFiles omits degenerate invisible vector leftovers', () => {
   assert.doesNotMatch(css, /empty-vector/);
 });
 
-test('writeAuthorCssFiles keeps observed text glyphs from being clipped by reverse text frames', () => {
+test('writeAuthorCssFiles keeps observed text frame bounds fixed while allowing overflow', () => {
   const css = writeAuthorCssFiles({
     pages: [
       {
@@ -64,7 +64,8 @@ test('writeAuthorCssFiles keeps observed text glyphs from being clipped by rever
   });
 
   assert.match(css['styles/layout.css'], /\.observed-text\.id-object \{ overflow: visible; \}/);
-  assert.match(css['styles/reverse-overrides.css'], /\[id="tiny-text-frame"\] \{[^}]*min-height:24px/);
+  assert.match(css['styles/reverse-overrides.css'], /\[id="tiny-text-frame"\] \{[^}]*height:12px/);
+  assert.doesNotMatch(css['styles/reverse-overrides.css'], /\[id="tiny-text-frame"\] \{[^}]*min-height:/);
 });
 
 test('writeAuthorCssFiles resets browser margins for fixed-position page text tags', () => {

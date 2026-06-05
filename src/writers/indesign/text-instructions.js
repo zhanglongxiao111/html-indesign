@@ -42,6 +42,7 @@ function roundEffectCoordinate(value) {
 
 function textFrameBounds(item, bounds, layout) {
   if (layout.unitMode !== 'presentation') return bounds;
+  if (isObservedReverseText(item)) return bounds;
   const minHeight = minimumTextFrameHeight(item, layout);
   const minWidth = minimumTextFrameWidth(item, layout);
   return {

@@ -116,8 +116,6 @@ function reverseOverridesCss(model) {
         `width:${px(item.bounds.width)}`,
         `height:${px(item.bounds.height)}`,
       ];
-      const minHeight = textMinHeight(item);
-      if (minHeight != null && minHeight > Number(item.bounds.height || 0)) declarations.push(`min-height:${px(minHeight)}`);
       for (const minDeclaration of vectorMinSizeDeclarations(item)) declarations.push(minDeclaration);
       lines.push(`[id="${cssString(item.id)}"] { ${declarations.join('; ')}; }`);
     }
@@ -140,22 +138,6 @@ function shouldOmitAuthorOverride(item, itemIds) {
 
 function isGeneratedLabel(item) {
   return (item.labels || []).some((label) => label && (label.generated === true || label.kind === 'generated'));
-}
-
-function textMinHeight(item) {
-  if (!item || item.role !== 'text') return null;
-  const textStyle = item.textStyle || {};
-  const leading = Number(textStyle.leading);
-  const pointSize = Number(textStyle.pointSize);
-  const lineHeight = Number.isFinite(leading) && leading > 0
-    ? leading
-    : Number.isFinite(pointSize) && pointSize > 0
-      ? pointSize * 1.2
-      : null;
-  if (!lineHeight) return null;
-  const text = item.content && typeof item.content.text === 'string' ? item.content.text : '';
-  const lines = Math.max(1, String(text).split(/\r\n|\r|\n/).length);
-  return lineHeight * lines;
 }
 
 function vectorMinSizeDeclarations(item) {

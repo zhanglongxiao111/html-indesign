@@ -339,6 +339,49 @@ test('semanticModelToInstructions emits bounded text fit for observed reverse te
   });
 });
 
+test('semanticModelToInstructions preserves observed text frame bounds despite larger line height', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-fixed-bounds-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    layoutInfo: {
+      unitMode: 'presentation',
+      targetUnit: 'pt',
+      targetSize: { width: 1000, height: 600 },
+      scale: 1,
+    },
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'space-text-frame',
+        role: 'text',
+        semantic: 'unknown',
+        bounds: { x: 370.5, y: 610.13, width: 36.26, height: 15.43 },
+        computedStyle: { fontSize: '18px', lineHeight: '28px' },
+        content: { text: ' ' },
+        sourceNode: {
+          classList: ['observed-text', 'id-object'],
+          attributes: { class: 'observed-text id-object' },
+        },
+        structure: { parentId: 'p1', order: 1 },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'space-text-frame');
+
+  assert.deepEqual(item.bounds, { x: 370.5, y: 610.13, width: 36.26, height: 15.43 });
+  assert.equal(item.textFit.mode, 'expand-frame-to-content');
+});
+
 test('semanticModelToInstructions emits bounded text fit for observed source nodes stored in protocol labels', () => {
   const model = {
     kind: 'DocumentModel',

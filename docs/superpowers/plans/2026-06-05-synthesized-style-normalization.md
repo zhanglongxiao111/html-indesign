@@ -79,10 +79,10 @@ npm run audit:effective-diff -- --expected test/workspace/human-indesign-nested-
 - 已用该反向作者包执行真实 InDesign E2E、反向回读和二次回环：47 页、505 条 instructions item、57 个资源、overset text frame 0。
 - 一轮与二轮回读的合成样式审计均通过：`styleCount=33`、`referenceCount=280`、`issueCount=0`。
 - 二轮结构稳定审计通过：errors 0、warnings 0。
-- 当前有效 diff：`EDI=5952`、`P0=0`、`P1=532`、`P2=632`。相比执行前基线 `P1=825`，已下降 293；P0 仍为 0。
-- 当前剩余 P1 主要分布：visual style 235、bounds 135、missing 95、extra 59、vector geometry 4、asset placement 3、field 1。
-- 当前剩余样式字段热点：`blendMode=64`、`strokeStyle=52`、`lineEndMarker=48`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`。
-- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`。
+- 当前有效 diff：`EDI=4580`、`P0=0`、`P1=393`、`P2=650`。相比执行前基线 `P1=825`，已下降 432；P0 仍为 0。
+- 当前剩余 P1 主要分布：visual style 239、missing 89、extra 53、bounds 4、vector geometry 4、asset placement 3、field 1。
+- 当前剩余样式字段热点：`blendMode=64`、`strokeStyle=56`、`lineEndMarker=48`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`。
+- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框；合成文字 CSS 不再把文字 `fillColor` 写成文本框 `background-color`；观察文本框不再被作者包 `min-height` 或 InDesign writer 最小行高放大。
 - 尚未达成：真实人工 ID 的 P1 清零、样式相关 P1 清零、剩余 P1 机器可读责任层级报告、E2E 报告自动内嵌合成样式审计。
 
 ## Planned File Changes
@@ -415,10 +415,10 @@ npm test
 
 ### 8. 文本框几何和样式覆盖边界
 
-- [ ] 确认合成样式不会改变 text frame 的原始 bounds。
-- [ ] 若段落样式应用后 InDesign 自动改变文本框高度，必须在 instructions 中保留 frame bounds 并在 executor 后置恢复。
+- [x] 确认合成样式不会改变 observed text frame 的原始 bounds；当前真实 ID bounds P1 已从 135 降到 4。
+- [x] 若观察文本行高大于原始框高，作者包 CSS 和 InDesign instructions 都保留原始 frame bounds；内容适配继续通过 `textFit` 显式处理。
 - [ ] overset 只作为显式报告项，不能通过扩大文本框假装成功。
-- [ ] 对高度仅变化的 P1 添加分类，判断是否由样式应用、文本 fit 或坐标单位造成。
+- [ ] 对剩余 4 个 bounds P1 添加分类，判断是否由样式应用、文本 fit 或坐标单位造成。
 
 建议测试文件：`test/paged-html/text-frame-bounds-after-synth-style.test.js`
 
