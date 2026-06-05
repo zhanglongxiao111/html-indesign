@@ -24,7 +24,7 @@ function shouldRenderAssetFigureNode(item, sourceNode, tag) {
   if (!item || item.role !== 'graphic') return false;
   if (tag !== 'figure') return false;
   const asset = item.sourceAsset || item.asset || item.placedAsset;
-  return Boolean(asset && asset.path);
+  return Boolean(asset && (asset.path || assetPreviewPath(asset, item)));
 }
 
 function renderAssetFigureNode(node, options, depth, renderNode) {
@@ -60,20 +60,21 @@ function renderFigureAssetContent(item, sourceNode, options, depth) {
 }
 
 function figureAssetContentAttrs(item, tag, sourceNode, options) {
+  const asset = item.sourceAsset || item.asset || item.placedAsset || {};
   const attrs = mergeAttributes(assetAttributes(item, tag));
-  attrs.class = [attrs.class, 'placed-asset-content'].filter(Boolean).join(' ');
+  attrs.class = [attrs.class, usesGeneratedFramePreview(asset, item) ? 'placed-asset-preview' : 'placed-asset-content'].filter(Boolean).join(' ');
   attrs['data-id-ignore'] = '';
-  const style = figureAssetContentStyle(item);
+  const style = figureAssetContentStyle(item, asset);
   if (style) attrs.style = style;
   if (tag === 'img' && !attrs.alt) {
-    const asset = item.sourceAsset || item.asset || item.placedAsset || {};
     attrs.alt = (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path);
   }
   rewriteResourceAttrs(attrs, options);
   return attrsToHtml(orderAttrs(attrs));
 }
 
-function figureAssetContentStyle(item) {
+function figureAssetContentStyle(item, asset) {
+  if (usesGeneratedFramePreview(asset, item)) return placedAssetPreviewStyle();
   const geometry = assetContentGeometry(item);
   if (geometry) return placedAssetContentStyle(item);
   return mergeCss([
@@ -105,13 +106,13 @@ function placedAssetFrameSourceNode(sourceNode) {
 
 function placedAssetContentAttrs(item, sourceNode, options) {
   const asset = item.sourceAsset || item.asset || {};
-  if (!asset.path) return '';
-  const previewPath = assetPreviewPath(asset);
-  const src = shouldUsePreviewImage(asset) && previewPath ? previewPath : asset.path;
+  const previewPath = assetPreviewPath(asset, item);
+  const src = shouldUsePreviewImage(asset, item) && previewPath ? previewPath : asset.path;
+  if (!src) return '';
   const attrs = {
-    class: usesGeneratedFramePreview(asset) ? 'placed-asset-preview' : 'placed-asset-content',
+    class: usesGeneratedFramePreview(asset, item) ? 'placed-asset-preview' : 'placed-asset-content',
     src,
-    alt: (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path),
+    alt: (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path || src),
     'data-id-ignore': '',
     style: placedAssetContentStyle(item, asset),
   };
@@ -120,7 +121,7 @@ function placedAssetContentAttrs(item, sourceNode, options) {
 }
 
 function placedAssetContentStyle(item, asset) {
-  if (usesGeneratedFramePreview(asset)) return placedAssetPreviewStyle();
+  if (usesGeneratedFramePreview(asset, item)) return placedAssetPreviewStyle();
   const geometry = assetContentGeometry(item);
   return mergeCss([
     'position:absolute',

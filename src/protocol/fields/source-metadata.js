@@ -58,6 +58,23 @@ module.exports = [
     'data-id-source-package-schema',
     'integer|string',
   ),
+  {
+    canonicalPath: 'document.sourcePackage.parentPages',
+    currentPaths: ['sourcePackage.parentPages', 'sourcePackageInput.parentPages'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'array',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: ['data-id-source-package-parent-pages'],
+      writeAttrs: ['data-id-source-package-parent-pages'],
+    },
+  },
   documentSourcePackageField(
     'document.semanticPreset.relativePath',
     ['semanticPreset.relativePath', 'labels[].semanticPreset.relativePath', 'sourcePackageInput.attributes.data-id-semantic-preset'],

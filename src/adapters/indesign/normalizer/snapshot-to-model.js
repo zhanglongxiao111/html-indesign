@@ -57,12 +57,13 @@ function reversePage(page, styleMaps, context = {}) {
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
   const parent = effective.parentPage || {};
+  const appliedParentPageName = page.appliedParentPageName || null;
   return {
     id: label.id || page.id,
     index: page.index,
     semantic: effective.semantic || null,
-    parentPageId: effective.parentPageId || parent.id || null,
-    parentPageName: effective.parentPageName || parent.name || page.appliedParentPageName || null,
+    parentPageId: effective.parentPageId || parent.id || appliedParentPageName || null,
+    parentPageName: effective.parentPageName || parent.name || appliedParentPageName,
     layout: effective.layout || null,
     sourceFile: effective.sourceFile || null,
     sourceNode: effective.sourceNode || null,
@@ -104,11 +105,17 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     htmlClass: effective.className || null,
     bounds: item.bounds,
     layerName: item.layerName || null,
+    layer: item.layerName || null,
     styleRefs: {
       paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', item.paragraphStyleName),
+      paragraphStyleDisplayName: item.paragraphStyleName || null,
       objectStyle: mapStyleName(styleMaps, 'objectStyles', item.objectStyleName),
+      objectStyleDisplayName: item.objectStyleName || null,
       frameStyle: mapStyleName(styleMaps, 'frameStyles', item.frameStyleName),
+      frameStyleDisplayName: item.frameStyleName || null,
       tableStyle: table && table.tableStyle ? table.tableStyle : null,
+      tableStyleDisplayName: table && table.tableStyleDisplayName ? table.tableStyleDisplayName : null,
+      layer: item.layerName || null,
     },
     content: contentForReverseItem(role, item, effective, styleMaps),
     table,
@@ -137,15 +144,38 @@ function reverseItem(item, styleMaps = {}, context = {}) {
 
 function reverseParentPage(parentPage, styleMaps, context = {}) {
   const label = firstLabel(parentPage.labels, 'parentPage') || {};
+  const appliedParentPageName = parentPage.appliedParentPageName || null;
   return {
     id: label.id || parentPage.name,
     name: label.name || label.displayName || parentPage.name,
     semantic: label.semantic || label.id || parentPage.name,
+    parentPageId: label.parentPageId || appliedParentPageName || null,
+    parentPageName: label.parentPageName || appliedParentPageName || null,
     provides: label.provides || [],
     bounds: parentPage.bounds || null,
+    guides: normalizeReverseGuides(parentPage.guides || [], 'parent-page'),
     labels: parentPage.labels || [],
     items: (parentPage.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, context)),
   };
+}
+
+function normalizeReverseGuides(guides, source) {
+  return (guides || [])
+    .map((guide) => ({
+      orientation: normalizeGuideOrientation(guide.orientation),
+      position: numberOrNull(guide.position != null ? guide.position : guide.location),
+      source: guide.source || source || 'indesign',
+      labels: guide.labels || [],
+    }))
+    .filter((guide) => guide.orientation && guide.position != null);
+}
+
+function normalizeGuideOrientation(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'vertical' || text === 'horizontal') return text;
+  if (text.includes('vertical')) return 'vertical';
+  if (text.includes('horizontal')) return 'horizontal';
+  return null;
 }
 
 function reverseLayer(layer) {

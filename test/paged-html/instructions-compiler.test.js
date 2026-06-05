@@ -433,13 +433,20 @@ test('compileInstructions creates paragraph styles referenced by table cells', a
   assert.equal(instructions.styles.paragraphStyles['table-heading'].fillColor, '颜色-255-255-255');
 });
 
-test('compileInstructions emits page background shapes', async () => {
+test('compileInstructions emits page backgrounds through parent pages', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const firstPage = instructions.pages.find((page) => page.id === 'cover-page');
-  const background = firstPage.items.find((item) => item.id === 'cover-page-background');
+  const backgroundParent = instructions.document.parentPages.find((parentPage) => (
+    (parentPage.items || []).some((item) => item.role === 'background')
+  ));
+  assert.ok(backgroundParent);
+  const background = backgroundParent.items.find((item) => item.role === 'background');
 
+  assert.equal(firstPage.items.some((item) => item.role === 'background'), false);
+  assert.equal(firstPage.parentPageId, backgroundParent.id);
+  assert.equal(instructions.document.pages.find((page) => page.id === 'cover-page').parentPageId, backgroundParent.id);
   assert.ok(background);
   assert.equal(background.type, 'SHAPE');
   assert.equal(background.layer, 'background');

@@ -107,6 +107,47 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
   assert.doesNotMatch(html, /chapter-1-border-left/);
 });
 
+test('pageItemsToAuthorHtml writes vector point type metadata for stable roundtrip', () => {
+  const page = {
+    id: 'vector-page',
+    items: [
+      {
+        id: 'observed-vector',
+        role: 'shape',
+        semantic: 'unknown',
+        bounds: { x: 10, y: 20, width: 100, height: 50 },
+        sourceNode: {
+          tagName: 'svg',
+          id: 'observed-vector',
+          classList: ['old-vector'],
+          attributes: {
+            'data-id-object-style': '[无]',
+            'data-id-object-style-name': '[无]',
+          },
+        },
+        styleRefs: { objectStyle: '[无]', objectStyleDisplayName: '无-59786243' },
+        visualStyle: { strokeColor: '#000000', strokeWeight: 1 },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [{
+            closed: false,
+            points: [
+              { anchor: { x: 10, y: 20 }, leftDirection: { x: 10, y: 20 }, rightDirection: { x: 10, y: 20 }, pointType: 'CORNER' },
+              { anchor: { x: 60, y: 40 }, leftDirection: { x: 40, y: 20 }, rightDirection: { x: 80, y: 60 }, pointType: 'CORNER' },
+              { anchor: { x: 110, y: 70 }, leftDirection: { x: 110, y: 70 }, rightDirection: { x: 110, y: 70 }, pointType: 'SMOOTH' },
+            ],
+          }],
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.match(html, /<path[^>]+data-id-point-types="CORNER CORNER SMOOTH"/);
+  assert.match(html, /id="observed-vector"[^>]+data-id-object-style-name="无-59786243"/);
+});
+
 test('pageItemsToAuthorHtml restores inline character runs as editable inline tags', () => {
   const page = {
     id: 'agenda-page',
@@ -644,6 +685,106 @@ test('pageItemsToAuthorHtml keeps generated placed-asset previews from being str
   assert.doesNotMatch(html, /class="placed-asset-preview"[^>]+width:420px/);
 });
 
+test('pageItemsToAuthorHtml renders generated previews for embedded images without source paths', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'embedded-image',
+        role: 'graphic',
+        semantic: 'unknown',
+        bounds: { x: 20, y: 30, width: 240, height: 160 },
+        sourceNode: {
+          tagName: 'figure',
+          id: 'embedded-image',
+          classList: ['id-object'],
+          attributes: { 'data-id-asset-kind': 'image' },
+        },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '',
+          graphicType: 'Image',
+          preview: {
+            path: 'D:\\reverse\\previews\\embedded-image.png',
+            relativePath: 'previews/embedded-image.png',
+            source: 'indesign-frame-export',
+            format: 'png',
+          },
+          placement: {
+            fit: 'manual',
+            frameBounds: { x: 20, y: 30, width: 240, height: 160 },
+            contentBounds: { x: -10, y: 20, width: 300, height: 180 },
+            contentOffset: { x: -30, y: -10 },
+            contentSize: { width: 300, height: 180 },
+            contentScale: { x: 1.25, y: 1.125 },
+          },
+        },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['d:/reverse/previews/embedded-image.png', 'previews/embedded-image.png'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /<figure id="embedded-image"[^>]+data-id-preview-src="previews\/embedded-image\.png"/);
+  assert.match(html, /<img[^>]+class="placed-asset-preview"[^>]+src="previews\/embedded-image\.png"/);
+  assert.match(html, /<img[^>]+data-id-ignore/);
+});
+
+test('pageItemsToAuthorHtml keeps roundtripped generated image previews as preview-only assets', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'embedded-image',
+        role: 'graphic',
+        semantic: 'unknown',
+        bounds: { x: 20, y: 30, width: 240, height: 160 },
+        sourceNode: {
+          tagName: 'figure',
+          id: 'embedded-image',
+          classList: ['id-object'],
+          attributes: {
+            'data-id-asset-kind': 'image',
+            'data-id-preview-src': 'previews/embedded-image.png',
+            'data-id-fit': 'manual',
+            'data-id-content-x': '-30px',
+            'data-id-content-y': '-10px',
+            'data-id-content-width': '300px',
+            'data-id-content-height': '180px',
+          },
+        },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: 'D:\\reverse\\previews\\embedded-image.png',
+          name: 'embedded-image.png',
+          graphicType: 'Image',
+          placement: {
+            fit: 'manual',
+            frameBounds: { x: 20, y: 30, width: 240, height: 160 },
+            contentBounds: { x: -10, y: 20, width: 300, height: 180 },
+            contentOffset: { x: -30, y: -10 },
+            contentSize: { width: 300, height: 180 },
+            contentScale: { x: 1.25, y: 1.125 },
+          },
+        },
+      },
+    ],
+  };
+  const assetPathMap = new Map([
+    ['d:/reverse/previews/embedded-image.png', 'previews/embedded-image.png'],
+  ]);
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', assetPathMap });
+
+  assert.match(html, /<figure id="embedded-image"[^>]+data-id-preview-src="previews\/embedded-image\.png"/);
+  assert.match(html, /<img[^>]+class="placed-asset-preview"[^>]+src="previews\/embedded-image\.png"/);
+  assert.doesNotMatch(html, /data-id-asset-path/);
+  assert.doesNotMatch(html, /data-id-content-/);
+});
+
 test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean generated preview images', () => {
   const page = {
     id: 'observed-page',
@@ -765,6 +906,41 @@ test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable s
   assert.match(html, /stroke-opacity="0.7"/);
   assert.match(html, /stroke-dasharray=/);
   assert.doesNotMatch(html, /background-color:#8ca064/);
+});
+
+test('pageItemsToAuthorHtml preserves open vector fill as protocol fact without painting browser fill', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'filled-open-line',
+        role: 'line',
+        semantic: 'unknown',
+        bounds: { x: 10, y: 20, width: 0, height: 100 },
+        visualStyle: {
+          fillColor: '#000000',
+          strokeColor: '#000000',
+          strokeWeight: 2,
+        },
+        vectorGeometry: {
+          kind: 'line',
+          paths: [
+            {
+              closed: false,
+              points: [
+                { anchor: { x: 10, y: 20 }, leftDirection: { x: 10, y: 20 }, rightDirection: { x: 10, y: 20 } },
+                { anchor: { x: 10, y: 120 }, leftDirection: { x: 10, y: 120 }, rightDirection: { x: 10, y: 120 } },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.match(html, /<path[^>]+fill="none"/);
+  assert.match(html, /<path[^>]+data-id-fill-color="#000000"/);
+  assert.doesNotMatch(html, /<path[^>]+fill="#000000"/);
 });
 
 test('pageItemsToAuthorHtml maps InDesign multiply blend mode to SVG mix-blend-mode', () => {

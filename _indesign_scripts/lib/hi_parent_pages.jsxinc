@@ -1,0 +1,173 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.ensureParentPages = function (doc, parentPages, report) {
+    var out = {};
+    var reusableDefault = HI.reusableDefaultParentPage(doc);
+    for (var i = 0; i < (parentPages || []).length; i++) {
+        var spec = parentPages[i];
+        var name = spec.name || spec.id;
+        var master = doc.masterSpreads.itemByName(name);
+        try { master.name; } catch (_) {
+            if (reusableDefault) {
+                master = reusableDefault;
+                reusableDefault = null;
+            } else {
+                master = doc.masterSpreads.add();
+            }
+        }
+        HI.setParentPageName(master, name, report, spec);
+        HI.writeProtocolLabels(master, spec.labels || [], report, { parentPageId: spec.id, critical: true });
+        out[spec.id] = master;
+    }
+    for (var j = 0; j < (parentPages || []).length; j++) {
+        var nestedSpec = parentPages[j];
+        if (!nestedSpec || !nestedSpec.id || !out[nestedSpec.id]) continue;
+        HI.applyParentPageToParentPage(out[nestedSpec.id], nestedSpec, out, report);
+    }
+    return out;
+};
+
+HI.applyParentPageToParentPage = function (master, spec, parentPages, report) {
+    var parentId = spec && spec.parentPageId;
+    if (!parentId) return;
+    if (!parentPages || !parentPages[parentId]) {
+        HI.addMessage(report, "warning", "PARENT_PAGE_PARENT_APPLY_SKIPPED", "Parent page references a missing parent page", { parentPageId: spec.id, appliedParentPageId: parentId });
+        return;
+    }
+    try {
+        master.appliedMaster = parentPages[parentId];
+    } catch (error) {
+        HI.addMessage(report, "warning", "PARENT_PAGE_PARENT_APPLY_FAILED", String(error), { parentPageId: spec.id, appliedParentPageId: parentId });
+    }
+};
+
+HI.setParentPageName = function (master, name, report, spec) {
+    if (!master || !name) return;
+    try {
+        var parts = HI.parentPageNameParts(name);
+        if (parts.prefix) master.namePrefix = parts.prefix;
+        if (parts.baseName) master.baseName = parts.baseName;
+    } catch (nameError) {
+        HI.addMessage(report, "warning", "PARENT_PAGE_RENAME_FAILED", String(nameError), { parentPageId: spec && spec.id, name: name });
+    }
+};
+
+HI.parentPageNameParts = function (name) {
+    var text = String(name || "");
+    var dash = text.indexOf("-");
+    if (dash > 0 && dash <= 4 && dash < text.length - 1) {
+        return { prefix: text.substring(0, dash), baseName: text.substring(dash + 1) };
+    }
+    return { prefix: null, baseName: text };
+};
+
+HI.reusableDefaultParentPage = function (doc) {
+    var masters = [];
+    try { masters = doc.masterSpreads.everyItem().getElements(); } catch (_) {}
+    for (var i = 0; i < masters.length; i++) {
+        if (HI.parentPageHasProtocolLabel(masters[i])) continue;
+        if (HI.parentPageHasContent(masters[i])) continue;
+        return masters[i];
+    }
+    return null;
+};
+
+HI.buildParentPageItems = function (parentPages, context, report) {
+    for (var i = 0; i < (parentPages || []).length; i++) {
+        var spec = parentPages[i];
+        if (!spec || !spec.id || !context.parentPages || !context.parentPages[spec.id]) continue;
+        var master = context.parentPages[spec.id];
+        var masterPage = null;
+        try { masterPage = master.pages[0]; } catch (_) {}
+        if (!masterPage) {
+            HI.addMessage(report, "warning", "PARENT_PAGE_ITEMS_SKIPPED", "Parent page has no drawable page", { parentPageId: spec.id });
+            continue;
+        }
+        try {
+            HI.applyPageGuides(masterPage, spec.guides || [], context.coordinateUnit, report);
+            HI.buildInstructionItems(context.doc, masterPage, { id: spec.id, items: spec.items || [] }, context, report);
+        } catch (error) {
+            HI.addMessage(report, "warning", "PARENT_PAGE_ITEMS_FAILED", String(error), { parentPageId: spec.id });
+        }
+    }
+};
+
+HI.applyParentPage = function (page, pageInstruction, context, report) {
+    var id = pageInstruction.parentPageId;
+    if (!id) {
+        try { page.appliedMaster = NothingEnum.NOTHING; } catch (_) {}
+        return;
+    }
+    if (!context.parentPages || !context.parentPages[id]) return;
+    try {
+        page.appliedMaster = context.parentPages[id];
+    } catch (error) {
+        HI.addMessage(report, "warning", "PARENT_PAGE_APPLY_FAILED", String(error), { pageId: pageInstruction.id, parentPageId: id });
+    }
+};
+
+HI.removeUnusedDefaultParentPages = function (doc, keep, report) {
+    if (!HI.hasKeptParentPages(keep)) return;
+    var masters = [];
+    try { masters = doc.masterSpreads.everyItem().getElements(); } catch (_) {}
+    for (var i = masters.length - 1; i >= 0; i--) {
+        var master = masters[i];
+        if (HI.parentPageIsKept(master, keep)) continue;
+        if (HI.parentPageHasProtocolLabel(master)) continue;
+        if (HI.parentPageHasContent(master)) continue;
+        if (HI.parentPageIsApplied(doc, master)) continue;
+        try {
+            var name = String(master.name || "");
+            master.remove();
+            HI.addMessage(report, "info", "DEFAULT_PARENT_PAGE_REMOVED", "Removed unused blank default parent page", { name: name });
+        } catch (_) {}
+    }
+};
+
+HI.hasKeptParentPages = function (keep) {
+    for (var key in keep || {}) {
+        if (keep.hasOwnProperty(key)) return true;
+    }
+    return false;
+};
+
+HI.parentPageIsKept = function (master, keep) {
+    for (var key in keep || {}) {
+        if (keep.hasOwnProperty(key) && keep[key] === master) return true;
+    }
+    return false;
+};
+
+HI.parentPageHasProtocolLabel = function (master) {
+    return Boolean(HI.readProtocolLabel(master));
+};
+
+HI.parentPageHasContent = function (master) {
+    try {
+        var items = master.pageItems.everyItem().getElements();
+        if (items.length) return true;
+    } catch (_) {}
+    try {
+        var pages = master.pages.everyItem().getElements();
+        for (var i = 0; i < pages.length; i++) {
+            try {
+                if (pages[i].guides.everyItem().getElements().length) return true;
+            } catch (_) {}
+            try {
+                if (pages[i].pageItems.everyItem().getElements().length) return true;
+            } catch (_) {}
+        }
+    } catch (_) {}
+    return false;
+};
+
+HI.parentPageIsApplied = function (doc, master) {
+    var pages = [];
+    try { pages = doc.pages.everyItem().getElements(); } catch (_) {}
+    for (var i = 0; i < pages.length; i++) {
+        try {
+            if (pages[i].appliedMaster === master) return true;
+        } catch (_) {}
+    }
+    return false;
+};

@@ -127,3 +127,38 @@ test('writeAuthorCssFiles gives zero-height stroked vectors a visible box', () =
 
   assert.match(css, /\[id="parent-rule"\] \{[^}]*height:0px[^}]*min-height:2px/);
 });
+
+test('writeAuthorCssFiles gives marker-only zero-width vectors a capturable box', () => {
+  const css = writeAuthorCssFiles({
+    pages: [
+      {
+        items: [
+          {
+            id: 'marker-only-line',
+            role: 'line',
+            bounds: { x: 40, y: 120, width: 0, height: 90 },
+            visualStyle: {
+              strokeColor: null,
+              strokeWeight: null,
+              lineStartMarker: { type: 'circle', rawName: 'Circle' },
+            },
+            vectorGeometry: {
+              kind: 'line',
+              paths: [
+                {
+                  closed: false,
+                  points: [
+                    { anchor: { x: 40, y: 120 }, leftDirection: { x: 40, y: 120 }, rightDirection: { x: 40, y: 120 } },
+                    { anchor: { x: 40, y: 210 }, leftDirection: { x: 40, y: 210 }, rightDirection: { x: 40, y: 210 } },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  })['styles/reverse-overrides.css'];
+
+  assert.match(css, /\[id="marker-only-line"\] \{[^}]*width:0px[^}]*min-width:1px/);
+});

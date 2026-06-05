@@ -76,7 +76,9 @@ HI.reverseParentPages = function (doc, context) {
         out.push({
             name: String(masters[i].name || ""),
             labels: HI.reverseLabels(masters[i]),
+            appliedParentPageName: HI.appliedParentPageName(masters[i]),
             bounds: HI.masterSpreadBounds(masters[i]),
+            guides: HI.reverseGuides(masters[i]),
             items: HI.reverseParentPageItems(masters[i], layerOrder, context)
         });
     }
@@ -118,7 +120,8 @@ HI.reversePage = function (page, index, layerOrder, context) {
         bounds: HI.pageBounds(page),
         margins: HI.reversePageMargins(page),
         guides: HI.reverseGuides(page),
-        items: HI.reversePageItems(page, layerOrder, context)
+        items: HI.reversePageItems(page, layerOrder, context),
+        auditItems: HI.reversePageAuditItems(page, layerOrder, context)
     };
 };
 
@@ -140,6 +143,27 @@ HI.reversePageMargins = function (page) {
 HI.reversePageItems = function (page, layerOrder, context) {
     var out = [], items = HI.reverseTopLevelPageItems(page);
     for (var i = 0; i < items.length; i++) {
+        if (HI.shouldReversePageItem(items[i])) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder, context));
+    }
+    return out;
+};
+
+HI.reversePageAuditItems = function (page, layerOrder, context) {
+    return HI.reverseAuditPageItems(page, layerOrder, context);
+};
+
+HI.reverseAuditPageItems = function (container, layerOrder, context) {
+    var out = [], items = [];
+    try { items = HI.collectionElements(container.allPageItems); } catch (_) { items = []; }
+    if (!items.length) {
+        try { items = HI.collectionElements(container.pageItems); } catch (_) { items = []; }
+    }
+    var seen = {};
+    for (var i = 0; i < items.length; i++) {
+        var id = "";
+        try { id = String(items[i].id || ""); } catch (_) { id = ""; }
+        if (id && seen[id]) continue;
+        if (id) seen[id] = true;
         if (HI.shouldReversePageItem(items[i])) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder, context));
     }
     return out;
@@ -181,6 +205,7 @@ HI.reversePageItem = function (item, index, total, layerOrder, context) {
         visible: HI.reverseItemVisible(item),
         printable: HI.reverseItemPrintable(item),
         nonprinting: HI.reverseItemNonprinting(item),
+        parent: HI.reverseItemParentInfo(item),
         paragraphStyleName: HI.appliedParagraphStyleName(item),
         objectStyleName: HI.appliedObjectStyleName(item),
         visualStyle: HI.reverseVisualStyle(item),
@@ -198,6 +223,27 @@ HI.reversePageItem = function (item, index, total, layerOrder, context) {
         label: String(item.label || ""),
         labels: HI.reverseLabels(item)
     };
+};
+
+HI.reverseItemParentInfo = function (item) {
+    try {
+        var parent = item.parent;
+        if (!parent) return null;
+        return {
+            id: parent.id != null ? String(parent.id) : null,
+            type: String(parent.constructor && parent.constructor.name || parent.constructor || ""),
+            labelId: HI.reverseParentLabelId(parent)
+        };
+    } catch (_) {}
+    return null;
+};
+
+HI.reverseParentLabelId = function (parent) {
+    try {
+        var label = HI.readProtocolLabel(parent);
+        return label && label.id ? String(label.id) : null;
+    } catch (_) {}
+    return null;
 };
 
 HI.shouldReversePageItem = function (item) {
@@ -620,6 +666,7 @@ HI.exportPlacedAssetPreview = function (item, graphic, assetPath, context) {
 };
 
 HI.needsPlacedPreview = function (assetPath, graphic) {
+    if (!assetPath) return true;
     var ext = HI.fileExtension(assetPath);
     if (ext === "pdf" || ext === "ai" || ext === "psd") return true;
     var typeName = HI.reverseImageTypeName(graphic).toLowerCase();
@@ -749,7 +796,10 @@ HI.collectionElements = function (collection) {
 };
 
 HI.reverseCounts = function (snapshot) {
-    var itemCount = 0;
-    for (var i = 0; i < (snapshot.pages || []).length; i++) itemCount += (snapshot.pages[i].items || []).length;
-    return { pages: (snapshot.pages || []).length, items: itemCount, assets: (snapshot.assets || []).length };
+    var itemCount = 0, auditItemCount = 0;
+    for (var i = 0; i < (snapshot.pages || []).length; i++) {
+        itemCount += (snapshot.pages[i].items || []).length;
+        auditItemCount += (snapshot.pages[i].auditItems || []).length;
+    }
+    return { pages: (snapshot.pages || []).length, items: itemCount, auditItems: auditItemCount, assets: (snapshot.assets || []).length };
 };

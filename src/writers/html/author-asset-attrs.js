@@ -11,29 +11,33 @@ const {
 } = require('./author-render-utils');
 
 function assetAttributes(item, tagName) {
-  const nodeAttrs = (item.sourceNode && item.sourceNode.attributes) || {};
+  const nodeAttrs = sourceNodeAttrsForItem(item);
   const asset = item.sourceAsset || item.asset || {};
   const tag = String(tagName || item.sourceNode && item.sourceNode.tagName || '').toLowerCase();
   const out = {};
-  const previewPath = assetPreviewPath(asset);
-  if (tag === 'img' && !nodeAttrs.src && asset.path) out.src = shouldUsePreviewImage(asset) && previewPath ? previewPath : asset.path;
+  const previewPath = assetPreviewPath(asset, item);
+  const previewOnly = isPreviewOnlyAsset(item, asset);
+  const renderPath = shouldUsePreviewImage(asset, item) && previewPath ? previewPath : asset.path;
+  if (tag === 'img' && !nodeAttrs.src && renderPath) out.src = renderPath;
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.data && asset.path) out.data = asset.path;
   const kind = assetKind(asset);
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.type && kind === 'pdf') out.type = 'application/pdf';
-  if (asset.path && !nodeAttrs['data-id-asset-path']) out['data-id-asset-path'] = asset.path;
+  if (asset.path && !previewOnly && !nodeAttrs['data-id-asset-path']) out['data-id-asset-path'] = asset.path;
   if (kind && !nodeAttrs['data-id-asset-kind']) out['data-id-asset-kind'] = kind;
   if (previewPath && !nodeAttrs['data-id-preview-src']) out['data-id-preview-src'] = previewPath;
   addAssetPlacementAttrs(out, nodeAttrs, asset, item);
-  if (tag === 'img' && !nodeAttrs.alt && asset.path) out.alt = fileStem(asset.path);
+  if (tag === 'img' && !nodeAttrs.alt && renderPath) out.alt = fileStem(asset.path || renderPath);
   return out;
 }
 
 function tagForAsset(item) {
   const asset = item && (item.sourceAsset || item.asset || item.placedAsset);
-  if (!asset || !asset.path) return '';
+  if (!asset) return '';
+  const previewPath = assetPreviewPath(asset, item);
+  if (!asset.path && !previewPath) return '';
   const kind = assetKind(asset);
   const ext = fileExtension(asset.path);
-  if (shouldUsePreviewImage(asset)) return 'img';
+  if (shouldUsePreviewImage(asset, item)) return 'img';
   if (kind === 'pdf' || ext === 'pdf') return 'object';
   if (kind === 'svg' || ext === 'svg') return 'img';
   if (kind === 'image' || kind === 'raster' || ['png', 'jpg', 'jpeg', 'jfif', 'gif', 'webp', 'bmp', 'tif', 'tiff'].includes(ext)) return 'img';
@@ -52,24 +56,30 @@ function assetKind(asset) {
   return raw || '';
 }
 
-function shouldUsePreviewImage(asset) {
-  if (!assetPreviewPath(asset)) return false;
-  return ['pdf', 'ai', 'psd'].includes(assetKind(asset));
+function shouldUsePreviewImage(asset, item = null) {
+  if (!assetPreviewPath(asset, item)) return false;
+  const kind = assetKind(asset);
+  return ['pdf', 'ai', 'psd'].includes(kind) || (isPreviewOnlyAsset(item, asset) && ['image', 'raster'].includes(kind));
 }
 
-function usesGeneratedFramePreview(asset) {
+function usesGeneratedFramePreview(asset, item = null) {
   const preview = asset && asset.preview;
-  return shouldUsePreviewImage(asset) && preview && typeof preview === 'object' && preview.source === 'indesign-frame-export';
+  if (!shouldUsePreviewImage(asset, item)) return false;
+  if (isPreviewOnlyAsset(item, asset)) return true;
+  return preview && typeof preview === 'object' && preview.source === 'indesign-frame-export';
 }
 
-function assetPreviewPath(asset) {
+function assetPreviewPath(asset, item = null) {
   const preview = asset && asset.preview;
-  if (!preview) return '';
+  const nodeAttrs = sourceNodeAttrsForItem(item);
+  const sourcePreview = nodeAttrs['data-id-preview-src'] || nodeAttrs['data-id-preview-asset-path'] || '';
+  if (!preview) return sourcePreview;
   if (typeof preview === 'string') return preview;
-  return preview.path || preview.htmlPath || preview.relativePath || '';
+  return preview.path || preview.htmlPath || preview.relativePath || sourcePreview;
 }
 
 function addAssetPlacementAttrs(out, nodeAttrs, asset, item) {
+  if (isPreviewOnlyAsset(item, asset)) return;
   const placement = asset && asset.placement || {};
   const kind = assetKind(asset);
   const pageNumber = kind === 'pdf' ? assetPdfPageNumber(asset) : (placement.pageNumber || asset.pageNumber || null);
@@ -99,6 +109,16 @@ function addAssetPlacementAttrs(out, nodeAttrs, asset, item) {
 function sanitizeRetiredAssetAttrs(attrs, item) {
   const asset = item && (item.sourceAsset || item.asset || item.placedAsset) || {};
   const kind = assetKind(asset);
+  if (isPreviewOnlyAsset(item, asset)) {
+    delete attrs['data-id-asset-path'];
+    delete attrs['data-id-fit'];
+    delete attrs['data-id-content-x'];
+    delete attrs['data-id-content-y'];
+    delete attrs['data-id-content-width'];
+    delete attrs['data-id-content-height'];
+    delete attrs['data-id-content-scale-x'];
+    delete attrs['data-id-content-scale-y'];
+  }
   if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];
   if (kind === 'pdf' && attrs['data-id-pdf-page'] != null && positiveIntegerOrNull(attrs['data-id-pdf-page']) == null) {
     delete attrs['data-id-pdf-page'];
@@ -114,6 +134,7 @@ function assetPdfPageNumber(asset) {
 
 function assetContentGeometry(item) {
   const asset = item && (item.sourceAsset || item.asset || item.placedAsset) || {};
+  if (isPreviewOnlyAsset(item, asset)) return null;
   const placement = asset.placement || {};
   let offset = placement.contentOffset || null;
   let size = placement.contentSize || null;
@@ -141,6 +162,19 @@ function assetContentGeometry(item) {
     scaleX: finiteOrNull(placement.contentScale && placement.contentScale.x),
     scaleY: finiteOrNull(placement.contentScale && placement.contentScale.y),
   };
+}
+
+function isPreviewOnlyAsset(item, asset = {}) {
+  const nodeAttrs = sourceNodeAttrsForItem(item);
+  const hasPreview = Boolean(nodeAttrs['data-id-preview-src'] || nodeAttrs['data-id-preview-asset-path'] || assetPreviewPath(asset));
+  const hasOriginalPath = Boolean(nodeAttrs['data-id-asset-path']);
+  const kind = assetKind(asset);
+  return hasPreview && !hasOriginalPath && (!asset.path || ['image', 'raster'].includes(kind));
+}
+
+function sourceNodeAttrsForItem(item) {
+  const sourceNode = item && item.effectiveLabel && item.effectiveLabel.sourceNode || item && item.sourceNode || {};
+  return sourceNode.attributes || {};
 }
 
 function pdfPreviewPath(pdfPath, page) {

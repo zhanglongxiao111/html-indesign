@@ -1,7 +1,11 @@
 const { createProtocolLabel } = require('../../shared/labels');
 
 function layerForModelItem(modelItem, options) {
-  if (modelItem.layer) return mappedLayerName(modelItem.layer, options);
+  if (modelItem.layer) {
+    return options && options.preserveObservedLayerNames
+      ? modelItem.layer
+      : mappedLayerName(modelItem.layer, options);
+  }
   return layerForItem(modelItem.raw || modelItem, options);
 }
 

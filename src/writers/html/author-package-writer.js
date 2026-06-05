@@ -9,6 +9,11 @@ const { pageItemsToAuthorHtml } = require('./author-html-tree');
 const { collectSemanticCandidates } = require('./semantic-candidates');
 const { loadStandardSemanticPreset } = require('../../semantic-preset');
 const { writeRevealPresentation } = require('./reveal-presentation-writer');
+const {
+  filterEffectiveParentPages,
+  pageHasEffectiveParentPage,
+  parentPageKeySet,
+} = require('../../semantic-model/parent-pages');
 
 function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
@@ -23,9 +28,15 @@ function writeReverseAuthorPackage(model, options = {}) {
   fs.mkdirSync(path.join(outDir, 'reports'), { recursive: true });
 
   const sourceConfig = readSourceConfig(sourceRoot);
+  const effectiveParentPages = filterEffectiveParentPages(
+    model.parentPages || [],
+    model.pages || [],
+    hasEffectiveAuthorParentPageContent,
+  );
+  const effectiveParentPageKeys = parentPageKeySet(effectiveParentPages);
   const pages = pageEntries(model, sourceConfig).map((page) => ({
     ...page,
-    authorPage: pageWithAppliedParentItems(page.modelPage, model.parentPages || []),
+    authorPage: pageWithAppliedParentItems(page.modelPage, effectiveParentPages),
   }));
   const generatedCss = writeAuthorCssFiles({ ...model, pages: pages.map((page) => page.authorPage) });
   const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
@@ -42,8 +53,9 @@ function writeReverseAuthorPackage(model, options = {}) {
     sourceRoot,
     preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
     assetPathMap: assetCopy.pathMap,
+    effectiveParentPageKeys,
   };
-  const config = deckConfigFor(model, pages, styleFiles, sourceConfig);
+  const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
   for (const [relativePath, css] of Object.entries(generatedCss)) {
@@ -140,7 +152,8 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   const title = sourceConfig && sourceConfig.title || sourcePackage.title || model.title || id;
   const hasSourceProfile = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'profile');
   const hasPackageProfile = sourcePackage && Object.prototype.hasOwnProperty.call(sourcePackage, 'profile');
-  return {
+  const parentPages = parentPagesConfigFor(model.parentPages || []);
+  const config = {
     schemaVersion: sourceConfig && sourceConfig.schemaVersion || sourcePackage.schemaVersion || 1,
     id,
     title,
@@ -152,6 +165,46 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     pages: pages.map((page) => ({ id: page.id, file: page.file })),
     assets: { root: sourceConfig && sourceConfig.assets && sourceConfig.assets.root || sourcePackage.assetRoot || 'assets' },
   };
+  if (parentPages.length) config.parentPages = parentPages;
+  return config;
+}
+
+function parentPagesConfigFor(parentPages = []) {
+  return parentPages
+    .map((parentPage) => {
+      const id = parentPage && (parentPage.id || parentPage.name);
+      if (!id) return null;
+      const out = {
+        id: String(id),
+        name: String(parentPage.name || id),
+      };
+      if (parentPage.parentPageId) out.parentPageId = String(parentPage.parentPageId);
+      if (parentPage.parentPageName) out.parentPageName = String(parentPage.parentPageName);
+      const guides = parentPageGuidesConfigFor(parentPage.guides || []);
+      if (guides.length) out.guides = guides;
+      return out;
+    })
+    .filter(Boolean);
+}
+
+function parentPageGuidesConfigFor(guides = []) {
+  return guides
+    .map((guide) => {
+      const orientation = String(guide && guide.orientation || '').trim().toLowerCase();
+      const position = Number(guide && guide.position);
+      if (!['vertical', 'horizontal'].includes(orientation) || !Number.isFinite(position)) return null;
+      return {
+        orientation,
+        position: Math.round(position * 1000) / 1000,
+        source: guide.source || 'parent-page',
+      };
+    })
+    .filter(Boolean);
+}
+
+function hasEffectiveAuthorParentPageContent(parentPage) {
+  if (parentPageGuidesConfigFor(parentPage && parentPage.guides || []).length) return true;
+  return (parentPage && parentPage.items || []).some(shouldWriteParentPageItem);
 }
 
 function readSourceConfig(sourceRoot) {
@@ -317,7 +370,22 @@ function sourcePageAttrs(page, sourceFile, options) {
   attrs.id = sourceNode.id || page.id;
   attrs['data-page'] = page.pageToken || sourceNodeAttribute(page, 'data-page') || page.semantic || page.id;
   attrs['data-id-source-file'] = sourceFile;
+  if (shouldWritePageParentAttrs(page, options)) {
+    if (page.parentPageId) attrs['data-id-parent-page'] = attrs['data-id-parent-page'] || page.parentPageId;
+    if (page.parentPageName) attrs['data-id-parent-page-name'] = attrs['data-id-parent-page-name'] || page.parentPageName;
+  } else {
+    delete attrs['data-id-parent-page'];
+    delete attrs['data-id-parent-page-name'];
+  }
   const preserveTrustedSource = options.preserveTrustedSource && sourceNode.attributes;
+  if (!attrs['data-id-margin']) {
+    const marginAttr = pageMarginAttrValue(page.margins);
+    if (marginAttr) attrs['data-id-margin'] = marginAttr;
+  }
+  if (!attrs['data-id-guides']) {
+    const guidesAttr = pageGuidesAttrValue(page.guides);
+    if (guidesAttr) attrs['data-id-guides'] = guidesAttr;
+  }
   if (options.mode === 'observation' || page.semantic === 'unknown') attrs['data-id-observed'] = 'true';
   if (options.mode && options.mode !== 'structured') attrs['data-id-reverse-mode'] = options.mode;
   if (page.grid) {
@@ -331,6 +399,10 @@ function sourcePageAttrs(page, sourceFile, options) {
     : pageStyleVars(page);
   if (style) attrs.style = style;
   return attrsToHtml(orderPageAttrs(attrs));
+}
+
+function shouldWritePageParentAttrs(page, options = {}) {
+  return pageHasEffectiveParentPage(page, options.effectiveParentPageKeys);
 }
 
 function pageStyleVars(page) {
@@ -377,6 +449,34 @@ function marginTokensFor(value) {
     return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[1] };
   }
   return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[3] };
+}
+
+function pageMarginAttrValue(margins) {
+  if (!margins) return '';
+  const values = [margins.top, margins.right, margins.bottom, margins.left].map(cssPxValue);
+  return values.every(Boolean) ? values.join(' ') : '';
+}
+
+function pageGuidesAttrValue(guides) {
+  const values = (Array.isArray(guides) ? guides : [])
+    .map((guide) => {
+      const orientation = String(guide && guide.orientation || '').trim().toLowerCase();
+      const position = Number(guide && guide.position);
+      if (!['vertical', 'horizontal'].includes(orientation) || !Number.isFinite(position)) return null;
+      return {
+        orientation,
+        position: Math.round(position * 1000) / 1000,
+        source: String(guide.source || 'page'),
+      };
+    })
+    .filter(Boolean);
+  return values.length ? JSON.stringify(values) : '';
+}
+
+function cssPxValue(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  return `${Math.round(number * 1000) / 1000}px`;
 }
 
 function authoringReport(model, pages, options, extras = {}) {
@@ -436,7 +536,7 @@ function slash(value) {
 
 function orderPageAttrs(attrs) {
   const out = {};
-  for (const key of ['class', 'id', 'data-page', 'data-id-source-file', 'data-id-layout', 'data-id-grid', 'data-id-column-gutter', 'data-id-row-gutter', 'data-id-baseline', 'data-id-observed', 'data-id-reverse-mode', 'style']) {
+  for (const key of ['class', 'id', 'data-page', 'data-id-source-file', 'data-id-parent-page', 'data-id-parent-page-name', 'data-id-layout', 'data-id-grid', 'data-id-column-gutter', 'data-id-row-gutter', 'data-id-baseline', 'data-id-margin', 'data-id-guides', 'data-id-observed', 'data-id-reverse-mode', 'style']) {
     if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
   }
   for (const key of Object.keys(attrs).sort()) {

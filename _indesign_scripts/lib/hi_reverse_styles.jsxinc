@@ -1,25 +1,20 @@
 if (typeof HI === "undefined") { HI = {}; }
-
 HI.reverseVisualStyle = function (item) {
     var out = {
         fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor")),
         strokeColor: HI.reverseColor(HI.reverseSafeProperty(item, "strokeColor")),
-        strokeWeight: HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight")),
+        strokeWeight: null,
         fillOpacity: HI.reverseFillOpacity(item),
         strokeOpacity: HI.reverseStrokeOpacity(item),
         strokeStyle: HI.reverseStrokeStyle(item),
         opacity: HI.reverseOpacity(item),
         cornerRadius: HI.reverseCornerRadius(item)
     };
+    out.strokeWeight = out.strokeColor ? HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight")) : null;
     if (HI.reverseExtendedVisualStyle) HI.copyObject(out, HI.reverseExtendedVisualStyle(item));
     return out;
 };
-
-HI.reverseSafeProperty = function (target, propertyName) {
-    try { return target[propertyName]; } catch (_) {}
-    return null;
-};
-
+HI.reverseSafeProperty = function (target, propertyName) { try { return target[propertyName]; } catch (_) {} return null; };
 HI.reverseTextStyle = function (item) {
     try {
         if (!HI.isTextFrame(item)) return null;
@@ -35,14 +30,14 @@ HI.reverseTextStyle = function (item) {
             leading: HI.leadingOrNull(p.leading),
             fillColor: HI.reverseColor(p.fillColor),
             tracking: HI.numberOrNull(p.tracking),
-            justification: HI.reverseJustification(p.justification)
+            justification: HI.reverseJustification(p.justification),
+            composer: HI.reverseComposer(p.composer)
         };
         style.css = HI.textStyleCss(style);
         return style;
     } catch (_) {}
     return null;
 };
-
 HI.reverseTextFrameStyle = function (item) {
     try {
         if (!HI.isTextFrame(item) && !HI.hasTextFrameGeneralOptions(item)) return null;
@@ -59,7 +54,6 @@ HI.reverseTextFrameStyle = function (item) {
     } catch (_) {}
     return null;
 };
-
 HI.reverseFirstLineFont = function (item) {
     try {
         if (!HI.isTextFrame(item)) return null;
@@ -73,7 +67,6 @@ HI.reverseFirstLineFont = function (item) {
     } catch (_) {}
     return null;
 };
-
 HI.reverseInlineStyle = function (item) {
     var styles = [];
     var text = HI.reverseTextStyle(item);
@@ -81,6 +74,11 @@ HI.reverseInlineStyle = function (item) {
     if (text && text.css) styles.push(text.css);
     if (frame && frame.css) styles.push(frame.css);
     return styles.length ? styles.join("; ") : null;
+};
+
+HI.reverseComposer = function (value) {
+    try { var text = String(value || ""); return text ? text : null; } catch (_) {}
+    return null;
 };
 
 HI.reverseStyleResource = function (style, kind) {
@@ -290,7 +288,7 @@ HI.reverseColor = function (color) {
     try {
         if (!color || !color.isValid) return null;
         var name = String(color.name || "");
-        if (name === "None" || name === "[None]" || name === "Text Color") return null;
+        if (name === "" || name === "None" || name === "[None]" || name === "Text Color") return null;
         if (name === "Paper" || name === "[Paper]") return "#ffffff";
         if (!color.colorValue) return null;
         var v = color.colorValue;

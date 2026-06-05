@@ -101,6 +101,9 @@ function assembleAuthorPackage(configPath) {
     .join('\n\n');
 
   const title = sourcePackage.config.title || sourcePackage.config.id;
+  const parentPagesMetadata = sourcePackage.config.parentPages && sourcePackage.config.parentPages.length
+    ? `  <script type="application/json" data-id-source-package-parent-pages>${jsonScript(sourcePackage.config.parentPages)}</script>`
+    : null;
   const packageAttrs = [
     `data-id-document="${attr(sourcePackage.config.id)}"`,
     sourcePackage.config.profile ? `data-id-profile="${attr(sourcePackage.config.profile)}"` : null,
@@ -118,6 +121,7 @@ function assembleAuthorPackage(configPath) {
     styles,
     '</head>',
     '<body>',
+    ...(parentPagesMetadata ? [parentPagesMetadata] : []),
     `  <main class="deck" ${packageAttrs}>`,
     indent(pages, 4),
     '  </main>',
@@ -315,6 +319,10 @@ function attr(value) {
 
 function escapeText(value) {
   return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
+function jsonScript(value) {
+  return JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 }
 
 function escapeRegExp(value) {

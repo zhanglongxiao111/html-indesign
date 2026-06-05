@@ -193,6 +193,51 @@ test('prepareAuthorAssets copies generated placed-asset previews while keeping N
   assert.equal(result.report.entries[0].reason, 'nas-reference');
 });
 
+test('prepareAuthorAssets copies source-node preview-only images into the previews folder', () => {
+  const root = path.resolve('test/workspace/asset-reference-preview-only-test');
+  const outDir = path.join(root, 'author');
+  const previewPath = path.join(root, 'snapshot-previews', 'embedded-image.png');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(previewPath), { recursive: true });
+  fs.writeFileSync(previewPath, 'preview-only-bytes');
+  const model = {
+    kind: 'DocumentModel',
+    pages: [
+      {
+        id: 'page-1',
+        items: [
+          {
+            id: 'embedded-image',
+            role: 'graphic',
+            sourceNode: {
+              tagName: 'figure',
+              attributes: {
+                'data-id-asset-kind': 'image',
+                'data-id-preview-src': 'previews/embedded-image.png',
+              },
+            },
+            asset: {
+              path: previewPath,
+              name: 'embedded-image.png',
+              graphicType: 'Image',
+            },
+          },
+        ],
+      },
+    ],
+    assets: [],
+  };
+
+  const result = prepareAuthorAssets(model, { outDir });
+
+  assert.equal(result.pathMap.get(previewPath.replace(/\\/g, '/').toLowerCase()), 'previews/embedded-image.png');
+  assert.equal(result.pathMap.get('previews/embedded-image.png'), 'previews/embedded-image.png');
+  assert.equal(fs.readFileSync(path.join(outDir, 'previews/embedded-image.png'), 'utf8'), 'preview-only-bytes');
+  assert.equal(result.report.generated, 1);
+  assert.deepEqual(result.report.generatedFiles, ['previews/embedded-image.png']);
+  assert.equal(result.report.copied, 0);
+});
+
 test('generated preview policy treats UNC cache files as copyable generated files', () => {
   assert.equal(shouldConsiderGeneratedPreviewPath('\\\\daga-nas5\\share\\previews\\item-42.png'), true);
   assert.equal(shouldConsiderGeneratedPreviewPath('//daga-nas5/share/previews/item-42.png'), true);

@@ -139,7 +139,9 @@ async function runIndesignE2E(options = {}) {
   const exportCli = runCli(['--json', '--pretty', 'script', 'run', context.exportScriptPath], context.repoRoot);
   const exportResult = parseCliResultJson(exportCli.stdout);
   assertCliResultOk(exportResult, 'InDesign export failed');
-  assertPanelNameAuditOk(exportResult);
+  assertPanelNameAuditOk(exportResult, {
+    allowedPanelNames: observedPanelNamesForHtml(context.htmlPath),
+  });
 
   const pdfPath = exportResult.outputs && exportResult.outputs.pdf;
   if (!pdfPath) throw new Error('InDesign export did not report a PDF path.');
@@ -176,11 +178,13 @@ async function runIndesignE2E(options = {}) {
 
 async function compileToInstructions(context, options = {}) {
   const snapshot = await renderSnapshot({ htmlPath: context.htmlPath });
+  const observedPanelNames = observedPanelNamesForHtml(context.htmlPath);
   const instructions = compileInstructions(snapshot, {
     mode: 'editable-first',
     unitMode: options.unitMode || 'presentation',
     targetSize: options.targetSize || 'same',
     styleNameMap: loadStyleNameMapForHtml(context.htmlPath, options),
+    preserveObservedLayerNames: observedPanelNames.length > 0,
   });
   const validation = validateInstructions(instructions, {
     checkAssetFiles: true,
@@ -310,12 +314,66 @@ function assertCliResultOk(result, message) {
   }
 }
 
-function assertPanelNameAuditOk(result) {
+function assertPanelNameAuditOk(result, options = {}) {
+  const allowed = panelNameSet(options.allowedPanelNames || []);
   const asciiNames = (result && result.audit && result.audit.panelAsciiNames || [])
-    .filter((entry) => !isAllowedBuiltInPanelName(entry.kind, entry.name));
+    .filter((entry) => !isAllowedBuiltInPanelName(entry.kind, entry.name))
+    .filter((entry) => !allowed.has(panelNameKey(entry.kind, entry.name)));
   if (Array.isArray(asciiNames) && asciiNames.length > 0) {
     throw new Error(`InDesign panel names still contain English tokens: ${JSON.stringify(asciiNames, null, 2)}`);
   }
+}
+
+function observedPanelNamesForHtml(htmlPath) {
+  const html = readTextIfExists(htmlPath);
+  if (!/\bdata-id-reverse-mode\s*=\s*["']observation["']/i.test(html)
+    && !/\bdata-id-observed\s*=\s*["']true["']/i.test(html)) {
+    return [];
+  }
+  const names = [];
+  const seen = new Set();
+  const pattern = /\bdata-id-layer\s*=\s*(["'])(.*?)\1/gi;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const name = htmlAttrText(match[2]);
+    if (!name) continue;
+    const key = panelNameKey('layers', name);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push({ kind: 'layers', name });
+  }
+  return names;
+}
+
+function panelNameSet(entries) {
+  const out = new Set();
+  for (const entry of entries || []) {
+    if (!entry || !entry.kind || !entry.name) continue;
+    out.add(panelNameKey(entry.kind, entry.name));
+  }
+  return out;
+}
+
+function panelNameKey(kind, name) {
+  return `${String(kind || '')}\u0000${String(name || '')}`;
+}
+
+function readTextIfExists(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8');
+  } catch (_) {
+    return '';
+  }
+}
+
+function htmlAttrText(value) {
+  return String(value || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim();
 }
 
 function assertNoTextOverset(result) {
@@ -534,8 +592,10 @@ function buildBuildJsx({ repoRoot, instructionsPath }) {
     includeLib("hi_core.jsxinc");
     includeLib("hi_labels.jsxinc");
     includeLib("hi_document.jsxinc");
+    includeLib("hi_parent_pages.jsxinc");
     includeLib("hi_fonts.jsxinc");
     includeLib("hi_styles.jsxinc");
+    includeLib("hi_vector_styles.jsxinc");
     includeLib("hi_assets.jsxinc");
     includeLib("hi_tables.jsxinc");
     includeLib("hi_text_fit.jsxinc");
@@ -589,6 +649,10 @@ function buildExportJsx({ runDir, closeDocument = true }) {
     var indd = File(runDir + "/architecture-report-indesign.indd");
     var pdf = File(runDir + "/architecture-report-indesign.pdf");
     var idml = File(runDir + "/architecture-report-indesign.idml");
+    var oldPdfPageRange = null;
+    try {
+        oldPdfPageRange = app.pdfExportPreferences.pageRange;
+    } catch (_) {}
 
     function auditCollection(kind, collection) {
         result.audit.panelNames[kind] = [];
@@ -629,10 +693,15 @@ function buildExportJsx({ runDir, closeDocument = true }) {
     }
 
     try {
+        app.pdfExportPreferences.pageRange = PageRange.ALL_PAGES;
         doc.exportFile(ExportFormat.PDF_TYPE, pdf, false);
         result.outputs.pdf = pdf.fsName;
     } catch (error2) {
         add("error", "PDF_EXPORT_FAILED", String(error2));
+    } finally {
+        if (oldPdfPageRange !== null) {
+            try { app.pdfExportPreferences.pageRange = oldPdfPageRange; } catch (_) {}
+        }
     }
 
     try {
@@ -921,5 +990,6 @@ module.exports = {
   assertPanelNameAuditOk,
   assertNoTextOverset,
   isAllowedBuiltInPanelName,
+  observedPanelNamesForHtml,
   runIndesignE2E,
 };

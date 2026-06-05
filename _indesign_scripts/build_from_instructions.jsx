@@ -19,8 +19,10 @@
         includeLib("hi_core.jsxinc");
         includeLib("hi_labels.jsxinc");
         includeLib("hi_document.jsxinc");
+        includeLib("hi_parent_pages.jsxinc");
         includeLib("hi_fonts.jsxinc");
         includeLib("hi_styles.jsxinc");
+        includeLib("hi_vector_styles.jsxinc");
         includeLib("hi_assets.jsxinc");
         includeLib("hi_tables.jsxinc");
         includeLib("hi_text_fit.jsxinc");

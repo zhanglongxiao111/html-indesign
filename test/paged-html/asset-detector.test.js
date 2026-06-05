@@ -163,6 +163,35 @@ test('detectAssetsFromItems treats css background-image urls as placed assets', 
   assert.equal(assets[0].placement.position, '0% 0%');
 });
 
+test('detectAssetsFromItems uses generated preview src for embedded image frames without source paths', () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const assets = detectAssetsFromItems([{
+    id: 'embedded-image',
+    tagName: 'figure',
+    attributes: {
+      'data-id-object': '',
+      'data-id-asset-kind': 'image',
+      'data-id-preview-src': 'previews/embedded-image.png',
+      'data-id-fit': 'manual',
+      'data-id-content-x': '-30px',
+      'data-id-content-y': '-10px',
+      'data-id-content-width': '300px',
+      'data-id-content-height': '180px',
+    },
+    computedStyle: {
+      objectFit: 'fill',
+      objectPosition: '50% 50%',
+    },
+    sourceSelector: '#embedded-image',
+  }], htmlPath);
+
+  assert.equal(assets.length, 1);
+  assert.equal(assets[0].src, 'previews/embedded-image.png');
+  assert.equal(assets[0].kind, 'raster');
+  assert.equal(assets[0].placement.fit, 'fill');
+  assert.equal(assets[0].placement.contentBox, undefined);
+});
+
 function assetItem(id, src) {
   return {
     id,

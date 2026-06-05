@@ -357,11 +357,12 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
               strokeColor: '#c8102e',
               strokeWeight: 4,
               strokeOpacity: 75,
+              strokeStyle: '虚线（3 和 2）',
               strokeLineCap: 'round',
               strokeLineJoin: 'bevel',
               strokeMiterLimit: 6,
               lineStartMarker: { type: 'circle', rawName: 'Circle' },
-              lineEndMarker: { type: 'arrow', rawName: 'Simple Arrow' },
+              lineEndMarker: { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' },
             },
             vectorGeometry: {
               kind: 'path',
@@ -407,6 +408,61 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
             styleRefs: {},
             content: { text: '' },
           },
+          {
+            id: 'marker-only-line',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 330, y: 40, width: 0, height: 120 },
+            visualStyle: {
+              fillColor: null,
+              strokeColor: null,
+              strokeWeight: null,
+              lineStartMarker: { type: 'circle', rawName: 'Circle' },
+            },
+            vectorGeometry: {
+              kind: 'line',
+              paths: [
+                {
+                  closed: false,
+                  points: [
+                    { anchor: { x: 330, y: 40 }, leftDirection: { x: 330, y: 40 }, rightDirection: { x: 330, y: 40 } },
+                    { anchor: { x: 330, y: 160 }, leftDirection: { x: 330, y: 160 }, rightDirection: { x: 330, y: 160 } },
+                  ],
+                },
+              ],
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
+          {
+            id: 'closed-marker',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 40, y: 160, width: 80, height: 50 },
+            visualStyle: {
+              fillColor: null,
+              strokeColor: '#ff0a0d',
+              strokeWeight: 4,
+              lineEndMarker: { type: 'circle', rawName: 'Circle' },
+            },
+            vectorGeometry: {
+              kind: 'polygon',
+              paths: [
+                {
+                  closed: true,
+                  points: [
+                    { anchor: { x: 40, y: 160 }, leftDirection: { x: 40, y: 160 }, rightDirection: { x: 40, y: 160 } },
+                    { anchor: { x: 120, y: 160 }, leftDirection: { x: 120, y: 160 }, rightDirection: { x: 120, y: 160 } },
+                    { anchor: { x: 120, y: 210 }, leftDirection: { x: 120, y: 210 }, rightDirection: { x: 120, y: 210 } },
+                  ],
+                },
+              ],
+            },
+            styleRefs: {},
+            content: { text: '' },
+          },
         ],
       },
     ],
@@ -416,11 +472,17 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
   assert.match(html, /<circle[^>]+fill="#c8102e"/);
   assert.match(html, /<path[^>]+fill="#c8102e"[^>]+d="M0 0 L10 5 L0 10 Z"/);
   assert.match(html, /<path[^>]+marker-start="url\(#route-arrow-marker-start\)"[^>]+marker-end="url\(#route-arrow-marker-end\)"/);
+  assert.match(html, /<path[^>]+data-id-stroke-style="虚线（3 和 2）"/);
+  assert.match(html, /<path[^>]+data-id-line-start-marker-raw-name="Circle"/);
+  assert.match(html, /<path[^>]+data-id-line-end-marker-raw-name="SIMPLE_WIDE_ARROW_HEAD"/);
   assert.match(html, /stroke-linecap="round"/);
   assert.match(html, /stroke-linejoin="bevel"/);
   assert.match(html, /stroke-miterlimit="6"/);
   assert.match(html, /stroke-opacity="0.75"/);
   assert.match(html, /id="zone-fill"[\s\S]*fill="#ff9339"[^>]+fill-opacity="0.42"/);
+  assert.match(html, /id="marker-only-line"[^>]+style="[^"]*width:0px[^"]*min-width:1px/);
+  assert.match(html, /id="marker-only-line"[\s\S]*<path[^>]+stroke="none"[^>]+marker-start="url\(#marker-only-line-marker-start\)"/);
+  assert.match(html, /id="closed-marker"[\s\S]*<path[^>]+marker-end="url\(#closed-marker-marker-end\)"/);
 });
 
 test('semanticModelToHtml maps reverse blend modes without faking opacity', () => {

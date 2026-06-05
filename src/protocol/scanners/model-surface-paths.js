@@ -47,6 +47,7 @@ const PARENT_PAGE_FIELD_PATHS = Object.freeze({
   semantic: 'parentPages[].semantic',
   provides: 'parentPages[].provides',
   bounds: 'parentPages[].bounds',
+  guides: 'parentPages[].guides',
   labels: 'parentPages[].labels',
   items: 'parentPages[].items',
 });

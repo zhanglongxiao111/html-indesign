@@ -49,12 +49,24 @@
 | 5. ExtendScript 文本框安全适配 | completed | 可安全扩框则不再 overset，不安全则失败并定位 |
 | 6. 真实人工 InDesign 验证 | completed | 真实 47 页作者包一次回读和二次回环均通过内容/结构无丢失门槛，0 overset |
 | 7. 文档和清理 | completed | 规范、AGENTS 入口和执行基线已同步内容/结构硬门槛 |
+| 8. 规范母版家具指标 | completed | 真实 47 页作者包固定装饰对象提升率 1，误提率 0，页面残留率 0，二次回环稳定 |
+| 9. 二轮结构快照归零 | completed | 规范化一轮生成 ID 与规范化二轮生成 ID 的 reverse snapshot 结构审计 `errors=0`、`warnings=0` |
+| 10. 有效 diff 门禁 | completed | 原始人工 ID 对规范化输出按 P0/P1/P2 分级，P0 硬失败、P1 预算、P2 advisory，并接入二轮稳定审计 |
 
 验证证据：
 
 - `npm run e2e:indesign -- -- --html "\\daga-nas5\daga-2025-project\D0474_大兴城建\00_agent\indesign_demo\semantic-object-graph-20260603-023400\reverse-html-text-block\author\deck.html" --reverse-roundtrip --reverse-mode observation`：通过，47 页、595 对象、81 链接、0 overset。
 - `npm run e2e:indesign -- -- --html "D:\AI\html-indesign\test\workspace\indesign-e2e-20260604-005034\reverse-html\author\deck.html" --reverse-roundtrip --reverse-mode observation --second-pass-roundtrip --skip-preview`：通过，47 页、595 对象、81 链接、0 overset。
 - 二次回环手工对照：`canonical-content-inventory-report.json` 和 `canonical-structure-signature-report.json` 均为 `ok: true`；源码 exact drift 仅为 preview 文件名和 0.0001 级数值漂移。
+- `node scripts\indesign-e2e.js --html test\workspace\original-vs-roundtrip-20260604\current-original-reverse-html-composer\author\deck.html --reverse-roundtrip --reverse-mode observation --skip-preview --run-dir test\workspace\indesign-e2e-parent-furniture-20260604-181615`：通过，47 页、81 链接、585 个页面对象、0 overset。
+- `node scripts\indesign-e2e.js --html test\workspace\indesign-e2e-parent-furniture-20260604-181615\reverse-html\author\deck.html --reverse-roundtrip --reverse-mode observation --skip-preview --run-dir test\workspace\indesign-e2e-parent-furniture-second-20260604-182450`：通过，47 页、81 链接、585 个页面对象、0 overset。
+- `npm run audit:parent-furniture -- -- --source test\workspace\original-vs-roundtrip-20260604\original-reverse-snapshot-composer.json --actual test\workspace\indesign-e2e-parent-furniture-20260604-181615\reverse-snapshot.json --second-pass test\workspace\indesign-e2e-parent-furniture-second-20260604-182450\reverse-snapshot.json --out test\workspace\indesign-e2e-parent-furniture-20260604-181615\parent-furniture-audit-second-pass.json`：通过，`sourceCandidateCount=3`，`promotedCount=3`，`missedCount=0`，`falsePromotionCount=0`，`promotionRate=1`，`falsePromotionRate=0`，`pageFurnitureResidueRate=0`，`stable=true`。
+- `node --test test\indesign-executor\executor-script-static.test.js test\paged-html\style-compiler.test.js test\indesign-reverse\author-package-writer.test.js test\semantic-model\from-snapshot.test.js test\semantic-model\to-instructions.test.js test\indesign-reverse\author-html-tree.test.js test\indesign-reverse\reverse-model.test.js`：通过，`164 pass`，`0 fail`。
+- `node scripts\indesign-e2e.js --html test\workspace\human-indesign-second-current-20260604-193505\reverse-html-fixed-src2\author\deck.html --reverse-roundtrip --reverse-mode observation --skip-preview --run-dir test\workspace\human-indesign-third-final-20260604-205104`：通过，47 页、81 链接、585 个页面对象、0 overset。
+- `npm run audit:reverse-snapshot -- -- --expected test\workspace\human-indesign-second-current-20260604-193505\reverse-snapshot.json --actual test\workspace\human-indesign-third-final-20260604-205104\reverse-snapshot.json --out test\workspace\human-indesign-third-final-20260604-205104\reverse-snapshot-structure-second-pass-audit.json`：通过，`errors=0`，`warnings=0`。该指标只衡量“规范化一轮生成 ID -> 规范化二轮生成 ID”的结构稳定；原始人工 INDD 与规范化生成 ID 的差异仍是独立基线。
+- `node scripts\indesign-e2e.js --html test\workspace\human-indesign-third-final-20260604-205104\reverse-html\author\deck.html --reverse-roundtrip --reverse-mode observation --skip-preview --run-dir test\workspace\human-indesign-fourth-stability-20260604-211029`：通过，47 页、81 链接、585 个页面对象、0 overset。
+- `npm run audit:reverse-snapshot -- -- --expected test\workspace\human-indesign-third-final-20260604-205104\reverse-snapshot.json --actual test\workspace\human-indesign-fourth-stability-20260604-211029\reverse-snapshot.json --out test\workspace\human-indesign-fourth-stability-20260604-211029\reverse-snapshot-structure-repeat-audit.json`：通过，`errors=0`，`warnings=0`，说明再次回环仍保持结构稳定。
+- `npm run audit:effective-diff -- -- --expected test\workspace\original-vs-roundtrip-20260604\original-reverse-snapshot-composer.json --actual test\workspace\human-indesign-third-final-20260604-205104\reverse-snapshot.json --stability-audit test\workspace\human-indesign-third-final-20260604-205104\reverse-snapshot-structure-second-pass-audit.json --stability-audit test\workspace\human-indesign-fourth-stability-20260604-211029\reverse-snapshot-structure-repeat-audit.json --require-stability-audits --out test\workspace\human-indesign-third-final-20260604-205104\effective-diff-baseline.json`：门禁按设计失败，当前基线 `P0=8`（`TEXT_CHANGED=6`、`ASSET_CHANGED=2`），`P1=999`，`P2=675`，二轮稳定审计 `ok=true`；下一阶段优先清 P0。
 
 ## File Structure
 

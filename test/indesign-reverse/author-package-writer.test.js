@@ -94,6 +94,367 @@ test('writeReverseAuthorPackage still splits observation models by page', () => 
   assert.match(overrides, /position:absolute/);
 });
 
+test('writeReverseAuthorPackage writes observed InDesign layer protocol attr', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-layer-fact-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'layer-fact-test',
+    title: 'Layer Fact Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'observed-shape',
+            role: 'shape',
+            semantic: 'unknown',
+            tagName: 'div',
+            bounds: { x: 10, y: 20, width: 120, height: 40 },
+            layerName: '原始图层',
+            layer: '原始图层',
+            styleRefs: { layer: '原始图层' },
+            visualStyle: { fillColor: '#ffffff' },
+            content: { text: '' },
+          },
+        ],
+      },
+    ],
+    layers: [{ token: '原始图层', name: '原始图层' }],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-1.html'), 'utf8');
+  assert.match(pageHtml, /id="observed-shape"[^>]+data-id-layer="原始图层"/);
+});
+
+test('writeReverseAuthorPackage preserves applied empty parent page guides on page attrs', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-parent-guides-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'parent-guides-test',
+    title: 'Parent Guides Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [{
+      id: '0-参考线页面（无需填充）',
+      name: '0-参考线页面（无需填充）',
+      guides: [
+        { orientation: 'vertical', position: 42.52, source: 'parent-page' },
+        { orientation: 'vertical', position: 125.43, source: 'parent-page' },
+      ],
+      items: [],
+    }],
+    pages: [
+      {
+        id: 'page-6',
+        pageToken: '6',
+        width: 1496.69,
+        height: 841.89,
+        parentPageId: '0-参考线页面（无需填充）',
+        parentPageName: '0-参考线页面（无需填充）',
+        margins: { top: 56.69, right: 42.52, bottom: 28.35, left: 42.52 },
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-6.html'), 'utf8');
+  assert.match(pageHtml, /data-id-parent-page="0-参考线页面（无需填充）"/);
+  assert.match(pageHtml, /data-id-parent-page-name="0-参考线页面（无需填充）"/);
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.deepEqual(config.parentPages, [{
+    id: '0-参考线页面（无需填充）',
+    name: '0-参考线页面（无需填充）',
+    guides: [
+      { orientation: 'vertical', position: 42.52, source: 'parent-page' },
+      { orientation: 'vertical', position: 125.43, source: 'parent-page' },
+    ],
+  }]);
+
+  const deckHtml = fs.readFileSync(path.join(outDir, 'deck.html'), 'utf8');
+  assert.match(deckHtml, /<script type="application\/json" data-id-source-package-parent-pages>/);
+  assert.match(deckHtml, /0-参考线页面（无需填充）/);
+});
+
+test('writeReverseAuthorPackage preserves nested parent page metadata', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-nested-parent-guides-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'nested-parent-guides-test',
+    title: 'Nested Parent Guides Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [
+      {
+        id: '0-参考线页面（无需填充）',
+        name: '0-参考线页面（无需填充）',
+        guides: [{ orientation: 'vertical', position: 42.52, source: 'parent-page' }],
+        items: [],
+      },
+      {
+        id: 'I-两张竖构图',
+        name: 'I-两张竖构图',
+        parentPageId: '0-参考线页面（无需填充）',
+        parentPageName: '0-参考线页面（无需填充）',
+        guides: [],
+        items: [],
+      },
+    ],
+    pages: [
+      {
+        id: 'page-12',
+        pageToken: '12',
+        width: 1496.69,
+        height: 841.89,
+        parentPageId: 'I-两张竖构图',
+        parentPageName: 'I-两张竖构图',
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-12.html'), 'utf8');
+  assert.match(pageHtml, /data-id-parent-page="I-两张竖构图"/);
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.deepEqual(config.parentPages, [
+    {
+      id: '0-参考线页面（无需填充）',
+      name: '0-参考线页面（无需填充）',
+      guides: [{ orientation: 'vertical', position: 42.52, source: 'parent-page' }],
+    },
+    {
+      id: 'I-两张竖构图',
+      name: 'I-两张竖构图',
+      parentPageId: '0-参考线页面（无需填充）',
+      parentPageName: '0-参考线页面（无需填充）',
+    },
+  ]);
+});
+
+test('writeReverseAuthorPackage preserves page-local guides as page protocol facts', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-page-guides-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'page-guides-test',
+    title: 'Page Guides Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-8',
+        pageToken: '8',
+        width: 1496.69,
+        height: 841.89,
+        margins: { top: 56.69, right: 42.52, bottom: 28.35, left: 42.52 },
+        guides: [{ orientation: 'horizontal', position: 512.125, source: 'page' }],
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-8.html'), 'utf8');
+  assert.match(pageHtml, /data-id-guides=/);
+  assert.match(pageHtml, /&quot;orientation&quot;:&quot;horizontal&quot;/);
+  assert.match(pageHtml, /&quot;position&quot;:512\.125/);
+  assert.match(pageHtml, /&quot;source&quot;:&quot;page&quot;/);
+});
+
+test('writeReverseAuthorPackage prunes blank and unused parent pages from author metadata', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-parent-prune-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'parent-prune-test',
+    title: 'Parent Prune Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [
+      {
+        id: 'blank-applied',
+        name: '空白已应用母版',
+        guides: [],
+        items: [],
+      },
+      {
+        id: 'unused-guided',
+        name: '未使用参考线母版',
+        guides: [{ orientation: 'horizontal', position: 10, source: 'parent-page' }],
+        items: [],
+      },
+      {
+        id: 'used-guided',
+        name: '有效参考线母版',
+        guides: [{ orientation: 'vertical', position: 20, source: 'parent-page' }],
+        items: [],
+      },
+    ],
+    pages: [
+      {
+        id: 'blank-page',
+        pageToken: 'blank',
+        width: 800,
+        height: 450,
+        parentPageId: 'blank-applied',
+        parentPageName: '空白已应用母版',
+        items: [],
+      },
+      {
+        id: 'guided-page',
+        pageToken: 'guided',
+        width: 800,
+        height: 450,
+        parentPageId: 'used-guided',
+        parentPageName: '有效参考线母版',
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const blankPageHtml = fs.readFileSync(path.join(outDir, 'pages/00-blank-page.html'), 'utf8');
+  assert.doesNotMatch(blankPageHtml, /data-id-parent-page=/);
+  assert.doesNotMatch(blankPageHtml, /空白已应用母版/);
+
+  const guidedPageHtml = fs.readFileSync(path.join(outDir, 'pages/01-guided-page.html'), 'utf8');
+  assert.match(guidedPageHtml, /data-id-parent-page="used-guided"/);
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.deepEqual(config.parentPages, [{
+    id: 'used-guided',
+    name: '有效参考线母版',
+    guides: [{ orientation: 'vertical', position: 20, source: 'parent-page' }],
+  }]);
+});
+
+test('writeReverseAuthorPackage writes observed InDesign paragraph composer protocol attr', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-composer-fact-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'composer-fact-test',
+    title: 'Composer Fact Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'date-caption',
+            role: 'text',
+            semantic: 'unknown',
+            tagName: 'p',
+            bounds: { x: 10, y: 20, width: 128, height: 50 },
+            styleRefs: { paragraphStyle: 'date-caption' },
+            textStyle: { pointSize: 18, leading: 22, composer: 'Adobe 段落排版器' },
+            content: { text: '2026年3月27日\n线上会议', runs: [] },
+          },
+        ],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-1.html'), 'utf8');
+  assert.match(pageHtml, /id="date-caption"[^>]+data-id-paragraph-composer="Adobe 段落排版器"/);
+});
+
+test('writeReverseAuthorPackage writes observed page margins and panel style names as protocol facts', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-stability-facts-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'stability-facts-test',
+    title: 'Stability Facts Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        margins: { top: 56.69, right: 42.52, bottom: 28.35, left: 42.52 },
+        items: [
+          {
+            id: 'observed-copy',
+            role: 'text',
+            semantic: 'unknown',
+            tagName: 'p',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            styleRefs: {
+              paragraphStyle: '标准正文（18点左对齐）',
+              paragraphStyleDisplayName: '标准正文-18点左对齐-57801789',
+              objectStyle: '[基本文本框架]',
+              objectStyleDisplayName: '基本文本框架',
+            },
+            sourceNode: {
+              tagName: 'p',
+              id: 'observed-copy',
+              classList: ['observed-text', 'id-object'],
+              attributes: {
+                'data-id-paragraph-style': '标准正文（18点左对齐）',
+                'data-id-paragraph-style-name': '标准正文（18点左对齐）',
+                'data-id-object-style': '[基本文本框架]',
+                'data-id-object-style-name': '[基本文本框架]',
+              },
+            },
+            content: { text: '观察文本', runs: [] },
+            textStyle: { pointSize: 32, fillColor: '#123456' },
+          },
+        ],
+      },
+    ],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-page-1.html'), 'utf8');
+  assert.match(pageHtml, /<section[^>]+data-id-margin="56\.69px 42\.52px 28\.35px 42\.52px"/);
+  assert.match(pageHtml, /id="observed-copy"[^>]+data-id-paragraph-style="标准正文（18点左对齐）"/);
+  assert.match(pageHtml, /id="observed-copy"[^>]+data-id-paragraph-style-name="标准正文-18点左对齐-57801789"/);
+  assert.match(pageHtml, /id="observed-copy"[^>]+data-id-object-style="\[基本文本框架\]"/);
+  assert.match(pageHtml, /id="observed-copy"[^>]+data-id-object-style-name="基本文本框架"/);
+});
+
 test('writeReverseAuthorPackage renders applied parent page decoration without template placeholders', () => {
   const outDir = path.resolve('test/workspace/reverse-author-parent-page-test');
   fs.rmSync(outDir, { recursive: true, force: true });

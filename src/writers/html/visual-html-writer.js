@@ -189,11 +189,17 @@ function vectorInlineStyle(item) {
 function vectorMinSizeCss(item) {
   if (!item || !item.bounds || !item.visualStyle) return '';
   const stroke = Number(item.visualStyle.strokeWeight);
-  if (!Number.isFinite(stroke) || stroke <= 0) return '';
+  const markerExtent = hasLineMarker(item.visualStyle) ? 1 : 0;
+  const extent = Number.isFinite(stroke) && stroke > 0 ? stroke : markerExtent;
+  if (!extent) return '';
   const styles = [];
-  if (Number(item.bounds.width || 0) <= 0) styles.push(`min-width:${formatPx(stroke)}`);
-  if (Number(item.bounds.height || 0) <= 0) styles.push(`min-height:${formatPx(stroke)}`);
+  if (Number(item.bounds.width || 0) <= 0) styles.push(`min-width:${formatPx(extent)}`);
+  if (Number(item.bounds.height || 0) <= 0) styles.push(`min-height:${formatPx(extent)}`);
   return styles.join(';');
+}
+
+function hasLineMarker(visualStyle) {
+  return Boolean(visualStyle && (visualStyle.lineStartMarker || visualStyle.lineEndMarker));
 }
 
 function marginValue(margins) {

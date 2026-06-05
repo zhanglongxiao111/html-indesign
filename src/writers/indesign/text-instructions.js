@@ -103,10 +103,10 @@ function observedSourceHtml(item) {
 
 function htmlTextWithBreaks(html) {
   return decodeBasicEntities(String(html || '')
-    .replace(/<br\s*\/?>/gi, '\r')
+    .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, ''))
-    .replace(/\r[ \t]+/g, '\r')
-    .replace(/[ \t]+\r/g, '\r');
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]+\n/g, '\n');
 }
 
 function decodeBasicEntities(value) {

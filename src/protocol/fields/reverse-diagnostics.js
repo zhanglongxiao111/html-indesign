@@ -68,6 +68,8 @@ module.exports = [
   ...pageObservedLabelEntries(),
   observation('pages[].rejectedFields', [], 'object'),
   observation('pages[].rejectionReasons', [], 'array'),
+  observation('pages[].auditItems', [], 'array'),
+  observation('pages[].auditItems[].parent', [], 'object'),
   observation('pages[].items[].labelStatus', [], 'string'),
   observation('pages[].items[].rejectedFields', [], 'object'),
   observation('pages[].items[].rejectionReasons', [], 'array'),

@@ -37,8 +37,21 @@
       title: document.title || '',
       styleFiles,
       pageFiles,
+      parentPages: collectSourcePackageParentPages(),
       assetRoot: 'assets',
     };
+  }
+
+  function collectSourcePackageParentPages() {
+    const el = document.querySelector('script[type="application/json"][data-id-source-package-parent-pages]');
+    if (!el) return [];
+    try {
+      const value = JSON.parse(el.textContent || '[]');
+      if (Array.isArray(value)) return value;
+    } catch (error) {
+      throw new Error(`SOURCE_PACKAGE_PARENT_PAGES_INVALID:${error.message}`);
+    }
+    throw new Error('SOURCE_PACKAGE_PARENT_PAGES_INVALID: parentPages metadata must be an array');
   }
 
   function collectPageSnapshot(pageEl, pageIndex, styleRules) {

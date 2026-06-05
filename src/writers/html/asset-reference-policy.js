@@ -286,6 +286,16 @@ function collectAssetReferencesForItem(item, records, seen) {
       fallback: sourceNode.previewNode.attributes.src,
     });
   }
+  const sourcePreview = attrs['data-id-preview-src'] || attrs['data-id-preview-asset-path'] || '';
+  if (sourcePreview && !attrs['data-id-asset-path'] && assetPath) {
+    pushAssetRecord(records, seen, {
+      kind: 'generated-preview',
+      value: assetPath,
+      fallback: sourcePreview,
+      aliases: [sourcePreview],
+      relativePath: sourcePreview,
+    });
+  }
   if (asset.preview) {
     const preview = typeof asset.preview === 'string' ? { path: asset.preview } : asset.preview;
     const previewValue = preview.path || preview.htmlPath || preview.relativePath || '';

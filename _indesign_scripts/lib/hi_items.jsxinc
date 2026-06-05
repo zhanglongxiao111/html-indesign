@@ -29,6 +29,8 @@ HI.createTextFrame = function (doc, page, item, context, report) {
     HI.applyObjectStyle(doc, frame, item.objectStyle, report);
     HI.applyFrameStyle(doc, frame, item.frameStyle, report);
     HI.applyStyleOverride(doc, frame, item.styleOverride, report);
+    HI.disableTextFrameAutoSizing(frame);
+    frame.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
     var text = HI.textFromRuns(item);
     frame.contents = text;
     HI.applyParagraphStyle(doc, frame, item.paragraphStyle, report);
@@ -66,8 +68,13 @@ HI.clearTextFrameInsets = function (frame) {
     try { frame.textFramePreferences.insetSpacing = [0, 0, 0, 0]; } catch (_) {}
 };
 
+HI.disableTextFrameAutoSizing = function (frame) {
+    try { frame.textFramePreferences.autoSizingType = AutoSizingTypeEnum.OFF; } catch (_) {}
+};
+
 HI.createGraphicFrame = function (doc, page, item, context, report) {
     var rect = page.rectangles.add();
+    HI.clearDefaultStroke(doc, rect);
     rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
     HI.assignLayer(rect, context, item.layer);
     HI.applyObjectStyle(doc, rect, item.objectStyle, report);
@@ -89,8 +96,10 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
 };
 
 HI.createShapeFrame = function (doc, page, item, context, report) {
-    var rect = String(item.shapeKind || "").toLowerCase() === "oval" ? page.ovals.add() : page.rectangles.add();
+    var rect = HI.createVectorShapePageItem(page, item) || (String(item.shapeKind || "").toLowerCase() === "oval" ? page.ovals.add() : page.rectangles.add());
+    HI.clearDefaultStroke(doc, rect);
     rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+    HI.applyVectorGeometry(rect, item, report);
     HI.assignLayer(rect, context, item.layer);
     HI.applyObjectStyle(doc, rect, item.objectStyle, report);
     HI.applyFrameStyle(doc, rect, item.frameStyle, report);
@@ -104,21 +113,88 @@ HI.createShapeFrame = function (doc, page, item, context, report) {
 
 HI.createLineFrame = function (doc, page, item, context, report) {
     var line = page.graphicLines.add();
-    var points = HI.lineEndPoints(item);
-    try {
-        line.paths[0].entirePath = [[points.x1, points.y1], [points.x2, points.y2]];
-    } catch (_) {
-        line.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
-        try { line.rotationAngle = Number(item.rotationAngle || 0); } catch (_) {}
+    HI.clearDefaultStroke(doc, line);
+    if (!HI.applyVectorGeometry(line, item, report)) {
+        var points = HI.lineEndPoints(item);
+        try {
+            line.paths[0].entirePath = [[points.x1, points.y1], [points.x2, points.y2]];
+        } catch (_) {
+            line.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+            try { line.rotationAngle = Number(item.rotationAngle || 0); } catch (_) {}
+        }
     }
     HI.assignLayer(line, context, item.layer);
     HI.applyObjectStyle(doc, line, item.objectStyle, report);
+    HI.applyStyleOverride(doc, line, item.styleOverride, report);
     try { if (item.strokeColor) line.strokeColor = doc.swatches.itemByName(item.strokeColor); } catch (_) {}
     try { if (item.strokeWeight !== null && typeof item.strokeWeight !== "undefined") line.strokeWeight = Number(item.strokeWeight); } catch (_) {}
     try { line.label = HI.itemLabel(item); } catch (_) {}
     HI.writeProtocolLabels(line, item.labels || [], report, { itemId: item.id, critical: true });
     report.counts.shapes += 1;
     return line;
+};
+
+HI.createVectorShapePageItem = function (page, item) {
+    var vector = item && item.vectorGeometry;
+    if (!vector || !vector.paths || !vector.paths.length) return null;
+    var kind = String(vector.kind || "").toLowerCase();
+    if (kind === "polygon" || kind === "path") {
+        try { return page.polygons.add(); } catch (_) {}
+    }
+    return null;
+};
+
+HI.applyVectorGeometry = function (pageItem, item, report) {
+    var vector = item && item.vectorGeometry;
+    if (!vector || !vector.paths || !vector.paths.length) return false;
+    var paths = vector.paths || [];
+    var targetPath = null;
+    try { targetPath = pageItem.paths[0]; } catch (_) {}
+    if (!targetPath) return false;
+    var ok = HI.applyVectorPath(targetPath, paths[0], report, item);
+    if (paths.length > 1 && report) {
+        HI.addMessage(report, "warning", "VECTOR_MULTIPATH_UNSUPPORTED", "Only the first vector path was applied by the current executor", { itemId: item.id, pathCount: paths.length });
+    }
+    return ok;
+};
+
+HI.applyVectorPath = function (targetPath, path, report, item) {
+    var points = path && path.points || [];
+    if (points.length < 2) return false;
+    var anchors = [];
+    for (var i = 0; i < points.length; i++) anchors.push(HI.vectorCoordinateArray(points[i].anchor));
+    try {
+        targetPath.entirePath = anchors;
+    } catch (error) {
+        if (report) HI.addMessage(report, "warning", "VECTOR_PATH_APPLY_FAILED", String(error), { itemId: item && item.id });
+        return false;
+    }
+    try { targetPath.pathType = path.closed ? PathType.CLOSED_PATH : PathType.OPEN_PATH; } catch (_) {}
+    HI.applyVectorPathPointHandles(targetPath, points);
+    return true;
+};
+
+HI.applyVectorPathPointHandles = function (targetPath, points) {
+    var pathPoints = [];
+    try {
+        for (var i = 0; i < targetPath.pathPoints.length; i++) pathPoints.push(targetPath.pathPoints[i]);
+    } catch (_) { pathPoints = []; }
+    for (var j = 0; j < points.length && j < pathPoints.length; j++) {
+        try { pathPoints[j].leftDirection = HI.vectorCoordinateArray(points[j].leftDirection || points[j].anchor); } catch (_) {}
+        try { pathPoints[j].rightDirection = HI.vectorCoordinateArray(points[j].rightDirection || points[j].anchor); } catch (_) {}
+        try {
+            var type = String(points[j].pointType || "").toLowerCase();
+            if (type.indexOf("smooth") >= 0) pathPoints[j].pointType = PointType.SMOOTH;
+            else if (type.indexOf("sym") >= 0) pathPoints[j].pointType = PointType.SYMMETRICAL;
+            else if (type.indexOf("plain") >= 0) pathPoints[j].pointType = PointType.PLAIN;
+            else pathPoints[j].pointType = PointType.CORNER;
+        } catch (_) {}
+    }
+};
+
+HI.vectorCoordinateArray = function (point) {
+    point = point || {};
+    return [Number(point.x || 0), Number(point.y || 0)];
 };
 
 HI.lineEndPoints = function (item) {

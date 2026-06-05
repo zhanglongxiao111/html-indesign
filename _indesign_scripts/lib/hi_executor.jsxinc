@@ -16,12 +16,14 @@ HI.runPagedHtmlBuildInstructions = function (appRef, instructions, baseFolder) {
         context.baseFolder = baseFolder;
         context.assets = instructions.assets || [];
         context.styleContext = HI.ensureStyles(context.doc, instructions.styles || {}, report);
+        HI.buildParentPageItems(instructions.document && instructions.document.parentPages || [], context, report);
 
         var pages = instructions.pages || [];
         for (var i = 0; i < pages.length; i++) {
             var page = HI.getPageForInstruction(context.doc, pages[i], i, context, report);
             HI.buildInstructionItems(context.doc, page, pages[i], context, report);
         }
+        HI.removeUnusedDefaultParentPages(context.doc, context.parentPages, report);
 
         report.pagesRequested = pages.length;
         report.pageCount = context.doc.pages.length;

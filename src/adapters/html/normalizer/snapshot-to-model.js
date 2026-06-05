@@ -12,6 +12,7 @@ const {
   sourceNodeForSnapshotItem,
   gridLayoutFromCssVars,
 } = require('../reader/source-metadata');
+const { vectorFactsFromSvgItem } = require('./svg-vector-geometry');
 
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
@@ -19,7 +20,9 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   const sourcePackage = sourcePackageFromDocument(styled.sourcePackageInput || {});
   const semanticPreset = sourcePackage && sourcePackage.semanticPreset ? sourcePackage.semanticPreset : null;
   const documentId = documentIdFor(styled, options, sourcePackage);
-  const pages = (styled.pages || []).map((page) => pageModelFor(page, layout));
+  const pageModels = (styled.pages || []).map((page) => pageModelFor(page, layout));
+  const parentPages = parentPagesFor(pageModels, sourcePackage && sourcePackage.parentPages);
+  const pages = pageModels.map(stripParentPageItems);
   return {
     kind: 'DocumentModel',
     id: documentId,
@@ -42,7 +45,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
       sourcePackage,
       semanticPreset,
     })],
-    parentPages: parentPagesFor(pages),
+    parentPages,
     pages,
     layers: [],
     styles: styled.styles || {},
@@ -72,14 +75,19 @@ function pageModelFor(page, layout) {
   const sourceFile = attrs['data-id-source-file'] || page.sourceFile || null;
   const sourceNode = page.sourceNode || sourceNodeForSnapshotItem(Object.assign({}, page, { tagName: 'section' }));
   const grid = pageGridFromAttributes(attrs);
+  const allItems = (page.items || []).map((item) => itemModelFor(item, page, layout));
+  const parentPageItems = parentPageItemsFor(allItems);
+  const inferredParentPage = parentPageItems[0] || null;
+  const effectiveParentPageId = parentPageId || inferredParentPage && inferredParentPage.parentPageId || null;
+  const effectiveParentPageName = parentPageName || inferredParentPage && inferredParentPage.parentPageName || null;
   return {
     id: pageId,
     raw: page,
     index: page.index,
     pageToken: attrs['data-page'] || null,
     semantic,
-    parentPageId,
-    parentPageName,
+    parentPageId: effectiveParentPageId,
+    parentPageName: effectiveParentPageName,
     layout: layoutToken,
     sourceFile,
     sourceNode,
@@ -87,45 +95,184 @@ function pageModelFor(page, layout) {
     width: dimensions.width,
     height: dimensions.height,
     margins,
-    guides: pageGuides(page, dimensions, margins, layout),
+    guides: pageGuidesForModel(page, dimensions, margins, layout),
     labels: [createProtocolLabel({
       kind: 'page',
       id: pageId,
       source: 'html-to-indesign',
       semantic,
-      parentPage: parentPageId ? { id: parentPageId, name: parentPageName } : null,
+      parentPage: effectiveParentPageId ? { id: effectiveParentPageId, name: effectiveParentPageName } : null,
       layout: layoutToken,
       sourceFile,
       sourceNode,
       grid,
     })],
-    items: (page.items || []).map((item) => itemModelFor(item, page, layout)),
+    items: allItems.filter((item) => !item.parentPageItem),
+    parentPageItems,
   };
 }
 
-function parentPagesFor(pages) {
+function pageGuidesForModel(page, dimensions, margins, layout) {
+  const attrs = page.attributes || {};
+  const explicitGuides = pageGuidesFromAttr(attrs);
+  if (explicitGuides) return explicitGuides;
+  if (isObservationPageWithoutGuideContract(attrs)) {
+    return Array.isArray(page.guides) ? page.guides : [];
+  }
+  return pageGuides(page, dimensions, margins, layout);
+}
+
+function pageGuidesFromAttr(attrs = {}) {
+  const raw = attrs['data-id-guides'];
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(String(raw));
+  } catch (error) {
+    const out = new Error(`PAGE_GUIDES_ATTR_INVALID: data-id-guides must be a JSON array: ${error.message}`);
+    out.code = 'PAGE_GUIDES_ATTR_INVALID';
+    out.cause = error;
+    throw out;
+  }
+  if (!Array.isArray(parsed)) {
+    const out = new Error('PAGE_GUIDES_ATTR_INVALID: data-id-guides must be a JSON array');
+    out.code = 'PAGE_GUIDES_ATTR_INVALID';
+    throw out;
+  }
+  return parsed.map((guide, index) => {
+    const orientation = String(guide && guide.orientation || '').trim().toLowerCase();
+    const position = Number(guide && guide.position);
+    if (!['vertical', 'horizontal'].includes(orientation) || !Number.isFinite(position)) {
+      const out = new Error(`PAGE_GUIDES_ATTR_INVALID: invalid guide at index ${index}`);
+      out.code = 'PAGE_GUIDES_ATTR_INVALID';
+      throw out;
+    }
+    return {
+      orientation,
+      position,
+      source: guide.source ? String(guide.source) : 'page',
+    };
+  });
+}
+
+function isObservationPageWithoutGuideContract(attrs = {}) {
+  const mode = String(attrs['data-id-reverse-mode'] || '').trim().toLowerCase();
+  const observed = String(attrs['data-id-observed'] || '').trim().toLowerCase() === 'true';
+  const hasGuideContract = attrs['data-id-guide-mode'] || attrs['data-id-grid'] || attrs['data-id-baseline-guides'];
+  return !hasGuideContract && (observed || mode === 'observation');
+}
+
+function parentPagesFor(pages, sourceParentPages = []) {
   const parentPages = [];
   const seen = new Set();
+  const byId = new Map();
+  const itemKeys = new Set();
+  const sourceById = sourceParentPageMap(sourceParentPages);
+  function ensureParentPage(id, name) {
+    if (!id) return null;
+    if (byId.has(id)) return byId.get(id);
+    const sourceParentPage = sourceById.get(String(id)) || sourceById.get(String(name || '')) || null;
+    const parentPage = {
+      id,
+      name: name || id,
+      parentPageId: sourceParentPage && sourceParentPage.parentPageId || null,
+      parentPageName: sourceParentPage && sourceParentPage.parentPageName || null,
+      guides: sourceParentPage ? sourceParentPageGuides(sourceParentPage.guides || []) : [],
+      labels: [createProtocolLabel({
+        kind: 'parentPage',
+        id,
+        source: 'html-to-indesign',
+        displayName: name || id,
+      })],
+      items: [],
+    };
+    byId.set(id, parentPage);
+    parentPages.push(parentPage);
+    return parentPage;
+  }
+  for (const parentPage of Array.isArray(sourceParentPages) ? sourceParentPages : []) {
+    ensureParentPage(parentPage && (parentPage.id || parentPage.name), parentPage && (parentPage.name || parentPage.id));
+  }
   for (const page of pages) {
     if (!page.parentPageId || seen.has(page.parentPageId)) continue;
     seen.add(page.parentPageId);
-    parentPages.push({
-      id: page.parentPageId,
-      name: page.parentPageName || page.parentPageId,
-      labels: [createProtocolLabel({
-        kind: 'parentPage',
-        id: page.parentPageId,
-        source: 'html-to-indesign',
-        displayName: page.parentPageName || page.parentPageId,
-      })],
-    });
+    ensureParentPage(page.parentPageId, page.parentPageName || page.parentPageId);
+  }
+  for (const page of pages) {
+    for (const item of page.parentPageItems || []) {
+      const parentPage = ensureParentPage(item.parentPageId || page.parentPageId, item.parentPageName || page.parentPageName);
+      if (!parentPage) continue;
+      const modelItem = parentPageModelItemFor(item, parentPage);
+      const key = `${parentPage.id}::${modelItem.id}`;
+      if (itemKeys.has(key)) continue;
+      itemKeys.add(key);
+      parentPage.items.push(modelItem);
+    }
   }
   return parentPages;
+}
+
+function sourceParentPageMap(parentPages = []) {
+  const out = new Map();
+  for (const parentPage of Array.isArray(parentPages) ? parentPages : []) {
+    if (!parentPage) continue;
+    for (const key of [parentPage.id, parentPage.name]) {
+      if (key != null && !out.has(String(key))) out.set(String(key), parentPage);
+    }
+  }
+  return out;
+}
+
+function sourceParentPageGuides(guides = []) {
+  return (Array.isArray(guides) ? guides : [])
+    .map((guide) => {
+      const orientation = String(guide && guide.orientation || '').trim().toLowerCase();
+      const position = Number(guide && guide.position);
+      if (!['vertical', 'horizontal'].includes(orientation) || !Number.isFinite(position)) return null;
+      return {
+        orientation,
+        position,
+        source: guide.source || 'parent-page',
+      };
+    })
+    .filter(Boolean);
+}
+
+function parentPageItemsFor(items) {
+  return (items || []).filter((item) => item && item.parentPageItem);
+}
+
+function stripParentPageItems(page) {
+  const { parentPageItems, ...cleanPage } = page;
+  return cleanPage;
+}
+
+function parentPageModelItemFor(item, parentPage) {
+  const id = item.parentPageSourceId || item.id;
+  return {
+    ...item,
+    id,
+    parentPageItem: true,
+    parentPageId: parentPage.id,
+    parentPageName: parentPage.name,
+    structure: null,
+    labels: [createProtocolLabel({
+      kind: 'item',
+      id,
+      source: 'html-to-indesign',
+      role: item.role,
+      semantic: item.semantic,
+      htmlTag: item.tagName || null,
+      className: (item.classList || []).join(' '),
+    })],
+  };
 }
 
 function itemModelFor(item, page, layout) {
   const attrs = item.attributes || {};
   const semantic = attrs['data-id-semantic'] || null;
+  const bounds = itemBounds(item, page, layout);
+  const vectorFacts = vectorFactsFromSvgItem(item, bounds) || {};
   const sourceFile = attrs['data-id-source-file']
     || page.sourceFile
     || (page.attributes && page.attributes['data-id-source-file'])
@@ -138,6 +285,12 @@ function itemModelFor(item, page, layout) {
   const itemLayout = gridLayoutFromCssVars(item.cssVars || {});
   const parentId = nearestSourceParentId(item, page);
   const structure = { parentId, order: item.documentOrder || 0, containerPolicy: parentId === page.id ? 'group' : 'child' };
+  const styleRefs = {
+    ...(item.styleRefs || {}),
+    ...(attrs['data-id-layer'] ? { layer: attrs['data-id-layer'] } : {}),
+  };
+  const parentPageName = attrs['data-id-parent-page-item'] || null;
+  const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;
   return {
     id: item.id,
     raw: item,
@@ -146,7 +299,7 @@ function itemModelFor(item, page, layout) {
     tagName: item.tagName || null,
     semantic,
     sourceSelector: item.sourceSelector || null,
-    bounds: itemBounds(item, page, layout),
+    bounds,
     zIndex: item.zIndex || 0,
     layer: attrs['data-id-layer'] || null,
     classList: item.classList || [],
@@ -154,11 +307,17 @@ function itemModelFor(item, page, layout) {
     sourceFile,
     sourceNode,
     sourceAncestorNodes,
+    parentPageItem: parentPageName || null,
+    parentPageId: parentPageName,
+    parentPageName,
+    parentPageSourceId,
     structure,
     layout: itemLayout,
-    styleRefs: item.styleRefs || {},
+    styleRefs,
     content: contentForItem(item),
     table: item.table || null,
+    vectorGeometry: item.vectorGeometry || vectorFacts.vectorGeometry || null,
+    visualStyle: item.visualStyle || vectorFacts.visualStyle || null,
     effects: item.effects || null,
     labels: [createProtocolLabel({
       kind: 'item',

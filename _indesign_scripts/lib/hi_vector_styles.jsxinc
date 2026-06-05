@@ -1,0 +1,101 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+HI.clearDefaultStroke = function (doc, pageItem) {
+    var none = HI.noneSwatch(doc);
+    try { if (none) pageItem.strokeColor = none; } catch (_) {}
+    try { pageItem.strokeWeight = 0; } catch (_) {}
+};
+
+HI.applyVectorStrokeStyleOverride = function (doc, pageItem, override, report) {
+    override = override || {};
+    HI.applyStrokeOpacity(pageItem, override.strokeOpacity);
+    try { if (override.strokeStyle) pageItem.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(override.strokeStyle)); } catch (_) {}
+    HI.applyStrokeLineCap(pageItem, override.strokeLineCap);
+    HI.applyStrokeLineJoin(pageItem, override.strokeLineJoin);
+    try { if (override.strokeMiterLimit !== null && typeof override.strokeMiterLimit !== "undefined") pageItem.miterLimit = Number(override.strokeMiterLimit); } catch (_) {}
+    HI.applyStrokeAlignment(pageItem, override.strokeAlignment);
+    HI.applyLineMarker(pageItem, "leftLineEnd", override.lineStartMarker, report);
+    HI.applyLineMarker(pageItem, "rightLineEnd", override.lineEndMarker, report);
+};
+
+HI.applyStrokeOpacity = function (target, opacity) {
+    if (opacity === null || typeof opacity === "undefined") return;
+    try { target.strokeTransparencySettings.blendingSettings.opacity = HI.opacityPercent(opacity); } catch (_) {}
+};
+
+HI.applyStrokeLineCap = function (target, value) {
+    var key = String(value || "").toLowerCase();
+    try {
+        if (key === "round") target.endCap = EndCap.ROUND_END_CAP;
+        else if (key === "square" || key === "projecting") target.endCap = EndCap.PROJECTING_END_CAP;
+        else if (key === "butt") target.endCap = EndCap.BUTT_END_CAP;
+    } catch (_) {}
+};
+
+HI.applyStrokeLineJoin = function (target, value) {
+    var key = String(value || "").toLowerCase();
+    try {
+        if (key === "round") target.endJoin = EndJoin.ROUND_END_JOIN;
+        else if (key === "bevel") target.endJoin = EndJoin.BEVEL_END_JOIN;
+        else if (key === "miter") target.endJoin = EndJoin.MITER_END_JOIN;
+    } catch (_) {}
+};
+
+HI.applyStrokeAlignment = function (target, value) {
+    var key = String(value || "").toLowerCase();
+    try {
+        if (key === "inside") target.strokeAlignment = StrokeAlignment.INSIDE_ALIGNMENT;
+        else if (key === "outside") target.strokeAlignment = StrokeAlignment.OUTSIDE_ALIGNMENT;
+        else if (key === "center") target.strokeAlignment = StrokeAlignment.CENTER_ALIGNMENT;
+    } catch (_) {}
+};
+
+HI.applyLineMarker = function (target, propertyName, marker, report) {
+    if (!marker) return;
+    var name = marker.rawName || HI.lineMarkerName(marker.type), value = HI.lineMarkerValue(marker);
+    if (!name && !value) return;
+    if (!value) {
+        if (report) HI.addMessage(report, "warning", "LINE_MARKER_UNSUPPORTED", "Unsupported InDesign line marker.", { marker: name, propertyName: propertyName });
+        return;
+    }
+    try {
+        target[propertyName] = value;
+        return;
+    } catch (error) {
+        if (report) HI.addMessage(report, "warning", "LINE_MARKER_APPLY_FAILED", String(error), { marker: name, propertyName: propertyName });
+    }
+};
+
+HI.lineMarkerName = function (type) {
+    var key = String(type || "").toLowerCase();
+    if (key === "arrow") return "SIMPLE_ARROW_HEAD";
+    if (key === "circle") return "CIRCLE_SOLID_ARROW_HEAD";
+    if (key === "square") return "SQUARE_SOLID_ARROW_HEAD";
+    if (key === "bar") return "BAR_ARROW_HEAD";
+    return "";
+};
+
+HI.lineMarkerValue = function (marker) {
+    if (!marker) return null;
+    var fromRaw = HI.arrowHeadEnumByName(marker.rawName);
+    if (fromRaw) return fromRaw;
+    var key = String(marker.type || "").toLowerCase();
+    try {
+        if (key === "arrow") return ArrowHead.SIMPLE_ARROW_HEAD;
+        if (key === "circle") return ArrowHead.CIRCLE_SOLID_ARROW_HEAD;
+        if (key === "square") return ArrowHead.SQUARE_SOLID_ARROW_HEAD;
+        if (key === "bar") return ArrowHead.BAR_ARROW_HEAD;
+    } catch (_) {}
+    return null;
+};
+
+HI.arrowHeadEnumByName = function (name) {
+    var key = String(name || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!key) return null;
+    if (key === "SIMPLE_ARROW") key = "SIMPLE_ARROW_HEAD";
+    if (key === "CIRCLE") key = "CIRCLE_SOLID_ARROW_HEAD";
+    if (key === "SQUARE") key = "SQUARE_SOLID_ARROW_HEAD";
+    if (key === "BAR") key = "BAR_ARROW_HEAD";
+    try { if (ArrowHead[key]) return ArrowHead[key]; } catch (_) {}
+    return null;
+};

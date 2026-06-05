@@ -46,32 +46,43 @@ function vectorPathElements(item, depth = 0) {
 function vectorPathElement(item, path, depth) {
   const d = svgPathData(path, item);
   if (!d) return '';
+  const visualStyle = item && item.visualStyle || {};
   const attrs = {
     d,
-    fill: path.closed ? (item.visualStyle && item.visualStyle.fillColor || 'none') : 'none',
-    stroke: item.visualStyle && item.visualStyle.strokeColor || 'none',
+    fill: path.closed ? (visualStyle.fillColor || 'none') : 'none',
+    stroke: visualStyle.strokeColor || 'none',
   };
-  const strokeWeight = Number(item.visualStyle && item.visualStyle.strokeWeight);
+  if (!path.closed && visualStyle.fillColor) attrs['data-id-fill-color'] = visualStyle.fillColor;
+  const pointTypes = pointTypesAttr(path.points);
+  if (pointTypes) attrs['data-id-point-types'] = pointTypes;
+  const strokeWeight = Number(visualStyle.strokeWeight);
   if (Number.isFinite(strokeWeight) && strokeWeight > 0) attrs['stroke-width'] = formatNumber(strokeWeight);
-  const fillOpacity = opacityValue(item.visualStyle && item.visualStyle.fillOpacity);
+  const fillOpacity = opacityValue(visualStyle.fillOpacity);
   if (fillOpacity != null && attrs.fill !== 'none') attrs['fill-opacity'] = fillOpacity;
-  const strokeOpacity = opacityValue(item.visualStyle && item.visualStyle.strokeOpacity);
+  if (fillOpacity != null && attrs.fill === 'none' && visualStyle.fillColor) attrs['data-id-fill-opacity'] = fillOpacity;
+  const strokeOpacity = opacityValue(visualStyle.strokeOpacity);
   if (strokeOpacity != null && attrs.stroke !== 'none') attrs['stroke-opacity'] = strokeOpacity;
-  const opacity = opacityValue(item.visualStyle && item.visualStyle.opacity);
+  const opacity = opacityValue(visualStyle.opacity);
   if (opacity != null) attrs.opacity = opacity;
-  const lineCap = strokeLineCap(item.visualStyle && item.visualStyle.strokeLineCap);
+  const lineCap = strokeLineCap(visualStyle.strokeLineCap);
   if (lineCap) attrs['stroke-linecap'] = lineCap;
-  const lineJoin = strokeLineJoin(item.visualStyle && item.visualStyle.strokeLineJoin);
+  const lineJoin = strokeLineJoin(visualStyle.strokeLineJoin);
   if (lineJoin) attrs['stroke-linejoin'] = lineJoin;
-  const miterLimit = positiveNumber(item.visualStyle && item.visualStyle.strokeMiterLimit);
+  const miterLimit = positiveNumber(visualStyle.strokeMiterLimit);
   if (miterLimit != null) attrs['stroke-miterlimit'] = formatNumber(miterLimit);
-  const dash = strokeDashArray(item.visualStyle && item.visualStyle.strokeStyle, strokeWeight);
+  const strokeStyle = stringValue(visualStyle.strokeStyle);
+  if (strokeStyle) attrs['data-id-stroke-style'] = strokeStyle;
+  const dash = strokeDashArray(strokeStyle, strokeWeight);
   if (dash) attrs['stroke-dasharray'] = dash;
-  if (dash && /dot/i.test(String(item.visualStyle && item.visualStyle.strokeStyle || ''))) attrs['stroke-linecap'] = 'round';
-  if (!path.closed && attrs.stroke !== 'none') {
-    if (markerType(item.visualStyle && item.visualStyle.lineStartMarker)) attrs['marker-start'] = `url(#${markerId(item, 'start')})`;
-    if (markerType(item.visualStyle && item.visualStyle.lineEndMarker)) attrs['marker-end'] = `url(#${markerId(item, 'end')})`;
-  }
+  if (dash && /dot|点/i.test(strokeStyle)) attrs['stroke-linecap'] = 'round';
+  const startMarker = visualStyle.lineStartMarker;
+  const endMarker = visualStyle.lineEndMarker;
+  const startRawName = markerRawName(startMarker);
+  const endRawName = markerRawName(endMarker);
+  if (startRawName) attrs['data-id-line-start-marker-raw-name'] = startRawName;
+  if (endRawName) attrs['data-id-line-end-marker-raw-name'] = endRawName;
+  if (markerType(startMarker)) attrs['marker-start'] = `url(#${markerId(item, 'start')})`;
+  if (markerType(endMarker)) attrs['marker-end'] = `url(#${markerId(item, 'end')})`;
   return `${indent(depth)}<path ${attrsToHtml(orderVectorPathAttrs(attrs))}></path>`;
 }
 
@@ -198,11 +209,34 @@ function markerType(marker) {
   return ['arrow', 'circle', 'square', 'diamond', 'bar', 'custom'].includes(normalized) ? normalized : '';
 }
 
+function markerRawName(marker) {
+  if (!marker || typeof marker !== 'object') return '';
+  return stringValue(marker.rawName);
+}
+
+function stringValue(value) {
+  const text = String(value == null ? '' : value).trim();
+  return text;
+}
+
 function strokeDashArray(styleName, strokeWeight) {
   const style = String(styleName || '').toLowerCase();
   const weight = Number.isFinite(Number(strokeWeight)) && Number(strokeWeight) > 0 ? Number(strokeWeight) : 1;
   if (style.includes('dash') || style.includes('虚')) return `${formatNumber(weight * 3)} ${formatNumber(weight * 2)}`;
   if (style.includes('dot') || style.includes('点')) return `0 ${formatNumber(weight * 2)}`;
+  return '';
+}
+
+function pointTypesAttr(points) {
+  const values = (Array.isArray(points) ? points : [])
+    .map((point) => pointTypeToken(point && point.pointType));
+  if (!values.length || values.every((value) => value === '')) return '';
+  return values.map((value) => value || 'PLAIN').join(' ');
+}
+
+function pointTypeToken(value) {
+  const token = String(value || '').trim().toUpperCase();
+  if (['CORNER', 'SMOOTH', 'SYMMETRICAL', 'PLAIN'].includes(token)) return token;
   return '';
 }
 
@@ -213,7 +247,7 @@ function paintedStrokeExtent(item) {
 
 function orderVectorPathAttrs(attrs) {
   const out = {};
-  for (const key of ['d', 'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-dasharray', 'marker-start', 'marker-end', 'opacity']) {
+  for (const key of ['d', 'data-id-point-types', 'fill', 'data-id-fill-color', 'fill-opacity', 'data-id-fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'data-id-stroke-style', 'stroke-dasharray', 'data-id-line-start-marker-raw-name', 'data-id-line-end-marker-raw-name', 'marker-start', 'marker-end', 'opacity']) {
     if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
   }
   return out;

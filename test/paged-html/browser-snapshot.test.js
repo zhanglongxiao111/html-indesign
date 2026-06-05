@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { renderSnapshot } = require('../../src/adapters/html');
+const { renderSnapshot, snapshotToSemanticModel } = require('../../src/adapters/html');
 
 test('browser snapshot reader exposes focused browser-context scripts', () => {
   const { browserSnapshotScriptPaths } = require('../../src/adapters/html/reader/browser-snapshot-scripts');
@@ -146,6 +146,51 @@ test('renderSnapshot captures paint-only legend swatches as shape items', async 
   assert.equal(swatches.length, 3);
   assert.equal(swatches.every((item) => item.role === 'shape'), true);
   assert.equal(swatches.every((item) => item.computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'), true);
+});
+
+test('snapshotToSemanticModel captures authored SVG path geometry and vector paint facts', async () => {
+  const outDir = path.resolve('test/workspace/browser-vector-geometry');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .route { position: absolute; left: 80px; top: 60px; width: 200px; height: 100px; overflow: visible; }
+</style>
+<section class="page" id="page-1">
+  <svg id="route-arrow" class="route" data-id-object data-id-role="line" data-id-vector="path" viewBox="0 0 200 100" preserveAspectRatio="none">
+    <defs>
+      <marker id="route-arrow-marker-end" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="3" markerHeight="3" orient="auto-start-reverse" markerUnits="strokeWidth">
+        <path fill="#c8102e" d="M0 0 L10 5 L0 10 Z"></path>
+      </marker>
+    </defs>
+    <path d="M10 20 C70 10 130 90 190 80" fill="none" stroke="#c8102e" stroke-width="4" stroke-opacity="0.75" stroke-linecap="round" stroke-linejoin="bevel" stroke-miterlimit="6" stroke-dasharray="12 8" data-id-stroke-style="虚线（3 和 2）" data-id-line-end-marker-raw-name="SIMPLE_WIDE_ARROW_HEAD" marker-end="url(#route-arrow-marker-end)"></path>
+  </svg>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation', targetSize: 'same' });
+  const item = model.pages[0].items.find((candidate) => candidate.id === 'route-arrow');
+
+  assert.ok(item);
+  assert.equal(item.role, 'line');
+  assert.equal(item.vectorGeometry.kind, 'path');
+  assert.equal(item.vectorGeometry.paths[0].closed, false);
+  assert.deepEqual(item.vectorGeometry.paths[0].points.map((point) => point.anchor), [
+    { x: 90, y: 80 },
+    { x: 270, y: 140 },
+  ]);
+  assert.deepEqual(item.vectorGeometry.paths[0].points[0].rightDirection, { x: 150, y: 70 });
+  assert.deepEqual(item.vectorGeometry.paths[0].points[1].leftDirection, { x: 210, y: 150 });
+  assert.equal(item.visualStyle.strokeColor, '#c8102e');
+  assert.equal(item.visualStyle.strokeWeight, 4);
+  assert.equal(item.visualStyle.strokeOpacity, 75);
+  assert.equal(item.visualStyle.strokeLineCap, 'round');
+  assert.equal(item.visualStyle.strokeLineJoin, 'bevel');
+  assert.equal(item.visualStyle.strokeMiterLimit, 6);
+  assert.equal(item.visualStyle.strokeStyle, '虚线（3 和 2）');
+  assert.deepEqual(item.visualStyle.lineEndMarker, { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' });
 });
 
 test('renderSnapshot reports unsupported CSS effects and pseudo content', async () => {

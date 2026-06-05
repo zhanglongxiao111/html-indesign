@@ -17,6 +17,7 @@ const {
   auditSecondPassAuthorStability,
   auditReverseHtmlSemantics,
   isAllowedBuiltInPanelName,
+  observedPanelNamesForHtml,
   parseArgs,
   parseCliResultJson,
   resolveIndesignCliCommand,
@@ -65,6 +66,9 @@ test('buildExportJsx exports IDD PDF IDML and closes the temporary document', ()
   assert.match(jsx, /panelAsciiNames/);
   assert.match(jsx, /isAllowedBuiltInPanelName/);
   assert.match(jsx, /doc\.close\(SaveOptions\.NO\)/);
+  assert.match(jsx, /var oldPdfPageRange/);
+  assert.match(jsx, /app\.pdfExportPreferences\.pageRange\s*=\s*PageRange\.ALL_PAGES/);
+  assert.match(jsx, /app\.pdfExportPreferences\.pageRange\s*=\s*oldPdfPageRange/);
 });
 
 test('parseCliResultJson returns nested result_json from indesign cli output', () => {
@@ -108,6 +112,38 @@ test('assertPanelNameAuditOk rejects English panel-facing names', () => {
       panelAsciiNames: [{ kind: 'swatches', name: 'Black' }],
     },
   }));
+
+  assert.doesNotThrow(() => assertPanelNameAuditOk({
+    audit: {
+      panelAsciiNames: [{ kind: 'layers', name: 'Diagram' }],
+    },
+  }, {
+    allowedPanelNames: [{ kind: 'layers', name: 'Diagram' }],
+  }));
+
+  assert.throws(() => assertPanelNameAuditOk({
+    audit: {
+      panelAsciiNames: [{ kind: 'layers', name: 'drawing' }],
+    },
+  }, {
+    allowedPanelNames: [{ kind: 'layers', name: 'Diagram' }],
+  }), /English tokens/);
+});
+
+test('observedPanelNamesForHtml only allows layer names from observation HTML', () => {
+  const outDir = path.resolve('test/workspace/observed-panel-names-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const observed = path.join(outDir, 'observed.html');
+  const structured = path.join(outDir, 'structured.html');
+  fs.writeFileSync(observed, '<section data-id-reverse-mode="observation"><div data-id-layer="Diagram"></div><div data-id-layer="文字"></div></section>', 'utf8');
+  fs.writeFileSync(structured, '<section><div data-id-layer="drawing"></div></section>', 'utf8');
+
+  assert.deepEqual(observedPanelNamesForHtml(observed), [
+    { kind: 'layers', name: 'Diagram' },
+    { kind: 'layers', name: '文字' },
+  ]);
+  assert.deepEqual(observedPanelNamesForHtml(structured), []);
 });
 
 test('assertNoTextOverset rejects build outputs with located text overflow', () => {

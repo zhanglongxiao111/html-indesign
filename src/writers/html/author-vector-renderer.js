@@ -43,7 +43,7 @@ function vectorAttrsForItem(item, sourceNode, options) {
   attrs.preserveAspectRatio = 'none';
   attrs['data-id-vector'] = item.vectorGeometry && item.vectorGeometry.kind || 'path';
   if (!attrs['data-id-role'] && item.role) attrs['data-id-role'] = item.role;
-  addStyleProtocolAttrs(attrs, item);
+  addStyleProtocolAttrs(attrs, item, options);
   const classes = new Set(authorClassesForItem(item, sourceNode.classList || [], attrs));
   if (!hasSourceNode(sourceNode) && item.role !== 'text' && !item.virtual) classes.add('id-object');
   if (options.mode === 'observation') classes.add('id-object');

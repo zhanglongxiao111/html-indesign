@@ -40,6 +40,52 @@ test('compileStyles creates character object and frame styles', async () => {
   assert.equal(styled.styles.frameStyles['hero-image-frame'].position, '0% 0%');
 });
 
+test('compileStyles keeps explicit object style names stable when only overflow differs', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [
+        {
+          id: 'clipped',
+          role: 'shape',
+          tagName: 'svg',
+          classList: ['id-object'],
+          attributes: {
+            'data-id-object-style': '[无]',
+            'data-id-object-style-name': '无-59786243',
+          },
+          computedStyle: { overflow: 'hidden' },
+          text: '',
+        },
+        {
+          id: 'visible',
+          role: 'shape',
+          tagName: 'svg',
+          classList: ['id-object'],
+          attributes: {
+            'data-id-object-style': '[无]',
+            'data-id-object-style-name': '无-59786243',
+          },
+          computedStyle: { overflow: 'visible' },
+          text: '',
+        },
+      ],
+    }],
+  };
+
+  const styled = compileStyles(snapshot);
+  const items = styled.pages[0].items;
+
+  assert.equal(items[0].styleRefs.objectStyle, '无-59786243');
+  assert.equal(items[1].styleRefs.objectStyle, '无-59786243');
+  assert.equal(Boolean(styled.styles.objectStyles['无-59786243-38812455']), false);
+  assert.equal(styled.report.messages.some((message) => message.code === 'STYLE_NAME_CONFLICT'), false);
+});
+
 test('compileStyles maps CSS character typography into InDesign character style fields', () => {
   const snapshot = {
     metadata: { source: 'inline.html' },

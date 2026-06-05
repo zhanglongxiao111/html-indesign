@@ -152,8 +152,12 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
   const attrs = [
     'data-id-role',
     'data-id-vector',
+    'data-id-stroke-style',
+    'data-id-line-start-marker-raw-name',
+    'data-id-line-end-marker-raw-name',
     'data-id-object-style',
     'data-id-paragraph-style',
+    'data-id-paragraph-composer',
     'data-id-table-style',
     'data-id-source-csv',
     'data-id-source-xml',
@@ -170,6 +174,18 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
   const vectorField = fieldRegistry.getByHtmlAttr('data-id-vector');
   assert.equal(vectorField.canonicalPath, 'items[].vectorGeometry.kind');
   assert.equal(vectorField.fieldClass, 'canonical');
+
+  const strokeStyleField = fieldRegistry.getByHtmlAttr('data-id-stroke-style');
+  assert.equal(strokeStyleField.canonicalPath, 'items[].visualStyle.strokeStyle');
+  assert.equal(strokeStyleField.fieldClass, 'canonical');
+
+  const markerStartField = fieldRegistry.getByHtmlAttr('data-id-line-start-marker-raw-name');
+  assert.equal(markerStartField.canonicalPath, 'items[].visualStyle.lineStartMarker.rawName');
+  assert.equal(markerStartField.fieldClass, 'canonical');
+
+  const markerEndField = fieldRegistry.getByHtmlAttr('data-id-line-end-marker-raw-name');
+  assert.equal(markerEndField.canonicalPath, 'items[].visualStyle.lineEndMarker.rawName');
+  assert.equal(markerEndField.fieldClass, 'canonical');
 
   for (const attr of ['data-id-source-csv', 'data-id-source-xml']) {
     const field = fieldRegistry.getByHtmlAttr(attr);

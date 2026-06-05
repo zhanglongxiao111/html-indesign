@@ -108,12 +108,16 @@ HI.layerNameSet = function (value) {
 };
 
 HI.pdfCropFor = function (value) {
-    var key = String(value || "").toLowerCase();
-    var constantName = "CROP_CONTENT";
+    var key = String(value || "").toLowerCase().replace(/[\s\-]+/g, "_");
+    if (!key) return null;
+    var constantName = null;
     if (key === "media") constantName = "CROP_MEDIA";
     if (key === "bleed") constantName = "CROP_BLEED";
     if (key === "trim") constantName = "CROP_TRIM";
     if (key === "art") constantName = "CROP_ART";
+    if (key.indexOf("content") >= 0 && key.indexOf("all") >= 0) constantName = "CROP_CONTENT_ALL_LAYERS";
+    else if (key.indexOf("content") >= 0) constantName = "CROP_CONTENT_VISIBLE_LAYERS";
+    if (!constantName) return null;
     try {
         if (PDFCrop[constantName] !== undefined) return PDFCrop[constantName];
     } catch (_) {}

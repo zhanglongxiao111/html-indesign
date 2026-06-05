@@ -40,6 +40,16 @@ test('assetSourceFromElementLike uses original asset path instead of generated p
   }), { src: '\\\\daga-nas5\\share\\drawing.pdf', explicitKind: 'pdf' });
 });
 
+test('assetSourceFromElementLike uses generated preview when no original asset path exists', () => {
+  assert.deepEqual(assetSourceFromElementLike({
+    tagName: 'FIGURE',
+    attributes: {
+      'data-id-asset-kind': 'image',
+      'data-id-preview-src': 'previews/embedded-image.png',
+    },
+  }), { src: 'previews/embedded-image.png', explicitKind: null });
+});
+
 test('createAssetId is stable and filename based', () => {
   assert.equal(createAssetId('./assets/site-plan.pdf'), 'asset-site-plan-pdf');
   assert.equal(createAssetId('C:/Project/Renders/Lobby View.PNG'), 'asset-lobby-view-png');

@@ -78,14 +78,15 @@ function placementFromAttributes(attributes, computedStyle) {
   attributes = attributes || {};
   computedStyle = computedStyle || {};
   const hasElementSource = Boolean(attributes.src || attributes.href || attributes.data);
+  const previewOnly = Boolean(attributes['data-id-preview-src'] && !attributes['data-id-asset-path']);
   const hasBackgroundSource = !hasElementSource && assetSourceFromElementLike({
     tagName: 'div',
     attributes,
     computedStyle,
   }).src;
-  const contentBox = contentBoxFromAttributes(attributes);
+  const contentBox = previewOnly ? undefined : contentBoxFromAttributes(attributes);
   return {
-    fit: attributes['data-id-fit'] || (contentBox ? 'manual' : null) || (hasBackgroundSource ? fitFromBackgroundSize(computedStyle.backgroundSize) : computedStyle.objectFit) || 'fill',
+    fit: previewOnly ? 'fill' : attributes['data-id-fit'] || (contentBox ? 'manual' : null) || (hasBackgroundSource ? fitFromBackgroundSize(computedStyle.backgroundSize) : computedStyle.objectFit) || 'fill',
     position: hasBackgroundSource
       ? normalizePosition(computedStyle.backgroundPosition)
       : normalizePosition(computedStyle.objectPosition) || '50% 50%',

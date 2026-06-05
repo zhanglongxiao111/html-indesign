@@ -79,7 +79,16 @@ test('semanticModelToInstructions emits parent pages and page parent references'
       semantic: 'report-parent',
       provides: ['guides'],
       labels: [{ protocol: 'html-indesign', version: 1, kind: 'parentPage', id: 'report-parent', source: 'html-to-indesign' }],
-      items: [],
+      items: [{
+        id: 'parent-rule',
+        role: 'line',
+        semantic: 'unknown',
+        bounds: { x: 10, y: 12, width: 80, height: 1 },
+        styleRefs: { objectStyle: '装饰线' },
+        visualStyle: { strokeColor: '#999999', strokeWeight: 1 },
+        vectorGeometry: { kind: 'line', paths: [] },
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'parent-rule', source: 'html-to-indesign' }],
+      }],
     }],
     pages: [{
       id: 'p1',
@@ -100,11 +109,197 @@ test('semanticModelToInstructions emits parent pages and page parent references'
   const instructions = semanticModelToInstructions(model);
 
   assert.equal(instructions.document.parentPages[0].id, 'report-parent');
+  assert.equal(instructions.document.parentPages[0].items.length, 1);
+  assert.equal(instructions.document.parentPages[0].items[0].id, 'parent-rule');
+  assert.equal(instructions.document.parentPages[0].items[0].type, 'LINE');
+  assert.deepEqual(instructions.document.parentPages[0].guides, []);
   assert.equal(instructions.document.pages[0].parentPageId, 'report-parent');
   assert.equal(instructions.document.pages[0].parentPageName, '汇报母版');
   assert.equal(instructions.document.pages[0].layout, 'contents-grid');
   assert.equal(instructions.pages[0].parentPageId, 'report-parent');
   assert.equal(instructions.pages[0].layout, 'contents-grid');
+});
+
+test('semanticModelToInstructions prunes blank and unused parent pages', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'parent-prune-doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [
+      { id: 'blank-applied', name: '空白已应用母版', guides: [], items: [] },
+      {
+        id: 'unused-guided',
+        name: '未使用参考线母版',
+        guides: [{ orientation: 'horizontal', position: 10, source: 'parent-page' }],
+        items: [],
+      },
+      {
+        id: 'used-guided',
+        name: '有效参考线母版',
+        guides: [{ orientation: 'vertical', position: 20, source: 'parent-page' }],
+        items: [],
+      },
+    ],
+    pages: [
+      {
+        id: 'blank-page',
+        index: 0,
+        width: 800,
+        height: 450,
+        parentPageId: 'blank-applied',
+        parentPageName: '空白已应用母版',
+        guides: [],
+        labels: [],
+        items: [],
+      },
+      {
+        id: 'guided-page',
+        index: 1,
+        width: 800,
+        height: 450,
+        parentPageId: 'used-guided',
+        parentPageName: '有效参考线母版',
+        guides: [],
+        labels: [],
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+
+  assert.deepEqual(instructions.document.parentPages.map((page) => page.id), ['used-guided']);
+  assert.equal(instructions.document.pages[0].parentPageId, null);
+  assert.equal(instructions.document.pages[0].parentPageName, null);
+  assert.equal(instructions.pages[0].parentPageId, null);
+  assert.equal(instructions.pages[1].parentPageId, 'used-guided');
+});
+
+test('semanticModelToInstructions keeps parent pages used through nested parent references', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'nested-parent-doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [
+      {
+        id: '0-参考线页面（无需填充）',
+        name: '0-参考线页面（无需填充）',
+        guides: [{ orientation: 'vertical', position: 42.52, source: 'parent-page' }],
+        items: [],
+      },
+      {
+        id: 'I-两张竖构图',
+        name: 'I-两张竖构图',
+        parentPageId: '0-参考线页面（无需填充）',
+        parentPageName: '0-参考线页面（无需填充）',
+        guides: [],
+        items: [],
+      },
+    ],
+    pages: [
+      {
+        id: 'page-12',
+        index: 11,
+        width: 1496.69,
+        height: 841.89,
+        parentPageId: 'I-两张竖构图',
+        parentPageName: 'I-两张竖构图',
+        guides: [],
+        labels: [],
+        items: [],
+      },
+    ],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+
+  assert.deepEqual(
+    instructions.document.parentPages.map((parentPage) => parentPage.id),
+    ['0-参考线页面（无需填充）', 'I-两张竖构图'],
+  );
+  const layoutParent = instructions.document.parentPages.find((parentPage) => parentPage.id === 'I-两张竖构图');
+  assert.equal(layoutParent.parentPageId, '0-参考线页面（无需填充）');
+  assert.equal(layoutParent.parentPageName, '0-参考线页面（无需填充）');
+  assert.equal(instructions.pages[0].parentPageId, 'I-两张竖构图');
+});
+
+test('semanticModelToInstructions does not emit default white page backgrounds as page items', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'white-background-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 100,
+      height: 80,
+      computedStyle: { backgroundColor: 'rgb(255, 255, 255)' },
+      labels: [],
+      items: [],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+
+  assert.equal(instructions.pages[0].items.some((item) => item.role === 'background'), false);
+  assert.equal(instructions.document.parentPages.length, 0);
+  assert.equal(instructions.document.pages[0].parentPageId, null);
+});
+
+test('semanticModelToInstructions emits non-default page backgrounds through a parent page', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'tinted-background-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 100,
+      height: 80,
+      computedStyle: { backgroundColor: 'rgb(245, 241, 232)' },
+      labels: [],
+      items: [],
+    }, {
+      id: 'p2',
+      index: 1,
+      width: 100,
+      height: 80,
+      computedStyle: { backgroundColor: 'rgb(245, 241, 232)' },
+      labels: [],
+      items: [],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const backgroundParent = instructions.document.parentPages.find((entry) => entry.id === 'background-245-241-232-100x80');
+
+  assert.equal(instructions.pages.every((page) => page.items.every((item) => item.role !== 'background')), true);
+  assert.equal(backgroundParent.items.length, 1);
+  assert.equal(backgroundParent.items[0].id, 'background-245-241-232-100x80-fill');
+  assert.equal(backgroundParent.items[0].role, 'background');
+  assert.equal(backgroundParent.items[0].styleOverride.fillColor, '颜色-245-241-232');
+  assert.equal(instructions.pages[0].parentPageId, 'background-245-241-232-100x80');
+  assert.equal(instructions.pages[1].parentPageId, 'background-245-241-232-100x80');
+  assert.equal(instructions.document.pages[0].parentPageId, 'background-245-241-232-100x80');
+  assert.equal(instructions.document.pages[1].parentPageId, 'background-245-241-232-100x80');
 });
 
 test('semanticModelToInstructions emits bounded text fit for observed reverse text frames', () => {
@@ -223,8 +418,8 @@ test('semanticModelToInstructions preserves observed source html line breaks in 
   const instructions = semanticModelToInstructions(model, {});
   const item = instructions.pages[0].items.find((entry) => entry.id === 'date-1');
 
-  assert.equal(item.text, '2026年1月26日\r区委专题会');
-  assert.deepEqual(item.runs, [{ text: '2026年1月26日\r区委专题会', characterStyle: null }]);
+  assert.equal(item.text, '2026年1月26日\n区委专题会');
+  assert.deepEqual(item.runs, [{ text: '2026年1月26日\n区委专题会', characterStyle: null }]);
 });
 
 test('semanticModelToInstructions emits observed zero-width vector objects as native lines', () => {
@@ -335,6 +530,354 @@ test('semanticModelToInstructions emits zero-width stroked object-style shapes a
   assert.deepEqual(item.bounds, { x: 120, y: 80, width: 0, height: 33 });
   assert.equal(item.strokeColor, '颜色-153-153-153');
   assert.equal(item.strokeWeight, 1);
+});
+
+test('semanticModelToInstructions preserves observed vector paths and paint as native vector instructions', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-vector-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'route-arrow',
+        role: 'line',
+        bounds: { x: 40, y: 60, width: 180, height: 80 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: '#c8102e',
+          strokeWeight: 4,
+          strokeOpacity: 75,
+          strokeStyle: '虚线（3 和 2）',
+          strokeLineCap: 'round',
+          strokeLineJoin: 'bevel',
+          strokeMiterLimit: 6,
+          lineStartMarker: { type: 'circle', rawName: 'Circle' },
+          lineEndMarker: { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' },
+        },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [{
+            closed: false,
+            points: [
+              {
+                anchor: { x: 40, y: 60 },
+                leftDirection: { x: 40, y: 60 },
+                rightDirection: { x: 80, y: 40 },
+              },
+              {
+                anchor: { x: 220, y: 140 },
+                leftDirection: { x: 180, y: 160 },
+                rightDirection: { x: 220, y: 140 },
+              },
+            ],
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }, {
+        id: 'filled-zone',
+        role: 'shape',
+        bounds: { x: 240, y: 60, width: 80, height: 60 },
+        visualStyle: {
+          fillColor: '#ff9339',
+          fillOpacity: 42,
+          strokeColor: '#14324a',
+          strokeWeight: 1.5,
+        },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [{
+            closed: true,
+            points: [
+              { anchor: { x: 240, y: 60 }, leftDirection: { x: 240, y: 60 }, rightDirection: { x: 240, y: 60 } },
+              { anchor: { x: 320, y: 60 }, leftDirection: { x: 320, y: 60 }, rightDirection: { x: 320, y: 60 } },
+              { anchor: { x: 320, y: 120 }, leftDirection: { x: 320, y: 120 }, rightDirection: { x: 320, y: 120 } },
+            ],
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const line = instructions.pages[0].items.find((entry) => entry.id === 'route-arrow');
+  const zone = instructions.pages[0].items.find((entry) => entry.id === 'filled-zone');
+
+  assert.equal(line.type, 'LINE');
+  assert.deepEqual(line.vectorGeometry, model.pages[0].items[0].vectorGeometry);
+  assert.equal(line.styleOverride.strokeColor, '颜色-200-16-46');
+  assert.equal(line.styleOverride.strokeWeight, 4);
+  assert.equal(line.styleOverride.strokeOpacity, 75);
+  assert.equal(line.styleOverride.strokeStyle, '虚线（3 和 2）');
+  assert.equal(line.styleOverride.strokeLineCap, 'round');
+  assert.equal(line.styleOverride.strokeLineJoin, 'bevel');
+  assert.equal(line.styleOverride.strokeMiterLimit, 6);
+  assert.deepEqual(line.styleOverride.lineStartMarker, { type: 'circle', rawName: 'Circle' });
+  assert.deepEqual(line.styleOverride.lineEndMarker, { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' });
+  assert.equal(zone.type, 'SHAPE');
+  assert.equal(zone.shapeKind, 'polygon');
+  assert.deepEqual(zone.vectorGeometry, model.pages[0].items[1].vectorGeometry);
+  assert.equal(zone.styleOverride.fillColor, '颜色-255-147-57');
+  assert.equal(zone.styleOverride.fillOpacity, 42);
+  assert.equal(zone.styleOverride.strokeColor, '颜色-20-50-74');
+  assert.equal(zone.styleOverride.strokeWeight, 1.5);
+  assert.equal(instructions.styles.swatches['颜色-200-16-46'].value, '#c8102e');
+  assert.equal(instructions.styles.swatches['颜色-255-147-57'].value, '#ff9339');
+});
+
+test('semanticModelToInstructions keeps open observed polygon paths as native shapes', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'open-polygon-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'open-triangle',
+        role: 'shape',
+        bounds: { x: 40, y: 60, width: 80, height: 40 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: '#000000',
+          strokeWeight: 1,
+        },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [{
+            closed: false,
+            points: [
+              { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 }, pointType: 'CORNER' },
+              { anchor: { x: 40, y: 100 }, leftDirection: { x: 40, y: 100 }, rightDirection: { x: 40, y: 100 }, pointType: 'CORNER' },
+              { anchor: { x: 120, y: 80 }, leftDirection: { x: 120, y: 80 }, rightDirection: { x: 120, y: 80 }, pointType: 'CORNER' },
+              { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 }, pointType: 'CORNER' },
+            ],
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'open-triangle');
+
+  assert.equal(item.type, 'SHAPE');
+  assert.equal(item.shapeKind, 'polygon');
+  assert.deepEqual(item.vectorGeometry, model.pages[0].items[0].vectorGeometry);
+});
+
+test('semanticModelToInstructions emits line-like open polygon markers as native lines', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'polygon-marker-line-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'polygon-marker-line',
+        role: 'shape',
+        bounds: { x: 40, y: 60, width: 24, height: 0 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: null,
+          strokeWeight: 0,
+          strokeStyle: '实底',
+          lineEndMarker: { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' },
+        },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [{
+            closed: false,
+            points: [
+              { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 }, pointType: 'PLAIN' },
+              { anchor: { x: 64, y: 60 }, leftDirection: { x: 64, y: 60 }, rightDirection: { x: 64, y: 60 }, pointType: 'PLAIN' },
+            ],
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'polygon-marker-line');
+
+  assert.equal(item.type, 'LINE');
+  assert.deepEqual(item.bounds, { x: 40, y: 60, width: 24, height: 0 });
+  assert.deepEqual(item.vectorGeometry, model.pages[0].items[0].vectorGeometry);
+  assert.deepEqual(item.styleOverride.lineEndMarker, { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' });
+  assert.equal(item.styleOverride.strokeWeight, 0);
+});
+
+test('semanticModelToInstructions can preserve explicit observed layer names without style map translation', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-layer-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'title',
+        role: 'text',
+        bounds: { x: 40, y: 60, width: 180, height: 40 },
+        layer: 'text',
+        content: { text: 'Title' },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const mapped = semanticModelToInstructions(model, {
+    styleNameMap: { layers: { text: '文字' } },
+  });
+  const preserved = semanticModelToInstructions(model, {
+    preserveObservedLayerNames: true,
+    styleNameMap: { layers: { text: '文字' } },
+  });
+
+  assert.equal(mapped.pages[0].items.find((item) => item.id === 'title').layer, '文字');
+  assert.equal(preserved.pages[0].items.find((item) => item.id === 'title').layer, 'text');
+});
+
+test('semanticModelToInstructions keeps unsupported observed stroke style names out of executable overrides', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-custom-stroke-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'vertical-rule',
+        role: 'line',
+        bounds: { x: 40, y: 60, width: 0, height: 120 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: '#ff7832',
+          strokeWeight: 5,
+          strokeStyle: '垂直线',
+        },
+        vectorGeometry: {
+          kind: 'line',
+          paths: [{
+            closed: false,
+            points: [
+              { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 } },
+              { anchor: { x: 40, y: 180 }, leftDirection: { x: 40, y: 180 }, rightDirection: { x: 40, y: 180 } },
+            ],
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const line = instructions.pages[0].items.find((entry) => entry.id === 'vertical-rule');
+
+  assert.equal(line.visualStyle.strokeStyle, '垂直线');
+  assert.equal(Object.hasOwn(line.styleOverride, 'strokeStyle'), false);
+  assert.equal(
+    instructions.report.messages.some((message) => (
+      message.level === 'warning'
+      && message.code === 'STROKE_STYLE_UNSUPPORTED'
+      && message.details.itemId === 'vertical-rule'
+      && message.details.strokeStyle === '垂直线'
+    )),
+    true,
+  );
+});
+
+test('semanticModelToInstructions keeps marker-only vector lines as native line instructions', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'marker-only-line-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'marker-only-line',
+        role: 'line',
+        bounds: { x: 40, y: 60, width: 0, height: 120 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: null,
+          strokeWeight: null,
+          lineStartMarker: { type: 'circle', rawName: 'Circle' },
+        },
+        vectorGeometry: {
+          kind: 'line',
+          paths: [{
+            closed: false,
+            points: [
+              { anchor: { x: 40, y: 60 }, leftDirection: { x: 40, y: 60 }, rightDirection: { x: 40, y: 60 } },
+              { anchor: { x: 40, y: 180 }, leftDirection: { x: 40, y: 180 }, rightDirection: { x: 40, y: 180 } },
+            ],
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const line = instructions.pages[0].items.find((entry) => entry.id === 'marker-only-line');
+
+  assert.equal(line.type, 'LINE');
+  assert.deepEqual(line.vectorGeometry, model.pages[0].items[0].vectorGeometry);
+  assert.equal(line.strokeColor, undefined);
+  assert.equal(line.strokeWeight, undefined);
+  assert.deepEqual(line.styleOverride.lineStartMarker, { type: 'circle', rawName: 'Circle' });
+  assert.equal(line.styleOverride.strokeWeight, 0);
 });
 
 test('semanticModelToInstructions carries placed PDF page crop and layer visibility options', () => {

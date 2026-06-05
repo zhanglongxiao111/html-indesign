@@ -10,36 +10,51 @@ const libDir = path.join(root, '_indesign_scripts/lib');
 
 test('build_from_instructions.jsx is a thin bootstrap that loads executor libs', () => {
   const source = fs.readFileSync(scriptPath, 'utf8');
-  for (const name of [
-    'hi_core.jsxinc',
-    'hi_labels.jsxinc',
-    'hi_document.jsxinc',
-    'hi_fonts.jsxinc',
-    'hi_styles.jsxinc',
-    'hi_assets.jsxinc',
-    'hi_tables.jsxinc',
-    'hi_text_fit.jsxinc',
-    'hi_items.jsxinc',
-    'hi_executor.jsxinc',
-  ]) {
+  for (const name of executorLibNames()) {
     assert.match(source, new RegExp(name.replace('.', '\\.')));
   }
   assert.match(source, /HI\.runBuildFromInstructions/);
   assert.equal(source.includes('slotNameFromLabel'), false);
 });
 
+test('InDesign E2E build wrapper loads the same executor libs as the bootstrap', () => {
+  const source = fs.readFileSync(path.join(root, 'scripts/indesign-e2e.js'), 'utf8');
+  for (const name of executorLibNames()) {
+    assert.match(source, new RegExp(`includeLib\\("${name.replace('.', '\\.')}"\\)`));
+  }
+});
+
+function executorLibNames() {
+  return [
+    'hi_core.jsxinc',
+    'hi_labels.jsxinc',
+    'hi_document.jsxinc',
+    'hi_parent_pages.jsxinc',
+    'hi_fonts.jsxinc',
+    'hi_styles.jsxinc',
+    'hi_vector_styles.jsxinc',
+    'hi_assets.jsxinc',
+    'hi_tables.jsxinc',
+    'hi_text_fit.jsxinc',
+    'hi_items.jsxinc',
+    'hi_executor.jsxinc',
+  ];
+}
+
 test('executor lib files expose expected HI APIs and stay focused', () => {
   const expectations = {
-    'hi_core.jsxinc': ['HI.readJsonFile', 'HI.stringify', 'HI.makeReport', 'HI.boundsToGeometricBounds', 'HI.measurementString'],
+    'hi_core.jsxinc': ['HI.readJsonFile', 'HI.stringify', 'HI.makeReport', 'HI.boundsToGeometricBounds', 'HI.measurementString', 'HI.noneSwatch'],
     'hi_labels.jsxinc': ['HI.writeProtocolLabels', 'HI.writeProtocolLabel', 'HI.readProtocolLabel'],
     'hi_document.jsxinc': ['HI.prepareDocument', 'HI.ensureLayers', 'HI.getPageForInstruction'],
+    'hi_parent_pages.jsxinc': ['HI.ensureParentPages', 'HI.applyParentPageToParentPage', 'HI.buildParentPageItems', 'HI.applyParentPage'],
     'hi_fonts.jsxinc': ['HI.resolveFont', 'HI.fontStyleNameFor', 'HI.fontByName'],
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
+    'hi_vector_styles.jsxinc': ['HI.applyStrokeOpacity', 'HI.applyLineMarker', 'HI.lineMarkerName'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
     'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
     'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'HI.applyTextFitNudge', 'TEXT_FIT_APPLIED', 'TEXT_FIT_NUDGE_APPLIED', 'TEXT_FIT_UNRESOLVED'],
     'hi_items.jsxinc': ['HI.buildInstructionItems', 'HI.createTextFrame', 'HI.createGraphicFrame'],
-    'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.runLegacyBuildInstructions'],
+    'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.buildParentPageItems', 'HI.runLegacyBuildInstructions'],
   };
 
   for (const [fileName, apiNames] of Object.entries(expectations)) {
@@ -73,11 +88,6 @@ test('document helper configures page geometry layers and unit restoration', () 
     'documentPreferences.pageHeight',
     'coordinateUnit',
     'documentPreferences.facingPages = false',
-    'HI.ensureParentPages',
-    'doc.masterSpreads',
-    'HI.applyParentPage',
-    'page.appliedMaster',
-    'PARENT_PAGE_APPLY_FAILED',
     'HI.applyPageMargins',
     'marginPreferences',
     'HI.applyPageGuides',
@@ -90,6 +100,33 @@ test('document helper configures page geometry layers and unit restoration', () 
     'doc.layers.everyItem().getElements()',
     'HI.removeUnusedDefaultLayers',
     'report.counts.layers',
+  ]) {
+    assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('parent page helper preserves nested parent pages and default cleanup', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_parent_pages.jsxinc'), 'utf8');
+  for (const token of [
+    'HI.ensureParentPages',
+    'HI.applyParentPageToParentPage',
+    'master.appliedMaster',
+    'PARENT_PAGE_PARENT_APPLY_FAILED',
+    'HI.setParentPageName',
+    'HI.reusableDefaultParentPage',
+    'namePrefix',
+    'baseName',
+    'HI.buildParentPageItems',
+    'doc.masterSpreads',
+    'HI.applyParentPage',
+    'page.appliedMaster',
+    'NothingEnum.NOTHING',
+    'PARENT_PAGE_APPLY_FAILED',
+    'HI.removeUnusedDefaultParentPages',
+    'HI.parentPageHasProtocolLabel',
+    'HI.parentPageHasContent',
+    'HI.parentPageIsApplied',
+    'DEFAULT_PARENT_PAGE_REMOVED',
   ]) {
     assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -145,6 +182,9 @@ test('executor writes text sizes with explicit point units', () => {
 
   assert.match(stylesSource, /style\.pointSize\s*=\s*HI\.ptValue\(def\.pointSize\)/);
   assert.match(stylesSource, /style\.leading\s*=\s*HI\.ptValue\(def\.leading\)/);
+  assert.match(stylesSource, /style\.spaceBefore\s*=\s*HI\.ptValue\(def\.spaceBefore\)/);
+  assert.match(stylesSource, /style\.spaceAfter\s*=\s*HI\.ptValue\(def\.spaceAfter\)/);
+  assert.match(stylesSource, /style\.composer\s*=\s*def\.composer/);
   assert.match(stylesSource, /style\.underline\s*=\s*true/);
   assert.match(stylesSource, /style\.strikeThru\s*=\s*true/);
   assert.match(stylesSource, /Position\.SUPERSCRIPT/);
@@ -206,6 +246,19 @@ test('asset helper applies manual content bounds to placed graphics without movi
   assert.match(placeAssetBody, /frame\.allGraphics\[0\]\.geometricBounds\s*=\s*HI\.boundsToGeometricBounds\(placed\.contentBounds\)/);
 });
 
+test('asset helper maps content PDF crop to InDesign visible-layer content crop', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
+  const pdfCropBody = source.slice(
+    source.indexOf('HI.pdfCropFor'),
+    source.indexOf('HI.applyFitting = function'),
+  );
+
+  assert.match(pdfCropBody, /if \(!key\) return null;/);
+  assert.match(pdfCropBody, /CROP_CONTENT_VISIBLE_LAYERS/);
+  assert.match(pdfCropBody, /CROP_CONTENT_ALL_LAYERS/);
+  assert.doesNotMatch(pdfCropBody, /constantName\s*=\s*"CROP_CONTENT"/);
+});
+
 test('item helper creates text graphic shape items and applies z order', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
   const tableSource = fs.readFileSync(path.join(libDir, 'hi_tables.jsxinc'), 'utf8');
@@ -241,6 +294,16 @@ test('item helper creates text graphic shape items and applies z order', () => {
   }
 });
 
+test('text frame creation restores instruction bounds after applying object and frame styles', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const body = source.slice(
+    source.indexOf('HI.createTextFrame'),
+    source.indexOf('HI.textFromRuns'),
+  );
+
+  assert.match(body, /HI\.applyObjectStyle\(doc,\s*frame,\s*item\.objectStyle,\s*report\)[\s\S]*HI\.applyFrameStyle\(doc,\s*frame,\s*item\.frameStyle,\s*report\)[\s\S]*HI\.disableTextFrameAutoSizing\(frame\)[\s\S]*frame\.geometricBounds\s*=\s*HI\.boundsToGeometricBounds\(item\.bounds\)/);
+});
+
 test('item helper computes endpoints for horizontal and vertical native lines', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
   const context = { HI: {} };
@@ -254,6 +317,76 @@ test('item helper computes endpoints for horizontal and vertical native lines', 
     bounds: { x: 10, y: 20, width: 0, height: 50 },
     rotationAngle: 0,
   }))), { x1: 10, y1: 20, x2: 10, y2: 70 });
+});
+
+test('item and style helpers apply native vector paths and line markers', () => {
+  const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const styleSource = fs.readFileSync(path.join(libDir, 'hi_vector_styles.jsxinc'), 'utf8');
+
+  for (const token of [
+    'HI.createVectorShapePageItem',
+    'page.polygons.add',
+    'HI.applyVectorGeometry',
+    'HI.applyVectorPath',
+    'targetPath.entirePath',
+    'PathType.CLOSED_PATH',
+    'PathType.OPEN_PATH',
+    'PointType.PLAIN',
+    'PointType.SMOOTH',
+  ]) {
+    assert.match(itemSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  for (const token of [
+    'HI.applyStrokeOpacity',
+    'strokeTransparencySettings',
+    'HI.applyStrokeLineCap',
+    'HI.applyStrokeLineJoin',
+    'HI.applyLineMarker',
+    'leftLineEnd',
+    'rightLineEnd',
+    'ArrowHead.SIMPLE_ARROW_HEAD',
+    'ArrowHead.CIRCLE_SOLID_ARROW_HEAD',
+    'ArrowHead.BAR_ARROW_HEAD',
+  ]) {
+    assert.match(styleSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.doesNotMatch(styleSource, /app\.arrowHeadStyles\.itemByName/);
+  assert.doesNotMatch(styleSource, /target\[propertyName\]\s*=\s*name/);
+});
+
+test('style helper clears explicit zero stroke through the None swatch', () => {
+  const coreSource = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+
+  assert.match(coreSource, /HI\.swatchByName/);
+  assert.match(coreSource, /swatch\.isValid/);
+  assert.match(coreSource, /app\.translateKeyString\("\$ID\/None"\)/);
+  assert.match(coreSource, /HI\.noneSwatch/);
+  assert.match(coreSource, /HI\.strokeSwatchFor/);
+  assert.match(stylesSource, /style\.strokeColor = strokeSwatch/);
+  assert.match(stylesSource, /pageItem\.strokeColor = strokeSwatch/);
+});
+
+test('item helper clears InDesign default stroke on new drawable page items', () => {
+  const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const vectorStyleSource = fs.readFileSync(path.join(libDir, 'hi_vector_styles.jsxinc'), 'utf8');
+
+  assert.match(vectorStyleSource, /HI\.clearDefaultStroke/);
+  assert.match(itemSource, /HI\.clearDefaultStroke\(doc, rect\)/);
+  assert.match(itemSource, /HI\.clearDefaultStroke\(doc, line\)/);
+});
+
+test('style helper preserves authored dashed stroke style names for InDesign', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  const context = { HI: {} };
+  vm.runInNewContext(stylesSource, context);
+
+  assert.equal(context.HI.strokeStyleName('dashed'), '$ID/Dashed');
+  assert.equal(context.HI.strokeStyleName('虚线（3 和 2）'), '$ID/Dashed');
+  assert.equal(context.HI.strokeStyleName('12 8'), '$ID/Dashed');
+  assert.equal(context.HI.strokeStyleName('点线'), '$ID/Dotted');
+  assert.equal(context.HI.strokeStyleName('实底'), '$ID/Solid');
+  assert.equal(context.HI.strokeStyleName('自定义线型'), '自定义线型');
 });
 
 test('item helper records located overset text frame diagnostics', () => {
@@ -357,6 +490,9 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.match(source, /HI\.reverseVisualStyle/);
   assert.match(source, /HI\.reverseItemType/);
   assert.match(source, /HI\.reverseVectorGeometry/);
+  assert.match(source, /auditItems:\s*HI\.reversePageAuditItems/);
+  assert.match(source, /HI\.reverseAuditPageItems/);
+  assert.match(source, /HI\.reverseItemParentInfo/);
   assert.match(source, /pathPoints/);
   assert.match(source, /leftDirection/);
   assert.match(source, /rightDirection/);
@@ -410,11 +546,19 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(tableSource.split(/\r?\n/).length <= 240, 'hi_reverse_tables.jsxinc should stay focused');
 });
 
+test('reverse visual style treats empty None stroke color as no stroke', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_reverse_styles.jsxinc'), 'utf8');
+
+  assert.match(source, /name === ""/);
+  assert.match(source, /out\.strokeWeight = out\.strokeColor \? HI\.positiveNumberOrNull/);
+});
+
 test('reverse snapshot derives HTML z order from InDesign layer and front-to-back item order', () => {
   const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
 
   assert.match(source, /HI\.reverseLayerIndexMap/);
   assert.match(source, /HI\.reverseTopLevelPageItems/);
+  assert.match(source, /HI\.reverseAuditPageItems/);
   assert.match(source, /allPageItems/);
   assert.match(source, /HI\.isTopLevelReverseItem/);
   assert.match(source, /HI\.reverseItemZIndex/);
@@ -456,6 +600,13 @@ test('reverse snapshot records placed asset frame and content geometry', () => {
   assert.match(source, /contentSize/);
   assert.match(source, /contentScale/);
   assert.match(source, /out\.fit\s*=\s*"manual"/);
+});
+
+test('reverse snapshot exports generated previews for embedded images without source paths', () => {
+  const source = fs.readFileSync(path.resolve('_indesign_scripts/lib/hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(source, /HI\.needsPlacedPreview/);
+  assert.match(source, /if\s*\(!assetPath\)\s*return true/);
 });
 
 test('reverse snapshot reads bounds in document coordinate units and restores preferences', () => {

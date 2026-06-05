@@ -10,6 +10,9 @@
     "lint:authoring": "node scripts/lint-authoring.js",
     "preset:init": "node scripts/preset-init.js",
     "reverse:indesign": "node scripts/indesign-reverse-export.js",
+    "audit:reverse-snapshot": "node scripts/audit-reverse-snapshot-structure.js",
+    "audit:effective-diff": "node scripts/audit-effective-diff.js",
+    "audit:parent-furniture": "node scripts/audit-parent-page-furniture.js",
     "audit:reverse-visual": "node scripts/audit-reverse-visual.js",
     "test": "node --test \"test/**/*.test.js\""
   },

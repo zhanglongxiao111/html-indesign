@@ -47,6 +47,37 @@ test('reverseSnapshotToSemanticModel tagged fixture output is strict-valid as a 
   assert.deepEqual(strict.fieldValidation.unknown, []);
 });
 
+test('reverseSnapshotToSemanticModel preserves observed InDesign layer as a format fact', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'observed-layer.indd', mode: 'observation' },
+    document: { name: 'observed-layer.indd', labels: [] },
+    layers: [{ name: '原始图层', visible: true, printable: true }],
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'shape-1',
+            type: 'Rectangle',
+            layerName: '原始图层',
+            labels: [],
+            bounds: { x: 10, y: 20, width: 120, height: 40 },
+            visualStyle: { fillColor: '#ffffff' },
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.layerName, '原始图层');
+  assert.equal(item.layer, '原始图层');
+  assert.equal(item.styleRefs.layer, '原始图层');
+});
+
 test('validateSemanticModel rejects nested unknown effectiveLabel style refs', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
   const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });
@@ -172,6 +203,89 @@ test('reverseSnapshotToSemanticModel preserves parent page decorative items', ()
   assert.equal(model.parentPages[0].items.length, 1);
   assert.equal(model.parentPages[0].items[0].role, 'line');
   assert.equal(model.pages[0].parentPageName, 'A-正文');
+});
+
+test('reverseSnapshotToSemanticModel preserves parent page guides and applied empty parent pages', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'parent-guides.indd', mode: 'observation' },
+    document: { name: 'parent-guides.indd', labels: [] },
+    parentPages: [
+      {
+        name: '0-参考线页面（无需填充）',
+        labels: [],
+        bounds: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+        guides: [
+          { orientation: 'vertical', position: 42.52, source: 'parent-page' },
+          { orientation: 'vertical', position: 125.43, source: 'parent-page' },
+          { orientation: 'vertical', position: 131.1, source: 'parent-page' },
+          { orientation: 'horizontal', position: 135.75, source: 'parent-page' },
+          { orientation: 'horizontal', position: 141.42, source: 'parent-page' },
+        ],
+        items: [],
+      },
+    ],
+    pages: [
+      {
+        id: '6',
+        index: 5,
+        labels: [],
+        appliedParentPageName: '0-参考线页面（无需填充）',
+        bounds: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+        guides: [],
+        items: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.equal(model.parentPages[0].id, '0-参考线页面（无需填充）');
+  assert.equal(model.parentPages[0].guides.length, 5);
+  assert.deepEqual(
+    model.parentPages[0].guides.map((guide) => `${guide.orientation}:${guide.position}`),
+    ['vertical:42.52', 'vertical:125.43', 'vertical:131.1', 'horizontal:135.75', 'horizontal:141.42'],
+  );
+  assert.equal(model.pages[0].parentPageId, '0-参考线页面（无需填充）');
+  assert.equal(model.pages[0].parentPageName, '0-参考线页面（无需填充）');
+  assert.deepEqual(model.pages[0].guides, []);
+});
+
+test('reverseSnapshotToSemanticModel preserves nested parent page references', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'nested-parent.indd', mode: 'observation' },
+    document: { name: 'nested-parent.indd', labels: [] },
+    parentPages: [
+      {
+        name: '0-参考线页面（无需填充）',
+        labels: [],
+        bounds: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+        guides: [{ orientation: 'vertical', position: 42.52, source: 'parent-page' }],
+        items: [],
+      },
+      {
+        name: 'I-两张竖构图',
+        labels: [],
+        appliedParentPageName: '0-参考线页面（无需填充）',
+        bounds: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+        guides: [],
+        items: [],
+      },
+    ],
+    pages: [
+      {
+        id: '12',
+        index: 11,
+        labels: [],
+        appliedParentPageName: 'I-两张竖构图',
+        bounds: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+        guides: [],
+        items: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const layoutParent = model.parentPages.find((parentPage) => parentPage.id === 'I-两张竖构图');
+  assert.equal(layoutParent.parentPageId, '0-参考线页面（无需填充）');
+  assert.equal(layoutParent.parentPageName, '0-参考线页面（无需填充）');
+  assert.equal(model.pages[0].parentPageId, 'I-两张竖构图');
 });
 
 test('reverseSnapshotToSemanticModel output is strict-valid for registered reverse surfaces', () => {
@@ -1102,6 +1216,10 @@ test('reverseSnapshotToSemanticModel maps InDesign display style names back to s
   const table = model.pages[0].items[1];
 
   assert.equal(copy.styleRefs.paragraphStyle, 'body-copy');
+  assert.equal(copy.styleRefs.paragraphStyleDisplayName, '正文');
+  assert.equal(copy.styleRefs.objectStyleDisplayName, null);
+  assert.equal(copy.styleRefs.frameStyleDisplayName, null);
+  assert.equal(copy.styleRefs.tableStyleDisplayName, null);
   assert.equal(copy.content.sourceHtml, '流线和 <span class="accent" data-id-character-style="term-accent">PDF 置入</span> 校核。');
   assert.equal(copy.content.runs[0].attributes['data-id-character-style'], 'term-accent');
   assert.equal(copy.content.runs[0].classList[0], 'accent');

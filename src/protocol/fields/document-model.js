@@ -77,10 +77,13 @@ function parentPageEntries() {
     sourceMetadata('parentPages[].id', [], 'string'),
     sourceMetadata('parentPages[].name', [], 'string'),
     sourceMetadata('parentPages[].semantic', [], 'string'),
+    sourceMetadata('parentPages[].parentPageId', [], 'string'),
+    sourceMetadata('parentPages[].parentPageName', [], 'string'),
     sourceMetadata('parentPages[].provides', [], 'array', {
       indesign: { labelPaths: ['provides'], labelKinds: ['parentPage'] },
     }),
     sourceMetadata('parentPages[].bounds', [], 'object'),
+    sourceMetadata('parentPages[].guides', [], 'array'),
     sourceMetadata('parentPages[].labels', [], 'array'),
     sourceMetadata('parentPages[].items', [], 'array'),
   ];
@@ -164,6 +167,19 @@ module.exports = [
   sourceMetadata('pages[].sourceNode', ['pages[].effectiveLabel.sourceNode'], 'object'),
   canonical('pages[].width', [], 'number'),
   canonical('pages[].height', [], 'number'),
-  canonical('pages[].guides', [], 'array'),
+  canonical('pages[].guides', ['reverseModel.pages[].guides', 'sourceNode.attributes.data-id-guides'], 'array', {
+    html: {
+      readAttrs: ['data-id-guides'],
+      writeAttrs: ['data-id-guides'],
+    },
+    indesign: {
+      labelPaths: ['guides'],
+      labelKinds: ['page'],
+      instructionPaths: ['document.pages[].guides', 'pages[].guides'],
+    },
+    pptx: {
+      customDataPaths: ['htmlIndesign.pages[].guides'],
+    },
+  }),
   canonical('items[].bounds', ['pages[].items[].bounds'], 'object'),
 ];

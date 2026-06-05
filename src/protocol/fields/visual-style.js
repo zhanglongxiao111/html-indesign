@@ -36,6 +36,8 @@ module.exports = [
     },
     html: {
       styleProps: ['background-color', 'fill'],
+      readAttrs: ['data-id-fill-color'],
+      writeAttrs: ['data-id-fill-color'],
     },
     indesign: {
       snapshotPaths: ['visualStyle.fillColor'],
@@ -44,6 +46,8 @@ module.exports = [
   visualStyleField('items[].visualStyle.fillOpacity', 'number', {
     html: {
       styleProps: ['fill-opacity'],
+      readAttrs: ['data-id-fill-opacity'],
+      writeAttrs: ['data-id-fill-opacity'],
     },
   }),
   {
@@ -123,8 +127,40 @@ module.exports = [
     },
   },
   visualStyleField('items[].visualStyle.strokeStyle', 'string', {
+    currentPaths: [
+      'reverseModel.pages[].items[].visualStyle.strokeStyle',
+      'sourceNode.attributes.data-id-stroke-style',
+    ],
     html: {
       styleProps: ['border-style', 'stroke-dasharray'],
+      readAttrs: ['data-id-stroke-style'],
+      writeAttrs: ['data-id-stroke-style'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.lineStartMarker.rawName', 'string', {
+    currentPaths: [
+      'reverseModel.pages[].items[].visualStyle.lineStartMarker.rawName',
+      'sourceNode.attributes.data-id-line-start-marker-raw-name',
+    ],
+    html: {
+      readAttrs: ['data-id-line-start-marker-raw-name'],
+      writeAttrs: ['data-id-line-start-marker-raw-name'],
+    },
+    indesign: {
+      snapshotPaths: ['visualStyle.lineStartMarker.rawName'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.lineEndMarker.rawName', 'string', {
+    currentPaths: [
+      'reverseModel.pages[].items[].visualStyle.lineEndMarker.rawName',
+      'sourceNode.attributes.data-id-line-end-marker-raw-name',
+    ],
+    html: {
+      readAttrs: ['data-id-line-end-marker-raw-name'],
+      writeAttrs: ['data-id-line-end-marker-raw-name'],
+    },
+    indesign: {
+      snapshotPaths: ['visualStyle.lineEndMarker.rawName'],
     },
   }),
   visualStyleField('items[].visualStyle.strokeLineCap', 'string', {

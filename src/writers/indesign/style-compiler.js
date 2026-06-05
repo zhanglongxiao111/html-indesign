@@ -262,6 +262,7 @@ function ensureParagraphStyle(styles, item, report, options) {
     capitalization: capitalizationFor(style),
     spaceBefore: styleLengthToPt(style, 'marginTop', options),
     spaceAfter: styleLengthToPt(style, 'marginBottom', options),
+    composer: paragraphComposerFor(item),
   };
   const requestedName = styleNameForKind(item, 'paragraphStyles', signature, options)
     || stableAutoName('paragraph', signature);
@@ -270,6 +271,11 @@ function ensureParagraphStyle(styles, item, report, options) {
     addMessage(report, 'warning', 'FONT_MISSING', 'Text item has no computed font family', { itemId: item.id });
   }
   return name;
+}
+
+function paragraphComposerFor(item) {
+  const attributes = item && item.attributes || {};
+  return attributes['data-id-paragraph-composer'] || item && item.textStyle && item.textStyle.composer || null;
 }
 
 function ensureCharacterStyle(styles, run, report, options) {
@@ -312,7 +318,6 @@ function ensureObjectStyle(styles, item, report, options) {
     strokeAlignment: uniformBorder ? 'inside' : null,
     cornerRadius: cornerRadiusValue(item, options),
     opacity: effectiveObjectOpacity(item, fill),
-    overflow: style.overflow || 'visible',
   };
   const requestedName = styleNameForKind(item, 'objectStyles', signature, options)
     || stableAutoName('object', signature);

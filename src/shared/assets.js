@@ -27,7 +27,9 @@ function assetSourceFromElementLike(element) {
   const authoredStyle = element.authoredStyle || {};
   const explicitKind = cleanKind(attrs['data-id-asset-kind']);
   const protocolAssetPath = attrs['data-id-asset-path'] || null;
+  const previewSrc = attrs['data-id-preview-src'] || attrs['data-id-preview-asset-path'] || null;
   if (protocolAssetPath) return { src: protocolAssetPath, explicitKind };
+  if (previewSrc) return { src: previewSrc, explicitKind };
   if (tagName === 'IMG') return { src: attrs.src || null, explicitKind };
   if (tagName === 'OBJECT') {
     const type = String(attrs.type || '').toLowerCase();

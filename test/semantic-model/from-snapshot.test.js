@@ -54,6 +54,204 @@ test('snapshotToSemanticModel preserves page layout and parent page metadata', (
   assert.deepEqual(model.pages[0].margins, { top: 14, right: 14, bottom: 14, left: 14 });
 });
 
+test('snapshotToSemanticModel restores parent page items from reverse author HTML markers', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'page-1-parent-rule',
+          role: 'shape',
+          tagName: 'svg',
+          classList: ['id-object', 'id-parent-page-object'],
+          attributes: {
+            'data-id-object': '',
+            'data-id-role': 'line',
+            'data-id-object-style': '装饰线',
+            'data-id-parent-page-item': 'A-正文',
+            'data-id-parent-page-source-id': 'parent-rule',
+          },
+          sourceNode: {
+            tagName: 'svg',
+            id: 'page-1-parent-rule',
+            classList: ['id-object', 'id-parent-page-object'],
+            attributes: {
+              'data-id-parent-page-item': 'A-正文',
+              'data-id-parent-page-source-id': 'parent-rule',
+            },
+          },
+          rectPx: { x: 10, y: 12, width: 80, height: 1 },
+          computedStyle: {},
+          visualStyle: { strokeColor: '#999999', strokeWeight: 1 },
+          vectorGeometry: { kind: 'line', paths: [] },
+          text: '',
+          runs: [],
+        },
+        {
+          id: 'body-copy',
+          role: 'text',
+          tagName: 'p',
+          classList: ['id-object'],
+          attributes: {},
+          rectPx: { x: 20, y: 30, width: 50, height: 10 },
+          text: '正文',
+          runs: [],
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'print' });
+
+  assert.equal(model.pages[0].parentPageId, 'A-正文');
+  assert.equal(model.pages[0].parentPageName, 'A-正文');
+  assert.deepEqual(model.pages[0].items.map((item) => item.id), ['body-copy']);
+  assert.equal(model.parentPages.length, 1);
+  assert.equal(model.parentPages[0].id, 'A-正文');
+  assert.equal(model.parentPages[0].items.length, 1);
+  assert.equal(model.parentPages[0].items[0].id, 'parent-rule');
+  assert.equal(model.parentPages[0].items[0].parentPageItem, true);
+});
+
+test('snapshotToSemanticModel does not synthesize CSS grid guides for observed reverse pages', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'reverse-observation.html' },
+    sourcePackageInput: {
+      attributes: {
+        'data-id-source-package-config': 'deck.config.json',
+        'data-id-source-package-schema': '1',
+      },
+      parentPages: [{
+        id: '0-参考线页面（无需填充）',
+        name: '0-参考线页面（无需填充）',
+        guides: [
+          { orientation: 'vertical', position: 42.52, source: 'parent-page' },
+          { orientation: 'vertical', position: 125.43, source: 'parent-page' },
+        ],
+      }],
+    },
+    pages: [{
+      id: 'page-6',
+      index: 5,
+      widthMm: 1496.69,
+      heightMm: 841.89,
+      rectPx: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+      classList: ['page'],
+      attributes: {
+        'data-page': '6',
+        'data-id-observed': 'true',
+        'data-id-reverse-mode': 'observation',
+        'data-id-parent-page': '0-参考线页面（无需填充）',
+        'data-id-parent-page-name': '0-参考线页面（无需填充）',
+        'data-id-margin': '56.69px 42.52px 28.35px 42.52px',
+      },
+      computedStyle: {
+        display: 'grid',
+        gridTemplateColumns: '117.63px 117.63px 117.63px 117.63px 117.63px 117.63px 117.63px 117.63px 117.63px 117.63px 117.63px 117.63px',
+        gridTemplateRows: '94.59px 94.59px 94.59px 94.59px 94.59px 94.59px 94.59px 94.59px',
+      },
+      items: [],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  assert.deepEqual(model.pages[0].guides, []);
+  assert.equal(model.pages[0].parentPageId, '0-参考线页面（无需填充）');
+  assert.equal(model.parentPages.length, 1);
+  assert.deepEqual(model.parentPages[0].guides, [
+    { orientation: 'vertical', position: 42.52, source: 'parent-page' },
+    { orientation: 'vertical', position: 125.43, source: 'parent-page' },
+  ]);
+});
+
+test('snapshotToSemanticModel restores nested parent pages from source package metadata', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'reverse-observation.html' },
+    sourcePackageInput: {
+      attributes: {
+        'data-id-source-package-config': 'deck.config.json',
+        'data-id-source-package-schema': '1',
+      },
+      parentPages: [
+        {
+          id: '0-参考线页面（无需填充）',
+          name: '0-参考线页面（无需填充）',
+          guides: [{ orientation: 'vertical', position: 42.52, source: 'parent-page' }],
+        },
+        {
+          id: 'I-两张竖构图',
+          name: 'I-两张竖构图',
+          parentPageId: '0-参考线页面（无需填充）',
+          parentPageName: '0-参考线页面（无需填充）',
+        },
+      ],
+    },
+    pages: [{
+      id: 'page-12',
+      index: 11,
+      widthMm: 1496.69,
+      heightMm: 841.89,
+      rectPx: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+      classList: ['page'],
+      attributes: {
+        'data-page': '12',
+        'data-id-observed': 'true',
+        'data-id-reverse-mode': 'observation',
+        'data-id-parent-page': 'I-两张竖构图',
+        'data-id-parent-page-name': 'I-两张竖构图',
+      },
+      computedStyle: {},
+      items: [],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  const layoutParent = model.parentPages.find((parentPage) => parentPage.id === 'I-两张竖构图');
+  assert.equal(layoutParent.parentPageId, '0-参考线页面（无需填充）');
+  assert.equal(layoutParent.parentPageName, '0-参考线页面（无需填充）');
+  assert.deepEqual(
+    model.parentPages.find((parentPage) => parentPage.id === '0-参考线页面（无需填充）').guides,
+    [{ orientation: 'vertical', position: 42.52, source: 'parent-page' }],
+  );
+});
+
+test('snapshotToSemanticModel restores observed page-local guides from protocol attrs', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'reverse-observation.html' },
+    pages: [{
+      id: 'page-8',
+      index: 7,
+      widthMm: 1496.69,
+      heightMm: 841.89,
+      rectPx: { x: 0, y: 0, width: 1496.69, height: 841.89 },
+      classList: ['page'],
+      attributes: {
+        'data-page': '8',
+        'data-id-observed': 'true',
+        'data-id-reverse-mode': 'observation',
+        'data-id-margin': '56.69px 42.52px 28.35px 42.52px',
+        'data-id-guides': '[{"orientation":"horizontal","position":512.125,"source":"page"}]',
+      },
+      computedStyle: {
+        display: 'grid',
+        gridTemplateRows: '100px 100px 100px',
+      },
+      items: [],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  assert.deepEqual(model.pages[0].guides, [
+    { orientation: 'horizontal', position: 512.125, source: 'page' },
+  ]);
+});
+
 test('snapshotToSemanticModel does not infer page semantic from data-page', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },
@@ -103,8 +301,8 @@ test('snapshotToSemanticModel does not infer item semantic from style tokens', (
           role: 'shape',
           tagName: 'div',
           classList: ['chapter-card'],
-          attributes: { 'data-id-object-style': 'chapter-card' },
-          sourceNode: { tagName: 'div', id: 'card', classList: ['chapter-card'], attributes: { 'data-id-object-style': 'chapter-card' } },
+          attributes: { 'data-id-object-style': 'chapter-card', 'data-id-layer': '原始图层' },
+          sourceNode: { tagName: 'div', id: 'card', classList: ['chapter-card'], attributes: { 'data-id-object-style': 'chapter-card', 'data-id-layer': '原始图层' } },
           rectPx: { x: 10, y: 30, width: 40, height: 20 },
           text: '',
           runs: [],
@@ -116,6 +314,8 @@ test('snapshotToSemanticModel does not infer item semantic from style tokens', (
 
   assert.deepEqual(model.pages[0].items.map((item) => item.semantic), [null, null]);
   assert.deepEqual(model.pages[0].items.map((item) => item.labels[0].semantic), [null, null]);
+  assert.equal(model.pages[0].items[1].layer, '原始图层');
+  assert.equal(model.pages[0].items[1].styleRefs.layer, '原始图层');
 });
 
 test('snapshotToSemanticModel uses authored page-local bounds for observed reverse absolute objects', () => {
@@ -161,6 +361,160 @@ test('snapshotToSemanticModel uses authored page-local bounds for observed rever
     width: 216,
     height: 37,
   });
+});
+
+test('snapshotToSemanticModel restores SVG vector point types from metadata', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      rectPx: { x: 0, y: 0, width: 1000, height: 562.5 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'observed-vector',
+        role: 'shape',
+        tagName: 'svg',
+        classList: ['id-object'],
+        attributes: {
+          id: 'observed-vector',
+          'data-id-vector': 'polygon',
+          viewBox: '0 0 100 50',
+        },
+        rectPx: { x: 10, y: 20, width: 100, height: 50 },
+        computedStyle: {},
+        sourceHtml: '<path d="M0 0 C20 0 40 50 50 25 L100 50" data-id-point-types="CORNER CORNER SMOOTH" fill="none" stroke="#000000" stroke-width="1"></path>',
+        text: '',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  const points = model.pages[0].items[0].vectorGeometry.paths[0].points;
+  assert.deepEqual(points.map((point) => point.pointType), ['CORNER', 'CORNER', 'SMOOTH']);
+});
+
+test('snapshotToSemanticModel restores open SVG vector fill from protocol attrs', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      rectPx: { x: 0, y: 0, width: 1000, height: 562.5 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'filled-open-line',
+        role: 'line',
+        tagName: 'svg',
+        classList: ['id-object'],
+        attributes: {
+          id: 'filled-open-line',
+          'data-id-vector': 'line',
+          viewBox: '0 0 2 100',
+        },
+        rectPx: { x: 10, y: 20, width: 2, height: 100 },
+        computedStyle: {},
+        sourceHtml: '<path d="M1 0 L1 100" fill="none" data-id-fill-color="#000000" stroke="#000000" stroke-width="2"></path>',
+        text: '',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  assert.equal(model.pages[0].items[0].visualStyle.fillColor, '#000000');
+  assert.equal(model.pages[0].items[0].visualStyle.strokeColor, '#000000');
+  assert.equal(model.pages[0].items[0].visualStyle.strokeWeight, 2);
+});
+
+test('snapshotToSemanticModel compiles observed InDesign paragraph composer from protocol attrs', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      rectPx: { x: 0, y: 0, width: 1000, height: 562.5 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'date-caption',
+        role: 'text',
+        tagName: 'p',
+        classList: ['observed-text', 'id-object'],
+        attributes: {
+          id: 'date-caption',
+          'data-id-paragraph-style': 'date-caption',
+          'data-id-paragraph-composer': 'Adobe 段落排版器',
+        },
+        rectPx: { x: 10, y: 20, width: 128, height: 50 },
+        computedStyle: {
+          fontFamily: '微软雅黑',
+          fontSize: '18px',
+          lineHeight: '22px',
+          color: 'rgb(102, 102, 102)',
+          textAlign: 'right',
+          marginBottom: '28.3465px',
+        },
+        text: '2026年3月27日\n线上会议',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  assert.equal(model.styles.paragraphStyles['date-caption'].composer, 'Adobe 段落排版器');
+  assert.equal(model.styles.paragraphStyles['date-caption'].spaceAfter, 28.3465);
+});
+
+test('snapshotToSemanticModel uses observed panel style names as executable style names', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      rectPx: { x: 0, y: 0, width: 1000, height: 562.5 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'observed-copy',
+        role: 'text',
+        tagName: 'p',
+        classList: ['observed-text', 'id-object'],
+        attributes: {
+          id: 'observed-copy',
+          'data-id-paragraph-style': '标准正文（18点左对齐）',
+          'data-id-paragraph-style-name': '标准正文-18点左对齐-57801789',
+          'data-id-object-style': '[基本文本框架]',
+          'data-id-object-style-name': '基本文本框架',
+        },
+        rectPx: { x: 10, y: 20, width: 128, height: 50 },
+        computedStyle: {
+          fontFamily: '微软雅黑',
+          fontSize: '18px',
+          lineHeight: '22px',
+          color: 'rgb(102, 102, 102)',
+          textAlign: 'right',
+        },
+        text: '观察文本',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  assert.equal(model.pages[0].items[0].styleRefs.paragraphStyle, '标准正文-18点左对齐-57801789');
+  assert.equal(model.pages[0].items[0].styleRefs.objectStyle, '基本文本框架');
 });
 
 test('snapshotToSemanticModel ignores retired parent page display-name alias', () => {

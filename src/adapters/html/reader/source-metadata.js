@@ -5,6 +5,7 @@ function sourcePackageFromDocument(input = {}) {
   const attributes = input.attributes || {};
   const config = attributes['data-id-source-package-config'] || null;
   if (!config) return null;
+  const parentPages = sourceParentPages(input.parentPages || []);
   const out = {
     schemaVersion: Number(attributes['data-id-source-package-schema'] || 1),
     config,
@@ -13,6 +14,7 @@ function sourcePackageFromDocument(input = {}) {
     pageFiles: (input.pageFiles || []).map((page) => ({ id: page.id, file: slash(page.file) })),
     assetRoot: input.assetRoot || 'assets',
   };
+  if (parentPages.length) out.parentPages = parentPages;
   if (attributes['data-id-document']) out.id = attributes['data-id-document'];
   if (input.title) out.title = input.title;
   if (attributes['data-id-profile']) out.profile = attributes['data-id-profile'];
@@ -24,6 +26,38 @@ function sourcePackageFromDocument(input = {}) {
     };
   }
   return out;
+}
+
+function sourceParentPages(parentPages = []) {
+  return (Array.isArray(parentPages) ? parentPages : [])
+    .map((parentPage) => {
+      const id = parentPage && (parentPage.id || parentPage.name);
+      if (!id) return null;
+      const out = {
+        id: String(id),
+        name: String(parentPage.name || id),
+        guides: sourceParentPageGuides(parentPage.guides || []),
+      };
+      if (parentPage.parentPageId) out.parentPageId = String(parentPage.parentPageId);
+      if (parentPage.parentPageName) out.parentPageName = String(parentPage.parentPageName);
+      return out;
+    })
+    .filter(Boolean);
+}
+
+function sourceParentPageGuides(guides = []) {
+  return (Array.isArray(guides) ? guides : [])
+    .map((guide) => {
+      const orientation = String(guide && guide.orientation || '').trim().toLowerCase();
+      const position = numberOrNull(guide && guide.position);
+      if (!['vertical', 'horizontal'].includes(orientation) || position == null) return null;
+      return {
+        orientation,
+        position,
+        source: guide.source || 'parent-page',
+      };
+    })
+    .filter(Boolean);
 }
 
 function sourceNodeForSnapshotItem(item = {}) {

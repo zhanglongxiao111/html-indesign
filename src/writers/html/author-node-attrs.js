@@ -17,7 +17,7 @@ function attrsForItem(item, sourceNode, options) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, tag));
   sanitizeRetiredAssetAttrs(attrs, item);
   rewriteResourceAttrs(attrs, options);
-  addStyleProtocolAttrs(attrs, item);
+  addStyleProtocolAttrs(attrs, item, options);
   const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
   if (sourceNode.id) {
     attrs.id = sourceNode.id;
@@ -86,8 +86,9 @@ function addObservedLabelAttrs(attrs, item) {
   if (reasons.length) attrs['data-id-observed-reasons'] = reasons.join(' ');
 }
 
-function addStyleProtocolAttrs(attrs, item) {
+function addStyleProtocolAttrs(attrs, item, options = {}) {
   const refs = item && item.styleRefs || {};
+  const textStyle = item && item.textStyle || {};
   const pairs = [
     ['paragraphStyle', 'data-id-paragraph-style'],
     ['characterStyle', 'data-id-character-style'],
@@ -95,9 +96,24 @@ function addStyleProtocolAttrs(attrs, item) {
     ['frameStyle', 'data-id-frame-style'],
     ['tableStyle', 'data-id-table-style'],
     ['cellStyle', 'data-id-cell-style'],
+    ['layer', 'data-id-layer'],
   ];
   for (const [key, attr] of pairs) {
     if (!attrs[attr] && refs[key]) attrs[attr] = refs[key];
+  }
+  const displayPairs = [
+    ['displayName', 'data-id-style-name'],
+    ['paragraphStyleDisplayName', 'data-id-paragraph-style-name'],
+    ['characterStyleDisplayName', 'data-id-character-style-name'],
+    ['objectStyleDisplayName', 'data-id-object-style-name'],
+    ['frameStyleDisplayName', 'data-id-frame-style-name'],
+    ['tableStyleDisplayName', 'data-id-table-style-name'],
+  ];
+  for (const [key, attr] of displayPairs) {
+    if (refs[key] && (!attrs[attr] || options.mode === 'observation')) attrs[attr] = refs[key];
+  }
+  if (!attrs['data-id-paragraph-composer'] && textStyle.composer) {
+    attrs['data-id-paragraph-composer'] = textStyle.composer;
   }
 }
 

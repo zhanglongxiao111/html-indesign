@@ -15,7 +15,7 @@ const {
   placementForItem,
 } = require('./graphic-instructions');
 const { guideInstructionsFor, ensureItemLabels } = require('./guide-instructions');
-const { layerForModelItem, collectLayers, mappedLayerName } = require('./layer-instructions');
+const { layerForModelItem, collectLayers } = require('./layer-instructions');
 const {
   tableRowsForInstruction,
   tableColumnWidthsForInstruction,
@@ -29,6 +29,12 @@ const {
   textFrameBounds,
   textFitPolicy,
 } = require('./text-instructions');
+const { applyBackgroundParentPages } = require('./background-instructions');
+const {
+  effectiveParentPageRefForPage,
+  filterEffectiveParentPages,
+  parentPageKeySet,
+} = require('../../semantic-model/parent-pages');
 
 function semanticModelToInstructions(model, options = {}) {
   const layout = model.layoutInfo || {
@@ -43,20 +49,25 @@ function semanticModelToInstructions(model, options = {}) {
   });
   mergeReport(report, model.report);
 
+  const effectiveSourceParentPages = filterEffectiveParentPages(
+    model.parentPages || [],
+    model.pages || [],
+    hasEffectiveInstructionParentPageContent,
+  );
+  const effectiveParentPageKeys = parentPageKeySet(effectiveSourceParentPages);
   const pages = model.pages.map((page) => {
     const rawPage = page.raw || page;
     const dimensions = { width: page.width, height: page.height };
     const guides = guideInstructionsFor(page);
-    const background = ensureItemLabels(pageBackgroundItemFor(rawPage, model.styles || {}, dimensions, options));
+    const parentPageRef = effectiveParentPageRefForPage(page, effectiveParentPageKeys);
     const items = [
-      background,
-      ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {})),
+      ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {}, report)),
     ].filter(Boolean).sort((a, b) => a.zIndex - b.zIndex);
     return {
       id: page.id,
       index: page.index,
-      parentPageId: page.parentPageId || null,
-      parentPageName: page.parentPageName || null,
+      parentPageId: parentPageRef.id,
+      parentPageName: parentPageRef.name,
       layout: page.layout || null,
       width: dimensions.width,
       height: dimensions.height,
@@ -66,7 +77,18 @@ function semanticModelToInstructions(model, options = {}) {
       items,
     };
   });
-  const layers = collectLayers(pages, options);
+  const parentPages = effectiveSourceParentPages.map((parentPage) => (
+    parentPageInstructionFor(parentPage, model, layout, options, report)
+  ));
+  applyBackgroundParentPages({
+    modelPages: model.pages,
+    instructionPages: pages,
+    parentPages,
+    styles: model.styles || {},
+    options,
+    ensureSwatch: ensureInstructionSwatch,
+  });
+  const layers = collectLayers([...pages, ...parentPages], options);
 
   return {
     metadata: {
@@ -81,7 +103,7 @@ function semanticModelToInstructions(model, options = {}) {
       unitMode: model.unitMode,
       coordinateUnit: model.coordinateUnit,
       labels: model.labels || [],
-      parentPages: model.parentPages || [],
+      parentPages,
       pages: pages.map((page) => ({
         id: page.id,
         width: page.width,
@@ -103,9 +125,67 @@ function semanticModelToInstructions(model, options = {}) {
   };
 }
 
-function instructionItemsFor(modelItem, assets, page, layout, options, styles) {
+function parentPageInstructionFor(parentPage, model, layout, options, report) {
+  const bounds = parentPageBounds(parentPage, model);
+  const pageContext = {
+    id: parentPage.id || parentPage.name,
+    width: bounds.width,
+    height: bounds.height,
+    bounds,
+    computedStyle: {},
+  };
+  const items = (parentPage.items || [])
+    .flatMap((item) => instructionItemsFor(item, model.assets || [], pageContext, layout, options, model.styles || {}, report))
+    .filter(Boolean)
+    .sort((a, b) => a.zIndex - b.zIndex);
+  const guides = guideInstructionsFor({
+    ...parentPage,
+    id: parentPage.id || parentPage.name,
+    guides: parentPage.guides || [],
+  });
+  return {
+    ...parentPage,
+    bounds,
+    width: bounds.width,
+    height: bounds.height,
+    guides,
+    items,
+  };
+}
+
+function hasEffectiveInstructionParentPageContent(parentPage) {
+  return parentPageHasValidGuides(parentPage) || Boolean(parentPage && parentPage.items && parentPage.items.length);
+}
+
+function parentPageHasValidGuides(parentPage) {
+  return (parentPage && parentPage.guides || []).some((guide) => {
+    const orientation = String(guide && guide.orientation || '').trim().toLowerCase();
+    const position = Number(guide && guide.position);
+    return ['vertical', 'horizontal'].includes(orientation) && Number.isFinite(position);
+  });
+}
+
+function parentPageBounds(parentPage, model) {
+  if (parentPage.bounds && parentPage.bounds.width != null && parentPage.bounds.height != null) {
+    return {
+      x: Number(parentPage.bounds.x || 0),
+      y: Number(parentPage.bounds.y || 0),
+      width: Number(parentPage.bounds.width || 0),
+      height: Number(parentPage.bounds.height || 0),
+    };
+  }
+  const page = model.pages && model.pages[0] || {};
+  return {
+    x: 0,
+    y: 0,
+    width: Number(page.width || model.pageSize && model.pageSize.width || 0),
+    height: Number(page.height || model.pageSize && model.pageSize.height || 0),
+  };
+}
+
+function instructionItemsFor(modelItem, assets, page, layout, options, styles, report) {
   const item = modelItem.raw || modelItem;
-  const baseItem = instructionItemFor(modelItem, assets, page, layout, options, styles);
+  const baseItem = instructionItemFor(modelItem, assets, page, layout, options, styles, report);
   if (!baseItem) return [];
   return [
     baseItem,
@@ -113,10 +193,12 @@ function instructionItemsFor(modelItem, assets, page, layout, options, styles) {
   ].map(ensureItemLabels);
 }
 
-function instructionItemFor(modelItem, assets, page, layout, options, styles) {
+function instructionItemFor(modelItem, assets, page, layout, options, styles, report) {
   const item = modelItem.raw || modelItem;
   const styleRefs = modelItem.styleRefs || item.styleRefs || {};
   const content = modelItem.content || item.content || { text: item.text || '', runs: item.runs || [] };
+  const vectorGeometry = vectorGeometryFor(modelItem, item);
+  const visualStyle = modelItem.visualStyle || item.visualStyle || null;
   const base = {
     id: modelItem.id,
     role: modelItem.role || item.role,
@@ -186,22 +268,30 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles) {
       rowHeights,
     };
   }
-  const line = nativeLineFor(modelItem, item, base.bounds, layout, styles);
+  const line = nativeLineFor(modelItem, item, base.bounds, layout, styles, vectorGeometry, visualStyle);
   if (line) {
+    const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
     return {
       ...base,
       ...line,
       type: 'LINE',
       objectStyle: styleRefs.objectStyle,
       frameStyle: null,
+      ...(vectorGeometry ? { vectorGeometry } : {}),
+      ...(visualStyle ? { visualStyle } : {}),
+      ...(styleOverride ? { styleOverride } : {}),
     };
   }
+  const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
   return {
     ...base,
     type: 'SHAPE',
     objectStyle: styleRefs.objectStyle,
     frameStyle: styleRefs.frameStyle,
-    shapeKind: shapeKindFor(item),
+    shapeKind: shapeKindFor(item, vectorGeometry),
+    ...(vectorGeometry ? { vectorGeometry } : {}),
+    ...(visualStyle ? { visualStyle } : {}),
+    ...(styleOverride ? { styleOverride } : {}),
   };
 }
 
@@ -212,30 +302,6 @@ function mergeReport(target, source) {
     if (message.level === 'error') target.errorCount += 1;
     if (message.level === 'warning') target.warningCount += 1;
   }
-}
-
-function pageBackgroundItemFor(page, styles, dimensions, options) {
-  const style = page.computedStyle || {};
-  const fill = normalizeCssColor(style.backgroundColor);
-  if (!fill) return null;
-  ensureInstructionSwatch(styles, fill);
-  return {
-    id: `${page.id}-background`,
-    role: 'background',
-    type: 'SHAPE',
-    bounds: { x: 0, y: 0, width: dimensions.width, height: dimensions.height },
-    zIndex: -1000,
-    layer: mappedLayerName('background', options),
-    sourceSelector: `#${page.id}`,
-    styleRefs: {},
-    objectStyle: null,
-    frameStyle: null,
-    styleOverride: {
-      fillColor: fill.name,
-      fillOpacity: fill.alpha == null ? null : fill.alpha,
-      strokeWeight: 0,
-    },
-  };
 }
 
 function ensureInstructionSwatch(styles, normalized) {
@@ -251,7 +317,7 @@ function ensureInstructionSwatch(styles, normalized) {
   }
 }
 
-function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles) {
+function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles, vectorGeometry = null, visualStyle = null) {
   const item = modelItem || rawItem;
   const raw = rawItem || modelItem || {};
   if (!item) return null;
@@ -264,15 +330,17 @@ function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles) {
     || classNames.includes('line')
     || /(^|-)line($|-)/.test(String(objectStyle || ''))
     || sourceNodeAttribute(item, 'data-id-vector') === 'line'
-    || sourceNodeAttribute(raw, 'data-id-vector') === 'line';
+    || sourceNodeAttribute(raw, 'data-id-vector') === 'line'
+    || vectorLineCandidate(vectorGeometry, baseBounds);
   const thinVectorLine = (sourceLine || objectStyleStroke) && lineLikeBounds(baseBounds);
   const edge = raw.box && raw.box.borders && raw.box.borders.top;
   const stroke = visibleBorder(edge)
     ? { color: edge.color, weight: edge.widthPt }
-    : sourceLine || objectStyleStroke;
+    : visualLineStroke(visualStyle, styles) || sourceLine || objectStyleStroke;
+  const hasMarker = visualLineMarker(visualStyle);
   const styleItem = raw || item;
   const rawBoundsMm = styleItem.boundsMm || baseBounds || {};
-  if ((!explicitLine && !thinVectorLine) || !stroke || !stroke.weight) return null;
+  if ((!explicitLine && !thinVectorLine) || (!stroke && !hasMarker)) return null;
   const bounds = layout.unitMode === 'presentation'
     ? {
       x: styleLengthTarget(styleItem, 'left', baseBounds.x, layout),
@@ -286,12 +354,86 @@ function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles) {
       width: styleLengthMm(styleItem, 'width', rawBoundsMm.width),
       height: styleLengthMm(styleItem, 'height', rawBoundsMm.height),
     };
-  return {
+  const out = {
     bounds,
     rotationAngle: rotationAngleFor(styleItem),
-    strokeColor: stroke.color,
-    strokeWeight: stroke.weight,
   };
+  if (stroke && stroke.weight) {
+    out.strokeColor = stroke.color;
+    out.strokeWeight = stroke.weight;
+  }
+  return out;
+}
+
+function vectorGeometryFor(modelItem, rawItem) {
+  const vector = modelItem && modelItem.vectorGeometry || rawItem && rawItem.vectorGeometry || null;
+  if (!vector || !Array.isArray(vector.paths)) return null;
+  const paths = vector.paths
+    .map((path) => ({
+      closed: Boolean(path && path.closed),
+      points: (path && Array.isArray(path.points) ? path.points : []).map(vectorPointForInstruction).filter(Boolean),
+    }))
+    .filter((path) => path.points.length >= 2);
+  return paths.length ? { kind: vector.kind || 'path', paths } : null;
+}
+
+function vectorPointForInstruction(point = {}) {
+  const anchor = vectorCoordinateForInstruction(point.anchor);
+  if (!anchor) return null;
+  const out = {
+    anchor,
+    leftDirection: vectorCoordinateForInstruction(point.leftDirection) || anchor,
+    rightDirection: vectorCoordinateForInstruction(point.rightDirection) || anchor,
+  };
+  if (point.pointType != null) out.pointType = point.pointType;
+  return out;
+}
+
+function vectorCoordinateForInstruction(value = {}) {
+  const x = Number(value.x);
+  const y = Number(value.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return { x: round(x, 3), y: round(y, 3) };
+}
+
+function vectorLineCandidate(vectorGeometry, bounds = null) {
+  if (!vectorGeometry) return false;
+  const kind = String(vectorGeometry.kind || '').toLowerCase();
+  if (kind === 'line') return true;
+  if ((kind !== 'polygon' && kind !== 'path') || !lineLikeBounds(bounds)) return false;
+  const paths = Array.isArray(vectorGeometry.paths) ? vectorGeometry.paths : [];
+  if (paths.length !== 1) return false;
+  const path = paths[0];
+  if (!path || path.closed) return false;
+  const points = Array.isArray(path.points) ? path.points : [];
+  if (points.length !== 2) return false;
+  return distinctVectorAnchors(points[0], points[1]);
+}
+
+function distinctVectorAnchors(a, b) {
+  const first = a && a.anchor || {};
+  const second = b && b.anchor || {};
+  const dx = Number(second.x) - Number(first.x);
+  const dy = Number(second.y) - Number(first.y);
+  return Number.isFinite(dx)
+    && Number.isFinite(dy)
+    && (Math.abs(dx) >= 0.01 || Math.abs(dy) >= 0.01);
+}
+
+function visualLineStroke(visualStyle, styles) {
+  if (!visualStyle) return null;
+  const weight = Number(visualStyle.strokeWeight || 0);
+  if (!Number.isFinite(weight) || weight <= 0) return null;
+  const color = ensureInstructionColor(styles, visualStyle.strokeColor);
+  if (!color) return null;
+  return { color, weight };
+}
+
+function visualLineMarker(visualStyle) {
+  if (!visualStyle) return false;
+  const start = normalizeLineMarker(visualStyle.lineStartMarker);
+  const end = normalizeLineMarker(visualStyle.lineEndMarker);
+  return Boolean((start && (start.type || start.rawName)) || (end && (end.type || end.rawName)));
 }
 
 function objectStyleLineStroke(styles, objectStyleName, bounds) {
@@ -360,7 +502,11 @@ function normalizeLineStrokeColor(value) {
   return `颜色-${r}-${g}-${b}`;
 }
 
-function shapeKindFor(item) {
+function shapeKindFor(item, vectorGeometry = null) {
+  if (vectorGeometry) {
+    const kind = String(vectorGeometry.kind || '').toLowerCase();
+    if (kind === 'polygon' || kind === 'path') return 'polygon';
+  }
   if (!item || item.role !== 'shape') return 'rectangle';
   const radius = styleValue(item, 'borderRadius');
   const bounds = item.boundsMm || {};
@@ -368,6 +514,84 @@ function shapeKindFor(item) {
     return 'oval';
   }
   return 'rectangle';
+}
+
+function vectorStyleOverride(visualStyle, styles, report, item) {
+  if (!visualStyle) return null;
+  const out = {};
+  const fillColor = ensureInstructionColor(styles, visualStyle.fillColor);
+  if (fillColor) out.fillColor = fillColor;
+  if (visualStyle.fillOpacity !== null && typeof visualStyle.fillOpacity !== 'undefined') {
+    out.fillOpacity = Number(visualStyle.fillOpacity);
+  }
+  const strokeColor = ensureInstructionColor(styles, visualStyle.strokeColor);
+  const strokeWeight = Number(visualStyle.strokeWeight);
+  if (strokeColor) out.strokeColor = strokeColor;
+  if (Number.isFinite(strokeWeight)) out.strokeWeight = strokeWeight > 0 ? strokeWeight : 0;
+  else if (!strokeColor) out.strokeWeight = 0;
+  if (visualStyle.strokeOpacity !== null && typeof visualStyle.strokeOpacity !== 'undefined') {
+    out.strokeOpacity = Number(visualStyle.strokeOpacity);
+  }
+  if (visualStyle.opacity !== null && typeof visualStyle.opacity !== 'undefined') out.opacity = Number(visualStyle.opacity);
+  if (visualStyle.strokeStyle !== null && typeof visualStyle.strokeStyle !== 'undefined') {
+    const strokeStyle = executableStrokeStyle(visualStyle.strokeStyle);
+    if (strokeStyle) out.strokeStyle = strokeStyle;
+    else addMessage(report, 'warning', 'STROKE_STYLE_UNSUPPORTED', 'Observed stroke style is not executable as a native InDesign stroke type.', {
+      itemId: item && item.id,
+      strokeStyle: visualStyle.strokeStyle,
+    });
+  }
+  for (const key of ['strokeLineCap', 'strokeLineJoin', 'strokeMiterLimit', 'strokeAlignment']) {
+    if (visualStyle[key] !== null && typeof visualStyle[key] !== 'undefined') out[key] = visualStyle[key];
+  }
+  if (visualStyle.lineStartMarker) out.lineStartMarker = normalizeLineMarker(visualStyle.lineStartMarker);
+  if (visualStyle.lineEndMarker) out.lineEndMarker = normalizeLineMarker(visualStyle.lineEndMarker);
+  return Object.keys(out).length ? out : null;
+}
+
+function executableStrokeStyle(value) {
+  const text = String(value == null ? '' : value).trim();
+  const key = text.toLowerCase();
+  if (!text) return null;
+  if (key === 'solid' || key === 'none' || key === '$id/solid' || text === '实底') return text;
+  if (key === 'dashed' || key === '$id/dashed' || key.includes('dash') || text.includes('虚') || /^\d+(\.\d+)?\s+\d+/.test(text)) return text;
+  if (key === 'dotted' || key === '$id/dotted' || key.includes('dot') || text.includes('点')) return text;
+  return null;
+}
+
+function normalizeLineMarker(marker) {
+  if (typeof marker === 'string') return { type: marker, rawName: null };
+  if (!marker || typeof marker !== 'object') return null;
+  return {
+    type: marker.type || null,
+    rawName: marker.rawName || null,
+  };
+}
+
+function ensureInstructionColor(styles, value) {
+  const normalized = normalizeInstructionColor(value);
+  if (!normalized) return null;
+  if (normalized.hex) ensureInstructionSwatch(styles, normalized);
+  return normalized.name;
+}
+
+function normalizeInstructionColor(value) {
+  const text = String(value || '').trim();
+  if (!text || /^\[?(none|无)\]?$/i.test(text) || text.toLowerCase() === 'transparent') return null;
+  const css = normalizeCssColor(text);
+  if (css) return css;
+  const hex = text.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!hex) return { name: text };
+  const full = hex[1].length === 3
+    ? hex[1].split('').map((char) => `${char}${char}`).join('')
+    : hex[1];
+  const r = Number.parseInt(full.slice(0, 2), 16);
+  const g = Number.parseInt(full.slice(2, 4), 16);
+  const b = Number.parseInt(full.slice(4, 6), 16);
+  return {
+    hex: `#${full.toLowerCase()}`,
+    name: `颜色-${r}-${g}-${b}`,
+  };
 }
 
 function rotationAngleFor(item) {

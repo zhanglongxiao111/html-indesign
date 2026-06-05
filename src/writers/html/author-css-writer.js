@@ -117,11 +117,17 @@ function vectorMinSizeDeclarations(item) {
   if (!item || !item.bounds || !item.visualStyle) return [];
   if (!item.vectorGeometry && item.role !== 'line') return [];
   const stroke = Number(item.visualStyle.strokeWeight);
-  if (!Number.isFinite(stroke) || stroke <= 0) return [];
+  const markerExtent = hasLineMarker(item.visualStyle) ? 1 : 0;
+  const extent = Number.isFinite(stroke) && stroke > 0 ? stroke : markerExtent;
+  if (!extent) return [];
   const declarations = [];
-  if (Number(item.bounds.width || 0) <= 0) declarations.push(`min-width:${px(stroke)}`);
-  if (Number(item.bounds.height || 0) <= 0) declarations.push(`min-height:${px(stroke)}`);
+  if (Number(item.bounds.width || 0) <= 0) declarations.push(`min-width:${px(extent)}`);
+  if (Number(item.bounds.height || 0) <= 0) declarations.push(`min-height:${px(extent)}`);
   return declarations;
+}
+
+function hasLineMarker(visualStyle) {
+  return Boolean(visualStyle && (visualStyle.lineStartMarker || visualStyle.lineEndMarker));
 }
 
 function styleCollectionCss(collection, prefix) {
