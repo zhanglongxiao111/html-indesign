@@ -376,6 +376,17 @@ test('item helper clears InDesign default stroke on new drawable page items', ()
   assert.match(itemSource, /HI\.clearDefaultStroke\(doc, line\)/);
 });
 
+test('line style overrides are applied after native line stroke fields', () => {
+  const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const start = itemSource.indexOf('HI.createLineFrame = function');
+  const body = itemSource.slice(
+    start,
+    itemSource.indexOf('HI.createVectorShapePageItem', start),
+  );
+
+  assert.match(body, /HI\.applyObjectStyle\(doc,\s*line,\s*item\.objectStyle,\s*report\)[\s\S]*if \(item\.strokeColor\) line\.strokeColor[\s\S]*if \(item\.strokeWeight !== null[\s\S]*HI\.applyStyleOverride\(doc,\s*line,\s*item\.styleOverride,\s*report\)/);
+});
+
 test('style helper preserves authored dashed stroke style names for InDesign', () => {
   const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
   const context = { HI: {} };
@@ -607,6 +618,9 @@ test('reverse snapshot exports generated previews for embedded images without so
 
   assert.match(source, /HI\.needsPlacedPreview/);
   assert.match(source, /if\s*\(!assetPath\)\s*return true/);
+  assert.match(source, /HI\.tryExportPlacedAssetPreviewItem/);
+  assert.match(source, /HI\.tryExportPlacedAssetPreviewItem\(item,\s*target\)[\s\S]*HI\.tryExportPlacedAssetPreviewItem\(graphic,\s*target\)/);
+  assert.match(source, /target\.exists/);
 });
 
 test('reverse snapshot reads bounds in document coordinate units and restores preferences', () => {

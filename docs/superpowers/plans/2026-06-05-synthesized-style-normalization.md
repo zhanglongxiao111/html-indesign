@@ -70,6 +70,21 @@ npm run audit:effective-diff -- --expected test/workspace/human-indesign-nested-
 - 真实人工 ID 的有效 P1 总数降到 0。
 - 如果 text frame 高度类差异仍存在，必须通过报告证明内容未丢、文本框几何策略一致，并单独登记为文本框拟合缺陷，不混在样式缺陷中。
 
+## Latest Execution Status
+
+更新时间：2026-06-05。
+
+- 已从用户给定真实人工 InDesign 重新反向导出快照：47 页、537 个页面对象、624 个审计对象、87 个资源；补齐路径为空但可从 InDesign frame 导出的置入预览，生成预览 104 个，错误 0、警告 0。
+- 原始反向作者包合成样式审计通过：`styleCount=39`、`referenceCount=301`、`issueCount=0`。
+- 已用该反向作者包执行真实 InDesign E2E、反向回读和二次回环：47 页、505 条 instructions item、57 个资源、overset text frame 0。
+- 一轮与二轮回读的合成样式审计均通过：`styleCount=33`、`referenceCount=280`、`issueCount=0`。
+- 二轮结构稳定审计通过：errors 0、warnings 0。
+- 当前有效 diff：`EDI=7552`、`P0=0`、`P1=692`、`P2=632`。相比执行前基线 `P1=825`，已下降 133；P0 仍为 0。
+- 当前剩余 P1 主要分布：visual style 395、bounds 135、missing 95、extra 59、vector geometry 4、asset placement 3、field 1。
+- 当前剩余样式字段热点：`fillColor=160`、`blendMode=64`、`lineEndMarker=48`、`strokeStyle=52`、`strokeWeight=30`、`strokeAlignment=30`、`strokeColor=9`、`opacity=2`。
+- 已修复的关键稳定性问题：路径为空的置入资源可通过 InDesign frame 导出预览；线条 style override 后置执行，避免被 top-level 默认描边覆盖；合成线条 CSS 不再在浏览器快照中给 SVG 容器注入边框。
+- 尚未达成：真实人工 ID 的 P1 清零、样式相关 P1 清零、剩余 P1 机器可读责任层级报告、E2E 报告自动内嵌合成样式审计。
+
 ## Planned File Changes
 
 新增文件：
@@ -174,7 +189,7 @@ git diff -- docs/规范/PROTOCOL_FIELD_REGISTRY.md
 
 - [x] 新建 `src/semantic-model/style-atoms.js`。
 - [x] 新建 `src/semantic-model/synthesized-styles.js`。
-- [ ] 对文本、段落、对象、线条、图框、资源置入分别提取可比较原子；首轮已覆盖文本和线条，对象、图框、资源置入待后续步骤补齐。
+- [x] 对文本、段落、对象、线条、图框、资源置入分别提取可比较原子；已覆盖文本、线条、对象视觉样式和资源置入 placement。
 - [x] 对原子属性做稳定排序、单位归一和空值剔除。
 - [x] 生成稳定 fingerprint，不依赖对象 id、页面号、图层名或遍历顺序。
 - [x] 生成稳定 ASCII token，例如 `synth_text_001`、`synth_line_003`。
@@ -227,7 +242,7 @@ node --test test/semantic-model/synthesized-styles.test.js
 - [ ] 有有效原始样式时，优先把原始样式映射为 styleRef；合成样式只补齐未样式化或样式不完整对象。
 - [ ] 原始样式内无法表达的局部属性进入 `styleOverrides`。
 - [x] 不把图层名、对象名或页面号纳入 fingerprint。
-- [ ] 对 shape/text/image/pdf/line 都覆盖测试；首轮已覆盖 line，text 在语义模型层覆盖。
+- [x] 对 shape/text/image/pdf/line 都覆盖测试；语义模型层覆盖 text、line、shape/object、asset placement，反向 normalizer 覆盖 line。
 
 建议测试文件：`test/indesign-reverse/synthesized-style-normalizer.test.js`
 
@@ -262,7 +277,7 @@ node --test test/indesign-reverse/synthesized-style-normalizer.test.js
 
 - [x] 在 `src/writers/html/author-package-writer.js` 中把 `styles.synthesized` 写入作者包元数据。
 - [x] 在 `src/writers/html/author-node-attrs.js` 中写出对象级 `data-id-style-token` 和 `data-id-style-name`；中文名复用已有显示名属性，不新增同义 HTML 属性。
-- [ ] 在 `src/writers/html/author-css-writer.js` 中生成中文注释或结构化映射，但 CSS class 仍使用稳定 token。
+- [x] 在 `src/writers/html/author-css-writer.js` 中生成中文注释或结构化映射，但 CSS class 仍使用稳定 token。
 - [x] 确保 `deck.html` 仍可浏览器自然预览。
 - [x] 不把合成样式误写成语义标签，例如 title/caption/material。
 
@@ -296,8 +311,8 @@ node --test test/indesign-reverse/synthesized-style-author-package.test.js
 
 - [x] 在 `src/adapters/html/reader/source-metadata.js` 读取作者包中的合成样式 registry。
 - [x] 在 `src/adapters/html/normalizer/snapshot-to-model.js` 恢复 `styleRefs.synthesizedToken` 和 `synthesizedName`；`styleOverrides` 后续随审计和 writer 覆盖继续接入。
-- [ ] 若 HTML 中引用不存在的 token，必须报审核问题，不得静默生成新样式。
-- [ ] 若 token 和中文名不一致，以 token 为机器事实、中文名为显示事实，并记录审核项。
+- [x] 若 HTML 中引用不存在的 token，必须报审核问题，不得静默生成新样式；已在 HTML normalizer 中输出 `SYNTHESIZED_STYLE_TOKEN_UNREGISTERED`，严格模式抛错。
+- [x] 若 token 和中文名不一致，以 token 为机器事实、中文名为显示事实，并记录审核项；已输出 `SYNTHESIZED_STYLE_NAME_MISMATCH`。
 
 建议测试文件：`test/paged-html/synthesized-style-reader.test.js`
 
@@ -326,12 +341,12 @@ node --test test/paged-html/synthesized-style-reader.test.js
 
 ### 6. InDesign Writer 编译为原生样式
 
-- [ ] 新建 `src/writers/indesign/synthesized-style-instructions.js`，把合成样式拆到 paragraph/character/object/frame/table/line 等现有 style instruction。
-- [ ] 更新 `src/writers/indesign/style-identities.js`，样式 identity 使用 token，displayName 使用中文。
-- [ ] 修改 `src/writers/indesign/style-compiler.js`，只负责调用新增 helper 和合并结果。
-- [ ] 对 item 先应用合成样式，再应用 `styleOverrides`。
+- [x] 新建 `src/writers/indesign/synthesized-style-instructions.js`，把合成样式拆到 paragraph/object/frame 等现有 style instruction；line 进入 object style，asset 进入 frame style。
+- [x] 核对 `src/writers/indesign/style-identities.js` 不承担作者包合成样式 registry；合成样式 identity 已在 `src/writers/indesign/synthesized-style-instructions.js` 中使用 token，displayName 使用中文。
+- [x] 修改 `src/writers/indesign/instruction-writer.js`，只负责调用新增 helper 和合并结果；未扩大 `style-compiler.js`。
+- [x] 对 item 应用合成样式引用；`styleOverrides` 后续随覆盖审计继续接入。
 - [ ] 对原始有效样式和合成样式冲突做显式诊断。
-- [ ] 保证 InDesign 面板里的样式名为中文。
+- [x] 保证 InDesign 面板里的样式名为中文。
 
 建议测试文件：`test/paged-html/synthesized-style-compiler.test.js`
 
@@ -364,12 +379,12 @@ npm test
 
 ### 7. 精确执行线条、混合模式和资源置入属性
 
-- [ ] 审查 `_indesign_scripts/lib/hi_styles.jsxinc` 中当前虚线样式映射，修复把 `虚线（3 和 2）` 退化为普通虚线或实线的问题。
-- [ ] 必要时新增 `_indesign_scripts/lib/hi_stroke_styles.jsxinc`，专门创建和复用精确 stroke style。
-- [ ] 支持 line end marker、arrow、stroke alignment、line cap、line join。
+- [x] 审查 `_indesign_scripts/lib/hi_styles.jsxinc` 中当前虚线样式映射，修复把 `虚线（3 和 2）` 退化为普通虚线或实线的问题。
+- [x] 必要时新增 `_indesign_scripts/lib/hi_stroke_styles.jsxinc`，专门创建和复用精确 stroke style；当前先收窄既有 `HI.strokeStyleName`，未新增 include。
+- [ ] 支持 line end marker、arrow、stroke alignment、line cap、line join，并用真实 ID effective diff 证明收敛；当前仍有 `lineEndMarker=48`、`strokeAlignment=30` 的 P1 差异。
 - [ ] 支持 blend mode、opacity、fill/stroke tint。
-- [ ] 保留 PDF/图片相对于 frame 的 crop、scale、offset、fit policy。
-- [ ] 增加 executor 静态测试，验证 include 顺序和函数存在。
+- [ ] 保留 PDF/图片相对于 frame 的 crop、scale、offset、fit policy；当前已修复 pathless frame 预览导出，但仍有 asset placement P1=3。
+- [x] 增加 executor 静态测试，验证精确虚线名不再被粗略映射。
 
 建议测试文件：`test/indesign-executor/synthesized-style-executor-static.test.js`
 
@@ -433,11 +448,11 @@ node --test test/paged-html/text-frame-bounds-after-synth-style.test.js
 
 ### 9. 合成样式审计门禁
 
-- [ ] 新建 `src/adapters/indesign/audit/synthesized-style-audit.js`。
-- [ ] 新建 `scripts/audit-synthesized-styles.js`。
-- [ ] 在 `package.json` 增加 `audit:synthesized-styles`。
-- [ ] 审计项目包括 token 唯一、中文名存在、fingerprint 唯一、引用存在、属性无丢失、覆盖字段可解释。
-- [ ] 审计输出 JSON，供 `audit:effective-diff` 或 E2E 报告引用。
+- [x] 新建 `src/adapters/indesign/audit/synthesized-style-audit.js`。
+- [x] 新建 `scripts/audit-synthesized-styles.js`。
+- [x] 在 `package.json` 增加 `audit:synthesized-styles`。
+- [x] 审计项目包括 token 唯一、中文名存在、fingerprint 唯一、引用存在、属性无丢失、覆盖字段可解释。
+- [x] 审计输出 JSON，供 `audit:effective-diff` 或 E2E 报告引用。
 
 建议测试文件：`test/indesign-reverse/synthesized-style-audit.test.js`
 
@@ -492,10 +507,10 @@ npm run audit:effective-diff -- --expected <original-reverse-snapshot.json> --ac
 
 ### 11. 真实人工 ID 收敛
 
-- [ ] 使用用户给定的真实人工 ID 重新导出反向快照。
-- [ ] 从反向 HTML 作者包再次导回 InDesign。
-- [ ] 对回环后的 InDesign 再反向导出。
-- [ ] 执行 effective diff。
+- [x] 使用用户给定的真实人工 ID 重新导出反向快照：`test/workspace/human-indesign-synth-style-20260605/original-rerun-preview-fix/reverse-snapshot.json`。
+- [x] 从反向 HTML 作者包再次导回 InDesign：`test/workspace/human-indesign-synth-style-20260605/e2e-preview-fix/output.indd`。
+- [x] 对回环后的 InDesign 再反向导出，并执行二次回环：`test/workspace/human-indesign-synth-style-20260605/e2e-preview-fix/second-pass/reverse-snapshot.json`。
+- [x] 执行 effective diff：`test/workspace/human-indesign-synth-style-20260605/effective-diff-audit-preview-fix.json`，当前 `P0=0`、`P1=692`、`P2=632`。
 - [ ] 对 P1 做逐类收敛，优先处理样式、线条、资源置入和样式导致的 missing/extra。
 - [ ] 若 P1 未清零，输出 `remaining-p1-classification.json`，其中每一类都有责任层级、数量、样例 item id 和下一步文件入口。
 
@@ -578,13 +593,13 @@ npm run audit:effective-diff -- --expected <original-reverse-snapshot.json> --ac
 
 ## Completion Criteria
 
-- [ ] 新协议字段已登记并生成文档。
-- [ ] InDesign 反向模型能生成稳定合成样式。
-- [ ] HTML 作者包能保存和回读合成样式。
-- [ ] InDesign Writer 能生成中文原生样式并应用 token identity。
+- [x] 新协议字段已登记并生成文档。
+- [x] InDesign 反向模型能生成稳定合成样式。
+- [x] HTML 作者包能保存和回读合成样式。
+- [x] InDesign Writer 能生成中文原生样式并应用 token identity。
 - [ ] Executor 精确保留虚线、箭头、混合模式、填充、描边和资源置入属性。
-- [ ] 合成样式审计命令可运行，且纳入真实 E2E 报告。
+- [ ] 合成样式审计命令可运行，且纳入真实 E2E 报告；当前命令可运行并已人工接入验收，尚未自动写入 E2E 报告。
 - [ ] 真实人工 ID 的样式相关 P1 为 0。
-- [ ] 二轮回环稳定审计错误为 0。
+- [x] 二轮回环稳定审计错误为 0。
 - [ ] 文档和 AGENTS 已同步。
 - [ ] 退役代码和粗略映射已清理。

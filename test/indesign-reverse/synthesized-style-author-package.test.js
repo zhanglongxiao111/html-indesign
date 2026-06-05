@@ -76,4 +76,5 @@ test('author package preserves synthesized style token and Chinese display name'
   const componentsCss = fs.readFileSync(path.join(outDir, 'styles/components.css'), 'utf8');
   assert.match(componentsCss, /\/\* 线条样式 01 \*\//);
   assert.match(componentsCss, /\.synth-synth_line_001\s*\{/);
+  assert.doesNotMatch(componentsCss, /\.synth-synth_line_001\s*\{[^}]*border:/);
 });

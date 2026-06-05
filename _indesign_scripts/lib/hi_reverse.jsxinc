@@ -653,16 +653,33 @@ HI.exportPlacedAssetPreview = function (item, graphic, assetPath, context) {
     var fileName = HI.previewFileName(item, assetPath);
     var target = File(context.folder.fsName + "/" + fileName);
     var oldPrefs = HI.applyPreviewPngPreferences();
+    var frameError = null, graphicError = null;
     try {
-        item.exportFile(ExportFormat.PNG_FORMAT, target);
-        context.report.counts.generatedPreviews = Number(context.report.counts.generatedPreviews || 0) + 1;
-        return { path: target.fsName, relativePath: context.relativeRoot + "/" + fileName, source: "indesign-frame-export", format: "png" };
-    } catch (error) {
-        HI.addMessage(context.report, "warning", "PLACED_ASSET_PREVIEW_EXPORT_FAILED", String(error), { itemId: String(item.id || ""), path: assetPath });
+        frameError = HI.tryExportPlacedAssetPreviewItem(item, target);
+        if (!frameError && target.exists) {
+            context.report.counts.generatedPreviews = Number(context.report.counts.generatedPreviews || 0) + 1;
+            return { path: target.fsName, relativePath: context.relativeRoot + "/" + fileName, source: "indesign-frame-export", format: "png" };
+        }
+        graphicError = HI.tryExportPlacedAssetPreviewItem(graphic, target);
+        if (!graphicError && target.exists) {
+            context.report.counts.generatedPreviews = Number(context.report.counts.generatedPreviews || 0) + 1;
+            return { path: target.fsName, relativePath: context.relativeRoot + "/" + fileName, source: "indesign-graphic-export", format: "png" };
+        }
+        HI.addMessage(context.report, "warning", "PLACED_ASSET_PREVIEW_EXPORT_FAILED", frameError || graphicError || "Preview export produced no file.", { itemId: String(item.id || ""), path: assetPath });
     } finally {
         HI.restorePreviewPngPreferences(oldPrefs);
     }
     return null;
+};
+
+HI.tryExportPlacedAssetPreviewItem = function (source, target) {
+    if (!source || !target) return "Missing preview export source or target.";
+    try {
+        source.exportFile(ExportFormat.PNG_FORMAT, target);
+        return target.exists ? null : "Preview export produced no file.";
+    } catch (error) {
+        return String(error);
+    }
 };
 
 HI.needsPlacedPreview = function (assetPath, graphic) {

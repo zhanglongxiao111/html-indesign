@@ -125,9 +125,9 @@ HI.createLineFrame = function (doc, page, item, context, report) {
     }
     HI.assignLayer(line, context, item.layer);
     HI.applyObjectStyle(doc, line, item.objectStyle, report);
-    HI.applyStyleOverride(doc, line, item.styleOverride, report);
     try { if (item.strokeColor) line.strokeColor = doc.swatches.itemByName(item.strokeColor); } catch (_) {}
     try { if (item.strokeWeight !== null && typeof item.strokeWeight !== "undefined") line.strokeWeight = Number(item.strokeWeight); } catch (_) {}
+    HI.applyStyleOverride(doc, line, item.styleOverride, report);
     try { line.label = HI.itemLabel(item); } catch (_) {}
     HI.writeProtocolLabels(line, item.labels || [], report, { itemId: item.id, critical: true });
     report.counts.shapes += 1;

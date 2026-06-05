@@ -51,7 +51,7 @@ function componentsCss(model) {
 function synthesizedStyleCss(styles) {
   return (Array.isArray(styles) ? styles : []).map((style) => {
     if (!style || !style.token) return '';
-    const declarations = synthesizedStyleDeclarations(style.properties || {});
+    const declarations = synthesizedStyleDeclarations(style);
     return [
       `/* ${String(style.displayName || style.token)} */`,
       `.synth-${safeClass(style.token)} { ${declarations} }`,
@@ -59,7 +59,9 @@ function synthesizedStyleCss(styles) {
   }).filter(Boolean).join('\n');
 }
 
-function synthesizedStyleDeclarations(properties) {
+function synthesizedStyleDeclarations(style) {
+  if (style && style.kind === 'line') return '';
+  const properties = style && style.properties || {};
   const declarations = [];
   if (properties.fillColor) declarations.push(`background-color:${properties.fillColor}`);
   if (properties.strokeColor && Number(properties.strokeWeight) > 0) {
