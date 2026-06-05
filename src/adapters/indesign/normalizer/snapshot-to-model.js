@@ -1,4 +1,5 @@
 const { loadStandardSemanticPreset } = require('../../../semantic-preset');
+const { normalizeSynthesizedStyles } = require('../../../semantic-model/synthesized-styles');
 const { createReport, addMessage } = require('../../../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
 
@@ -22,7 +23,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   };
   const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, context));
   const report = diagnostics.report.messages.length ? diagnostics.report : null;
-  return {
+  const model = {
     kind: 'DocumentModel',
     id: documentLabel.id || 'indesign-document',
     title: documentLabel.title || (documentLabel.sourcePackage && documentLabel.sourcePackage.title) || (snapshot.document && snapshot.document.name) || documentLabel.id || 'indesign-document',
@@ -44,6 +45,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     valid: diagnostics.errors.length === 0,
     reverseMode,
   };
+  return normalizeSynthesizedStyles(model);
 }
 
 function reversePage(page, styleMaps, context = {}) {

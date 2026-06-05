@@ -165,8 +165,26 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     pages: pages.map((page) => ({ id: page.id, file: page.file })),
     assets: { root: sourceConfig && sourceConfig.assets && sourceConfig.assets.root || sourcePackage.assetRoot || 'assets' },
   };
+  const synthesizedStyles = synthesizedStylesConfigFor(model.styles && model.styles.synthesized);
+  if (synthesizedStyles.length) config.synthesizedStyles = synthesizedStyles;
   if (parentPages.length) config.parentPages = parentPages;
   return config;
+}
+
+function synthesizedStylesConfigFor(styles) {
+  if (!Array.isArray(styles)) {
+    return [];
+  }
+  return styles
+    .filter((style) => style && style.token && style.displayName)
+    .map((style) => ({
+      token: style.token,
+      displayName: style.displayName,
+      kind: style.kind || null,
+      fingerprint: style.fingerprint || null,
+      source: style.source || null,
+      properties: style.properties || {},
+    }));
 }
 
 function parentPagesConfigFor(parentPages = []) {

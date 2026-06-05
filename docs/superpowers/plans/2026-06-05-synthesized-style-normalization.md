@@ -172,15 +172,15 @@ git diff -- docs/规范/PROTOCOL_FIELD_REGISTRY.md
 
 ### 2. 实现样式原子提取与稳定 fingerprint
 
-- [ ] 新建 `src/semantic-model/style-atoms.js`。
-- [ ] 新建 `src/semantic-model/synthesized-styles.js`。
-- [ ] 对文本、段落、对象、线条、图框、资源置入分别提取可比较原子。
-- [ ] 对原子属性做稳定排序、单位归一和空值剔除。
-- [ ] 生成稳定 fingerprint，不依赖对象 id、页面号、图层名或遍历顺序。
-- [ ] 生成稳定 ASCII token，例如 `synth_text_001`、`synth_line_003`。
-- [ ] 生成中文 displayName，例如 `文字样式 01`、`线条样式 03`、`图框样式 02`。
-- [ ] 相同 fingerprint 必须归并为同一个合成样式。
-- [ ] 单对象差异进入 `styleOverrides`，不得新造无意义样式。
+- [x] 新建 `src/semantic-model/style-atoms.js`。
+- [x] 新建 `src/semantic-model/synthesized-styles.js`。
+- [ ] 对文本、段落、对象、线条、图框、资源置入分别提取可比较原子；首轮已覆盖文本和线条，对象、图框、资源置入待后续步骤补齐。
+- [x] 对原子属性做稳定排序、单位归一和空值剔除。
+- [x] 生成稳定 fingerprint，不依赖对象 id、页面号、图层名或遍历顺序。
+- [x] 生成稳定 ASCII token，例如 `synth_text_001`、`synth_line_003`。
+- [x] 生成中文 displayName，例如 `文字样式 01`、`线条样式 03`、`图框样式 02`。
+- [x] 相同 fingerprint 必须归并为同一个合成样式。
+- [x] 单对象差异进入 `styleOverrides`，不得新造无意义样式。
 
 建议测试文件：`test/semantic-model/synthesized-styles.test.js`
 
@@ -222,12 +222,12 @@ node --test test/semantic-model/synthesized-styles.test.js
 
 ### 3. 接入 InDesign 反向 normalizer
 
-- [ ] 在 `src/adapters/indesign/normalizer/snapshot-to-model.js` 中调用合成样式层。
+- [x] 在 `src/adapters/indesign/normalizer/snapshot-to-model.js` 中调用合成样式层。
 - [ ] 保留原始 InDesign 样式名作为观察事实和优先样式来源。
 - [ ] 有有效原始样式时，优先把原始样式映射为 styleRef；合成样式只补齐未样式化或样式不完整对象。
 - [ ] 原始样式内无法表达的局部属性进入 `styleOverrides`。
-- [ ] 不把图层名、对象名或页面号纳入 fingerprint。
-- [ ] 对 shape/text/image/pdf/line 都覆盖测试。
+- [x] 不把图层名、对象名或页面号纳入 fingerprint。
+- [ ] 对 shape/text/image/pdf/line 都覆盖测试；首轮已覆盖 line，text 在语义模型层覆盖。
 
 建议测试文件：`test/indesign-reverse/synthesized-style-normalizer.test.js`
 
@@ -260,11 +260,11 @@ node --test test/indesign-reverse/synthesized-style-normalizer.test.js
 
 ### 4. HTML 作者包写出合成样式
 
-- [ ] 在 `src/writers/html/author-package-writer.js` 中把 `styles.synthesized` 写入作者包元数据。
-- [ ] 在 `src/writers/html/author-node-attrs.js` 中写出对象级 `data-id-style-token` 和 `data-id-style-name`。
+- [x] 在 `src/writers/html/author-package-writer.js` 中把 `styles.synthesized` 写入作者包元数据。
+- [x] 在 `src/writers/html/author-node-attrs.js` 中写出对象级 `data-id-style-token` 和 `data-id-style-name`；中文名复用已有显示名属性，不新增同义 HTML 属性。
 - [ ] 在 `src/writers/html/author-css-writer.js` 中生成中文注释或结构化映射，但 CSS class 仍使用稳定 token。
-- [ ] 确保 `deck.html` 仍可浏览器自然预览。
-- [ ] 不把合成样式误写成语义标签，例如 title/caption/material。
+- [x] 确保 `deck.html` 仍可浏览器自然预览。
+- [x] 不把合成样式误写成语义标签，例如 title/caption/material。
 
 建议测试文件：`test/indesign-reverse/synthesized-style-author-package.test.js`
 
@@ -294,8 +294,8 @@ node --test test/indesign-reverse/synthesized-style-author-package.test.js
 
 ### 5. HTML Adapter 回读合成样式
 
-- [ ] 在 `src/adapters/html/reader/source-metadata.js` 读取作者包中的合成样式 registry。
-- [ ] 在 `src/adapters/html/normalizer/snapshot-to-model.js` 恢复 `styleRefs.synthesizedToken`、`synthesizedName` 和 `styleOverrides`。
+- [x] 在 `src/adapters/html/reader/source-metadata.js` 读取作者包中的合成样式 registry。
+- [x] 在 `src/adapters/html/normalizer/snapshot-to-model.js` 恢复 `styleRefs.synthesizedToken` 和 `synthesizedName`；`styleOverrides` 后续随审计和 writer 覆盖继续接入。
 - [ ] 若 HTML 中引用不存在的 token，必须报审核问题，不得静默生成新样式。
 - [ ] 若 token 和中文名不一致，以 token 为机器事实、中文名为显示事实，并记录审核项。
 

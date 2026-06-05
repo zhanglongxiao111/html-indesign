@@ -23,6 +23,12 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   const pageModels = (styled.pages || []).map((page) => pageModelFor(page, layout));
   const parentPages = parentPagesFor(pageModels, sourcePackage && sourcePackage.parentPages);
   const pages = pageModels.map(stripParentPageItems);
+  const styles = {
+    ...(styled.styles || {}),
+  };
+  if (sourcePackage && Array.isArray(sourcePackage.synthesizedStyles)) {
+    styles.synthesized = sourcePackage.synthesizedStyles;
+  }
   return {
     kind: 'DocumentModel',
     id: documentId,
@@ -48,7 +54,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     parentPages,
     pages,
     layers: [],
-    styles: styled.styles || {},
+    styles,
     assets: styled.assets || [],
     warnings: styled.warnings || [],
     report: styled.report || null,
@@ -288,6 +294,8 @@ function itemModelFor(item, page, layout) {
   const styleRefs = {
     ...(item.styleRefs || {}),
     ...(attrs['data-id-layer'] ? { layer: attrs['data-id-layer'] } : {}),
+    ...(attrs['data-id-style-token'] ? { synthesizedToken: attrs['data-id-style-token'] } : {}),
+    ...(attrs['data-id-style-name'] ? { synthesizedName: attrs['data-id-style-name'] } : {}),
   };
   const parentPageName = attrs['data-id-parent-page-item'] || null;
   const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;

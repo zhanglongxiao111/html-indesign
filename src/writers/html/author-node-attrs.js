@@ -101,6 +101,9 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
   for (const [key, attr] of pairs) {
     if (!attrs[attr] && refs[key]) attrs[attr] = refs[key];
   }
+  if (!attrs['data-id-style-token'] && refs.synthesizedToken) {
+    attrs['data-id-style-token'] = refs.synthesizedToken;
+  }
   const displayPairs = [
     ['displayName', 'data-id-style-name'],
     ['paragraphStyleDisplayName', 'data-id-paragraph-style-name'],
@@ -111,6 +114,9 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
   ];
   for (const [key, attr] of displayPairs) {
     if (refs[key] && (!attrs[attr] || options.mode === 'observation')) attrs[attr] = refs[key];
+  }
+  if (refs.synthesizedName && (!attrs['data-id-style-name'] || options.mode === 'observation')) {
+    attrs['data-id-style-name'] = refs.synthesizedName;
   }
   if (!attrs['data-id-paragraph-composer'] && textStyle.composer) {
     attrs['data-id-paragraph-composer'] = textStyle.composer;

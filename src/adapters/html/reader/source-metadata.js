@@ -15,6 +15,9 @@ function sourcePackageFromDocument(input = {}) {
     assetRoot: input.assetRoot || 'assets',
   };
   if (parentPages.length) out.parentPages = parentPages;
+  if (Array.isArray(input.synthesizedStyles) && input.synthesizedStyles.length) {
+    out.synthesizedStyles = input.synthesizedStyles.map(synthesizedStyleForSourcePackage).filter(Boolean);
+  }
   if (attributes['data-id-document']) out.id = attributes['data-id-document'];
   if (input.title) out.title = input.title;
   if (attributes['data-id-profile']) out.profile = attributes['data-id-profile'];
@@ -26,6 +29,20 @@ function sourcePackageFromDocument(input = {}) {
     };
   }
   return out;
+}
+
+function synthesizedStyleForSourcePackage(style) {
+  if (!style || !style.token || !style.displayName) {
+    return null;
+  }
+  return {
+    token: String(style.token),
+    displayName: String(style.displayName),
+    kind: style.kind || null,
+    fingerprint: style.fingerprint || null,
+    source: style.source || null,
+    properties: style.properties || {},
+  };
 }
 
 function sourceParentPages(parentPages = []) {
