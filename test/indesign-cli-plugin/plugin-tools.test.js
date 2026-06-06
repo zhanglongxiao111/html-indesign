@@ -126,6 +126,63 @@ test('html.build_indesign resume returns generated artifacts after host success'
   assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
 });
 
+test('html.reverse_export returns script.run host action for an INDD file', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-reverse-smoke');
+  const absoluteOutDir = path.join(repoRoot, outDir);
+  fs.rmSync(absoluteOutDir, { recursive: true, force: true });
+  fs.mkdirSync(absoluteOutDir, { recursive: true });
+
+  const fakeIndd = path.join(absoluteOutDir, 'input.indd');
+  fs.writeFileSync(fakeIndd, 'fake');
+
+  const response = callPlugin('tools/call', {
+    id: 'html.reverse_export',
+    args: {
+      indd: fakeIndd,
+      outDir,
+      mode: 'structured',
+      assetPolicy: 'reference',
+      timeout: 300,
+    },
+  });
+
+  assert.equal(response.status, 'requires_host_actions');
+  assert.equal(response.state.tool_id, 'html.reverse_export');
+  assert.equal(fs.existsSync(response.state.reverseScriptPath), true);
+  assert.equal(response.actions.length, 1);
+  assert.equal(response.actions[0].tool_id, 'script.run');
+});
+
+test('html.reverse_export resume writes author html from reverse snapshot', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-reverse-resume');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  fs.copyFileSync(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'), snapshotPath);
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      outDir,
+      snapshotPath,
+      mode: 'structured',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+    },
+    host_results: [
+      { id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } },
+    ],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.data.ok, true);
+  assert.equal(fs.existsSync(path.join(outDir, 'author', 'deck.html')), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'html'
+    && (item.path.endsWith('author\\deck.html') || item.path.endsWith('author/deck.html'))), true);
+});
+
 module.exports = {
   callPlugin,
   repoRoot,

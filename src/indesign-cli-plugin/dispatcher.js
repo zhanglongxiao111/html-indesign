@@ -2,11 +2,13 @@ const { listTools, getTool, getSchema } = require('./tool-catalog');
 const authoringLint = require('./tools/authoring-lint');
 const compileInstructionsTool = require('./tools/compile-instructions');
 const buildIndesign = require('./tools/build-indesign');
+const reverseExport = require('./tools/reverse-export');
 
 const callers = {
   'html.authoring_lint': authoringLint,
   'html.compile_instructions': compileInstructionsTool,
   'html.build_indesign': buildIndesign,
+  'html.reverse_export': reverseExport,
 };
 
 function error(code, message, details = {}) {
