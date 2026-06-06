@@ -60,9 +60,15 @@ test('npm package exposes plugin validation helpers and runtime browser dependen
   assert.equal(Object.prototype.hasOwnProperty.call(pkg.devDependencies || {}, 'playwright'), false);
 });
 
-test('npm package has a root README with Sa install commands', () => {
+test('npm package has a bilingual root README with Sa install commands', () => {
   const readme = fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8');
   assert.match(readme, /@sa\/html-indesign/);
+  assert.match(readme, /href="#chinese"/);
+  assert.match(readme, /href="#english"/);
+  assert.match(readme, /中文/);
+  assert.match(readme, /English/);
+  assert.match(readme, /Sa 内部使用/);
+  assert.match(readme, /Sa's internal/);
   assert.match(readme, /indesign-cli plugin validate/);
   assert.match(readme, /indesign-cli plugin install/);
 });
