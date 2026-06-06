@@ -61,6 +61,71 @@ test('html.compile_instructions writes validated instructions and summary', () =
   assert.equal(instructions.pages.length > 0, true);
 });
 
+test('html.build_indesign returns script.run host actions instead of calling InDesign directly', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-build-smoke');
+  fs.rmSync(path.join(repoRoot, outDir), { recursive: true, force: true });
+
+  const response = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      timeout: 300,
+    },
+  });
+
+  assert.equal(response.status, 'requires_host_actions');
+  assert.equal(response.state.tool_id, 'html.build_indesign');
+  assert.equal(fs.existsSync(response.state.instructionsPath), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'build.jsx')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'export.jsx')), true);
+  assert.deepEqual(response.actions.map((action) => action.tool_id), ['script.run', 'script.run', 'export.verify']);
+  assert.equal(response.resume.method, 'tools/resume');
+});
+
+test('html.build_indesign resume returns generated artifacts after host success', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-resume');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  fs.writeFileSync(inddPath, 'fake');
+  fs.writeFileSync(pdfPath, 'fake');
+  fs.writeFileSync(idmlPath, 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+    },
+    host_results: [
+      { id: 'html-build-script', status: 'complete', data: { ok: true } },
+      { id: 'html-export-script', status: 'complete', data: { ok: true } },
+      { id: 'html-export-verify', status: 'complete', data: { ok: true } },
+    ],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.data.ok, true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'indd' && item.path === inddPath), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'pdf' && item.path === pdfPath), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
+});
+
 module.exports = {
   callPlugin,
   repoRoot,

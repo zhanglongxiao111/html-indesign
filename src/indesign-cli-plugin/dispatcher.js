@@ -1,10 +1,12 @@
 const { listTools, getTool, getSchema } = require('./tool-catalog');
 const authoringLint = require('./tools/authoring-lint');
 const compileInstructionsTool = require('./tools/compile-instructions');
+const buildIndesign = require('./tools/build-indesign');
 
 const callers = {
   'html.authoring_lint': authoringLint,
   'html.compile_instructions': compileInstructionsTool,
+  'html.build_indesign': buildIndesign,
 };
 
 function error(code, message, details = {}) {
@@ -63,10 +65,24 @@ async function dispatch(request) {
   }
 
   if (method === 'tools/resume') {
-    return error('RESUME_NOT_IMPLEMENTED', 'tools/resume is not implemented yet');
+    return await resumeTool(params);
   }
 
   return error('METHOD_NOT_FOUND', `Unknown plugin method: ${method}`);
+}
+
+async function resumeTool(params) {
+  const state = params.state || {};
+  const caller = callers[state.tool_id];
+  if (!caller || typeof caller.resume !== 'function') {
+    return error('RESUME_TOOL_NOT_FOUND', `No resume handler for tool: ${state.tool_id}`);
+  }
+
+  try {
+    return await caller.resume(params);
+  } catch (err) {
+    return error(err.code || 'TOOL_RESUME_FAILED', err.message, { tool: state.tool_id });
+  }
 }
 
 async function callTool(params, context) {
