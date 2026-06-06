@@ -48,13 +48,45 @@ function parseAttributes(tag) {
 }
 
 function pathFromPathTag(attrs, bounds, viewBox) {
-  const points = parsePathPoints(attrs.d || '', bounds, viewBox);
+  const points = parseVectorPointsAttr(attrs['data-id-vector-points'], bounds, viewBox)
+    || parsePathPoints(attrs.d || '', bounds, viewBox);
   if (!points.length) return null;
   applyPointTypes(points, attrs['data-id-point-types']);
   return {
     closed: /\b[zZ]\b|[zZ]\s*$/.test(String(attrs.d || '').trim()),
     points,
   };
+}
+
+function parseVectorPointsAttr(value, bounds, viewBox) {
+  const text = decodeBasicEntities(String(value || '').trim());
+  if (!text) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (_) {
+    return null;
+  }
+  const rawPoints = Array.isArray(parsed && parsed[0]) ? parsed[0] : parsed;
+  if (!Array.isArray(rawPoints) || !rawPoints.length) return null;
+  const points = rawPoints.map((point) => vectorPointFromMetadata(point, bounds, viewBox)).filter(Boolean);
+  return points.length ? points : null;
+}
+
+function vectorPointFromMetadata(point, bounds, viewBox) {
+  if (!point || typeof point !== 'object') return null;
+  const anchor = mapPoint(point.anchor || {}, bounds, viewBox);
+  return {
+    anchor,
+    leftDirection: mapPoint(point.leftDirection || point.anchor || {}, bounds, viewBox),
+    rightDirection: mapPoint(point.rightDirection || point.anchor || {}, bounds, viewBox),
+    pointType: pointTypeFromMetadata(point.pointType),
+  };
+}
+
+function pointTypeFromMetadata(value) {
+  const token = String(value || '').trim().toUpperCase();
+  return ['CORNER', 'SMOOTH', 'SYMMETRICAL', 'PLAIN'].includes(token) ? token : 'PLAIN';
 }
 
 function parsePathPoints(d, bounds, viewBox) {
@@ -259,6 +291,17 @@ function markerHtmlForId(id, sourceHtml) {
   const pattern = new RegExp(`<marker\\b(?=[^>]*\\bid=["']${escaped}["'])[^>]*>[\\s\\S]*?<\\/marker>`, 'i');
   const match = pattern.exec(String(sourceHtml || ''));
   return match ? match[0] : '';
+}
+
+function decodeBasicEntities(value) {
+  return String(value || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 }
 
 function number(value) {

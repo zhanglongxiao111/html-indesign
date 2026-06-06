@@ -2,7 +2,7 @@ if (typeof HI === "undefined") { HI = {}; }
 HI.reverseVisualStyle = function (item) {
     var out = {
         fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor")),
-        strokeColor: HI.reverseColor(HI.reverseSafeProperty(item, "strokeColor")),
+        strokeColor: HI.reverseStrokeColor(item),
         strokeWeight: null,
         fillOpacity: HI.reverseFillOpacity(item),
         strokeOpacity: HI.reverseStrokeOpacity(item),
@@ -288,7 +288,7 @@ HI.reverseColor = function (color) {
     try {
         if (!color || !color.isValid) return null;
         var name = String(color.name || "");
-        if (name === "" || name === "None" || name === "[None]" || name === "Text Color") return null;
+        if (name === "None" || name === "[None]" || name === "Text Color") return null;
         if (name === "Paper" || name === "[Paper]") return "#ffffff";
         if (!color.colorValue) return null;
         var v = color.colorValue;
@@ -300,6 +300,8 @@ HI.reverseColor = function (color) {
     } catch (_) {}
     return null;
 };
+
+HI.reverseStrokeColor = function (item) { var color = HI.reverseSafeProperty(item, "strokeColor"); try { if (color && color.isValid && String(color.name || "") === "") return null; } catch (_) {} return HI.reverseColor(color); };
 
 HI.fontWeightFor = function (styleName) {
     var s = String(styleName || "").toLowerCase();

@@ -129,6 +129,13 @@ HI.strokeSwatchFor = function (doc, color, weight) {
     return null;
 };
 
+HI.applyStrokePaint = function (doc, target, color, weight) {
+    var strokeSwatch = HI.strokeSwatchFor(doc, color, weight);
+    if (strokeSwatch && !color && Number(weight) <= 0) { try { target.strokeWeight = 0; target.strokeColor = strokeSwatch; } catch (_) {} return; }
+    try { if (strokeSwatch) target.strokeColor = strokeSwatch; } catch (_) {}
+    try { if (weight !== null && typeof weight !== "undefined") target.strokeWeight = Number(weight); } catch (_) {}
+};
+
 HI.insertJsonLabel = function (target, key, value, report, details) {
     try {
         target.insertLabel(key, HI.stringify(value));

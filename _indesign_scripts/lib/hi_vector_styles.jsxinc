@@ -1,9 +1,7 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 HI.clearDefaultStroke = function (doc, pageItem) {
-    var none = HI.noneSwatch(doc);
-    try { if (none) pageItem.strokeColor = none; } catch (_) {}
-    try { pageItem.strokeWeight = 0; } catch (_) {}
+    HI.applyStrokePaint(doc, pageItem, null, 0);
 };
 
 HI.applyVectorStrokeStyleOverride = function (doc, pageItem, override, report) {

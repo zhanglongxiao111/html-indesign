@@ -216,6 +216,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
   if (base.role === 'text') {
     const textFit = textFitPolicy(modelItem, options);
     const text = textForInstruction(modelItem, content);
+    const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
     return {
       ...base,
       type: 'TEXT',
@@ -226,6 +227,8 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
       frameStyle: styleRefs.frameStyle,
       runs: runsForInstruction(modelItem, content, text),
       ...(textFit ? { textFit } : {}),
+      ...(visualStyle ? { visualStyle } : {}),
+      ...(styleOverride ? { styleOverride } : {}),
     };
   }
   if (base.role === 'graphic') {

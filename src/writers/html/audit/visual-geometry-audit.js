@@ -14,6 +14,8 @@ function compareVisualGeometry(options = {}) {
     compared: 0,
     missing: 0,
     mismatched: 0,
+    textCompared: 0,
+    textMismatches: 0,
     pageMismatches: 0,
     accepted: 0,
   };
@@ -75,6 +77,23 @@ function compareVisualGeometry(options = {}) {
       continue;
     }
     stats.compared += 1;
+    const textComparison = comparableText(refElement, candidateElement);
+    if (textComparison) {
+      stats.textCompared += 1;
+      if (textComparison.referenceText !== textComparison.candidateText) {
+        stats.textMismatches += 1;
+        errors.push(issue(
+          'AUTHOR_VISUAL_TEXT_CONTENT_MISMATCH',
+          `Element ${key} text differs: reference="${shortText(textComparison.referenceText)}", candidate="${shortText(textComparison.candidateText)}".`,
+          refElement.pageIndex,
+          refElement.id,
+          {
+            referenceText: textComparison.referenceText,
+            candidateText: textComparison.candidateText,
+          },
+        ));
+      }
+    }
     const delta = geometryDelta(refElement, candidateElement);
     if (maxDelta(delta) > tolerance) {
       const acceptedMismatch = acceptedGeometryMismatch(refElement, candidateElement, delta, tolerance);
@@ -131,6 +150,10 @@ function normalizeBox(value, element = false) {
     tableStyle: optionalString(value.tableStyle),
     sourceCsv: registeredSourceMetadataValue(value.sourceCsv),
     sourceXml: registeredSourceMetadataValue(value.sourceXml),
+    textContent: normalizeTextValue(value.textContent),
+    innerText: normalizeTextValue(value.innerText),
+    ownTextContent: normalizeTextValue(value.ownTextContent || value.directTextContent),
+    hasIdChildren: Boolean(value.hasIdChildren),
     dataIdAttrs: normalizeDataIdAttrs(value.dataIdAttrs || value.dataIdFields || value.htmlAttrs),
     classList: normalizeClassList(value.classList || value.className || value.classes),
     x: num(value.x),
@@ -349,6 +372,48 @@ function normalizeDataIdAttrs(value) {
   return attrs;
 }
 
+function comparableText(reference, candidate) {
+  const ownTextOnly = hasTrackedChildElements(reference) || hasTrackedChildElements(candidate);
+  const referenceText = textForComparison(reference, ownTextOnly);
+  const candidateText = textForComparison(candidate, ownTextOnly);
+  if (referenceText == null && candidateText == null) return null;
+  const normalizedReference = referenceText || '';
+  const normalizedCandidate = candidateText || '';
+  if (!normalizedReference && !normalizedCandidate) return null;
+  return {
+    referenceText: normalizedReference,
+    candidateText: normalizedCandidate,
+  };
+}
+
+function textForComparison(element, ownTextOnly = false) {
+  if (!element) return undefined;
+  if (ownTextOnly) return normalizeTextValue(element.ownTextContent);
+  const ownText = normalizeTextValue(element.ownTextContent);
+  if (ownText) return ownText;
+  const textContent = normalizeTextValue(element && element.textContent);
+  if (textContent != null) return textContent;
+  return normalizeTextValue(element && element.innerText);
+}
+
+function hasTrackedChildElements(element) {
+  return Boolean(element && element.hasIdChildren);
+}
+
+function normalizeTextValue(value) {
+  if (value == null) return undefined;
+  return String(value)
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function shortText(value) {
+  const text = normalizeTextValue(value) || '';
+  if (text.length <= 80) return text;
+  return `${text.slice(0, 77)}...`;
+}
+
 function optionalString(value) {
   if (value == null) return undefined;
   const string = String(value).trim();
@@ -364,8 +429,8 @@ function num(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
-function issue(code, message, pageIndex, id = null) {
-  return { code, message, pageIndex, id };
+function issue(code, message, pageIndex, id = null, details = null) {
+  return details ? { code, message, pageIndex, id, ...details } : { code, message, pageIndex, id };
 }
 
 module.exports = {

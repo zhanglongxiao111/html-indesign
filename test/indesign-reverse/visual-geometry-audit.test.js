@@ -50,6 +50,52 @@ test('compareVisualGeometry accepts matching elements within tolerance', () => {
   assert.equal(report.errors.length, 0);
 });
 
+test('compareVisualGeometry reports text content drift even when geometry matches', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:title', id: 'title', pageIndex: 0, tagName: 'p', textContent: '原始标题', x: 100, y: 80, width: 300, height: 40 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:title', id: 'title', pageIndex: 0, tagName: 'p', textContent: '错误标题', x: 100, y: 80, width: 300, height: 40 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_TEXT_CONTENT_MISMATCH' && issue.id === 'title'), true);
+  assert.equal(report.stats.textMismatches, 1);
+});
+
+test('compareVisualGeometry does not report parent aggregate text when child text matches', () => {
+  const report = compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:figure', id: 'figure', pageIndex: 0, tagName: 'figure', textContent: '', ownTextContent: '', hasIdChildren: true, x: 100, y: 80, width: 300, height: 220 },
+        { key: '0:caption', id: 'caption', pageIndex: 0, tagName: 'figcaption', textContent: '材料说明', x: 120, y: 260, width: 100, height: 24 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, width: 1000, height: 600 }],
+      elements: [
+        { key: '0:figure', id: 'figure', pageIndex: 0, tagName: 'figure', textContent: '材料说明', ownTextContent: '', hasIdChildren: true, x: 100, y: 80, width: 300, height: 220 },
+        { key: '0:caption', id: 'caption', pageIndex: 0, tagName: 'figcaption', textContent: '材料说明', x: 120, y: 260, width: 100, height: 24 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.stats.textCompared, 1);
+  assert.equal(report.stats.textMismatches, 0);
+});
+
 test('compareVisualGeometry accepts generated visual fragments only from structural evidence', () => {
   const report = compareVisualGeometry({
     reference: {

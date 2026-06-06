@@ -365,8 +365,10 @@ test('style helper clears explicit zero stroke through the None swatch', () => {
   assert.match(coreSource, /app\.translateKeyString\("\$ID\/None"\)/);
   assert.match(coreSource, /HI\.noneSwatch/);
   assert.match(coreSource, /HI\.strokeSwatchFor/);
-  assert.match(stylesSource, /style\.strokeColor = strokeSwatch/);
-  assert.match(stylesSource, /pageItem\.strokeColor = strokeSwatch/);
+  assert.match(coreSource, /HI\.applyStrokePaint/);
+  assert.match(coreSource, /target\.strokeWeight = 0; target\.strokeColor = strokeSwatch/);
+  assert.match(stylesSource, /HI\.applyStrokePaint\(doc, style, def\.strokeColor, def\.strokeWeight\)/);
+  assert.match(stylesSource, /HI\.applyStrokePaint\(doc, pageItem, override\.strokeColor, override\.strokeWeight\)/);
 });
 
 test('item helper clears InDesign default stroke on new drawable page items', () => {
@@ -594,7 +596,8 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
 test('reverse visual style treats empty None stroke color as no stroke', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_reverse_styles.jsxinc'), 'utf8');
 
-  assert.match(source, /name === ""/);
+  assert.match(source, /HI\.reverseStrokeColor/);
+  assert.match(source, /String\(color\.name \|\| ""\) === ""/);
   assert.match(source, /out\.strokeWeight = out\.strokeColor \? HI\.positiveNumberOrNull/);
 });
 

@@ -16,7 +16,7 @@ function renderTextContent(item, model) {
   const text = textContent(item);
   if (item.role !== 'text') return escapeHtml(text);
   const runs = contentRuns(item);
-  if (runs.length) return renderRichTextRuns(runs, model);
+  if (runs.length) return renderRichTextRuns(runs, model, text);
   const paragraphStyle = styleByName(model, 'paragraphStyles', item.styleRefs && item.styleRefs.paragraphStyle);
   const features = indesignFeatures(paragraphStyle);
   const usesComposite = usesCompositeFont(paragraphStyle, model, item.firstLineFont);
@@ -27,20 +27,44 @@ function renderTextContent(item, model) {
   return renderPlainText(text, usesComposite);
 }
 
-function renderRichTextRuns(runs, model) {
+function renderRichTextRuns(runs, model, text = null) {
+  const fullText = text == null ? null : String(text);
+  if (fullText != null) {
+    const withSeparators = renderRichTextRunsWithSeparators(runs, model, fullText);
+    if (withSeparators != null) return withSeparators;
+  }
   return runs.map((run) => {
     const content = renderTextWithBreaks(run.text);
-    const characterStyle = styleByName(model, 'characterStyles', run.characterStyle);
-    const classes = characterStyle ? [`cstyle-${styleClassToken(characterStyle)}`] : [];
-    const inlineStyle = [
-      run.inlineStyle ? cssForHtml(run.inlineStyle) : textStyleCss(run.textStyle),
-    ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');
-    const attrs = [
-      classes.length ? `class="${attr(classes.join(' '))}"` : null,
-      inlineStyle ? `style="${attr(inlineStyle)}"` : null,
-    ].filter(Boolean);
-    return attrs.length ? `<span ${attrs.join(' ')}>${content}</span>` : content;
+    return renderRichTextRun(run, model, content);
   }).join('');
+}
+
+function renderRichTextRunsWithSeparators(runs, model, fullText) {
+  let cursor = 0;
+  let html = '';
+  for (const run of runs) {
+    const runText = String(run.text);
+    const index = fullText.indexOf(runText, cursor);
+    if (index < cursor) return null;
+    html += renderTextWithBreaks(fullText.slice(cursor, index));
+    html += renderRichTextRun(run, model, renderTextWithBreaks(runText));
+    cursor = index + runText.length;
+  }
+  html += renderTextWithBreaks(fullText.slice(cursor));
+  return html;
+}
+
+function renderRichTextRun(run, model, content) {
+  const characterStyle = styleByName(model, 'characterStyles', run.characterStyle);
+  const classes = characterStyle ? [`cstyle-${styleClassToken(characterStyle)}`] : [];
+  const inlineStyle = [
+    run.inlineStyle ? cssForHtml(run.inlineStyle) : textStyleCss(run.textStyle),
+  ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');
+  const attrs = [
+    classes.length ? `class="${attr(classes.join(' '))}"` : null,
+    inlineStyle ? `style="${attr(inlineStyle)}"` : null,
+  ].filter(Boolean);
+  return attrs.length ? `<span ${attrs.join(' ')}>${content}</span>` : content;
 }
 
 function contentRuns(item) {

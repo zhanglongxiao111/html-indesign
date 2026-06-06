@@ -729,6 +729,44 @@ test('semanticModelToInstructions keeps open observed polygon paths as native sh
   assert.deepEqual(item.vectorGeometry, model.pages[0].items[0].vectorGeometry);
 });
 
+test('semanticModelToInstructions preserves observed text frame vector paint overrides', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'observed-text-frame-vector-paint',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'text-arrow-frame',
+        role: 'text',
+        bounds: { x: 40, y: 60, width: 180, height: 80 },
+        content: { text: '' },
+        visualStyle: {
+          strokeStyle: '虚线（3 和 2）',
+          strokeAlignment: 'center',
+          lineEndMarker: { type: null, rawName: 'SIMPLE_WIDE_ARROW_HEAD' },
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'text-arrow-frame');
+
+  assert.equal(item.type, 'TEXT');
+  assert.deepEqual(item.styleOverride.lineEndMarker, { type: null, rawName: 'SIMPLE_WIDE_ARROW_HEAD' });
+  assert.equal(item.styleOverride.strokeStyle, '虚线（3 和 2）');
+});
+
 test('semanticModelToInstructions emits line-like open polygon markers as native lines', () => {
   const model = {
     kind: 'DocumentModel',

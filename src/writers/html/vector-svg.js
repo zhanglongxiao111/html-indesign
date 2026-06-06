@@ -55,6 +55,8 @@ function vectorPathElement(item, path, depth) {
   if (!path.closed && visualStyle.fillColor) attrs['data-id-fill-color'] = visualStyle.fillColor;
   const pointTypes = pointTypesAttr(path.points);
   if (pointTypes) attrs['data-id-point-types'] = pointTypes;
+  const vectorPoints = vectorPointsAttr(path, item);
+  if (vectorPoints) attrs['data-id-vector-points'] = vectorPoints;
   const strokeWeight = Number(visualStyle.strokeWeight);
   if (Number.isFinite(strokeWeight) && strokeWeight > 0) attrs['stroke-width'] = formatNumber(strokeWeight);
   const fillOpacity = opacityValue(visualStyle.fillOpacity);
@@ -169,6 +171,33 @@ function svgPoint(point = {}, bounds = {}, absolute, viewport = {}) {
   return `${formatNumber(x)} ${formatNumber(y)}`;
 }
 
+function vectorPointsAttr(path, item) {
+  const points = path && Array.isArray(path.points) ? path.points : [];
+  if (!points.length) return '';
+  const bounds = item && item.bounds || {};
+  const viewport = vectorViewport(item);
+  const absolute = pathUsesAbsoluteCoordinates(points, bounds);
+  return JSON.stringify(points.map((point) => ({
+    anchor: vectorPointForAttr(point.anchor, bounds, absolute, viewport),
+    leftDirection: vectorPointForAttr(point.leftDirection || point.anchor, bounds, absolute, viewport),
+    rightDirection: vectorPointForAttr(point.rightDirection || point.anchor, bounds, absolute, viewport),
+    pointType: pointTypeToken(point && point.pointType) || null,
+  })));
+}
+
+function vectorPointForAttr(point = {}, bounds = {}, absolute, viewport = {}) {
+  return {
+    x: numberForAttr(Number(point.x || 0) - (absolute ? Number(bounds.x || 0) : 0) + Number(viewport.shiftX || 0)),
+    y: numberForAttr(Number(point.y || 0) - (absolute ? Number(bounds.y || 0) : 0) + Number(viewport.shiftY || 0)),
+  };
+}
+
+function numberForAttr(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.round(number * 1000000) / 1000000;
+}
+
 function pathUsesAbsoluteCoordinates(points, bounds = {}) {
   const x = Number(bounds.x || 0);
   const y = Number(bounds.y || 0);
@@ -247,7 +276,7 @@ function paintedStrokeExtent(item) {
 
 function orderVectorPathAttrs(attrs) {
   const out = {};
-  for (const key of ['d', 'data-id-point-types', 'fill', 'data-id-fill-color', 'fill-opacity', 'data-id-fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'data-id-stroke-style', 'stroke-dasharray', 'data-id-line-start-marker-raw-name', 'data-id-line-end-marker-raw-name', 'marker-start', 'marker-end', 'opacity']) {
+  for (const key of ['d', 'data-id-point-types', 'data-id-vector-points', 'fill', 'data-id-fill-color', 'fill-opacity', 'data-id-fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'data-id-stroke-style', 'stroke-dasharray', 'data-id-line-start-marker-raw-name', 'data-id-line-end-marker-raw-name', 'marker-start', 'marker-end', 'opacity']) {
     if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
   }
   return out;

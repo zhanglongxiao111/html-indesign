@@ -84,6 +84,18 @@ async function captureHtmlGeometry(htmlFile) {
       function round(value) {
         return Math.round(Number(value || 0) * 1000) / 1000;
       }
+      function normalizedText(value) {
+        return String(value || '')
+          .replace(/\u00a0/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+      function ownTextContent(element) {
+        return normalizedText(Array.from(element.childNodes || [])
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.nodeValue || '')
+          .join(''));
+      }
       function metadataFor(element, pageElement) {
         const dataIdAttrs = Array.from(element.attributes || [])
           .map((attribute) => attribute.name)
@@ -97,6 +109,10 @@ async function captureHtmlGeometry(htmlFile) {
           tableStyle: element.getAttribute('data-id-table-style') || '',
           sourceCsv: element.getAttribute('data-id-source-csv') || '',
           sourceXml: element.getAttribute('data-id-source-xml') || '',
+          textContent: normalizedText(element.textContent),
+          innerText: normalizedText(element.innerText),
+          ownTextContent: ownTextContent(element),
+          hasIdChildren: Boolean(element.querySelector('[id]')),
           dataIdAttrs,
           classList: Array.from(element.classList || []),
         };
@@ -240,6 +256,8 @@ function printHuman(report, inputs) {
     `elements compared: ${report.stats.compared}`,
     `missing: ${report.stats.missing}`,
     `mismatched: ${report.stats.mismatched}`,
+    `text compared: ${report.stats.textCompared || 0}`,
+    `text mismatches: ${report.stats.textMismatches || 0}`,
     `accepted: ${report.stats.accepted || 0}`,
     `errors: ${report.errors.length}`,
     `warnings: ${report.warnings.length}`,

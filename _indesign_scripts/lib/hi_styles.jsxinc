@@ -130,8 +130,7 @@ HI.ensureObjectStyles = function (doc, objectStyles, report) {
         }
         try { if (def.fillColor) style.fillColor = doc.swatches.itemByName(def.fillColor); } catch (_) {}
         HI.applyFillOpacity(style, def.fillOpacity);
-        try { var strokeSwatch = HI.strokeSwatchFor(doc, def.strokeColor, def.strokeWeight); if (strokeSwatch) style.strokeColor = strokeSwatch; } catch (_) {}
-        try { if (def.strokeWeight !== null && typeof def.strokeWeight !== "undefined") style.strokeWeight = Number(def.strokeWeight); } catch (_) {}
+        HI.applyStrokePaint(doc, style, def.strokeColor, def.strokeWeight);
         try { if (def.strokeStyle) style.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(def.strokeStyle)); } catch (_) {}
         HI.applyStrokeAlignment(style, def.strokeAlignment);
         HI.applyCornerRadius(style, def.cornerRadius);
@@ -254,12 +253,7 @@ HI.applyStyleOverride = function (doc, pageItem, override, report) {
     override = override || {};
     try { if (override.fillColor) pageItem.fillColor = doc.swatches.itemByName(override.fillColor); } catch (_) {}
     HI.applyFillOpacity(pageItem, override.fillOpacity);
-    try { var strokeSwatch = HI.strokeSwatchFor(doc, override.strokeColor, override.strokeWeight); if (strokeSwatch) pageItem.strokeColor = strokeSwatch; } catch (_) {}
-    try {
-        if (override.strokeWeight !== null && typeof override.strokeWeight !== "undefined") {
-            pageItem.strokeWeight = Number(override.strokeWeight);
-        }
-    } catch (_) {}
+    HI.applyStrokePaint(doc, pageItem, override.strokeColor, override.strokeWeight);
     HI.applyVectorStrokeStyleOverride(doc, pageItem, override, report);
     HI.applyOpacity(pageItem, override.opacity); HI.applyBlendMode(pageItem, override.blendMode, report);
 };

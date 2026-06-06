@@ -483,6 +483,7 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
   assert.match(html, /id="marker-only-line"[^>]+style="[^"]*width:0px[^"]*min-width:1px/);
   assert.match(html, /id="marker-only-line"[\s\S]*<path[^>]+stroke="none"[^>]+marker-start="url\(#marker-only-line-marker-start\)"/);
   assert.match(html, /id="closed-marker"[\s\S]*<path[^>]+marker-end="url\(#closed-marker-marker-end\)"/);
+  assert.match(html, /id="closed-marker"[\s\S]*<path[^>]+data-id-vector-points="/);
 });
 
 test('semanticModelToHtml maps reverse blend modes without faking opacity', () => {
@@ -904,6 +905,50 @@ test('semanticModelToHtml preserves hard line breaks and character runs in text 
   assert.match(html, /class="cstyle-封面强调"/);
   assert.match(html, /style="[^"]*color:#c8102e/);
   assert.match(html, /style="[^"]*font-style:italic/);
+});
+
+test('semanticModelToHtml preserves text separators between rich text runs', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'run-separators',
+    title: 'run-separators',
+    reverseMode: 'structured',
+    styles: {
+      characterStyles: {
+        正文橙色: {
+          name: '正文橙色',
+          token: '正文橙色',
+          safeName: '正文橙色',
+          css: 'color:#c85014',
+        },
+      },
+    },
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'copy',
+            role: 'text',
+            tagName: 'p',
+            bounds: { x: 40, y: 50, width: 360, height: 120 },
+            styleRefs: {},
+            content: {
+              text: '选取暖色系的材料 \n选取细节丰富的材料',
+              runs: [
+                { text: '选取暖色系的材料', characterStyle: '正文橙色' },
+                { text: '选取细节丰富的材料', characterStyle: '正文橙色' },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.match(html, /选取暖色系的材料<\/span> <br><span[^>]*>选取细节丰富的材料<\/span>/);
 });
 
 test('semanticModelToHtml renders native table rows cells and cell styles', () => {

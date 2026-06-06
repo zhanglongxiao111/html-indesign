@@ -398,6 +398,62 @@ test('snapshotToSemanticModel restores SVG vector point types from metadata', ()
   assert.deepEqual(points.map((point) => point.pointType), ['CORNER', 'CORNER', 'SMOOTH']);
 });
 
+test('snapshotToSemanticModel restores full SVG vector handles from metadata', () => {
+  const vectorPoints = [[
+    {
+      anchor: { x: 10, y: 20 },
+      leftDirection: { x: 10, y: 20 },
+      rightDirection: { x: 30, y: 10 },
+      pointType: 'SMOOTH',
+    },
+    {
+      anchor: { x: 90, y: 20 },
+      leftDirection: { x: 70, y: 10 },
+      rightDirection: { x: 90, y: 20 },
+      pointType: 'PLAIN',
+    },
+    {
+      anchor: { x: 60, y: 60 },
+      leftDirection: { x: 70, y: 70 },
+      rightDirection: { x: 48, y: 52 },
+      pointType: 'SMOOTH',
+    },
+  ]];
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 56.25,
+      rectPx: { x: 0, y: 0, width: 1000, height: 562.5 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'observed-vector',
+        role: 'shape',
+        tagName: 'svg',
+        classList: ['id-object'],
+        attributes: {
+          id: 'observed-vector',
+          'data-id-vector': 'polygon',
+          viewBox: '0 0 100 80',
+        },
+        rectPx: { x: 100, y: 200, width: 100, height: 80 },
+        computedStyle: {},
+        sourceHtml: `<path d="M10 20 C30 10 70 10 90 20 L60 60 Z" data-id-vector-points='${JSON.stringify(vectorPoints)}' fill="#efffec" stroke="none"></path>`,
+        text: '',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  const points = model.pages[0].items[0].vectorGeometry.paths[0].points;
+  assert.deepEqual(points[2].rightDirection, { x: 148, y: 252 });
+  assert.equal(points[2].pointType, 'SMOOTH');
+});
+
 test('snapshotToSemanticModel restores open SVG vector fill from protocol attrs', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },

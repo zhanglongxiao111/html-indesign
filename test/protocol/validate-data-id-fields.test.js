@@ -152,6 +152,8 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
   const attrs = [
     'data-id-role',
     'data-id-vector',
+    'data-id-point-types',
+    'data-id-vector-points',
     'data-id-stroke-color',
     'data-id-stroke-weight',
     'data-id-stroke-style',
@@ -177,6 +179,14 @@ test('validateDataIdFields accepts reverse-author active protocol data-id fields
   const vectorField = fieldRegistry.getByHtmlAttr('data-id-vector');
   assert.equal(vectorField.canonicalPath, 'items[].vectorGeometry.kind');
   assert.equal(vectorField.fieldClass, 'canonical');
+
+  const vectorPointsField = fieldRegistry.getByHtmlAttr('data-id-vector-points');
+  assert.equal(vectorPointsField.canonicalPath, 'items[].vectorGeometry.paths');
+  assert.equal(vectorPointsField.fieldClass, 'canonical');
+
+  const pointTypesField = fieldRegistry.getByHtmlAttr('data-id-point-types');
+  assert.equal(pointTypesField.canonicalPath, 'items[].vectorGeometry.paths[].points[].pointType');
+  assert.equal(pointTypesField.fieldClass, 'canonical');
 
   const strokeStyleField = fieldRegistry.getByHtmlAttr('data-id-stroke-style');
   assert.equal(strokeStyleField.canonicalPath, 'items[].visualStyle.strokeStyle');
