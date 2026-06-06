@@ -18,7 +18,11 @@ test('build_from_instructions.jsx is a thin bootstrap that loads executor libs',
 });
 
 test('InDesign E2E build wrapper loads the same executor libs as the bootstrap', () => {
-  const source = fs.readFileSync(path.join(root, 'scripts/indesign-e2e.js'), 'utf8');
+  const { buildBuildJsx } = require('../../src/indesign-cli-plugin/host-jsx');
+  const source = buildBuildJsx({
+    repoRoot: root,
+    instructionsPath: path.join(root, 'test/workspace/instructions.json'),
+  });
   for (const name of executorLibNames()) {
     assert.match(source, new RegExp(`includeLib\\("${name.replace('.', '\\.')}"\\)`));
   }
@@ -449,7 +453,11 @@ test('item helper records located overset text frame diagnostics', () => {
 
 test('executor loads dedicated text fit helper before item creation', () => {
   const bootstrap = fs.readFileSync(path.resolve('_indesign_scripts/build_from_instructions.jsx'), 'utf8');
-  const e2e = fs.readFileSync(path.resolve('scripts/indesign-e2e.js'), 'utf8');
+  const { buildBuildJsx } = require('../../src/indesign-cli-plugin/host-jsx');
+  const e2e = buildBuildJsx({
+    repoRoot: root,
+    instructionsPath: path.join(root, 'test/workspace/instructions.json'),
+  });
 
   assert.match(bootstrap, /includeLib\("hi_text_fit\.jsxinc"\)/);
   assert.match(e2e, /includeLib\("hi_text_fit\.jsxinc"\)/);

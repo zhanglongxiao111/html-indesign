@@ -13,9 +13,12 @@ test('package exposes npm run lint:authoring', () => {
 
 test('lint-authoring CLI includes expected options', () => {
   const source = fs.readFileSync(path.resolve('scripts/lint-authoring.js'), 'utf8');
+  const service = fs.readFileSync(path.resolve('src/authoring/lint.js'), 'utf8');
   assert.match(source, /--html/);
   assert.match(source, /--strict/);
-  assert.match(source, /validateAuthoringRules/);
+  assert.match(source, /lintAuthoringPackage/);
+  assert.match(source, /lintAuthoringHtml/);
+  assert.match(service, /validateAuthoringRules/);
 });
 
 test('lint-authoring --strict fails unregistered data-id carriers through registry validation', () => {

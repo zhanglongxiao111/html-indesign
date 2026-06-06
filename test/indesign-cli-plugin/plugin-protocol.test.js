@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
-const { callPlugin, repoRoot } = require('./plugin-test-helper');
+const { callPlugin, callPluginRpc, repoRoot } = require('./plugin-test-helper');
 
 const manifestPath = path.join(repoRoot, 'src', 'indesign-cli-plugin', 'manifest.json');
 
@@ -19,6 +19,7 @@ test('manifest declares html-indesign as a host-only html domain plugin', () => 
 
 test('plugin handshake returns protocol and public tool count', () => {
   const response = callPlugin('plugin/handshake');
+  assert.equal(response.id, 'html-indesign');
   assert.equal(response.protocol, 'indesign-cli-plugin.v1');
   assert.equal(response.plugin.id, 'html-indesign');
   assert.equal(response.capabilities.tools, true);
@@ -35,6 +36,7 @@ test('tools/list exposes only formal public html tools', () => {
     'html.build_indesign',
     'html.reverse_export',
   ]);
+  assert.equal(response.tools.every((tool) => Array.isArray(tool.side_effects)), true);
 
   for (const forbidden of [
     'html.audit_roundtrip',
@@ -69,4 +71,16 @@ test('unknown method and unknown tool fail explicitly', () => {
   const unknownTool = callPlugin('tools/schema', { id: 'html.audit_roundtrip' });
   assert.equal(unknownTool.status, 'error');
   assert.equal(unknownTool.error.code, 'TOOL_NOT_FOUND');
+});
+
+test('plugin entry responds with JSON-RPC result envelopes for indesign-cli host requests', () => {
+  const handshake = callPluginRpc('plugin/handshake', { host: { name: 'indesign-cli' } });
+  assert.equal(handshake.jsonrpc, '2.0');
+  assert.equal(handshake.id, 'test-request');
+  assert.equal(handshake.result.protocol, 'indesign-cli-plugin.v1');
+
+  const schema = callPluginRpc('tools/schema', { tool_id: 'html.authoring_lint' });
+  assert.equal(schema.jsonrpc, '2.0');
+  assert.equal(schema.result.tool.id, 'html.authoring_lint');
+  assert.equal(schema.result.inputSchema.type, 'object');
 });

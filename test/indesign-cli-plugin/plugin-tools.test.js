@@ -83,6 +83,9 @@ test('html.build_indesign returns script.run host actions instead of calling InD
   assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'build.jsx')), true);
   assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'export.jsx')), true);
   assert.deepEqual(response.actions.map((action) => action.tool_id), ['script.run', 'script.run', 'export.verify']);
+  const verifyAction = response.actions.find((action) => action.tool_id === 'export.verify');
+  assert.equal(verifyAction.args.path.endsWith('plugin-smoke.pdf'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(verifyAction.args, 'file'), false);
   assert.equal(response.resume.method, 'tools/resume');
 });
 

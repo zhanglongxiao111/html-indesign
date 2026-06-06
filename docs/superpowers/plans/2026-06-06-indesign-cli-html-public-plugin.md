@@ -8,6 +8,20 @@
 
 **Tech Stack:** Node.js CommonJS、`indesign-cli-plugin.v1` JSON-RPC stdin/stdout 协议、现有 `src/adapters/html`、`src/writers/indesign`、`src/authoring`、`scripts/indesign-reverse-export.js`、Node `--test`、真实 `indesign-cli`。
 
+## 执行进度（2026-06-06）
+
+| 阶段 | 状态 | 验证证据 |
+| --- | --- | --- |
+| Task 1-6 | 已提交 | `6a3cdb3`、`71834d2`、`adc1ca2`、`c510f9f`、`a7de682`、`33703ac` |
+| 宿主协议修正 | 已完成，待本轮提交 | 插件入口支持 JSON-RPC envelope；`tools/schema`/`tools/call` 接受 `tool_id`；handshake 顶层返回 `id/version/domain`；`side_effects` 改为数组；`export.verify` 使用 `args.path` |
+| Node 测试 | 已通过 | `npm test`：753 pass，0 fail |
+| CLI 插件验证 | 已通过 | `indesign-cli plugin validate D:\AI\html-indesign`：`ok: true`，4 tools，0 errors |
+| CLI 工具暴露 | 已通过 | `indesign-cli tool list --domain html` 只暴露 `html.authoring_lint`、`html.compile_instructions`、`html.build_indesign`、`html.reverse_export` |
+| 正式工具 smoke | 已通过 | `authoring_lint`、`compile_instructions`、`build_indesign`、`reverse_export` 均通过宿主 `tool call`；输出在 `test/workspace/plugin-*-cli-smoke/` |
+| 内部门禁 E2E | 已通过 | `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip`；runDir 为 `test/workspace/indesign-e2e-20260606-164640/`；canonical content/structure 报告均 `ok: true` 且差异为 0 |
+
+宿主实测发现：`indesign-cli` 0.2.0 对插件使用 JSON-RPC 请求/响应 envelope，而不是本计划早期示例中的裸 JSON 返回；宿主参数名使用 `tool_id`，`export.verify` 的文件参数名是 `path`。后续实现和测试以实测宿主协议为准。
+
 ---
 
 ## 范围边界

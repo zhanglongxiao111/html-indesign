@@ -18,8 +18,27 @@ function callPlugin(method, params = {}, context = { cwd: repoRoot }) {
   return JSON.parse(result.stdout);
 }
 
+function callPluginRpc(method, params = {}) {
+  const request = {
+    jsonrpc: '2.0',
+    id: 'test-request',
+    method,
+    params,
+  };
+  const result = spawnSync(process.execPath, [pluginEntry], {
+    cwd: repoRoot,
+    input: JSON.stringify(request),
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr.trim(), '');
+  return JSON.parse(result.stdout);
+}
+
 module.exports = {
   callPlugin,
+  callPluginRpc,
   repoRoot,
   workspaceRoot,
 };

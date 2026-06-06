@@ -56,7 +56,7 @@ async function call(args, context) {
       id: 'html-export-verify',
       tool_id: 'export.verify',
       args: {
-        file: path.join(compile.outDir, `${outputBaseName}.pdf`),
+        path: path.join(compile.outDir, `${outputBaseName}.pdf`),
       },
     });
   }
