@@ -1,8 +1,10 @@
 const { listTools, getTool, getSchema } = require('./tool-catalog');
 const authoringLint = require('./tools/authoring-lint');
+const compileInstructionsTool = require('./tools/compile-instructions');
 
 const callers = {
   'html.authoring_lint': authoringLint,
+  'html.compile_instructions': compileInstructionsTool,
 };
 
 function error(code, message, details = {}) {
