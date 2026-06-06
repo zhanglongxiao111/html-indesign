@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "protocol": "indesign-cli-plugin.v1",
+  "id": "html-indesign",
+  "name": "html-indesign",
+  "version": "0.1.0",
+  "kind": "node-plugin",
+  "domain": "html",
+  "entry": "src/indesign-cli-plugin/index.js",
+  "description": "固定语义 HTML 与 InDesign 的双向翻译插件",
+  "requires": {
+    "indesign_cli": ">=0.2.0",
+    "node": ">=18.0.0"
+  },
+  "capabilities": {
+    "tools": true,
+    "host_actions": ["script.run", "export.verify", "session.show"]
+  },
+  "permissions": {
+    "filesystem": ["read_project", "write_project"],
+    "indesign": "host_only",
+    "network": false
+  }
+}
