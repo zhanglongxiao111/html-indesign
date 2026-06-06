@@ -1,4 +1,9 @@
 const { listTools, getTool, getSchema } = require('./tool-catalog');
+const authoringLint = require('./tools/authoring-lint');
+
+const callers = {
+  'html.authoring_lint': authoringLint,
+};
 
 function error(code, message, details = {}) {
   return {
@@ -52,7 +57,7 @@ async function dispatch(request) {
   }
 
   if (method === 'tools/call') {
-    return error('TOOL_NOT_IMPLEMENTED', `Tool call is not implemented yet: ${params.id}`);
+    return await callTool(params, request.context || {});
   }
 
   if (method === 'tools/resume') {
@@ -60,6 +65,24 @@ async function dispatch(request) {
   }
 
   return error('METHOD_NOT_FOUND', `Unknown plugin method: ${method}`);
+}
+
+async function callTool(params, context) {
+  const tool = getTool(params.id);
+  if (!tool) {
+    return error('TOOL_NOT_FOUND', `Unknown html-indesign tool: ${params.id}`);
+  }
+
+  const caller = callers[params.id];
+  if (!caller || typeof caller.call !== 'function') {
+    return error('TOOL_NOT_IMPLEMENTED', `Tool call is not implemented yet: ${params.id}`);
+  }
+
+  try {
+    return await caller.call(params.args || {}, context || {});
+  } catch (err) {
+    return error(err.code || 'TOOL_CALL_FAILED', err.message, { tool: params.id });
+  }
 }
 
 module.exports = {

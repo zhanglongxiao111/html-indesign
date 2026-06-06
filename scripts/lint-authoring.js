@@ -1,15 +1,6 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const { renderSnapshot, validateAuthoringRules } = require('../src/adapters/html');
-const { auditAuthorPackageSourceFormat, checkAuthorPackageEntry, readAuthorPackage } = require('../src/authoring');
-const {
-  fieldRegistry,
-  scanDataIdFields,
-  validateDataIdFields,
-} = require('../src/protocol');
-const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../src/semantic-preset');
+const { lintAuthoringHtml, lintAuthoringPackage } = require('../src/authoring/lint');
 
 main().catch((error) => {
   console.error(error && error.stack ? error.stack : String(error));
@@ -23,76 +14,22 @@ async function main() {
     return;
   }
 
-  let htmlPath;
-  let sourceFormat = null;
-  let semanticAudit = null;
-  let semanticPreset = null;
-  let dataIdAudit = null;
-  if (options.packagePath) {
-    const packagePath = path.resolve(options.packagePath);
-    const sourcePackage = readAuthorPackage(packagePath);
-    const resolvedPreset = resolveSemanticPreset({
-      rootDir: sourcePackage.rootDir,
-      config: sourcePackage.config,
-    });
-    semanticPreset = publicSemanticPresetMetadata(resolvedPreset);
-    sourceFormat = auditAuthorPackageSourceFormat(packagePath, { strict: options.strict });
-    if (!sourceFormat.valid) {
-      const payload = packageFailure(sourceFormat, null, null, semanticPreset);
-      if (options.json) console.log(JSON.stringify(payload, null, 2));
-      else printPackageFailure(payload);
-      process.exit(1);
-    }
-
-    const packageCheck = checkAuthorPackageEntry(packagePath);
-    if (!packageCheck.ok) {
-      const message = `AUTHOR_GENERATED_ENTRY_DIRTY: ${packageCheck.message}: ${packageCheck.entryPath}`;
-      if (options.json) {
-        console.log(JSON.stringify(packageFailure(sourceFormat, {
-          code: 'AUTHOR_GENERATED_ENTRY_DIRTY',
-          message,
-          entryPath: packageCheck.entryPath,
-        }, null, semanticPreset), null, 2));
-      } else {
-        console.error(message);
-      }
-      process.exit(1);
-    }
-    htmlPath = packageCheck.entryPath;
-    semanticAudit = auditAuthoringSemanticTokens({
-      preset: resolvedPreset.preset,
-      pageFiles: sourcePackage.pageFiles,
+  const result = options.packagePath
+    ? await lintAuthoringPackage({
+      packagePath: options.packagePath,
       strict: options.strict,
+      gridTolerance: options.gridTolerance,
+    })
+    : await lintAuthoringHtml({
+      htmlPath: options.html,
+      strict: options.strict,
+      gridTolerance: options.gridTolerance,
     });
-    if (!semanticAudit.valid) {
-      const payload = packageFailure(sourceFormat, null, semanticAudit, semanticPreset);
-      if (options.json) console.log(JSON.stringify(payload, null, 2));
-      else printPackageFailure(payload);
-      process.exit(1);
-    }
-  } else {
-    htmlPath = path.resolve(options.html);
-  }
-
-  dataIdAudit = auditHtmlDataIdFields(htmlPath, { strict: options.strict });
-  const snapshot = await renderSnapshot({ htmlPath });
-  const result = withDataIdAudit(validateAuthoringRules(snapshot, {
-    strict: options.strict,
-    gridTolerance: options.gridTolerance,
-  }), dataIdAudit);
 
   if (options.json) {
-    console.log(JSON.stringify({
-      ok: result.valid,
-      htmlPath,
-      dataIdAudit,
-      ...(sourceFormat ? { sourceFormat } : {}),
-      ...(semanticPreset ? { semanticPreset } : {}),
-      ...(semanticAudit ? { semanticAudit } : {}),
-      ...result,
-    }, null, 2));
+    console.log(JSON.stringify(result, null, 2));
   } else {
-    printHumanReport(htmlPath, result, sourceFormat, semanticAudit, semanticPreset);
+    printHumanReport(result);
   }
 
   if (!result.valid) process.exit(1);
@@ -143,102 +80,20 @@ function printUsage(exitCode) {
   process.exit(exitCode);
 }
 
-function packageFailure(sourceFormat, entryIssue, semanticAudit, semanticPreset) {
-  const entryErrors = entryIssue ? [{ level: 'error', ...entryIssue }] : [];
-  const semanticErrors = semanticAudit ? semanticAudit.errors : [];
-  const semanticWarnings = semanticAudit ? semanticAudit.warnings : [];
-  const errors = entryErrors.concat(sourceFormat ? sourceFormat.errors : [], semanticErrors);
-  const warnings = (sourceFormat ? sourceFormat.warnings : []).concat(semanticWarnings);
-  return {
-    ok: false,
-    sourceFormat,
-    ...(semanticPreset ? { semanticPreset } : {}),
-    ...(semanticAudit ? { semanticAudit } : {}),
-    errors,
-    warnings,
-    messages: errors.concat(warnings),
-  };
-}
-
-function auditHtmlDataIdFields(htmlPath, options = {}) {
-  const attrs = scanDataIdFields(fs.readFileSync(htmlPath, 'utf8'));
-  const validation = validateDataIdFields(fieldRegistry, attrs, { strict: options.strict });
-  const errors = validation.errors.map((issue) => dataIdMessage('error', issue, htmlPath));
-  const warnings = options.strict
-    ? []
-    : validation.warnings.map((issue) => dataIdMessage('warning', issue, htmlPath));
-
-  return {
-    valid: errors.length === 0,
-    htmlPath,
-    attrs,
-    accepted: validation.accepted,
-    unknown: validation.unknown,
-    retired: validation.retired,
-    errors,
-    warnings,
-    messages: errors.concat(warnings),
-  };
-}
-
-function dataIdMessage(level, issue, htmlPath) {
-  return {
-    level,
-    code: issue.code,
-    file: htmlPath,
-    attribute: issue.name,
-    message: issue.message,
-    ...(issue.policy ? { policy: issue.policy } : {}),
-  };
-}
-
-function withDataIdAudit(result, dataIdAudit) {
-  if (!dataIdAudit) return result;
-  const errors = result.errors.concat(dataIdAudit.errors);
-  const warnings = result.warnings.concat(dataIdAudit.warnings);
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-    messages: errors.concat(warnings),
-  };
-}
-
-function printPackageFailure(payload) {
-  console.error('Authoring package: FAILED');
-  for (const entry of payload.messages || []) {
-    const file = entry.file ? ` file=${entry.file}` : '';
-    console.error(`[${entry.level}] ${entry.code}${file} ${entry.message}`);
-  }
-}
-
-function printHumanReport(htmlPath, result, sourceFormat = null, semanticAudit = null, semanticPreset = null) {
+function printHumanReport(result) {
   console.log(`Authoring rules: ${result.valid ? 'OK' : 'FAILED'}`);
-  console.log(`Source: ${htmlPath}`);
-  if (semanticPreset) {
-    console.log(`Semantic preset: ${semanticPreset.source}:${semanticPreset.id}`);
+  console.log(`Source: ${result.htmlPath || result.packagePath}`);
+  if (result.semanticPreset) {
+    console.log(`Semantic preset: ${result.semanticPreset.source}:${result.semanticPreset.id}`);
   }
-  const messages = [
-    ...(sourceFormat ? sourceFormat.messages : []),
-    ...(semanticAudit ? semanticAudit.messages : []),
-    ...result.messages,
-  ];
-  console.log(`Errors: ${(sourceFormat ? sourceFormat.errors.length : 0) + (semanticAudit ? semanticAudit.errors.length : 0) + result.errors.length}`);
-  console.log(`Warnings: ${(sourceFormat ? sourceFormat.warnings.length : 0) + (semanticAudit ? semanticAudit.warnings.length : 0) + result.warnings.length}`);
-  for (const entry of messages) {
+
+  console.log(`Errors: ${result.errorCount}`);
+  console.log(`Warnings: ${result.warningCount}`);
+  for (const entry of result.messages || []) {
     const item = entry.itemId ? ` item=${entry.itemId}` : '';
     const edges = entry.edges && entry.edges.length ? ` edges=${entry.edges.join(',')}` : '';
     const page = entry.pageId ? ` page=${entry.pageId}` : '';
     const file = entry.file ? ` file=${entry.file}` : '';
     console.log(`[${entry.level}] ${entry.code}${page}${file}${item}${edges} ${entry.message}`);
   }
-}
-
-function publicSemanticPresetMetadata(resolvedPreset) {
-  return {
-    source: resolvedPreset.source,
-    id: resolvedPreset.preset.id,
-    ...(resolvedPreset.relativePath ? { relativePath: resolvedPreset.relativePath } : {}),
-    ...(resolvedPreset.profile ? { profile: resolvedPreset.profile } : {}),
-  };
 }
