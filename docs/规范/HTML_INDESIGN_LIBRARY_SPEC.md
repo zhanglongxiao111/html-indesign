@@ -184,6 +184,14 @@ PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 
 ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推理。
 
+### 3.3 InDesign CLI 插件边界
+
+`src/indesign-cli-plugin/` 是面向 `indesign-cli` 的正式使用入口，只做协议适配、参数校验、产物登记和 host action 编排。插件工具以 `html.*` 命名，第一版只暴露作者包检查、编译指令、构建 InDesign 文件、反向导出 HTML 作者包。
+
+内部质量门禁不进入插件工具目录。`audit:roundtrip`、`audit:effective-diff`、`audit:conversion-gate`、二次回环和视觉/结构诊断继续作为本仓库测试命令使用，用来验证插件和转换链路可靠性，但不面向最终使用者。
+
+插件不得直接调用 InDesign COM。所有真实 InDesign 执行通过 `script.run` host action 交给 `indesign-cli`；插件只生成位于项目输出目录内的 JSX、instructions 和报告。
+
 ## 4. 建筑汇报映射范围
 
 建筑设计汇报的核心内容不只是文字和网页图片。库必须把 InDesign 中实际常见的对象体系作为一等模型处理，尤其是图纸 PDF、PSD、AI、SVG 和高分辨率图片的置入。
