@@ -14,6 +14,8 @@
     "audit:effective-diff": "node scripts/audit-effective-diff.js",
     "audit:parent-furniture": "node scripts/audit-parent-page-furniture.js",
     "audit:reverse-visual": "node scripts/audit-reverse-visual.js",
+    "audit:author-editability": "node scripts/audit-author-editability.js",
+    "audit:conversion-gate": "node scripts/audit-conversion-gate.js",
     "audit:synthesized-styles": "node scripts/audit-synthesized-styles.js",
     "test": "node --test \"test/**/*.test.js\""
   },
