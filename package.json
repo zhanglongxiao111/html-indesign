@@ -1,8 +1,23 @@
 {
-  "name": "html-indesign",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@sa/html-indesign",
+  "version": "0.1.0",
+  "description": "Sa fixed semantic HTML and InDesign bidirectional translation plugin",
   "main": "index.js",
+  "files": [
+    "index.js",
+    "src/",
+    "scripts/",
+    "_indesign_scripts/build_from_instructions.jsx",
+    "_indesign_scripts/export_to_html_snapshot.jsx",
+    "_indesign_scripts/extract_blueprint.jsx",
+    "_indesign_scripts/lib/",
+    "presets/",
+    "docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md",
+    "docs/规范/SEMANTIC_PROTOCOL.md",
+    "docs/规范/LABEL_PROTOCOL.md",
+    "docs/规范/REVERSE_EXPORT.md",
+    "docs/规范/FONT_POLICY.md"
+  ],
   "scripts": {
     "assemble:authoring": "node scripts/assemble-authoring.js",
     "audit:roundtrip": "node scripts/audit-reverse-author-roundtrip.js",
@@ -18,17 +33,27 @@
     "audit:conversion-gate": "node scripts/audit-conversion-gate.js",
     "audit:trusted-source-preservation": "node scripts/audit-trusted-source-preservation.js",
     "audit:synthesized-styles": "node scripts/audit-synthesized-styles.js",
+    "plugin:validate": "indesign-cli plugin validate .",
+    "plugin:install": "indesign-cli plugin install .",
+    "pack:dry-run": "npm pack --dry-run --json",
     "test": "node --test \"test/**/*.test.js\""
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "indesign",
+    "html",
+    "plugin",
+    "fixed-layout",
+    "agent"
+  ],
+  "author": "Sa",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20.18.1"
+  },
   "dependencies": {
     "cheerio": "^1.1.2",
+    "playwright": "^1.56.0",
     "reveal.js": "^6.0.1"
-  },
-  "devDependencies": {
-    "playwright": "^1.56.0"
   }
 }

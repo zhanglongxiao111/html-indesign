@@ -10,7 +10,7 @@
   "description": "固定语义 HTML 与 InDesign 的双向翻译插件",
   "requires": {
     "indesign_cli": ">=0.2.0",
-    "node": ">=18.0.0"
+    "node": ">=20.18.1"
   },
   "capabilities": {
     "tools": true,
