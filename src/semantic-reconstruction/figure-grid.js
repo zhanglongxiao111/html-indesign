@@ -1,4 +1,5 @@
 const { normalizePageLevelReadingOrder } = require('./reading-order');
+const { isTrustedSourceEntity } = require('./trusted-source-preservation');
 
 const DEFAULT_FIGURE_GRID_OPTIONS = {
   minGroupSize: 3,
@@ -69,6 +70,7 @@ function captionedFigures(page) {
     .filter(Boolean));
   return items
     .filter((item) => item && item.role === 'graphic')
+    .filter((item) => !isTrustedSourceEntity(item))
     .filter((item) => captionsByParent.has(item.id))
     .filter((item) => hasBounds(item))
     .filter((item) => isPageLevelItem(page, item));

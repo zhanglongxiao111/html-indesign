@@ -13,6 +13,7 @@ test('package exposes conversion gate and author editability audit commands', ()
 
   assert.equal(pkg.scripts['audit:conversion-gate'], 'node scripts/audit-conversion-gate.js');
   assert.equal(pkg.scripts['audit:author-editability'], 'node scripts/audit-author-editability.js');
+  assert.equal(pkg.scripts['audit:trusted-source-preservation'], 'node scripts/audit-trusted-source-preservation.js');
 });
 
 test('audit-conversion-gate passes when effective diff and HTML visual budgets are satisfied', () => {
@@ -82,6 +83,66 @@ test('audit-conversion-gate fails with concrete reasons when hard budgets regres
     'CONVERSION_GATE_HTML_MISSING_OVER_BUDGET',
     'CONVERSION_GATE_HTML_GEOMETRY_OVER_BUDGET',
     'CONVERSION_GATE_HTML_TEXT_OVER_BUDGET',
+  ]);
+});
+
+test('audit-conversion-gate fails when trusted source preservation regresses', () => {
+  const root = fixtureRoot('conversion-gate-trusted-source-fail');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({
+    missing: 0,
+    mismatched: 0,
+    textMismatches: 0,
+  }));
+  const trustedSource = writeJson(root, 'trusted-source.json', {
+    kind: 'TrustedSourcePreservationAudit',
+    ok: false,
+    summary: { trustedItems: 2, mutations: 1 },
+    failures: [
+      {
+        code: 'TRUSTED_SOURCE_STRUCTURE_MUTATED',
+        itemId: 'copy-1',
+        changedFields: ['structure'],
+      },
+    ],
+  });
+
+  const summary = JSON.parse(run(parseArgs([
+    '--effective-diff', effectiveDiff,
+    '--reverse-visual', reverseVisual,
+    '--trusted-source', trustedSource,
+  ])));
+
+  assert.equal(summary.ok, false);
+  assert.deepEqual(summary.failures.map((failure) => failure.code), [
+    'CONVERSION_GATE_TRUSTED_SOURCE_MUTATED',
+  ]);
+  assert.equal(summary.gates.trustedSource.summary.mutations, 1);
+});
+
+test('audit-conversion-gate rejects malformed trusted source reports instead of passing empty data', () => {
+  const root = fixtureRoot('conversion-gate-trusted-source-invalid');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({
+    missing: 0,
+    mismatched: 0,
+    textMismatches: 0,
+  }));
+  const trustedSource = writeJson(root, 'trusted-source.json', {
+    kind: 'NotTrustedSourceAudit',
+    ok: true,
+    summary: {},
+  });
+
+  const summary = JSON.parse(run(parseArgs([
+    '--effective-diff', effectiveDiff,
+    '--reverse-visual', reverseVisual,
+    '--trusted-source', trustedSource,
+  ])));
+
+  assert.equal(summary.ok, false);
+  assert.deepEqual(summary.failures.map((failure) => failure.code), [
+    'CONVERSION_GATE_TRUSTED_SOURCE_REPORT_INVALID',
   ]);
 });
 

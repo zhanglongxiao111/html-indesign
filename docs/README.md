@@ -19,6 +19,7 @@
 | 文档 | 用途 |
 | ---- | ---- |
 | `规范/HTML_INDESIGN_LIBRARY_SPEC.md` | 库级目标、边界和转换架构 |
+| `规范/AGENT_HTML_AUTHORING_GUIDE.md` | Agent 编写固定分页 HTML 作者包的长期说明书和回读保护要求 |
 | `规范/PROTOCOL_FIELD_REGISTRY.md` | 由 registry 生成的协议字段清单和格式能力矩阵 |
 | `规范/SEMANTIC_PROTOCOL.md` | 固定语义 HTML 协议 |
 | `规范/LABEL_PROTOCOL.md` | HTML 与 InDesign 双向标签协议 |

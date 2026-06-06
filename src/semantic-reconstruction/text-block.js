@@ -1,4 +1,5 @@
 const { normalizePageLevelReadingOrder } = require('./reading-order');
+const { isTrustedSourceEntity } = require('./trusted-source-preservation');
 
 const DEFAULT_TEXT_BLOCK_OPTIONS = {
   minGroupSize: 2,
@@ -104,6 +105,7 @@ function sameTextColumn(first, second, config) {
 function textCandidates(page) {
   return (page.items || [])
     .filter((item) => item && item.role === 'text')
+    .filter((item) => !isTrustedSourceEntity(item))
     .filter((item) => hasBounds(item))
     .filter((item) => isPageLevelItem(page, item))
     .filter((item) => !isFigcaption(item))

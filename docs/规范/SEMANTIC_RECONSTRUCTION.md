@@ -27,6 +27,7 @@ InDesign
 - `figure-grid` 使用已结构化的 captioned figure，把同页同尺寸、行列关系明确的多个 figure 包成作者 HTML 可编辑的 `section.figure-grid`。
 - `text-block` 把同页、同列、同文字样式、垂直连续的页级文字框包成作者 HTML 可编辑的 `section.text-block`。
 - 反向导出会写出 `reconstruction-report.json`。
+- `labelStatus: "accepted"` 且带 `sourceNode` 的页面或对象是可信作者结构，语义重建算法不得改写其 `tagName`、`sourceNode`、`sourceAncestorNodes`、`structure` 或既有 `semantic`。
 
 ## 2. 边界
 
@@ -50,6 +51,7 @@ InDesign
 - 只输出 `Reconstructed Author Model` 和结构化报告。
 - 每个推断必须有置信度、证据和来源。
 - 低置信度结果只能进入 `unresolved` 或候选报告，不能写成有效语义。
+- 可信作者结构只能作为上下文观察，不得被 caption、grid、text-block 或后续算法移动、重包、改标签或替换 source node；需要改动时必须先降级为非 accepted 观察事实，并在报告中说明。
 
 ### 2.3 HTML Writer
 
@@ -86,6 +88,7 @@ InDesign
 - 已经嵌套到其他父级的文字不移动。
 - 同一宿主默认只接收一个 caption，同一文字只能被使用一次。
 - 低分、非资源宿主、重复使用和已有父级冲突都必须写入 pass 的 `skipped`，不能静默忽略。
+- `labelStatus: "accepted"` 且带 `sourceNode` 的宿主或文字必须跳过，并在 `skipped` 中记录 `trusted-source-protected`。
 
 输出效果：
 
@@ -118,6 +121,7 @@ InDesign
 - 单行至少 3 个或多行排列明确时才成组。
 - 已经属于其他页面级容器的 figure 不移动。
 - 不满足规则的候选必须写入 pass 的 `skipped`。
+- `labelStatus: "accepted"` 且带 `sourceNode` 的 figure 不参与分组；算法不能把已可信的作者 figure 重新包入生成的 `figure-grid` 容器。
 
 输出效果：
 
@@ -151,6 +155,7 @@ InDesign
 - 文字框必须同列，默认 x 坐标容差不超过 `8`，宽度相对差不超过 `0.12`。
 - 相邻文字框必须垂直连续，默认间距不超过 `48`。
 - 不满足规则的候选必须写入 pass 的 `skipped` 或保持原状，不能靠兜底硬包。
+- `labelStatus: "accepted"` 且带 `sourceNode` 的文字对象不参与分组；算法不能把已可信的作者段落重新包入生成的 `text-block` 容器。
 
 输出效果：
 
@@ -186,6 +191,20 @@ InDesign
     "unresolvedItems": 537
   },
   "unresolved": [],
+  "trustedSourcePreservation": {
+    "kind": "TrustedSourcePreservationAudit",
+    "version": 1,
+    "ok": true,
+    "summary": {
+      "trustedPages": 0,
+      "trustedItems": 0,
+      "checked": 0,
+      "mutations": 0,
+      "missing": 0
+    },
+    "failures": [],
+    "warnings": []
+  },
   "warnings": [],
   "errors": []
 }
@@ -196,6 +215,7 @@ InDesign
 - `status: "observed-only"` 表示没有执行语义算法，不代表作者包已语义化。
 - `reconstructedItems` 只能统计被算法明确重建的对象。
 - `unresolved` 必须列出未识别或标签被拒绝的对象。
+- `trustedSourcePreservation.ok` 必须为 `true`；任何可信作者结构突变都属于算法边界错误，不得用扩大预算或 HTML 后处理掩盖。
 - 算法失败必须写入 `errors` 或直接抛错，不能吞掉后继续输出假成功。
 
 ## 4. 算法候选
@@ -238,6 +258,7 @@ InDesign
 
 - 输入是 `Observed Document Model`，不是导出的 HTML。
 - 输出不修改无证据字段。
+- 输出不修改 accepted/sourceNode 可信作者结构；必须用 `audit:trusted-source-preservation` 或 `reconstruction-report.json` 中的 `trustedSourcePreservation` 进入总门禁。
 - 推断字段必须能解释证据和置信度。
 - 不确定对象进入 `unresolved`。
 - 生成的作者包能通过 authoring lint。

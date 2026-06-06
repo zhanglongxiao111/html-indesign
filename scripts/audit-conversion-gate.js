@@ -18,6 +18,7 @@ function parseArgs(argv) {
     effectiveDiff: null,
     reverseVisual: null,
     editability: null,
+    trustedSource: null,
     out: null,
     thresholds: {},
   };
@@ -39,6 +40,10 @@ function parseArgs(argv) {
       options.editability = readValue(argv, ++index, arg);
     } else if (arg.startsWith('--editability=')) {
       options.editability = arg.slice('--editability='.length);
+    } else if (arg === '--trusted-source') {
+      options.trustedSource = readValue(argv, ++index, arg);
+    } else if (arg.startsWith('--trusted-source=')) {
+      options.trustedSource = arg.slice('--trusted-source='.length);
     } else if (arg === '--out') {
       options.out = readValue(argv, ++index, arg);
     } else if (arg.startsWith('--out=')) {
@@ -84,6 +89,7 @@ function run(options) {
     effectiveDiffPath: resolved.effectiveDiff,
     reverseVisualPath: resolved.reverseVisual,
     editabilityPath: resolved.editability,
+    trustedSourcePath: resolved.trustedSource,
     thresholds: resolved.thresholds,
   });
   if (resolved.out) {
@@ -101,6 +107,7 @@ function resolveOptions(options) {
     effectiveDiff: resolveInputPath(options.effectiveDiff || caseConfig.effectiveDiff, baseDir),
     reverseVisual: resolveInputPath(options.reverseVisual || caseConfig.reverseVisual, baseDir),
     editability: resolveInputPath(options.editability || caseConfig.editability, baseDir),
+    trustedSource: resolveInputPath(options.trustedSource || caseConfig.trustedSource, baseDir),
     out: options.out ? path.resolve(options.out) : null,
     thresholds: {
       ...DEFAULT_THRESHOLDS,
@@ -110,10 +117,11 @@ function resolveOptions(options) {
   };
 }
 
-function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath, thresholds }) {
+function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath, trustedSourcePath, thresholds }) {
   const effectiveDiff = readJson(effectiveDiffPath);
   const reverseVisual = readJson(reverseVisualPath);
   const editability = editabilityPath ? readJson(editabilityPath) : null;
+  const trustedSource = trustedSourcePath ? readJson(trustedSourcePath) : null;
   const failures = [];
   const gates = {
     effectiveDiff: effectiveDiffGate(effectiveDiff, thresholds, failures),
@@ -121,6 +129,9 @@ function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath
   };
   if (editability) {
     gates.editability = editabilityGate(editability, failures);
+  }
+  if (trustedSource) {
+    gates.trustedSource = trustedSourceGate(trustedSource, failures);
   }
   return {
     kind: 'ConversionGateReport',
@@ -130,6 +141,7 @@ function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath
       effectiveDiff: effectiveDiffPath,
       reverseVisual: reverseVisualPath,
       editability: editabilityPath || null,
+      trustedSource: trustedSourcePath || null,
     },
     gates,
     failures,
@@ -216,6 +228,56 @@ function editabilityGate(report, failures) {
   return gate;
 }
 
+function trustedSourceGate(report, failures) {
+  const audit = report && report.trustedSourcePreservation
+    ? report.trustedSourcePreservation
+    : report;
+  if (!audit || audit.kind !== 'TrustedSourcePreservationAudit') {
+    const gate = {
+      ok: false,
+      summary: {
+        trustedPages: 0,
+        trustedItems: 0,
+        checked: 0,
+        mutations: 0,
+        missing: 0,
+      },
+      failures: [{
+        code: 'TRUSTED_SOURCE_REPORT_INVALID',
+        message: 'Trusted source preservation report is missing or invalid.',
+      }],
+    };
+    failures.push({
+      code: 'CONVERSION_GATE_TRUSTED_SOURCE_REPORT_INVALID',
+      message: 'Trusted source preservation report is missing or invalid.',
+      actual: false,
+      budget: true,
+    });
+    return gate;
+  }
+  const gate = {
+    ok: audit && audit.ok !== false,
+    summary: {
+      trustedPages: numberOr(audit && audit.summary && audit.summary.trustedPages, 0),
+      trustedItems: numberOr(audit && audit.summary && audit.summary.trustedItems, 0),
+      checked: numberOr(audit && audit.summary && audit.summary.checked, 0),
+      mutations: numberOr(audit && audit.summary && audit.summary.mutations, 0),
+      missing: numberOr(audit && audit.summary && audit.summary.missing, 0),
+    },
+    failures: Array.isArray(audit && audit.failures) ? audit.failures : [],
+  };
+  if (!gate.ok) {
+    failures.push({
+      code: 'CONVERSION_GATE_TRUSTED_SOURCE_MUTATED',
+      message: 'Trusted author source structure changed during semantic reconstruction.',
+      actual: gate.summary.mutations + gate.summary.missing,
+      budget: 0,
+      failures: gate.failures,
+    });
+  }
+  return gate;
+}
+
 function metric(name, count, budget) {
   const actual = numberOr(count, 0);
   const threshold = numberOr(budget, 0);
@@ -277,7 +339,7 @@ function numberOption(value, arg) {
 function usage() {
   return [
     'Usage: node scripts/audit-conversion-gate.js --case <gate.case.json> [--out report.json]',
-    '   or: node scripts/audit-conversion-gate.js --effective-diff <report.json> --reverse-visual <report.json> [--editability <report.json>]',
+    '   or: node scripts/audit-conversion-gate.js --effective-diff <report.json> --reverse-visual <report.json> [--editability <report.json>] [--trusted-source <report.json>]',
     '       [--p0-budget 0] [--p1-budget 0] [--html-missing-budget 0]',
     '       [--html-geometry-budget 0] [--html-text-budget 0] [--html-page-budget 0]',
   ].join('\n');

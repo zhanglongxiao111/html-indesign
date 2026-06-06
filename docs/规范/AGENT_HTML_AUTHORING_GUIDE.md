@@ -1,0 +1,340 @@
+# Agent HTML 编写说明书
+
+## 1. 目的
+
+本文说明 Agent 编写固定分页 HTML 作者包时必须满足的要求。
+
+这些要求的目标不是限制排版自由，而是保证 HTML 导出到 InDesign 后，再反向导回 HTML 时，系统能把原作者结构判定为可信结构，并让语义重建算法只观察、不改写。
+
+当前代码保护的是这类结构：
+
+```text
+Agent 作者包 HTML
+-> HTML Adapter
+-> 统一语义模型
+-> InDesign Writer / Executor
+-> 带 html_indesign 标签的 InDesign
+-> InDesign Adapter 反向读取
+-> labelStatus: "accepted" + sourceNode
+-> trustedSourcePreservation 门禁保护
+```
+
+如果 Agent 写出的 HTML 不能被协议识别，反向读取时对象会变成 `partial`、`observed` 或 `rejected`。这类对象不属于可信作者结构，语义重建算法可以介入重建。
+
+## 2. 最小合格标准
+
+Agent 编写的 HTML 作者包必须满足以下条件：
+
+- 使用作者源码包，不直接手写或手改生成后的 `deck.html`。
+- 每个页面片段只有一个 `<section class="page">`。
+- 每页有稳定页面 ID、布局 token、边距和主网格。
+- 每个需要长期编辑、回读或追踪的页面对象都有稳定 `id`。
+- 页面结构用自然 HTML 表达，不为了转换写反常 DOM。
+- 样式主要放在 CSS 类和语义 token 中，少用一次性内联样式。
+- 资源使用真实元素和可追踪路径，不用截图假装 PDF、图片或 SVG。
+- 新增协议字段必须来自 `src/protocol/` 注册表，不自造同义字段。
+- 修改后必须重新组装并跑作者侧严格检查。
+
+## 3. 作者包结构
+
+推荐目录：
+
+```text
+deck.config.json
+pages/*.html
+styles/tokens.css
+styles/layout.css
+styles/components.css
+styles/pages.css
+assets/
+deck.html
+```
+
+Agent 默认只编辑：
+
+- `pages/*.html`
+- `styles/*.css`
+- 项目需要时编辑 `semantic-preset.json`
+
+Agent 不应手改：
+
+- `deck.html`
+- 反向导出的临时报告
+- `test/workspace/` 里的真实 E2E 产物
+
+`deck.html` 是组装结果。修改源码包后必须运行：
+
+```powershell
+npm run assemble:authoring -- -- --package <deck.config.json>
+```
+
+## 4. 页面必须声明的事实
+
+每个页面片段应类似：
+
+```html
+<section class="page"
+         data-page="facade-analysis"
+         data-id-layout="image-analysis"
+         data-id-margin="36 48 36 48"
+         data-id-grid="12x8"
+         data-id-column-gutter="12"
+         data-id-row-gutter="12"
+         data-id-parent-page="report-parent">
+  ...
+</section>
+```
+
+必需字段：
+
+| 字段 | 要求 |
+| ---- | ---- |
+| `class="page"` | 页面根。每个页面片段只能有一个 |
+| `data-page` | 稳定页面 ID，不使用临时序号或含义不清的名字 |
+| `data-id-layout` | 页面布局意图 token，例如 `image-analysis`、`figure-grid-page` |
+| `data-id-margin` | 页面边距。不能靠空白对象表达边距 |
+| `data-id-grid` | 主网格，例如 `12`、`12x8`、`16x9` |
+
+可选但推荐：
+
+| 字段 | 用途 |
+| ---- | ---- |
+| `data-id-column-gutter` | 主网格列间距 |
+| `data-id-row-gutter` | 主网格行间距 |
+| `data-id-baseline` | 垂直节奏 |
+| `data-id-parent-page` | 稳定母版页 ID，只用于页码、页眉、固定装饰线等页面家具 |
+
+页面网格是作者契约。Agent 可以选择不同网格，但不能完全不声明网格，也不能让转换层从对象边缘猜默认网格。
+
+## 5. 对象 ID 和结构规则
+
+需要被回读保护的对象必须有稳定 `id`。
+
+推荐：
+
+```html
+<section id="materials-grid" class="figure-grid">
+  <figure id="material-warm-concrete" class="material-card">
+    <img id="material-warm-concrete-image"
+         src="assets/warm-concrete.jpg"
+         alt="暖色清水混凝土"
+         data-id-asset-kind="image"
+         data-id-fit="cover">
+    <figcaption id="material-warm-concrete-caption">暖色清水混凝土</figcaption>
+  </figure>
+</section>
+```
+
+规则：
+
+- `id` 要稳定、可读、可复用。
+- 不用 `item1`、`box2`、`tmp-a` 这类临时命名。
+- 顶层大结构用 `section`、`article`、`figure`、`table`、`ul/ol` 等自然 HTML。
+- 图片说明使用 `figure + figcaption`。
+- 多图矩阵使用容器类，例如 `figure-grid`、`image-grid`、`material-grid`。
+- 多段连续正文使用容器类，例如 `text-block`。
+- 表格用真实 `table`，不要用一堆绝对定位 div 假装表格。
+
+回读保护依赖原始结构能被保存为 `sourceNode`。如果对象没有稳定 `id` 或结构只是视觉碎片，系统只能把它当观察对象。
+
+## 6. 语义 token 和样式规则
+
+字段名是协议，token 值是项目语义。
+
+常用字段：
+
+| 对象 | 推荐字段 |
+| ---- | ---- |
+| 文字 | `data-id-paragraph-style`、`data-id-character-style` |
+| 对象 | `data-id-object`、`data-id-object-style`、`data-id-frame-style` |
+| 图层 | `data-id-layer` |
+| 表格 | `data-id-table-style`、`data-id-cell-style` |
+| 资源 | `data-id-asset-kind`、`data-id-fit`、`data-id-pdf-page`、`data-id-crop` |
+
+要求：
+
+- 字段名必须来自协议字段注册表。
+- token 值必须来自当前标准语义库或项目语义库。
+- 面向人看的 InDesign 样式名可以是中文，但协议 token 要稳定。
+- 不为一次性视觉效果临时发明大量 token。
+- 相同用途的文字、线条、填充、图框应复用同一 CSS 类和语义 token。
+
+如果项目需要新 token，先初始化或更新项目语义库：
+
+```powershell
+npm run preset:init -- -- --package <deck.config.json>
+```
+
+然后维护作者包内的 `semantic-preset.json`。不要把新 token 只写在单个页面里。
+
+## 7. CSS 编写要求
+
+HTML 必须能自然浏览器预览。CSS 负责视觉表现，协议字段负责转换事实。
+
+推荐：
+
+- 页面尺寸、网格、边距写在页面或共享 layout CSS 中。
+- 重复组件写成类，例如 `.metric-card`、`.figure-grid`、`.analysis-callout`。
+- 颜色、字号、描边、填充等重复样式用 CSS 变量或共享类。
+- 局部网格定位可用 CSS 变量，例如 `--grid-col`、`--grid-span`。
+
+避免：
+
+- 大量对象都写完整内联 `style`。
+- 用白色矩形遮挡来制造裁切或留白。
+- 用重复图片覆盖样式缺口。
+- 用浏览器专用视觉补丁绕过转换层。
+- 为了 InDesign 转换牺牲浏览器可读性。
+
+`.grid-item` 必须声明完整网格坐标：
+
+```html
+<section id="analysis-copy"
+         class="grid-item text-block"
+         style="--grid-col:1;--grid-span:4;--grid-row:2;--grid-row-span:3">
+  ...
+</section>
+```
+
+## 8. 资源规则
+
+图片、PDF、PSD、AI、SVG 等资源必须保留真实来源。
+
+推荐：
+
+```html
+<object id="plan-pdf"
+        data="../drawings/site-plan.pdf"
+        type="application/pdf"
+        data-id-asset-kind="pdf"
+        data-id-pdf-page="1"
+        data-id-fit="contain">
+</object>
+```
+
+或：
+
+```html
+<img id="hero-rendering"
+     src="assets/rendering.jpg"
+     alt="主效果图"
+     data-id-asset-kind="image"
+     data-id-fit="cover">
+```
+
+要求：
+
+- 内部 NAS 素材优先保留 UNC 原位路径或作者包相对路径。
+- PDF/PSD/AI 可以有预览图，但不能丢掉原始资源路径。
+- 不能把 PDF 页面截图当成唯一事实。
+- 不能把 InDesign 矢量对象全部退化成不可编辑图片。
+
+## 9. 母版和页面家具
+
+母版只承载低编辑频率、跨页稳定的页面家具：
+
+- 页码。
+- 页眉页脚。
+- 章节标识。
+- 固定装饰线。
+- 稳定重复背景。
+- 规范参考线。
+
+不要把具体页面版式做成母版：
+
+- 左文右图。
+- 四图矩阵。
+- 主图加说明。
+- PDF 图纸版式。
+- 材料页槽位。
+
+这类内容应写在普通页面结构中，通过 `data-id-layout` 和组件类表达。
+
+## 10. 回读保护如何生效
+
+当前系统判断一个对象是否受保护，核心条件是：
+
+```text
+labelStatus: "accepted"
++ sourceNode 存在
+```
+
+满足这个条件后，语义重建算法不得改写：
+
+- `tagName`
+- `sourceNode`
+- `sourceAncestorNodes`
+- `structure`
+- 既有 `semantic`
+
+因此 Agent 要保证：
+
+- HTML 使用协议字段，而不是私有字段。
+- token 在语义库中可识别。
+- 页面和对象有稳定 ID。
+- DOM 结构表达真实编辑意图。
+- 转换链路能把这些事实写入 `html_indesign` 标签。
+
+如果反向导出报告中对象不是 `accepted`，说明它没有进入可信保护范围，应先修协议、标签或语义库，而不是让重建算法猜。
+
+## 11. 必跑检查
+
+修改作者包后：
+
+```powershell
+npm run assemble:authoring -- -- --package <deck.config.json>
+npm run lint:authoring -- -- --package <deck.config.json> --strict
+```
+
+需要验证真实 InDesign 输出：
+
+```powershell
+npm run e2e:indesign -- -- --html <deck.html>
+```
+
+需要验证一次回读：
+
+```powershell
+npm run e2e:indesign -- -- --html <deck.html> --reverse-roundtrip
+```
+
+需要验证二次回环稳定：
+
+```powershell
+npm run e2e:indesign -- -- --html <deck.html> --reverse-roundtrip --second-pass-roundtrip
+```
+
+算法升级或回读保护相关变更必须接入：
+
+```powershell
+npm run audit:trusted-source-preservation -- -- --expected <before-model.json> --actual <after-model.json> --out <report.json>
+npm run audit:conversion-gate -- -- --case <conversion-gate.case.json> --out <report.json>
+```
+
+## 12. 常见错误
+
+| 错误 | 后果 |
+| ---- | ---- |
+| 手改 `deck.html` | 下次组装会覆盖，源码回环不稳定 |
+| 页面缺 `data-id-grid` | 参考线和版面契约丢失 |
+| 对象缺稳定 `id` | 回读难以对应原作者结构 |
+| 用私有 `data-*` 表达协议事实 | 标签白名单无法接受 |
+| token 不在语义库 | 反向标签可能变成 partial/rejected |
+| 用 div 假表格 | InDesign 无法生成原生表格语义 |
+| PDF 只放截图 | 原始 PDF 置入事实丢失 |
+| 过度内联 style | 作者包可编辑性下降 |
+| 用白块遮罩 | InDesign 输出变成补丁堆叠 |
+| 把版式槽位做成母版 | 人类后续编辑会被固定模板干扰 |
+
+## 13. 交付判断
+
+一个 Agent 作者包可以认为达到当前保护要求，至少应满足：
+
+- 严格作者检查通过。
+- 页面、对象、资源和样式 token 可解释。
+- 浏览器预览和 InDesign 输出没有明显视觉偏差。
+- 反向导出后关键对象为 `labelStatus: "accepted"` 且带 `sourceNode`。
+- `trustedSourcePreservation.ok` 为 `true`。
+- 二次回环内容库存和结构签名稳定。
+
+如果这些条件不满足，优先修作者 HTML、协议字段、语义库或转换链路。不要把责任推给人类手动修 InDesign，也不要用语义重建算法覆盖本来应该可信的作者结构。

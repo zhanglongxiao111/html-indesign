@@ -16,6 +16,7 @@
     "audit:reverse-visual": "node scripts/audit-reverse-visual.js",
     "audit:author-editability": "node scripts/audit-author-editability.js",
     "audit:conversion-gate": "node scripts/audit-conversion-gate.js",
+    "audit:trusted-source-preservation": "node scripts/audit-trusted-source-preservation.js",
     "audit:synthesized-styles": "node scripts/audit-synthesized-styles.js",
     "test": "node --test \"test/**/*.test.js\""
   },

@@ -2,6 +2,7 @@ const { buildDocumentObjectGraph } = require('./object-graph');
 const { applyCaptionStructure } = require('./caption-structure');
 const { applyFigureGrid } = require('./figure-grid');
 const { applyTextBlock } = require('./text-block');
+const { auditTrustedSourcePreservation } = require('./trusted-source-preservation');
 
 const SUPPORTED_ALGORITHMS = new Set(['page-object-graph', 'caption-structure', 'figure-grid', 'text-block']);
 
@@ -9,6 +10,7 @@ function reconstructSemanticModel(observedModel, options = {}) {
   assertDocumentModel(observedModel);
 
   const model = cloneJson(observedModel);
+  const trustedSourceBaseline = cloneJson(model);
   const unresolved = collectUnresolvedItems(model);
   const pageCount = Array.isArray(model.pages) ? model.pages.length : 0;
   const itemCount = countItems(model);
@@ -17,6 +19,7 @@ function reconstructSemanticModel(observedModel, options = {}) {
   const algorithms = normalizeAlgorithms(options.algorithms || []);
   const passes = runAlgorithms(algorithms, model, options);
   const reconstructedItems = countReconstructedItems(passes);
+  const trustedSourcePreservation = auditTrustedSourcePreservation(trustedSourceBaseline, model);
   const report = {
     kind: 'SemanticReconstructionReport',
     version: 1,
@@ -33,6 +36,7 @@ function reconstructSemanticModel(observedModel, options = {}) {
       unresolvedItems: unresolved.length,
     },
     unresolved,
+    trustedSourcePreservation,
     warnings: [],
     errors: [],
   };

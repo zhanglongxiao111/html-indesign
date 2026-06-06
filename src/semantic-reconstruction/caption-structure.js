@@ -1,4 +1,5 @@
 const { buildDocumentObjectGraph } = require('./object-graph');
+const { isTrustedSourceEntity } = require('./trusted-source-preservation');
 
 const DEFAULT_CAPTION_STRUCTURE_OPTIONS = {
   maxCaptionTextLength: 80,
@@ -64,6 +65,7 @@ function captionDecision({ page, figure, caption, edge, usedFigureIds, usedCapti
   if (usedCaptionIds.has(caption.id)) return { ok: false, reason: 'caption-already-used' };
   if (!isGraphicCaptionHost(figure)) return { ok: false, reason: 'figure-not-graphic' };
   if (caption.role !== 'text') return { ok: false, reason: 'caption-not-text' };
+  if (isTrustedSourceEntity(figure) || isTrustedSourceEntity(caption)) return { ok: false, reason: 'trusted-source-protected' };
   if (Number(edge.score || 0) < config.minimumScore) return { ok: false, reason: 'score-too-low' };
   if (captionText(caption).length > config.maxCaptionTextLength) return { ok: false, reason: 'caption-too-long' };
   if (captionAlreadyNestedUnderOther(page, caption, figure)) return { ok: false, reason: 'caption-already-nested' };

@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { reconstructSemanticModel } = require('../../src/semantic-reconstruction');
+const {
+  auditTrustedSourcePreservation,
+  reconstructSemanticModel,
+} = require('../../src/semantic-reconstruction');
 const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tree');
 
 test('reconstructSemanticModel creates an explicit pass-through report without inventing semantics', () => {
@@ -211,6 +214,83 @@ test('reconstructSemanticModel does not apply low-confidence caption candidates 
   assert.equal(result.report.summary.reconstructedItems, 0);
 });
 
+test('auditTrustedSourcePreservation reports accepted source structure mutations', () => {
+  const before = trustedDocumentModel([
+    trustedText('copy-1', 80, 120, '正文', 1),
+  ]);
+  const after = JSON.parse(JSON.stringify(before));
+  after.pages[0].items[0].tagName = 'section';
+  after.pages[0].items[0].structure.parentId = 'generated-text-block';
+  after.pages[0].items[0].sourceNode.classList = ['text-block'];
+
+  const report = auditTrustedSourcePreservation(before, after);
+
+  assert.equal(report.kind, 'TrustedSourcePreservationAudit');
+  assert.equal(report.ok, false);
+  assert.equal(report.summary.trustedItems, 1);
+  assert.equal(report.summary.mutations, 1);
+  assert.deepEqual(report.failures.map((failure) => failure.code), [
+    'TRUSTED_SOURCE_STRUCTURE_MUTATED',
+  ]);
+  assert.equal(report.failures[0].itemId, 'copy-1');
+  assert.deepEqual(report.failures[0].changedFields.sort(), [
+    'sourceNode',
+    'structure',
+    'tagName',
+  ]);
+});
+
+test('reconstructSemanticModel does not rewrite accepted source nodes with caption structure', () => {
+  const observedModel = trustedDocumentModel([
+    trustedGraphic('image-1', 100, 100, 300, 180, 1),
+    trustedText('caption-1', 100, 285, '总平面效果图', 2),
+  ]);
+
+  const result = reconstructSemanticModel(observedModel, {
+    mode: 'structured',
+    algorithms: ['caption-structure'],
+  });
+  const image = result.model.pages[0].items.find((item) => item.id === 'image-1');
+  const captionItem = result.model.pages[0].items.find((item) => item.id === 'caption-1');
+
+  assert.equal(image.tagName, 'img');
+  assert.equal(captionItem.tagName, 'p');
+  assert.deepEqual(captionItem.structure, { parentId: 'page-1', order: 2 });
+  assert.equal(result.report.passes[0].summary.applied, 0);
+  assert.equal(result.report.passes[0].skipped[0].reason, 'trusted-source-protected');
+  assert.equal(result.report.trustedSourcePreservation.ok, true);
+});
+
+test('reconstructSemanticModel does not regroup accepted source items into algorithm containers', () => {
+  const observedModel = trustedDocumentModel([
+    trustedFigure('figure-1', 'caption-1', 100, 100, 180, 100, 1),
+    trustedCaption('caption-1', 'figure-1', 100, 204, '材料一', 2),
+    trustedFigure('figure-2', 'caption-2', 320, 100, 180, 100, 3),
+    trustedCaption('caption-2', 'figure-2', 320, 204, '材料二', 4),
+    trustedFigure('figure-3', 'caption-3', 100, 260, 180, 100, 5),
+    trustedCaption('caption-3', 'figure-3', 100, 364, '材料三', 6),
+    trustedFigure('figure-4', 'caption-4', 320, 260, 180, 100, 7),
+    trustedCaption('caption-4', 'figure-4', 320, 364, '材料四', 8),
+    trustedText('copy-1', 650, 120, '正文第一段', 9),
+    trustedText('copy-2', 650, 216, '正文第二段', 10),
+  ]);
+
+  const result = reconstructSemanticModel(observedModel, {
+    mode: 'structured',
+    algorithms: ['figure-grid', 'text-block'],
+  });
+  const page = result.model.pages[0];
+
+  assert.equal(page.items.some((item) => item.virtual), false);
+  assert.deepEqual(
+    ['figure-1', 'figure-2', 'figure-3', 'figure-4', 'copy-1', 'copy-2']
+      .map((id) => page.items.find((item) => item.id === id).structure.parentId),
+    ['page-1', 'page-1', 'page-1', 'page-1', 'page-1', 'page-1'],
+  );
+  assert.equal(result.report.trustedSourcePreservation.ok, true);
+  assert.equal(result.report.summary.reconstructedItems, 0);
+});
+
 test('reconstructSemanticModel can group captioned figures into an editable figure grid', () => {
   const observedModel = {
     kind: 'DocumentModel',
@@ -398,6 +478,109 @@ function textFrame(id, x, y, width, height, text, order) {
     styleRefs: { paragraphStyle: '正文' },
     textStyle: { pointSize: 18, leading: 26, fontFamily: 'Microsoft YaHei', fillColor: '#333333', justification: 'left' },
     content: { text },
+    structure: { parentId: 'page-1', order },
+  };
+}
+
+function trustedDocumentModel(items) {
+  return {
+    kind: 'DocumentModel',
+    id: 'trusted-deck',
+    reverseMode: 'structured',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-1',
+        width: 1000,
+        height: 1000,
+        sourceNode: { tagName: 'section', id: 'page-1', classList: ['page'], attributes: {} },
+        labelStatus: 'accepted',
+        items,
+      },
+    ],
+    assets: [],
+  };
+}
+
+function trustedGraphic(id, x, y, width, height, order) {
+  return {
+    id,
+    role: 'graphic',
+    semantic: 'hero-image',
+    labelStatus: 'accepted',
+    tagName: 'img',
+    bounds: { x, y, width, height },
+    zIndex: order,
+    asset: { kind: 'image', path: `assets/${id}.png` },
+    sourceNode: {
+      tagName: 'img',
+      id,
+      classList: ['hero-image'],
+      attributes: { src: `assets/${id}.png`, alt: '' },
+    },
+    structure: { parentId: 'page-1', order },
+  };
+}
+
+function trustedFigure(id, captionId, x, y, width, height, order) {
+  return {
+    id,
+    role: 'graphic',
+    semantic: 'project-figure',
+    labelStatus: 'accepted',
+    tagName: 'figure',
+    bounds: { x, y, width, height },
+    zIndex: order,
+    asset: { kind: 'image', path: `assets/${id}.png` },
+    sourceNode: {
+      tagName: 'figure',
+      id,
+      classList: ['project-figure'],
+      attributes: { 'data-id-object': '' },
+    },
+    structure: { parentId: 'page-1', order },
+    relatedItemIds: [captionId],
+  };
+}
+
+function trustedCaption(id, figureId, x, y, text, order) {
+  return {
+    id,
+    role: 'text',
+    semantic: 'figure-caption',
+    labelStatus: 'accepted',
+    tagName: 'figcaption',
+    bounds: { x, y, width: 180, height: 24 },
+    zIndex: order,
+    content: { text },
+    sourceNode: {
+      tagName: 'figcaption',
+      id,
+      classList: ['figure-caption'],
+      attributes: {},
+    },
+    structure: { parentId: figureId, order: 1 },
+  };
+}
+
+function trustedText(id, x, y, text, order) {
+  return {
+    id,
+    role: 'text',
+    semantic: 'body-copy',
+    labelStatus: 'accepted',
+    tagName: 'p',
+    bounds: { x, y, width: 280, height: 80 },
+    zIndex: order,
+    styleRefs: { paragraphStyle: '正文' },
+    textStyle: { pointSize: 18, leading: 26, fontFamily: 'Microsoft YaHei', fillColor: '#333333', justification: 'left' },
+    content: { text },
+    sourceNode: {
+      tagName: 'p',
+      id,
+      classList: ['body-copy'],
+      attributes: { 'data-id-paragraph-style': '正文' },
+    },
     structure: { parentId: 'page-1', order },
   };
 }
