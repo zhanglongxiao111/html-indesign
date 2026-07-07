@@ -4,7 +4,7 @@ const PAGE_CANONICAL_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
 });
 
-function pageGridScalar(canonicalPath, currentPaths, htmlAttr, type = 'number|string') {
+function pageGridScalar(canonicalPath, currentPaths, htmlAttr, type = 'number|string', extra = {}) {
   return {
     canonicalPath,
     currentPaths,
@@ -17,6 +17,27 @@ function pageGridScalar(canonicalPath, currentPaths, htmlAttr, type = 'number|st
       readAttrs: [htmlAttr],
       writeAttrs: [htmlAttr],
     },
+    indesign: {
+      labelPaths: [`page.grid.${canonicalPath.slice('pages[].grid.'.length)}`],
+      labelKinds: ['page'],
+      instructionPaths: [`guides.grid.${canonicalPath.slice('pages[].grid.'.length)}`],
+    },
+    pptx: {
+      customDataPaths: [`htmlIndesign.${canonicalPath}`],
+    },
+    ...extra,
+  };
+}
+
+function pageGridDerivedScalar(canonicalPath, currentPaths, type = 'number|string') {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document-page',
+    type,
+    capabilities: PAGE_CANONICAL_CAPABILITIES,
     indesign: {
       labelPaths: [`page.grid.${canonicalPath.slice('pages[].grid.'.length)}`],
       labelKinds: ['page'],
@@ -55,7 +76,7 @@ function pageMarginSide(side, htmlAttr) {
   };
 }
 
-function pageHtmlCanonical(canonicalPath, currentPaths, htmlAttr, type = 'string') {
+function pageHtmlCanonical(canonicalPath, currentPaths, htmlAttr, type = 'string', extra = {}) {
   return {
     canonicalPath,
     currentPaths,
@@ -75,8 +96,15 @@ function pageHtmlCanonical(canonicalPath, currentPaths, htmlAttr, type = 'string
     pptx: {
       customDataPaths: [`htmlIndesign.${canonicalPath}`],
     },
+    ...extra,
   };
 }
+
+const HTML_AUTHORING_PAGE_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'native', persist: 'native' },
+  indesign: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
 
 module.exports = [
   {
@@ -290,6 +318,16 @@ module.exports = [
       customDataPaths: ['htmlIndesign.pages[].grid'],
     },
   },
+  pageGridDerivedScalar(
+    'pages[].grid.columns',
+    [],
+    'number',
+  ),
+  pageGridDerivedScalar(
+    'pages[].grid.rows',
+    [],
+    'number',
+  ),
   pageGridScalar(
     'pages[].grid.columnGutter',
     ['labels[].grid.columnGutter', 'sourceNode.attributes.data-id-column-gutter', 'pages[].effectiveLabel.grid.columnGutter'],
@@ -310,9 +348,10 @@ module.exports = [
     ['sourceNode.attributes.data-id-baseline-guides'],
     'data-id-baseline-guides',
     'string',
+    { capabilities: HTML_AUTHORING_PAGE_CAPABILITIES },
   ),
-  pageHtmlCanonical('pages[].guideMode', ['sourceNode.attributes.data-id-guide-mode'], 'data-id-guide-mode'),
-  pageHtmlCanonical('pages[].snapGrid', ['sourceNode.attributes.data-id-snap-grid'], 'data-id-snap-grid', 'number|string'),
-  pageHtmlCanonical('pages[].snapGridX', ['sourceNode.attributes.data-id-snap-grid-x'], 'data-id-snap-grid-x', 'number|string'),
-  pageHtmlCanonical('pages[].snapGridY', ['sourceNode.attributes.data-id-snap-grid-y'], 'data-id-snap-grid-y', 'number|string'),
+  pageHtmlCanonical('pages[].guideMode', ['sourceNode.attributes.data-id-guide-mode'], 'data-id-guide-mode', 'string', { capabilities: HTML_AUTHORING_PAGE_CAPABILITIES }),
+  pageHtmlCanonical('pages[].snapGrid', ['sourceNode.attributes.data-id-snap-grid'], 'data-id-snap-grid', 'number|string', { capabilities: HTML_AUTHORING_PAGE_CAPABILITIES }),
+  pageHtmlCanonical('pages[].snapGridX', ['sourceNode.attributes.data-id-snap-grid-x'], 'data-id-snap-grid-x', 'number|string', { capabilities: HTML_AUTHORING_PAGE_CAPABILITIES }),
+  pageHtmlCanonical('pages[].snapGridY', ['sourceNode.attributes.data-id-snap-grid-y'], 'data-id-snap-grid-y', 'number|string', { capabilities: HTML_AUTHORING_PAGE_CAPABILITIES }),
 ];

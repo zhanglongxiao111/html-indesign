@@ -10,6 +10,12 @@ const SYNTHESIZED_STYLE_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
 });
 
+const SYNTHESIZED_STYLE_OVERRIDE_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
+
 function styleRefCarrier(canonicalPath, currentPaths, htmlAttr, type = 'string') {
   return {
     canonicalPath,
@@ -22,6 +28,29 @@ function styleRefCarrier(canonicalPath, currentPaths, htmlAttr, type = 'string')
     html: {
       readAttrs: [htmlAttr],
       writeAttrs: [htmlAttr],
+    },
+    indesign: {
+      labelPaths: [`styleRefs.${canonicalPath.slice('items[].styleRefs.'.length)}`],
+      labelKinds: ['item'],
+    },
+    pptx: {
+      customDataPaths: [`htmlIndesign.${canonicalPath}`],
+    },
+  };
+}
+
+function styleRefObservationCarrier(canonicalPath, currentPaths, type = 'string') {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'style-refs',
+    type,
+    capabilities: {
+      html: { read: 'observe-only', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
     },
     indesign: {
       labelPaths: [`styleRefs.${canonicalPath.slice('items[].styleRefs.'.length)}`],
@@ -151,9 +180,14 @@ module.exports = [
     'items[].styleRefs.synthesizedName',
     [
       'labels[].styleRefs.synthesizedName',
+      'sourceNode.attributes.data-id-style-name',
     ],
     'string',
     {
+      html: {
+        readAttrs: ['data-id-style-name'],
+        writeAttrs: ['data-id-style-name'],
+      },
       indesign: {
         labelPaths: ['styleRefs.synthesizedName'],
         labelKinds: ['item'],
@@ -168,6 +202,7 @@ module.exports = [
     ['labels[].styleOverrides', 'reverseModel.pages[].items[].styleOverrides'],
     'object',
     {
+      capabilities: SYNTHESIZED_STYLE_OVERRIDE_CAPABILITIES,
       indesign: {
         labelPaths: ['styleOverrides'],
         labelKinds: ['item'],
@@ -401,10 +436,9 @@ module.exports = [
     ['items[].styleRefs.style', 'sourceNode.attributes.data-id-style'],
     'data-id-style',
   ),
-  styleRefCarrier(
+  styleRefObservationCarrier(
     'items[].styleRefs.displayName',
-    ['items[].styleRefs.styleName', 'sourceNode.attributes.data-id-style-name'],
-    'data-id-style-name',
+    ['items[].styleRefs.styleName'],
   ),
   styleRefCarrier(
     'items[].styleRefs.paragraphStyleDisplayName',

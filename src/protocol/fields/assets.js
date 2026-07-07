@@ -16,6 +16,12 @@ const ASSET_PLACEMENT_CANONICAL_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'preview-image' },
 });
 
+const ITEM_ASSET_PLACEMENT_CANONICAL_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'preview-image' },
+});
+
 function assetSourceMetadata(canonicalPath, type, snapshotPath, extra = {}) {
   return {
     canonicalPath,
@@ -52,7 +58,7 @@ function assetPlacementCanonical(canonicalPath, type, snapshotPath, extra = {}) 
     lifecycle: 'active',
     owner: 'asset-placement',
     type,
-    capabilities: ASSET_PLACEMENT_CANONICAL_CAPABILITIES,
+    capabilities: ITEM_ASSET_PLACEMENT_CANONICAL_CAPABILITIES,
     indesign: {
       snapshotPaths: [snapshotPath],
     },
@@ -118,6 +124,9 @@ module.exports = [
   htmlAssetSourceMetadata('assets[].linked', 'boolean'),
   htmlAssetSourceMetadata('assets[].placement', 'object'),
   htmlAssetSourceMetadata('assets[].sourceSelector', 'string'),
+  htmlAssetSourceMetadata('assets[].source', 'string'),
+  htmlAssetSourceMetadata('assets[].imageSize', 'object'),
+  htmlAssetSourceMetadata('assets[].cropped', 'boolean'),
   {
     canonicalPath: 'items[].asset.placement.pageNumber',
     currentPaths: [
@@ -130,7 +139,7 @@ module.exports = [
     type: 'integer',
     validation: { min: 1, integer: true },
     capabilities: {
-      html: { read: 'native', write: 'native', persist: 'native' },
+      html: { read: 'observe-only', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },
       pptx: {
         read: 'unsupported',
@@ -159,6 +168,8 @@ module.exports = [
   assetSourceMetadata('items[].asset.graphicType', 'string', 'placedAsset.graphicType'),
   assetSourceMetadata('items[].asset.imageTypeName', 'string', 'placedAsset.imageTypeName'),
   assetSourceMetadata('items[].asset.cropped', 'boolean', 'placedAsset.cropped'),
+  assetSourceMetadata('items[].asset.source', 'string', 'placedAsset.source'),
+  assetSourceMetadata('items[].asset.imageSize', 'object', 'placedAsset.imageSize'),
   assetSourceMetadata('items[].asset.imageCropped', 'boolean', 'placedAsset.cropped', {
     html: {
       readAttrs: ['data-id-image-cropped'],

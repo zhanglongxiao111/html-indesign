@@ -15,39 +15,39 @@
 | document.profile | n/a | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | document.title | title, labels[].title | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | document.unitMode | unitMode, labels[].unitMode | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].asset.placement.artboard | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.contentBox.height | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.contentBox.scaleX | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.contentBox.scaleY | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.contentBox.width | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.contentBox.x | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.contentBox.y | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.crop | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.fit | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.hiddenLayers | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.layerComp | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.pageNumber | items[].asset.pageNumber, instructions.pages[].items[].placed.pageNumber | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image; risk=editable-loss) | n/a |
-| items[].asset.placement.preserveVector | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.transparentBackground | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].asset.placement.visibleLayers | n/a | asset-placement | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
-| items[].authoring.gridIgnore | sourceNode.attributes.data-id-grid-ignore, pages[].items[].sourceNode.attributes.data-id-grid-ignore | html-authoring | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].authoring.guideIgnore | sourceNode.attributes.data-id-guide-ignore, pages[].items[].sourceNode.attributes.data-id-guide-ignore | html-authoring | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].asset.placement.artboard | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.contentBox.height | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.contentBox.scaleX | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.contentBox.scaleY | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.contentBox.width | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.contentBox.x | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.contentBox.y | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.crop | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.fit | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.hiddenLayers | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.layerComp | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.pageNumber | items[].asset.pageNumber, instructions.pages[].items[].placed.pageNumber | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image; risk=editable-loss) | n/a |
+| items[].asset.placement.preserveVector | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.transparentBackground | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].asset.placement.visibleLayers | n/a | asset-placement | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=preview-image) | n/a |
+| items[].authoring.gridIgnore | sourceNode.attributes.data-id-grid-ignore, pages[].items[].sourceNode.attributes.data-id-grid-ignore | html-authoring | active | native/native/native | observe-only/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].authoring.guideIgnore | sourceNode.attributes.data-id-guide-ignore, pages[].items[].sourceNode.attributes.data-id-guide-ignore | html-authoring | active | native/native/native | observe-only/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].bounds | pages[].items[].bounds | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | Absolute page coordinates for the item bounds, measured in pt.; contract=coordinateSystem:absolute-page, unit:pt |
 | items[].content.runs | items[].textRuns | text-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=text-runs) | n/a |
 | items[].content.runs[].text | n/a | reverse-model | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=text-runs) | n/a |
 | items[].content.text | items[].text, instructions.pages[].items[].text | text-content | active | native/native/native | native/native/native | unsupported/native/lossless | n/a |
 | items[].layout | pages[].items[].layout, items[].effectiveLabel.layout | label-protocol | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].objectPolicy.forceObject | sourceNode.attributes.data-id-object, labels[].sourceNode.attributes.data-id-object, pages[].items[].sourceNode.attributes.data-id-object | html-authoring | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].objectPolicy.ignore | sourceNode.attributes.data-id-ignore, labels[].sourceNode.attributes.data-id-ignore, pages[].items[].sourceNode.attributes.data-id-ignore | html-authoring | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].placement | sourceNode.attributes.data-id-placement, pages[].items[].sourceNode.attributes.data-id-placement | html-authoring | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].objectPolicy.forceObject | sourceNode.attributes.data-id-object, labels[].sourceNode.attributes.data-id-object, pages[].items[].sourceNode.attributes.data-id-object | html-authoring | active | native/native/native | observe-only/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].objectPolicy.ignore | sourceNode.attributes.data-id-ignore, labels[].sourceNode.attributes.data-id-ignore, pages[].items[].sourceNode.attributes.data-id-ignore | html-authoring | active | native/native/native | observe-only/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].placement | sourceNode.attributes.data-id-placement, pages[].items[].sourceNode.attributes.data-id-placement | html-authoring | active | native/native/native | observe-only/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].role | labels[].role, items[].effectiveLabel.role | label-protocol | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | Canonical semantic role for an item. |
 | items[].semantic | labels[].semantic, items[].effectiveLabel.semantic | label-protocol | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | Canonical item semantic token. Defaults to null when no accepted semantic is present.; default=null |
-| items[].styleOverrides | labels[].styleOverrides, reverseModel.pages[].items[].styleOverrides | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].styleOverrides | labels[].styleOverrides, reverseModel.pages[].items[].styleOverrides | synthesized-styles | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs | labels[].styleRefs, items[].effectiveLabel.styleRefs | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | Canonical style reference object; only registered allowedKeys are valid styleRefs members.; allowedKeys=paragraphStyle, characterStyle, objectStyle, frameStyle, tableStyle, cellStyle, paragraphStyleDisplayName, characterStyleDisplayName, objectStyleDisplayName, frameStyleDisplayName, tableStyleDisplayName, displayName, genericStyle, synthesizedToken, synthesizedName, layer |
 | items[].styleRefs.cellStyle | items[].cellStyle, labels[].cellStyle, labels[].cellStyleToken | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.characterStyle | items[].characterStyle, items[].content.runs[].characterStyle, labels[].characterStyle, labels[].characterStyleToken | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.characterStyleDisplayName | items[].characterStyleName, sourceNode.attributes.data-id-character-style-name | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].styleRefs.displayName | items[].styleRefs.styleName, sourceNode.attributes.data-id-style-name | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].styleRefs.displayName | items[].styleRefs.styleName | style-refs | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.frameStyle | items[].frameStyle, labels[].frameStyle, labels[].frameStyleToken | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.frameStyleDisplayName | items[].frameStyleName, sourceNode.attributes.data-id-frame-style-name | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.genericStyle | items[].styleRefs.style, sourceNode.attributes.data-id-style | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -56,7 +56,7 @@
 | items[].styleRefs.objectStyleDisplayName | items[].objectStyleName, sourceNode.attributes.data-id-object-style-name | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.paragraphStyle | items[].paragraphStyle, labels[].paragraphStyle, labels[].paragraphStyleToken | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.paragraphStyleDisplayName | items[].paragraphStyleName, sourceNode.attributes.data-id-paragraph-style-name | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| items[].styleRefs.synthesizedName | labels[].styleRefs.synthesizedName | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].styleRefs.synthesizedName | labels[].styleRefs.synthesizedName, sourceNode.attributes.data-id-style-name | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.synthesizedToken | labels[].styleRefs.synthesizedToken, sourceNode.attributes.data-id-style-token | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.tableStyle | items[].table.tableStyle, labels[].tableStyle, labels[].tableStyleToken | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].styleRefs.tableStyleDisplayName | items[].tableStyleName, sourceNode.attributes.data-id-table-style-name | style-refs | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -70,7 +70,7 @@
 | items[].table.rows[].cells[].borders | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].borderWeight | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].bounds | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
-| items[].table.rows[].cells[].cellStyle | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].cells[].cellStyle | n/a | table-content | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].colSpan | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].fillColor | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].fillOpacity | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
@@ -83,18 +83,15 @@
 | items[].table.rows[].cells[].pointSize | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].rowSpan | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].runs | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
-| items[].table.rows[].cells[].runs[].attributes | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].runs[].characterStyle | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
-| items[].table.rows[].cells[].runs[].classList | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
-| items[].table.rows[].cells[].runs[].tagName | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].runs[].text | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].text | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].textAlign | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].textColor | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].header | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].index | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
-| items[].textStyle | reverseModel.pages[].items[].textStyle | text-content | active | native/native/native | native/native/native | unsupported/approximate/lossless | n/a |
-| items[].textStyle.composer | reverseModel.pages[].items[].textStyle.composer, sourceNode.attributes.data-id-paragraph-composer | text-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| items[].textStyle | reverseModel.pages[].items[].textStyle | text-content | active | observe-only/native/native | native/native/native | unsupported/approximate/lossless | n/a |
+| items[].textStyle.composer | reverseModel.pages[].items[].textStyle.composer, sourceNode.attributes.data-id-paragraph-composer | text-content | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].vectorGeometry.kind | reverseModel.pages[].items[].vectorGeometry.kind | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
 | items[].vectorGeometry.paths | reverseModel.pages[].items[].vectorGeometry.paths | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
 | items[].vectorGeometry.paths[].points[].pointType | reverseModel.pages[].items[].vectorGeometry.paths[].points[].pointType | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
@@ -116,18 +113,20 @@
 | items[].visualStyle.strokeWeight | reverseModel.pages[].items[].visualStyle.strokeWeight | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].zIndex | pages[].items[].zIndex | reverse-model | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=text-runs) | n/a |
 | layers | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].locked | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].printable | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].visible | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| layers[].displayName | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| layers[].locked | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| layers[].name | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| layers[].printable | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| layers[].token | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| layers[].visible | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].grid | labels[].grid, sourceNode.attributes.data-id-grid, pages[].effectiveLabel.grid | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].grid.baseline | labels[].grid.baseline, sourceNode.attributes.data-id-baseline, pages[].effectiveLabel.grid.baseline | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| pages[].grid.baselineGuideMode | sourceNode.attributes.data-id-baseline-guides | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].grid.baselineGuideMode | sourceNode.attributes.data-id-baseline-guides | document-page | active | observe-only/native/native | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].grid.columnGutter | labels[].grid.columnGutter, sourceNode.attributes.data-id-column-gutter, pages[].effectiveLabel.grid.columnGutter | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].grid.columns | n/a | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].grid.rowGutter | labels[].grid.rowGutter, sourceNode.attributes.data-id-row-gutter, pages[].effectiveLabel.grid.rowGutter | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| pages[].guideMode | sourceNode.attributes.data-id-guide-mode | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].grid.rows | n/a | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].guideMode | sourceNode.attributes.data-id-guide-mode | document-page | active | observe-only/native/native | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].guides | reverseModel.pages[].guides, sourceNode.attributes.data-id-guides | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].height | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].id | snapshot.pages[].id, reverseModel.pages[].id | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -140,41 +139,31 @@
 | pages[].margins.top | labels[].margins.top, sourceNode.attributes.data-id-margin-top, pages[].effectiveLabel.margins.top | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].parentPageId | labels[].parentPageId, pages[].effectiveLabel.parentPageId | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].semantic | pages[].effectiveLabel.semantic | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| pages[].snapGrid | sourceNode.attributes.data-id-snap-grid | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| pages[].snapGridX | sourceNode.attributes.data-id-snap-grid-x | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| pages[].snapGridY | sourceNode.attributes.data-id-snap-grid-y | document-page | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].snapGrid | sourceNode.attributes.data-id-snap-grid | document-page | active | observe-only/native/native | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].snapGridX | sourceNode.attributes.data-id-snap-grid-x | document-page | active | observe-only/native/native | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].snapGridY | sourceNode.attributes.data-id-snap-grid-y | document-page | active | observe-only/native/native | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].width | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.cellStyles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.cellStyles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.cellStyles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.cellStyles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.cellStyles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.cellStyles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.cellStyles[].displayName | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.cellStyles[].name | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.cellStyles[].token | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.characterStyles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.characterStyles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.characterStyles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.characterStyles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.characterStyles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.characterStyles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.frameStyles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.frameStyles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.frameStyles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.frameStyles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.frameStyles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.frameStyles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.objectStyles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.objectStyles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.objectStyles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.objectStyles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.objectStyles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.objectStyles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.paragraphStyles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.paragraphStyles[].composer | styles.paragraphStyles[].composer | text-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.paragraphStyles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.paragraphStyles[].composer | styles.paragraphStyles[].composer | text-content | active | native/native/native | observe-only/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.paragraphStyles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.paragraphStyles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.paragraphStyles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.paragraphStyles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.synthesized | reverseModel.styles.synthesized, document.sourcePackage.styles.synthesized | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.synthesized[].displayName | reverseModel.styles.synthesized[].displayName, document.sourcePackage.styles.synthesized[].displayName | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -184,24 +173,23 @@
 | styles.synthesized[].source | reverseModel.styles.synthesized[].source, document.sourcePackage.styles.synthesized[].source | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.synthesized[].token | reverseModel.styles.synthesized[].token, document.sourcePackage.styles.synthesized[].token | synthesized-styles | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.tableStyles | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.tableStyles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.tableStyles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.tableStyles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles.tableStyles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | styles.tableStyles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles[].css | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles[].displayName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles[].name | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles[].safeName | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| styles[].token | n/a | document-model | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles[].displayName | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles[].name | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles[].token | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 
 ## sourceMetadata
 
 | canonicalPath | currentPaths | owner | lifecycle | HTML read/write/persist | InDesign read/write/persist | PPTX read/write/persist | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| assets[].cropped | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | assets[].fileName | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| assets[].imageSize | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | assets[].linked | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | assets[].placement | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| assets[].source | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | assets[].sourceSelector | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | document.semanticPreset.relativePath | semanticPreset.relativePath, labels[].semanticPreset.relativePath, sourcePackageInput.attributes.data-id-semantic-preset | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.source | source | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -214,12 +202,14 @@
 | items[].asset.cropped | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.graphicType | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.imageCropped | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].asset.imageSize | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.imageTypeName | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.name | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.placement.layers | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.preview | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.preview.kind | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.preview.path | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].asset.source | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.status | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].attributes | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].authoredStyle | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
@@ -252,6 +242,9 @@
 | items[].sourceText | labels[].sourceText, effectiveLabel.sourceText, pages[].effectiveLabel.sourceText | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceType | pages[].items[].sourceType | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | Observed source-format object type, not a semantic role. |
 | items[].structure | labels[].structure, effectiveLabel.structure, pages[].effectiveLabel.structure | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].table.rows[].cells[].runs[].attributes | n/a | table-content | active | native/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].table.rows[].cells[].runs[].classList | n/a | table-content | active | native/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].table.rows[].cells[].runs[].tagName | n/a | table-content | active | native/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].table.sourceRows | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].tagName | pages[].items[].tagName | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].displayName | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
@@ -264,7 +257,7 @@
 | labels[].styleKind | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].token | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].version | n/a | label-protocol | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
-| layers[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| layers[].labels | n/a | document-model | active | unsupported/unsupported/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].attributes | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].classList | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
@@ -284,20 +277,34 @@
 | parentPages[].parentPageName | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | parentPages[].provides | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | parentPages[].semantic | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| styles.cellStyles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| styles.cellStyles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.cellStyles[].css | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.cellStyles[].labels | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.cellStyles[].safeName | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.cellStyles[].source | n/a | document-model | active | observe-only/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles.characterStyles[].css | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].safeName | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.frameStyles[].css | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.frameStyles[].safeName | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].css | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].safeName | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].css | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].safeName | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.tableStyles[].css | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.tableStyles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles.tableStyles[].safeName | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | styles.tableStyles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| styles[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| styles[].source | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| styles[].css | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles[].labels | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles[].safeName | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| styles[].source | n/a | document-model | active | observe-only/observe-only/lossless | observe-only/observe-only/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 
 ## formatExtension
 
@@ -413,10 +420,15 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | errors | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | fieldValidation | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].migration | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].migration.confidence | sourceNode.attributes.data-id-confidence | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].migration.description | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].migration.evidence | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].migration.isSlot | sourceNode.attributes.data-id-migration-slot | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].migration.label | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].migration.slotName | sourceNode.attributes.data-id-slot-name | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].migration.slotType | sourceNode.attributes.data-id-slot-type | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].migration.source | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].observedLabel | pages[].items[].observedLabel | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].observedLabel.className | pages[].items[].observedLabel.className | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].observedLabel.htmlTag | pages[].items[].observedLabel.htmlTag | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
@@ -438,6 +450,9 @@
 | pages[].items[].rejectedFields | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].items[].rejectionReasons | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].labelStatus | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| pages[].migration | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| pages[].migration.masterName | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| pages[].migration.source | n/a | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].observed | pages[].observed, sourceNode.attributes.data-id-observed | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].observedLabel | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].observedLabel.className | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |

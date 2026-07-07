@@ -276,9 +276,11 @@ test('G3 reports registry comparable paths missing from both adapter sample coll
   const root = makeSampleProject({
     'src/protocol/index.js': [
       'const fieldEntries = [{',
+      '  canonicalPath: "document.uncoveredRegistryPath",',
+      '  currentPaths: ["document.id"],',
       '  fieldClass: "canonical",',
       '  allPaths: ["document.id", "document.uncoveredRegistryPath"],',
-      '  capabilities: { html: { read: "full" }, indesign: { read: "full" } },',
+      '  capabilities: { html: { read: "native" }, indesign: { read: "lossless" } },',
       '}];',
       'const fieldRegistry = { getByPath: (modelPath) => fieldEntries.flatMap((entry) => entry.allPaths).includes(modelPath) };',
       'function scanModelPaths(model) { return model.paths; }',
@@ -314,6 +316,55 @@ test('G3 reports registry comparable paths missing from both adapter sample coll
     file: 'src/protocol/index.js',
     detail: 'registered comparable model path document.uncoveredRegistryPath is not covered by html or indesign adapter samples',
   }]);
+});
+
+test('G3 sample coverage is based on canonical adapter-readable model paths', () => {
+  const root = makeSampleProject({
+    'src/protocol/index.js': [
+      'const fieldEntries = [{',
+      '  canonicalPath: "document.id",',
+      '  currentPaths: ["snapshot.document.id", "instructions.document.id"],',
+      '  allPaths: ["document.id", "snapshot.document.id", "instructions.document.id"],',
+      '  fieldClass: "canonical",',
+      '  capabilities: { html: { read: "native" }, indesign: { read: "lossless" } },',
+      '}, {',
+      '  canonicalPath: "items[].observedLabel",',
+      '  currentPaths: ["pages[].items[].observedLabel"],',
+      '  allPaths: ["items[].observedLabel", "pages[].items[].observedLabel"],',
+      '  fieldClass: "sourceMetadata",',
+      '  capabilities: { html: { read: "native" }, indesign: { read: "lossless" } },',
+      '}];',
+      'const byPath = new Set(fieldEntries.flatMap((entry) => entry.allPaths));',
+      'const fieldRegistry = { getByPath: (modelPath) => byPath.has(modelPath) };',
+      'function scanModelPaths(model) { return model.paths; }',
+      'module.exports = { fieldEntries, fieldRegistry, scanModelPaths };',
+      '',
+    ].join('\n'),
+    'src/adapters/html/index.js': [
+      'function snapshotToSemanticModel(input) {',
+      '  if (input === null) throw new Error("invalid input");',
+      '  return { paths: ["document.id"] };',
+      '}',
+      'module.exports = { snapshotToSemanticModel };',
+      '',
+    ].join('\n'),
+    'src/adapters/indesign/index.js': [
+      'function reverseSnapshotToSemanticModel(input) {',
+      '  if (input === null) throw new Error("invalid input");',
+      '  return { paths: ["document.id", "pages[].items[].observedLabel"] };',
+      '}',
+      'function blueprintMigrationToSemanticModel(input) {',
+      '  if (input === null) throw new Error("invalid input");',
+      '  return { paths: ["document.id"] };',
+      '}',
+      'module.exports = { reverseSnapshotToSemanticModel, blueprintMigrationToSemanticModel };',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG3Violations(root, { adapterExits: [] });
+
+  assert.deepEqual(violations, []);
 });
 
 test('G3 current semantic model contract violations match the ratchet baseline', () => {
@@ -435,13 +486,7 @@ function validateAdapterSurfaceIsomorphism(repoRoot) {
     html: new Set(scanModelPaths(htmlModel)),
     indesign: new Set(scanModelPaths(indesignModel)),
   };
-  const registryPaths = new Set(fieldEntries.flatMap((entry) => entry.allPaths));
-  const comparablePaths = new Set(
-    fieldEntries
-      .filter((entry) => entry.fieldClass !== 'formatExtension')
-      .filter((entry) => formatCanRead(entry, 'html') && formatCanRead(entry, 'indesign'))
-      .flatMap((entry) => entry.allPaths),
-  );
+  const comparablePaths = adapterComparableModelPaths(fieldEntries);
   const violations = [];
 
   for (const [adapter, paths] of Object.entries(surfaces)) {
@@ -890,21 +935,87 @@ function skipRegexLiteral(source, index) {
 function sampleHtmlSnapshot() {
   return {
     metadata: { source: 'sample.html' },
+    sourcePackageInput: {
+      title: 'Sample',
+      attributes: {
+        'data-id-document': 'sample',
+        'data-id-profile': 'architecture-report',
+        'data-id-source-package-config': 'deck.config.json',
+        'data-id-source-package-schema': '1',
+        'data-id-semantic-preset': 'semantic-preset.json',
+      },
+      parentPages: [{
+        id: 'A-Parent',
+        name: 'A-Parent',
+        guides: [{ orientation: 'horizontal', position: 90, source: 'parent-page' }],
+      }],
+      synthesizedStyles: [{
+        token: 'synth-callout',
+        displayName: 'Synth Callout',
+        kind: 'object',
+        fingerprint: 'sample-fingerprint',
+        source: 'sample',
+        properties: { fillColor: '#ffffff' },
+      }],
+    },
     pages: [{
       id: 'page-1',
       index: 0,
       width: 100,
       height: 100,
-      attributes: { 'data-page': 'page-1', 'data-id-semantic': 'cover' },
+      attributes: {
+        'data-page': 'page-1',
+        'data-id-semantic': 'cover',
+        'data-id-layout': 'cover-layout',
+        'data-id-margin-top': '5',
+        'data-id-margin-right': '6',
+        'data-id-margin-bottom': '7',
+        'data-id-margin-left': '8',
+        'data-id-grid': '12x6',
+        'data-id-column-gutter': '4',
+        'data-id-row-gutter': '3',
+        'data-id-baseline': '2',
+        'data-id-baseline-guides': 'baseline',
+        'data-id-guide-mode': 'explicit',
+        'data-id-snap-grid': '4',
+        'data-id-snap-grid-x': '4',
+        'data-id-snap-grid-y': '4',
+      },
       items: [{
         id: 'item-1',
         role: 'text',
         tagName: 'p',
         text: 'Hello',
+        runs: [{
+          text: 'Hello',
+          tagName: 'span',
+          classList: ['run'],
+          attributes: { 'data-id-character-style': 'emphasis' },
+        }],
         attributes: {
           'data-id-semantic': 'title',
+          'data-id-layout': 'title-layout',
+          'data-id-layer': 'Layer 1',
+          'data-id-paragraph-style': 'body',
+          'data-id-paragraph-style-name': 'body',
           'data-id-frame-style': 'callout-frame',
           'data-id-frame-style-name': 'Callout Frame',
+          'data-id-character-style': 'emphasis',
+          'data-id-character-style-name': 'emphasis',
+          'data-id-object-style': 'object-style',
+          'data-id-object-style-name': 'Object Style',
+          'data-id-table-style': 'default-table',
+          'data-id-table-style-name': 'default-table',
+          'data-id-style': 'generic-style',
+          'data-id-style-token': 'synth-callout',
+          'data-id-style-name': 'Synth Callout',
+          'data-id-paragraph-composer': 'Adobe Paragraph Composer',
+        },
+        cssVars: {
+          '--grid-col': '1',
+          '--grid-span': '4',
+          '--grid-row': '1',
+          '--grid-row-span': '1',
         },
         bounds: { x: 0, y: 0, width: 10, height: 10 },
         computedStyle: {
@@ -915,12 +1026,34 @@ function sampleHtmlSnapshot() {
           paddingBottom: '1px',
           paddingLeft: '1px',
           overflow: 'hidden',
+          opacity: '0.75',
         },
         visualStyle: {
+          fillColor: '#eeeeee',
+          fillOpacity: 80,
           strokeColor: '#999999',
           strokeWeight: 1,
+          strokeOpacity: 90,
+          strokeStyle: 'solid',
+          strokeAlignment: 'center',
           lineStartMarker: { rawName: 'None' },
           lineEndMarker: { rawName: 'Arrow' },
+          strokeLineCap: 'round',
+          strokeLineJoin: 'round',
+          strokeMiterLimit: 4,
+          cornerRadius: 2,
+        },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [{
+            closed: false,
+            points: [{
+              anchor: { x: 0, y: 0 },
+              leftDirection: { x: 0, y: 0 },
+              rightDirection: { x: 10, y: 10 },
+              pointType: 'corner',
+            }],
+          }],
         },
       }, {
         id: 'parent-rule-on-page',
@@ -953,7 +1086,13 @@ function sampleHtmlSnapshot() {
             rowSpan: 1,
             colSpan: 1,
             boundsMm: { x: 20, y: 20, width: 60, height: 30 },
-            runs: [],
+            runs: [{
+              text: 'Area',
+              tagName: 'span',
+              classList: ['table-run'],
+              attributes: { 'data-id-character-style': 'emphasis' },
+              characterStyle: 'emphasis',
+            }],
           }],
         }],
         content: {
@@ -972,6 +1111,7 @@ function sampleHtmlSnapshot() {
               rowSpan: 1,
               colSpan: 1,
               paragraphStyle: null,
+              cellStyle: 'cell-body',
               fillColor: null,
               fillOpacity: 80,
               borderColor: '#cccccc',
@@ -990,13 +1130,119 @@ function sampleHtmlSnapshot() {
                 left: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
               },
               runs: [],
+            }, {
+              index: 1,
+              text: 'Value',
+              header: false,
+              rowSpan: 1,
+              colSpan: 1,
+              paragraphStyle: null,
+              cellStyle: 'cell-body',
+              fillColor: null,
+              fillOpacity: 80,
+              borderColor: '#cccccc',
+              borderWeight: 1,
+              textColor: null,
+              bounds: { x: 40, y: 20, width: 40, height: 30 },
+              pointSize: null,
+              leading: null,
+              textAlign: 'left',
+              padding: { top: 0, right: 0, bottom: 0, left: 0 },
+              paddingUnit: 'pt',
+              borders: {
+                top: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                right: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                bottom: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                left: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+              },
+              runs: [{
+                text: 'Value',
+                tagName: 'span',
+                classList: ['table-run'],
+                attributes: { 'data-id-character-style': 'emphasis' },
+                characterStyle: 'emphasis',
+              }],
             }],
           }],
         },
       }],
     }],
-    styles: {},
-    assets: [],
+    styleLayout: {
+      unitMode: 'presentation',
+      targetUnit: 'pt',
+      scale: 1,
+      targetSize: { width: 100, height: 100 },
+    },
+    styles: {
+      paragraphStyles: {
+        body: {
+          name: 'body',
+          token: 'body',
+          displayName: 'body',
+          safeName: 'body',
+          css: 'font-size: 12pt;',
+          source: 'html',
+          composer: 'Adobe Paragraph Composer',
+          labels: [{ kind: 'style', id: 'body', token: 'body', displayName: 'body', styleKind: 'paragraphStyles' }],
+        },
+      },
+      characterStyles: {
+        emphasis: {
+          name: 'emphasis',
+          token: 'emphasis',
+          displayName: 'emphasis',
+          safeName: 'emphasis',
+          css: 'font-weight: 600;',
+          source: 'html',
+          labels: [{ kind: 'style', id: 'emphasis', token: 'emphasis', displayName: 'emphasis', styleKind: 'characterStyles' }],
+        },
+      },
+      objectStyles: {
+        'object-style': {
+          name: 'Object Style',
+          token: 'object-style',
+          displayName: 'Object Style',
+          safeName: 'object-style',
+          css: 'stroke: #999999;',
+          source: 'html',
+          labels: [{ kind: 'style', id: 'object-style', token: 'object-style', displayName: 'Object Style', styleKind: 'objectStyles' }],
+        },
+      },
+      frameStyles: {
+        'callout-frame': {
+          name: 'Callout Frame',
+          token: 'callout-frame',
+          displayName: 'Callout Frame',
+          safeName: 'callout-frame',
+          css: 'object-fit: contain;',
+          source: 'html',
+          labels: [{ kind: 'style', id: 'callout-frame', token: 'callout-frame', displayName: 'Callout Frame', styleKind: 'frameStyles' }],
+        },
+      },
+      tableStyles: {
+        'default-table': {
+          name: 'default-table',
+          token: 'default-table',
+          displayName: 'default-table',
+          safeName: 'default-table',
+          css: 'border-collapse: collapse;',
+          source: 'html',
+          labels: [{ kind: 'style', id: 'default-table', token: 'default-table', displayName: 'default-table', styleKind: 'tableStyles' }],
+        },
+      },
+      cellStyles: {
+        'cell-body': {
+          name: 'cell-body',
+          token: 'cell-body',
+          displayName: 'cell-body',
+          safeName: 'cell-body',
+          css: 'padding: 0;',
+          source: 'html',
+          labels: [{ kind: 'style', id: 'cell-body', token: 'cell-body', displayName: 'cell-body', styleKind: 'cellStyles' }],
+        },
+      },
+    },
+    assets: [{ kind: 'image', path: '\\\\nas\\share\\sample.png' }],
   };
 }
 
@@ -1005,30 +1251,126 @@ function sampleReverseSnapshot() {
     metadata: { mode: 'observation' },
     document: {
       name: 'sample.indd',
-      labels: [{ kind: 'document', id: 'sample', title: 'sample', unitMode: 'presentation', coordinateUnit: 'pt' }],
+      labels: [{
+        protocol: 'html_indesign',
+        version: 1,
+        kind: 'document',
+        id: 'sample',
+        source: 'indesign-reverse',
+        title: 'sample',
+        unitMode: 'presentation',
+        coordinateUnit: 'pt',
+        profile: 'architecture-report',
+        sourcePackage: {
+          config: 'deck.config.json',
+          schemaVersion: 1,
+          parentPages: [{ id: 'A-Parent', name: 'A-Parent' }],
+          semanticPreset: { relativePath: 'semantic-preset.json' },
+        },
+      }],
     },
     pages: [{
       id: 'page-1',
       index: 0,
       bounds: { width: 100, height: 100 },
-      labels: [{ kind: 'page', id: 'page-1', semantic: 'cover' }],
+      labels: [{
+        protocol: 'html_indesign',
+        version: 1,
+        kind: 'page',
+        id: 'page-1',
+        source: 'indesign-reverse',
+        semantic: 'cover',
+        layout: 'cover-layout',
+        margins: { top: 5, right: 6, bottom: 7, left: 8 },
+        grid: {
+          columns: 12,
+          rows: 6,
+          columnGutter: 4,
+          rowGutter: 3,
+          baseline: 2,
+          baselineGuideMode: 'baseline',
+        },
+      }],
       items: [{
         id: 'item-1',
         type: 'TextFrame',
         text: 'Hello',
+        textRuns: [{
+          text: 'Hello',
+          tagName: 'span',
+          classList: ['run'],
+          attributes: { 'data-id-character-style': 'emphasis' },
+          characterStyle: 'emphasis',
+        }],
         bounds: { x: 0, y: 0, width: 10, height: 10 },
         visualStyle: {
+          fillColor: '#eeeeee',
+          fillOpacity: 80,
           strokeColor: '#999999',
           strokeWeight: 1,
+          strokeOpacity: 90,
+          strokeStyle: 'solid',
+          strokeAlignment: 'center',
           lineStartMarker: { rawName: 'None' },
           lineEndMarker: { rawName: 'Arrow' },
+          strokeLineCap: 'round',
+          strokeLineJoin: 'round',
+          strokeMiterLimit: 4,
+          cornerRadius: 2,
+          opacity: 75,
         },
-        labels: [{ kind: 'item', id: 'item-1', semantic: 'title', role: 'text', htmlTag: 'p' }],
+        textStyle: {
+          composer: 'Adobe Paragraph Composer',
+          pointSize: 12,
+        },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [{
+            closed: false,
+            points: [{
+              anchor: { x: 0, y: 0 },
+              leftDirection: { x: 0, y: 0 },
+              rightDirection: { x: 10, y: 10 },
+              pointType: 'corner',
+            }],
+          }],
+        },
+        styleRefs: {
+          layer: 'Layer 1',
+          paragraphStyle: 'body',
+          characterStyle: 'emphasis',
+          objectStyle: 'object-style',
+          frameStyle: 'callout-frame',
+          tableStyle: 'default-table',
+          genericStyle: 'generic-style',
+          displayName: 'Synth Callout',
+          paragraphStyleDisplayName: 'body',
+          characterStyleDisplayName: 'emphasis',
+          objectStyleDisplayName: 'Object Style',
+          frameStyleDisplayName: 'Callout Frame',
+          tableStyleDisplayName: 'default-table',
+          synthesizedToken: 'synth-callout',
+          synthesizedName: 'Synth Callout',
+        },
+        labels: [{
+          protocol: 'html_indesign',
+          version: 1,
+          kind: 'item',
+          id: 'item-1',
+          source: 'indesign-reverse',
+          semantic: 'title',
+          role: 'text',
+          htmlTag: 'p',
+          layout: {
+            grid: { col: 1, span: 4, row: 1, rowSpan: 1 },
+          },
+        }],
       }, {
         id: 'table-1',
         type: 'TextFrame',
         text: '',
         bounds: { x: 20, y: 20, width: 60, height: 30 },
+        styleRefs: { cellStyle: 'cell-body' },
         table: {
           rowCount: 1,
           columnCount: 1,
@@ -1044,6 +1386,7 @@ function sampleReverseSnapshot() {
               rowSpan: 1,
               colSpan: 1,
               paragraphStyle: null,
+              cellStyle: 'cell-body',
               fillColor: null,
               fillOpacity: 80,
               borderColor: '#cccccc',
@@ -1061,56 +1404,122 @@ function sampleReverseSnapshot() {
                 bottom: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
                 left: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
               },
-              runs: [],
+              runs: [{
+                text: 'Area',
+                tagName: 'span',
+                classList: ['table-run'],
+                attributes: { 'data-id-character-style': 'emphasis' },
+                characterStyle: 'emphasis',
+              }],
             }],
           }],
         },
-        labels: [{ kind: 'item', id: 'table-1', semantic: 'metrics-table', role: 'table' }],
+        labels: [{
+          protocol: 'html_indesign',
+          version: 1,
+          kind: 'item',
+          id: 'table-1',
+          source: 'indesign-reverse',
+          semantic: 'metrics-table',
+          role: 'table',
+        }],
       }],
     }],
     parentPages: [{
       name: 'A-Parent',
-      labels: [{ kind: 'parentPage', id: 'A-Parent', displayName: 'A-Parent' }],
+        labels: [{ protocol: 'html_indesign', version: 1, kind: 'parentPage', id: 'A-Parent', displayName: 'A-Parent', source: 'indesign-reverse' }],
       items: [{
         id: 'parent-rule',
         type: 'TextFrame',
         text: 'Parent',
         bounds: { x: 0, y: 90, width: 100, height: 1 },
-        labels: [{ kind: 'item', id: 'parent-rule', role: 'text' }],
+        labels: [{ protocol: 'html_indesign', version: 1, kind: 'item', id: 'parent-rule', role: 'text', source: 'indesign-reverse' }],
       }],
     }],
-    layers: [],
+    layers: [{
+      name: 'Layer 1',
+      visible: true,
+      printable: true,
+      locked: false,
+      labels: [{ protocol: 'html_indesign', version: 1, kind: 'layer', token: 'Layer 1', displayName: 'Layer 1', source: 'indesign-reverse' }],
+    }],
     styles: {
+      paragraphStyles: [
+        {
+          name: 'body',
+          safeName: 'body',
+          css: 'font-size: 12pt;',
+          source: 'indesign-reverse',
+          composer: 'Adobe Paragraph Composer',
+          labels: [{ protocol: 'html_indesign', version: 1, kind: 'style', id: 'body', token: 'body', displayName: 'body', styleKind: 'paragraphStyles', source: 'indesign-reverse' }],
+        },
+      ],
+      characterStyles: [
+        {
+          name: 'emphasis',
+          safeName: 'emphasis',
+          css: 'font-weight: 600;',
+          source: 'indesign-reverse',
+          labels: [{ protocol: 'html_indesign', version: 1, kind: 'style', id: 'emphasis', token: 'emphasis', displayName: 'emphasis', styleKind: 'characterStyles', source: 'indesign-reverse' }],
+        },
+      ],
       objectStyles: [
         {
           name: '自动对象-21251102',
-          labels: [{ kind: 'style', id: '自动对象-21251102', token: '自动对象-21251102', displayName: '自动对象-21251102', styleKind: 'objectStyles' }],
+          safeName: 'object-style',
+          css: 'stroke: #999999;',
+          source: 'indesign-reverse',
+          labels: [{ protocol: 'html_indesign', version: 1, kind: 'style', id: '自动对象-21251102', token: '自动对象-21251102', displayName: '自动对象-21251102', styleKind: 'objectStyles', source: 'indesign-reverse' }],
         },
       ],
       tableStyles: [
         {
           name: 'default-table',
-          labels: [{ kind: 'style', id: 'default-table', token: 'default-table', displayName: 'default-table', styleKind: 'tableStyles' }],
+          safeName: 'default-table',
+          css: 'border-collapse: collapse;',
+          source: 'indesign-reverse',
+          labels: [{ protocol: 'html_indesign', version: 1, kind: 'style', id: 'default-table', token: 'default-table', displayName: 'default-table', styleKind: 'tableStyles', source: 'indesign-reverse' }],
+        },
+      ],
+      cellStyles: [
+        {
+          name: 'cell-body',
+          safeName: 'cell-body',
+          css: 'padding: 0;',
+          source: 'indesign-reverse',
+          labels: [{ protocol: 'html_indesign', version: 1, kind: 'style', id: 'cell-body', token: 'cell-body', displayName: 'cell-body', styleKind: 'cellStyles', source: 'indesign-reverse' }],
         },
       ],
       frameStyles: [
         {
           name: 'Callout Frame',
+          safeName: 'callout-frame',
+          css: 'object-fit: contain;',
+          source: 'indesign-reverse',
           fit: 'contain',
           position: '50% 50%',
           inset: { top: 1, right: 1, bottom: 1, left: 1 },
           overflow: 'hidden',
-          labels: [{ kind: 'style', id: 'callout-frame', token: 'callout-frame', displayName: 'Callout Frame', styleKind: 'frameStyles' }],
+          labels: [{ protocol: 'html_indesign', version: 1, kind: 'style', id: 'callout-frame', token: 'callout-frame', displayName: 'Callout Frame', styleKind: 'frameStyles', source: 'indesign-reverse' }],
         },
       ],
     },
-    assets: [],
+    assets: [{ kind: 'image', path: '\\\\nas\\share\\sample.png' }],
   };
 }
 
 function formatCanRead(entry, format) {
   const capability = entry.capabilities && entry.capabilities[format];
-  return capability && !['unsupported'].includes(capability.read);
+  return capability && ['native', 'lossless'].includes(capability.read);
+}
+
+function adapterComparableModelPaths(fieldEntries) {
+  return new Set(
+    fieldEntries
+      .filter((entry) => entry.fieldClass === 'canonical')
+      .filter((entry) => formatCanRead(entry, 'html') && formatCanRead(entry, 'indesign'))
+      .map((entry) => entry.canonicalPath),
+  );
 }
 
 function adapterFile(adapter) {

@@ -1,6 +1,6 @@
 const AUTHORING_CANONICAL_CAPABILITIES = Object.freeze({
   html: { read: 'native', write: 'native', persist: 'native' },
-  indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+  indesign: { read: 'observe-only', write: 'lossless', persist: 'lossless' },
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
 });
 

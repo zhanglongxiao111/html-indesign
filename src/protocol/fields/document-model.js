@@ -16,6 +16,24 @@ const FORMAT_EXTENSION_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
 });
 
+const INDESIGN_LAYER_CAPABILITIES = Object.freeze({
+  html: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+  indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
+
+const ABSTRACT_STYLE_RESOURCE_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+  indesign: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
+
+const CELL_STYLE_RESOURCE_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'native', persist: 'native' },
+  indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
+});
+
 const STYLE_COLLECTIONS = Object.freeze([
   'paragraphStyles',
   'characterStyles',
@@ -91,32 +109,38 @@ function parentPageEntries() {
 
 function layerEntries() {
   return [
-    canonical('layers[].token', [], 'string'),
-    canonical('layers[].displayName', [], 'string'),
-    canonical('layers[].name', [], 'string'),
-    canonical('layers[].visible', [], 'boolean'),
-    canonical('layers[].printable', [], 'boolean'),
-    canonical('layers[].locked', [], 'boolean'),
-    sourceMetadata('layers[].labels', [], 'array'),
+    canonical('layers[].token', [], 'string', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
+    canonical('layers[].displayName', [], 'string', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
+    canonical('layers[].name', [], 'string', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
+    canonical('layers[].visible', [], 'boolean', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
+    canonical('layers[].printable', [], 'boolean', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
+    canonical('layers[].locked', [], 'boolean', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
+    sourceMetadata('layers[].labels', [], 'array', { capabilities: INDESIGN_LAYER_CAPABILITIES }),
   ];
 }
 
 function styleCollectionEntries(collection) {
+  const extra = collection === 'cellStyles'
+    ? { capabilities: CELL_STYLE_RESOURCE_CAPABILITIES }
+    : {};
   return [
     canonical(`styles.${collection}`, [], 'object'),
-    ...styleResourceEntries(`styles.${collection}[]`),
+    ...styleResourceEntries(`styles.${collection}[]`, extra),
   ];
 }
 
-function styleResourceEntries(prefix) {
+function styleResourceEntries(prefix, extra = {}) {
+  const styleResourceExtra = prefix === 'styles[]'
+    ? { capabilities: ABSTRACT_STYLE_RESOURCE_CAPABILITIES }
+    : extra;
   return [
-    canonical(`${prefix}.name`, [], 'string'),
-    canonical(`${prefix}.token`, [], 'string'),
-    canonical(`${prefix}.displayName`, [], 'string'),
-    canonical(`${prefix}.safeName`, [], 'string'),
-    canonical(`${prefix}.css`, [], 'string'),
-    sourceMetadata(`${prefix}.source`, [], 'string'),
-    sourceMetadata(`${prefix}.labels`, [], 'array'),
+    canonical(`${prefix}.name`, [], 'string', styleResourceExtra),
+    canonical(`${prefix}.token`, [], 'string', styleResourceExtra),
+    canonical(`${prefix}.displayName`, [], 'string', styleResourceExtra),
+    sourceMetadata(`${prefix}.safeName`, [], 'string', styleResourceExtra),
+    sourceMetadata(`${prefix}.css`, [], 'string', styleResourceExtra),
+    sourceMetadata(`${prefix}.source`, [], 'string', styleResourceExtra),
+    sourceMetadata(`${prefix}.labels`, [], 'array', styleResourceExtra),
     formatExtension(`${prefix}.indesignFeatures`, [], 'object'),
     ...STYLE_FEATURES.map((feature) => (
       formatExtension(`${prefix}.indesignFeatures.${feature}`, [], 'object')

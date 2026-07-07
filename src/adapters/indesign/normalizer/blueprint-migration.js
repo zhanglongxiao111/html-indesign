@@ -3,13 +3,18 @@ const {
   parseLabeledSegments,
   parseSlotName,
   parseSlotType,
+  createProtocolLabel,
 } = require('../../../shared/labels');
+const { validateSemanticModel } = require('../../../semantic-model');
 
 const HISTORICAL_BLUEPRINT_INPUT = 'historical-blueprint';
 const BLUEPRINT_MIGRATION_SOURCE = 'blueprint-migration';
 const BLUEPRINT_MIGRATION_LAYOUT = 'blueprint-migration';
 const SLOT_CONFIDENCE = 0.85;
 const OBSERVATION_CONFIDENCE = 0.65;
+const ADAPTER_VALIDATION_OPTIONS = Object.freeze({
+  strictFields: true,
+});
 
 function blueprintMigrationToSemanticModel(blueprint, options = {}) {
   assertBlueprint(blueprint);
@@ -25,14 +30,21 @@ function blueprintMigrationToSemanticModel(blueprint, options = {}) {
   ));
   const assets = collectAssets(pages);
 
-  return {
+  const model = {
     kind: 'DocumentModel',
     id: documentId,
     title: documentName,
     source: documentName,
     unitMode: 'print',
     coordinateUnit: 'mm',
-    labels: [],
+    labels: [createProtocolLabel({
+      kind: 'document',
+      id: documentId,
+      source: BLUEPRINT_MIGRATION_SOURCE,
+      title: documentName,
+      unitMode: 'print',
+      coordinateUnit: 'mm',
+    })],
     parentPages: [],
     pages,
     layers: [],
@@ -57,6 +69,9 @@ function blueprintMigrationToSemanticModel(blueprint, options = {}) {
     },
     reverseMode: mode,
   };
+  const validation = validateSemanticModel(model, ADAPTER_VALIDATION_OPTIONS);
+  throwIfSemanticModelInvalid(model, validation, 'indesign blueprintMigrationToSemanticModel');
+  return model;
 }
 
 function blueprintMasterToPage(masterName, master, index, blueprint) {
@@ -95,7 +110,13 @@ function blueprintMasterToPage(masterName, master, index, blueprint) {
     height: requiredNumber(master.height, `Historical blueprint master ${masterName} is missing height`),
     margins: null,
     guides: [],
-    labels: [],
+    labels: [createProtocolLabel({
+      kind: 'page',
+      id: masterName,
+      source: BLUEPRINT_MIGRATION_SOURCE,
+      semantic: masterName,
+      layout: BLUEPRINT_MIGRATION_LAYOUT,
+    })],
     source: BLUEPRINT_MIGRATION_SOURCE,
     migration: {
       source: BLUEPRINT_MIGRATION_SOURCE,
@@ -130,7 +151,16 @@ function blueprintItemToModel(item, context) {
       frameStyle: null,
     },
     content: { text: normalizeText(item.content || '') },
-    labels: [],
+    labels: [createProtocolLabel({
+      kind: 'item',
+      id,
+      source: BLUEPRINT_MIGRATION_SOURCE,
+      role,
+      semantic: context.isSlot ? slotName : semanticForStaticItem(item, role),
+      htmlTag: tagForBlueprintRole(role),
+      className: htmlClassForBlueprintItem({ isSlot: context.isSlot, role, slotName }),
+      sourceText: normalizeText(item.content || ''),
+    })],
     source: BLUEPRINT_MIGRATION_SOURCE,
     zIndex: Number.isFinite(zIndex) ? zIndex : null,
     inlineStyle,
@@ -314,6 +344,23 @@ function assertBlueprint(blueprint) {
   if (!blueprint.masters || typeof blueprint.masters !== 'object') {
     throw new Error('historical blueprint is missing masters');
   }
+}
+
+function throwIfSemanticModelInvalid(model, validation, adapter) {
+  if (validation.valid) return;
+  const issues = validation.errors || [];
+  const firstIssue = issues[0] || { code: 'SEMANTIC_MODEL_INVALID', message: 'Semantic model validation failed.' };
+  const details = issues
+    .slice(0, 5)
+    .map((issue) => issue.path || issue.code || issue.message)
+    .filter(Boolean)
+    .join(', ');
+  const error = new Error(`SEMANTIC_MODEL_VALIDATION_FAILED:${adapter}:${details || firstIssue.message}`);
+  error.code = 'SEMANTIC_MODEL_VALIDATION_FAILED';
+  error.adapter = adapter;
+  error.validation = validation;
+  error.model = model;
+  throw error;
 }
 
 function omitUndefined(value) {

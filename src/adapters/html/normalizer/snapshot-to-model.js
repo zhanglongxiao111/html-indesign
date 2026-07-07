@@ -21,6 +21,20 @@ if (!ITEM_STYLE_REFS_FIELD || !Array.isArray(ITEM_STYLE_REFS_FIELD.allowedKeys))
   throw new Error('ITEM_STYLE_REFS_ALLOWED_KEYS_UNREGISTERED');
 }
 const ITEM_STYLE_REF_ALLOWED_KEYS = new Set(ITEM_STYLE_REFS_FIELD.allowedKeys);
+const ITEM_STYLE_REF_ATTRS = Object.freeze({
+  paragraphStyle: firstHtmlReadAttr('items[].styleRefs.paragraphStyle'),
+  characterStyle: firstHtmlReadAttr('items[].styleRefs.characterStyle'),
+  objectStyle: firstHtmlReadAttr('items[].styleRefs.objectStyle'),
+  frameStyle: firstHtmlReadAttr('items[].styleRefs.frameStyle'),
+  tableStyle: firstHtmlReadAttr('items[].styleRefs.tableStyle'),
+  cellStyle: firstHtmlReadAttr('items[].styleRefs.cellStyle'),
+  genericStyle: firstHtmlReadAttr('items[].styleRefs.genericStyle'),
+  paragraphStyleDisplayName: firstHtmlReadAttr('items[].styleRefs.paragraphStyleDisplayName'),
+  characterStyleDisplayName: firstHtmlReadAttr('items[].styleRefs.characterStyleDisplayName'),
+  objectStyleDisplayName: firstHtmlReadAttr('items[].styleRefs.objectStyleDisplayName'),
+  frameStyleDisplayName: firstHtmlReadAttr('items[].styleRefs.frameStyleDisplayName'),
+  tableStyleDisplayName: firstHtmlReadAttr('items[].styleRefs.tableStyleDisplayName'),
+});
 const ADAPTER_VALIDATION_OPTIONS = Object.freeze({
   strictFields: true,
 });
@@ -320,10 +334,22 @@ function itemModelFor(item, page, layout) {
   const parentId = nearestSourceParentId(item, page);
   const structure = { parentId, order: item.documentOrder || 0, containerPolicy: parentId === page.id ? 'group' : 'child' };
   const styleRefs = filterItemStyleRefs({
-    ...(item.styleRefs || {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.paragraphStyle] ? { paragraphStyle: attrs[ITEM_STYLE_REF_ATTRS.paragraphStyle] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.characterStyle] ? { characterStyle: attrs[ITEM_STYLE_REF_ATTRS.characterStyle] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.objectStyle] ? { objectStyle: attrs[ITEM_STYLE_REF_ATTRS.objectStyle] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.frameStyle] ? { frameStyle: attrs[ITEM_STYLE_REF_ATTRS.frameStyle] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.tableStyle] ? { tableStyle: attrs[ITEM_STYLE_REF_ATTRS.tableStyle] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.cellStyle] ? { cellStyle: attrs[ITEM_STYLE_REF_ATTRS.cellStyle] } : {}),
     ...(attrs['data-id-layer'] ? { layer: attrs['data-id-layer'] } : {}),
     ...(attrs['data-id-style-token'] ? { synthesizedToken: attrs['data-id-style-token'] } : {}),
     ...(attrs['data-id-style-name'] ? { synthesizedName: attrs['data-id-style-name'] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.genericStyle] ? { genericStyle: attrs[ITEM_STYLE_REF_ATTRS.genericStyle] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.paragraphStyleDisplayName] ? { paragraphStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.paragraphStyleDisplayName] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.characterStyleDisplayName] ? { characterStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.characterStyleDisplayName] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.objectStyleDisplayName] ? { objectStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.objectStyleDisplayName] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.frameStyleDisplayName] ? { frameStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.frameStyleDisplayName] } : {}),
+    ...(attrs[ITEM_STYLE_REF_ATTRS.tableStyleDisplayName] ? { tableStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.tableStyleDisplayName] } : {}),
+    ...(item.styleRefs || {}),
   });
   const parentPageName = attrs['data-id-parent-page-item'] || null;
   const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;
@@ -396,6 +422,15 @@ function filterItemStyleRefs(styleRefs) {
     }
   }
   return filtered;
+}
+
+function firstHtmlReadAttr(modelPath) {
+  const field = fieldRegistry.getByPath(modelPath);
+  const readAttrs = field && field.html && field.html.readAttrs;
+  if (!Array.isArray(readAttrs) || !readAttrs[0]) {
+    throw new Error(`STYLE_REF_HTML_ATTR_UNREGISTERED:${modelPath}`);
+  }
+  return readAttrs[0];
 }
 
 function mergeVisualStyleFacts(...facts) {

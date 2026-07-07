@@ -29,7 +29,6 @@ test('synthesized style fields are registered with lifecycle and format capabili
     'styles.synthesized[].properties',
     'items[].styleRefs.synthesizedToken',
     'items[].styleRefs.synthesizedName',
-    'items[].styleOverrides',
   ]) {
     const field = assertRegistered(path);
     assert.equal(field.owner, 'synthesized-styles');
@@ -44,6 +43,19 @@ test('synthesized style fields are registered with lifecycle and format capabili
       persist: 'native',
     });
   }
+
+  const styleOverrides = assertRegistered('items[].styleOverrides');
+  assert.equal(styleOverrides.owner, 'synthesized-styles');
+  assert.deepEqual(capabilityFor(fieldRegistry, 'items[].styleOverrides', 'html'), {
+    read: 'observe-only',
+    write: 'native',
+    persist: 'native',
+  });
+  assert.deepEqual(capabilityFor(fieldRegistry, 'items[].styleOverrides', 'indesign'), {
+    read: 'native',
+    write: 'native',
+    persist: 'native',
+  });
 
   assert.equal(
     fieldRegistry.getByPath('items[].styleRefs.synthesizedToken').html.writeAttrs[0],

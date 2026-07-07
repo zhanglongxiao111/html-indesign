@@ -66,6 +66,25 @@ function migrationObservation(canonicalPath, htmlAttr, type) {
   };
 }
 
+function migrationMetadata(canonicalPath, currentPaths, type) {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'observation',
+    lifecycle: 'active',
+    owner: 'reverse-model',
+    type,
+    capabilities: {
+      html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
+      pptx: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
+    },
+    validation: {
+      mayDriveStructuredCompilation: false,
+    },
+  };
+}
+
 module.exports = [
   {
     canonicalPath: 'pages[].observed',
@@ -107,6 +126,14 @@ module.exports = [
       mayDriveStructuredCompilation: false,
     },
   },
+  migrationMetadata('pages[].migration', [], 'object'),
+  migrationMetadata('pages[].migration.source', [], 'string'),
+  migrationMetadata('pages[].migration.masterName', [], 'string'),
+  migrationMetadata('items[].migration', [], 'object'),
+  migrationMetadata('items[].migration.source', [], 'string'),
+  migrationMetadata('items[].migration.label', [], 'string'),
+  migrationMetadata('items[].migration.description', [], 'string'),
+  migrationMetadata('items[].migration.evidence', [], 'array'),
   migrationObservation('items[].migration.isSlot', 'data-id-migration-slot', 'boolean|string'),
   migrationObservation('items[].migration.slotName', 'data-id-slot-name', 'string'),
   migrationObservation('items[].migration.slotType', 'data-id-slot-type', 'string'),

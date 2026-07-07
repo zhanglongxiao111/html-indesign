@@ -4,6 +4,12 @@ const TABLE_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'editable-shapes' },
 });
 
+const TABLE_CELL_STYLE_CAPABILITIES = Object.freeze({
+  html: { read: 'observe-only', write: 'native', persist: 'native' },
+  indesign: { read: 'native', write: 'native', persist: 'native' },
+  pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'editable-shapes' },
+});
+
 function tableField(canonicalPath, type, extra = {}) {
   return {
     canonicalPath,
@@ -15,6 +21,17 @@ function tableField(canonicalPath, type, extra = {}) {
     capabilities: TABLE_CAPABILITIES,
     ...extra,
   };
+}
+
+function tableSourceMetadata(canonicalPath, type) {
+  return tableField(canonicalPath, type, {
+    fieldClass: 'sourceMetadata',
+    capabilities: {
+      html: { read: 'native', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'native', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  });
 }
 
 module.exports = [
@@ -44,7 +61,9 @@ module.exports = [
   tableField('items[].table.rows[].cells[].rowSpan', 'integer'),
   tableField('items[].table.rows[].cells[].colSpan', 'integer'),
   tableField('items[].table.rows[].cells[].paragraphStyle', 'string'),
-  tableField('items[].table.rows[].cells[].cellStyle', 'string'),
+  tableField('items[].table.rows[].cells[].cellStyle', 'string', {
+    capabilities: TABLE_CELL_STYLE_CAPABILITIES,
+  }),
   tableField('items[].table.rows[].cells[].fillColor', 'string'),
   tableField('items[].table.rows[].cells[].fillOpacity', 'number'),
   tableField('items[].table.rows[].cells[].borderColor', 'string'),
@@ -59,8 +78,8 @@ module.exports = [
   tableField('items[].table.rows[].cells[].borders', 'object'),
   tableField('items[].table.rows[].cells[].runs', 'array'),
   tableField('items[].table.rows[].cells[].runs[].text', 'string'),
-  tableField('items[].table.rows[].cells[].runs[].tagName', 'string'),
-  tableField('items[].table.rows[].cells[].runs[].classList', 'array'),
-  tableField('items[].table.rows[].cells[].runs[].attributes', 'object'),
+  tableSourceMetadata('items[].table.rows[].cells[].runs[].tagName', 'string'),
+  tableSourceMetadata('items[].table.rows[].cells[].runs[].classList', 'array'),
+  tableSourceMetadata('items[].table.rows[].cells[].runs[].attributes', 'object'),
   tableField('items[].table.rows[].cells[].runs[].characterStyle', 'string'),
 ];

@@ -41,7 +41,7 @@ module.exports = [
     owner: 'text-content',
     type: 'object',
     capabilities: {
-      html: { read: 'native', write: 'native', persist: 'native' },
+      html: { read: 'observe-only', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },
       pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
     },
@@ -60,7 +60,7 @@ module.exports = [
     owner: 'text-content',
     type: 'string',
     capabilities: {
-      html: { read: 'native', write: 'native', persist: 'native' },
+      html: { read: 'observe-only', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },
       pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
     },
@@ -81,7 +81,7 @@ module.exports = [
     type: 'string',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
-      indesign: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'observe-only', write: 'native', persist: 'native' },
       pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'customData' },
     },
     indesign: {

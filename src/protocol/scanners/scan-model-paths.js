@@ -40,6 +40,7 @@ const PAGE_FIELD_PATHS = Object.freeze({
   semanticLayout: 'pages[].semanticLayout',
   sourceNode: 'pages[].sourceNode',
   grid: 'pages[].grid',
+  margins: 'pages[].margins',
   width: 'pages[].width',
   height: 'pages[].height',
   guides: 'pages[].guides',
@@ -48,9 +49,11 @@ const PAGE_FIELD_PATHS = Object.freeze({
   observedLabel: 'pages[].observedLabel',
   rejectedFields: 'pages[].rejectedFields',
   rejectionReasons: 'pages[].rejectionReasons',
+  migration: 'pages[].migration',
 });
 
 const ASSET_FIELD_PATHS = Object.freeze({
+  kind: 'assets[].kind',
   path: 'assets[].path',
   src: 'assets[].src',
   resolvedPath: 'assets[].resolvedPath',
@@ -58,6 +61,9 @@ const ASSET_FIELD_PATHS = Object.freeze({
   linked: 'assets[].linked',
   placement: 'assets[].placement',
   sourceSelector: 'assets[].sourceSelector',
+  source: 'assets[].source',
+  imageSize: 'assets[].imageSize',
+  cropped: 'assets[].cropped',
 });
 
 const LABEL_FIELD_PATHS = Object.freeze({
@@ -122,7 +128,7 @@ const ITEM_FIELD_PATHS = Object.freeze({
   bounds: 'items[].bounds',
   layerName: 'items[].layerName',
   semantic: 'items[].semantic',
-  layout: 'pages[].items[].layout',
+  layout: 'items[].layout',
   role: 'items[].role',
   paragraphStyle: 'items[].paragraphStyle',
   characterStyle: 'items[].characterStyle',
@@ -134,6 +140,7 @@ const ITEM_FIELD_PATHS = Object.freeze({
   text: 'items[].text',
   textRuns: 'items[].textRuns',
   textStyle: 'items[].textStyle',
+  source: 'items[].source',
   sourceFile: 'items[].sourceFile',
   sourceNode: 'items[].sourceNode',
   sourceAncestorNodes: 'items[].sourceAncestorNodes',
@@ -143,11 +150,13 @@ const ITEM_FIELD_PATHS = Object.freeze({
   sourceRuns: 'items[].sourceRuns',
   inlineStyle: 'items[].inlineStyle',
   styleOverrides: 'items[].styleOverrides',
+  styleRefs: 'items[].styleRefs',
   zIndex: 'items[].zIndex',
   firstLineFont: 'items[].firstLineFont',
   labelStatus: 'pages[].items[].labelStatus',
   rejectedFields: 'pages[].items[].rejectedFields',
   rejectionReasons: 'pages[].items[].rejectionReasons',
+  migration: 'items[].migration',
 });
 
 const ITEM_ASSET_FIELD_PATHS = Object.freeze({
@@ -159,6 +168,8 @@ const ITEM_ASSET_FIELD_PATHS = Object.freeze({
   cropped: 'items[].asset.cropped',
   preview: 'items[].asset.preview',
   pageNumber: 'items[].asset.pageNumber',
+  source: 'items[].asset.source',
+  imageSize: 'items[].asset.imageSize',
 });
 
 const ITEM_ASSET_PLACEMENT_FIELD_PATHS = Object.freeze({
@@ -177,6 +188,22 @@ const ITEM_EXTENSION_FIELD_PATHS = Object.freeze({
   }),
 });
 
+const PAGE_MIGRATION_FIELD_PATHS = Object.freeze({
+  source: 'pages[].migration.source',
+  masterName: 'pages[].migration.masterName',
+});
+
+const ITEM_MIGRATION_FIELD_PATHS = Object.freeze({
+  source: 'items[].migration.source',
+  isSlot: 'items[].migration.isSlot',
+  label: 'items[].migration.label',
+  slotName: 'items[].migration.slotName',
+  slotType: 'items[].migration.slotType',
+  description: 'items[].migration.description',
+  confidence: 'items[].migration.confidence',
+  evidence: 'items[].migration.evidence',
+});
+
 const ITEM_STYLE_REFS_FIELD_PATHS = Object.freeze({
   paragraphStyle: 'items[].styleRefs.paragraphStyle',
   characterStyle: 'items[].styleRefs.characterStyle',
@@ -187,6 +214,13 @@ const ITEM_STYLE_REFS_FIELD_PATHS = Object.freeze({
   layer: 'items[].styleRefs.layer',
   synthesizedToken: 'items[].styleRefs.synthesizedToken',
   synthesizedName: 'items[].styleRefs.synthesizedName',
+  genericStyle: 'items[].styleRefs.genericStyle',
+  displayName: 'items[].styleRefs.displayName',
+  paragraphStyleDisplayName: 'items[].styleRefs.paragraphStyleDisplayName',
+  characterStyleDisplayName: 'items[].styleRefs.characterStyleDisplayName',
+  objectStyleDisplayName: 'items[].styleRefs.objectStyleDisplayName',
+  frameStyleDisplayName: 'items[].styleRefs.frameStyleDisplayName',
+  tableStyleDisplayName: 'items[].styleRefs.tableStyleDisplayName',
 });
 
 const LABEL_STYLE_REFS_FIELD_PATHS = Object.freeze({
@@ -219,7 +253,26 @@ const ITEM_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
   strokeLineCap: 'items[].visualStyle.strokeLineCap',
   strokeLineJoin: 'items[].visualStyle.strokeLineJoin',
   strokeMiterLimit: 'items[].visualStyle.strokeMiterLimit',
+  strokeAlignment: 'items[].visualStyle.strokeAlignment',
   cornerRadius: 'items[].visualStyle.cornerRadius',
+  lineStartMarker: 'items[].visualStyle.lineStartMarker',
+  lineEndMarker: 'items[].visualStyle.lineEndMarker',
+});
+
+const PAGE_GRID_FIELD_PATHS = Object.freeze({
+  columns: 'pages[].grid.columns',
+  rows: 'pages[].grid.rows',
+  columnGutter: 'pages[].grid.columnGutter',
+  rowGutter: 'pages[].grid.rowGutter',
+  baseline: 'pages[].grid.baseline',
+  baselineGuideMode: 'pages[].grid.baselineGuideMode',
+});
+
+const PAGE_MARGIN_FIELD_PATHS = Object.freeze({
+  top: 'pages[].margins.top',
+  right: 'pages[].margins.right',
+  bottom: 'pages[].margins.bottom',
+  left: 'pages[].margins.left',
 });
 
 const ITEM_VECTOR_GEOMETRY_FIELD_PATHS = Object.freeze({
@@ -346,6 +399,15 @@ function scanPages(paths, seen, pages) {
       } else if (key === 'observedLabel') {
         addPath(paths, seen, PAGE_FIELD_PATHS.observedLabel);
         scanPageObservedLabel(paths, seen, value);
+      } else if (key === 'grid') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.grid);
+        scanObjectSurface(paths, seen, value, PAGE_GRID_FIELD_PATHS, 'pages[].grid');
+      } else if (key === 'margins') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.margins);
+        scanObjectSurface(paths, seen, value, PAGE_MARGIN_FIELD_PATHS, 'pages[].margins');
+      } else if (key === 'migration') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.migration);
+        scanObjectSurface(paths, seen, value, PAGE_MIGRATION_FIELD_PATHS, 'pages[].migration');
       } else if (hasOwn.call(PAGE_FIELD_PATHS, key)) {
         addPath(paths, seen, PAGE_FIELD_PATHS[key]);
       } else if (!STRUCTURAL_KEYS.has(key)) {
@@ -378,18 +440,22 @@ function scanItems(paths, seen, items, unknownPrefix) {
         scanItemObservedLabel(paths, seen, value);
       } else if (key === 'labels') {
         scanLabelArray(paths, seen, value);
+      } else if (key === 'styleRefs') {
+        addPath(paths, seen, ITEM_FIELD_PATHS.styleRefs);
+        scanObjectSurface(paths, seen, value, ITEM_STYLE_REFS_FIELD_PATHS, 'items[].styleRefs');
+      } else if (key === 'migration') {
+        addPath(paths, seen, ITEM_FIELD_PATHS.migration);
+        scanObjectSurface(paths, seen, value, ITEM_MIGRATION_FIELD_PATHS, 'items[].migration');
       } else if (hasOwn.call(ITEM_FIELD_PATHS, key)) {
         addPath(paths, seen, ITEM_FIELD_PATHS[key]);
       } else if (key === 'asset') {
         scanItemAsset(paths, seen, value);
       } else if (key === 'extensions') {
         scanItemExtensions(paths, seen, value, unknownPrefix);
-      } else if (key === 'styleRefs') {
-        scanObjectSurface(paths, seen, value, ITEM_STYLE_REFS_FIELD_PATHS, 'items[].styleRefs');
       } else if (key === 'visualStyle') {
-        scanObjectSurface(paths, seen, value, ITEM_VISUAL_STYLE_FIELD_PATHS, 'items[].visualStyle');
+        scanVisualStyle(paths, seen, value);
       } else if (key === 'vectorGeometry') {
-        scanObjectSurface(paths, seen, value, ITEM_VECTOR_GEOMETRY_FIELD_PATHS, 'items[].vectorGeometry');
+        scanVectorGeometry(paths, seen, value);
       } else if (key === 'content') {
         scanItemContent(paths, seen, value);
       } else if (key === 'table') {
@@ -460,6 +526,61 @@ function scanItemAsset(paths, seen, asset) {
       addPath(paths, seen, ITEM_ASSET_FIELD_PATHS[key]);
     } else if (!STRUCTURAL_KEYS.has(key)) {
       addPath(paths, seen, `items[].asset.${key}`);
+    }
+  }
+}
+
+function scanVisualStyle(paths, seen, visualStyle) {
+  if (!isPlainObject(visualStyle)) {
+    return;
+  }
+  for (const [key, value] of Object.entries(visualStyle)) {
+    if (key === 'lineStartMarker') {
+      addPath(paths, seen, ITEM_VISUAL_STYLE_FIELD_PATHS.lineStartMarker);
+      scanObjectSurface(paths, seen, value, {
+        rawName: 'items[].visualStyle.lineStartMarker.rawName',
+      }, 'items[].visualStyle.lineStartMarker');
+    } else if (key === 'lineEndMarker') {
+      addPath(paths, seen, ITEM_VISUAL_STYLE_FIELD_PATHS.lineEndMarker);
+      scanObjectSurface(paths, seen, value, {
+        rawName: 'items[].visualStyle.lineEndMarker.rawName',
+      }, 'items[].visualStyle.lineEndMarker');
+    } else if (hasOwn.call(ITEM_VISUAL_STYLE_FIELD_PATHS, key)) {
+      addPath(paths, seen, ITEM_VISUAL_STYLE_FIELD_PATHS[key]);
+    } else if (!STRUCTURAL_KEYS.has(key)) {
+      addPath(paths, seen, `items[].visualStyle.${key}`);
+    }
+  }
+}
+
+function scanVectorGeometry(paths, seen, vectorGeometry) {
+  if (!isPlainObject(vectorGeometry)) {
+    return;
+  }
+  for (const [key, value] of Object.entries(vectorGeometry)) {
+    if (key === 'paths') {
+      addPath(paths, seen, ITEM_VECTOR_GEOMETRY_FIELD_PATHS.paths);
+      scanVectorGeometryPaths(paths, seen, value);
+    } else if (hasOwn.call(ITEM_VECTOR_GEOMETRY_FIELD_PATHS, key)) {
+      addPath(paths, seen, ITEM_VECTOR_GEOMETRY_FIELD_PATHS[key]);
+    } else if (!STRUCTURAL_KEYS.has(key)) {
+      addPath(paths, seen, `items[].vectorGeometry.${key}`);
+    }
+  }
+}
+
+function scanVectorGeometryPaths(paths, seen, vectorPaths) {
+  if (!Array.isArray(vectorPaths)) {
+    return;
+  }
+  for (const vectorPath of vectorPaths) {
+    if (!isPlainObject(vectorPath) || !Array.isArray(vectorPath.points)) {
+      continue;
+    }
+    for (const point of vectorPath.points) {
+      if (isPlainObject(point) && hasOwn.call(point, 'pointType')) {
+        addPath(paths, seen, 'items[].vectorGeometry.paths[].points[].pointType');
+      }
     }
   }
 }
