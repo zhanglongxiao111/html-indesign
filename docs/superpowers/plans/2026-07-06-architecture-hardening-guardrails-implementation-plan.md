@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9a 进行中（W0 已完成；准备派执行子 agent 仅做 registry 裁定登记与 `PROTOCOL_FIELD_REGISTRY.md` 生成，不改 adapter/writer 行为；2026-07-07）。
+进度：9a 实现已提交，复审中（执行提交 `3b95d66`；范围为 registry 裁定登记、生成文档和协议测试，未改 adapter/writer 行为；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
