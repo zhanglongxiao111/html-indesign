@@ -94,6 +94,33 @@ test('parseCliResultJson returns nested result_json from indesign cli output', (
   });
 });
 
+test('parseCliResultJson returns current script run parsed payload', () => {
+  const parsed = parseCliResultJson(JSON.stringify({
+    ok: true,
+    data: {
+      parsed: {
+        ok: true,
+        outputs: {
+          pdf: 'D:/out/report.pdf',
+        },
+        counts: {
+          pages: 7,
+        },
+      },
+    },
+  }));
+
+  assert.deepEqual(parsed, {
+    ok: true,
+    outputs: {
+      pdf: 'D:/out/report.pdf',
+    },
+    counts: {
+      pages: 7,
+    },
+  });
+});
+
 test('assertPanelNameAuditOk rejects English panel-facing names', () => {
   assert.throws(() => assertPanelNameAuditOk({
     audit: {

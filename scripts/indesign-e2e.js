@@ -305,6 +305,9 @@ function parseCliResultJson(stdout) {
   if (parsed && parsed.data && parsed.data.parsed && parsed.data.parsed.result) {
     return JSON.parse(parsed.data.parsed.result);
   }
+  if (parsed && parsed.data && parsed.data.parsed && typeof parsed.data.parsed === 'object') {
+    return parsed.data.parsed;
+  }
   if (parsed && parsed.data) return parsed.data;
   return parsed;
 }
