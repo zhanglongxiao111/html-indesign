@@ -73,6 +73,29 @@ test('G8 treats package script targets and browser runtime asset scripts as owne
   }]);
 });
 
+test('G8 treats explicit require.main CLI entries as owned modules', () => {
+  const root = makeSampleProject({
+    'index.js': 'module.exports = {};\n',
+    'src/tools/generate.js': [
+      'function runCli() {}',
+      'if (require.main === module) {',
+      '  runCli();',
+      '}',
+      'module.exports = { runCli };',
+      '',
+    ].join('\n'),
+    'src/orphan.js': 'module.exports = {};\n',
+  });
+
+  const violations = collectG8Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G8.1 src module has an owner',
+    file: 'src/orphan.js',
+    detail: 'src module has no static incoming require edge',
+  }]);
+});
+
 test('G8 does not treat test-only requires as src module ownership', () => {
   const root = makeSampleProject({
     'index.js': 'module.exports = {};\n',
@@ -104,6 +127,7 @@ function collectG8Violations(repoRoot) {
   if (!fs.existsSync(srcRoot)) return [];
   const srcFiles = collectJavaScriptFiles(srcRoot);
   const packageScriptEntrypoints = collectPackageScriptEntrypoints(repoRoot);
+  const explicitCliEntrypoints = collectExplicitCliEntrypoints(srcFiles);
   const graphFiles = [
     ...srcFiles,
     ...collectJavaScriptFiles(path.join(repoRoot, 'scripts')),
@@ -115,6 +139,7 @@ function collectG8Violations(repoRoot) {
     path.join(repoRoot, 'index.js'),
     path.join(repoRoot, 'src/indesign-cli-plugin/index.js'),
     ...packageScriptEntrypoints,
+    ...explicitCliEntrypoints,
   ].filter((file) => fs.existsSync(file)).map((file) => path.resolve(file)));
   const owned = collectOwnedFiles(ownershipRoots, [
     ...graph.edges,
@@ -180,6 +205,14 @@ function collectPackageScriptEntrypoints(repoRoot) {
     }
   }
   return [...new Set(files)].filter((file) => fs.existsSync(file));
+}
+
+function collectExplicitCliEntrypoints(files) {
+  return files.filter((file) => hasRequireMainEntrypoint(fs.readFileSync(file, 'utf8')));
+}
+
+function hasRequireMainEntrypoint(source) {
+  return /\bif\s*\(\s*(?:require\.main\s*===\s*module|module\s*===\s*require\.main)\s*\)/.test(source);
 }
 
 function splitShellCommands(script) {
