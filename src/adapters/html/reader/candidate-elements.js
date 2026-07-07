@@ -1,9 +1,6 @@
 const { inferAssetKind, assetSourceFromElementLike } = require('../../../shared/assets');
 const {
-  HTML_DATA_ID_ATTRIBUTES,
-  ITEM_ROLE,
   htmlItemRoleFromElementFacts,
-  htmlPhysicalItemRoleFromAttributes,
 } = require('../../../protocol');
 
 function roleFromItem(item) {
@@ -16,10 +13,6 @@ function roleFromItem(item) {
     authoredStyle: item.authoredStyle,
   });
   const hasAssetSource = source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown';
-  if (hasAssetSource) return ITEM_ROLE.GRAPHIC;
-  const protocolRole = htmlPhysicalItemRoleFromAttributes(attributes);
-  if (protocolRole) return protocolRole;
-  if (attributes[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE]) return ITEM_ROLE.TEXT;
   return htmlItemRoleFromElementFacts({ tagName, attributes, hasAssetSource });
 }
 

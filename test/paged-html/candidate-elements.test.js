@@ -22,6 +22,13 @@ test('htmlItemRoleFromElementFacts is the shared registry-backed SVG role source
   assert.equal(registeredItemRole(ITEM_ROLE.ANNOTATION), ITEM_ROLE.ANNOTATION);
 });
 
+test('htmlItemRoleFromElementFacts treats paragraph-style elements as text', () => {
+  assert.equal(htmlItemRoleFromElementFacts({
+    tagName: 'div',
+    attributes: { 'data-id-paragraph-style': 'body-copy' },
+  }), ITEM_ROLE.TEXT);
+});
+
 test('roleFromItem uses protocol role for inline svg vectors without asset sources', () => {
   const role = roleFromItem({
     tagName: 'svg',

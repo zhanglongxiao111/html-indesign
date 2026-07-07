@@ -173,6 +173,28 @@ test('validateAuthoringRules skips grid checks for registered folio paragraph st
   assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
 });
 
+test('validateAuthoringRules skips grid checks for annotation roles', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'annotation-note',
+      role: 'shape',
+      tagName: 'div',
+      classList: ['annotation'],
+      attributes: { 'data-id-role': ITEM_ROLE.ANNOTATION },
+      boundsMm: { x: 13, y: 10, width: 20, height: 9 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { gridTolerance: 0.5 });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.warnings.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+});
+
 test('validateAuthoringRules does not treat snap grid as the page layout grid', () => {
   const snapshot = snapshotWithPage({
     attributes: {

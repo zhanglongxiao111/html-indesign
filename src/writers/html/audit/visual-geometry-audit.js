@@ -217,7 +217,7 @@ function isGeneratedPageBackground(element, context) {
   const page = context.referencePagesByIndex && context.referencePagesByIndex.get(element.pageIndex);
   if (!page || !page.id) return false;
   if (element.id !== `${page.id}-background`) return false;
-  if (!hasRegisteredRole(element, 'background') || !isRegisteredVectorRectangle(element)) return false;
+  if (!hasRegisteredRole(element, ITEM_ROLE.BACKGROUND) || !isRegisteredVectorRectangle(element)) return false;
   if (String(element.tagName || '').toLowerCase() !== 'svg') return false;
   const tolerance = Number.isFinite(Number(context.tolerance)) ? Number(context.tolerance) : 2;
   return maxDelta(geometryDelta({
@@ -230,7 +230,7 @@ function isGeneratedPageBackground(element, context) {
 
 function isGeneratedBorderFragment(element, context) {
   const match = /^(.*)-border-(left|right|top|bottom)$/.exec(String(element && element.id || ''));
-  if (!match || !hasRegisteredRole(element, 'decoration') || !isRegisteredVectorRectangle(element)) return false;
+  if (!match || !hasRegisteredRole(element, ITEM_ROLE.DECORATION) || !isRegisteredVectorRectangle(element)) return false;
   const baseReference = samePageElement(context.referenceElements, element, match[1]);
   const baseCandidate = samePageElement(context.candidateElements, element, match[1]);
   if (!baseReference || !baseCandidate || !isRegisteredVectorRectangle(baseReference)) return false;
@@ -239,7 +239,7 @@ function isGeneratedBorderFragment(element, context) {
 
 function isGeneratedTextFragment(element, context) {
   const match = /^(.*)-text$/.exec(String(element && element.id || ''));
-  if (!match || !hasRegisteredRole(element, 'text')) return false;
+  if (!match || !hasRegisteredRole(element, ITEM_ROLE.TEXT)) return false;
   const baseReference = samePageElement(context.referenceElements, element, match[1]);
   const baseCandidate = samePageElement(context.candidateElements, element, match[1]);
   if (!baseReference || !baseCandidate) return false;

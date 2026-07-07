@@ -1,8 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const { assetSourceFromElementLike, inferAssetKind } = require('../../../shared/assets');
 const {
   HTML_DATA_ID_ATTRIBUTES,
+  ITEM_ROLE,
   htmlItemRoleFromElementFacts,
 } = require('../../../protocol');
 
@@ -36,7 +38,7 @@ function documentModelContentInventory(model) {
         width: round(page.width || page.bounds && page.bounds.width),
         height: round(page.height || page.bounds && page.bounds.height),
       },
-      textDigest: items.filter((item) => item && item.role === 'text').map(modelText).filter(Boolean),
+      textDigest: items.filter((item) => item && item.role === ITEM_ROLE.TEXT).map(modelText).filter(Boolean),
       resources: items.map(modelResource).filter(Boolean),
       itemRoles: modelRoleDigest(items),
       geometry: items.filter((item) => item && item.bounds).map((item) => geometryEntry(item.id, item.role, item.bounds)),
@@ -135,6 +137,7 @@ function roleDigest($) {
     const role = htmlItemRoleFromElementFacts({
       tagName: element.tagName,
       attributes: node.attr() || {},
+      hasAssetSource: hasRecognizedAssetSource(element.tagName, node.attr() || {}),
     });
     counts.set(role, (counts.get(role) || 0) + 1);
   });
@@ -152,6 +155,7 @@ function geometryDigest($) {
     out.push(geometryEntry(node.attr('id'), htmlItemRoleFromElementFacts({
       tagName: element.tagName,
       attributes: node.attr() || {},
+      hasAssetSource: hasRecognizedAssetSource(element.tagName, node.attr() || {}),
     }), {
       x: cssNumber(style, 'left'),
       y: cssNumber(style, 'top'),
@@ -160,6 +164,11 @@ function geometryDigest($) {
     }));
   });
   return out;
+}
+
+function hasRecognizedAssetSource(tagName, attributes) {
+  const source = assetSourceFromElementLike({ tagName, attributes });
+  return Boolean(source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown');
 }
 
 function modelText(item) {

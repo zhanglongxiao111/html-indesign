@@ -25,11 +25,12 @@ function htmlPhysicalItemRoleFromAttributes(attributes) {
 function htmlItemRoleFromElementFacts(facts = {}) {
   const tagName = String(facts.tagName || '').trim().toLowerCase();
   const attributes = facts.attributes || {};
-  if (tagName === 'svg' && facts.hasAssetSource) return ITEM_ROLE.GRAPHIC;
+  if (facts.hasAssetSource) return ITEM_ROLE.GRAPHIC;
 
   const protocolRole = htmlPhysicalItemRoleFromAttributes(attributes);
   if (protocolRole) return protocolRole;
 
+  if (attributeValue(attributes, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE)) return ITEM_ROLE.TEXT;
   if (tagName === 'svg') {
     const vectorKind = String(attributeValue(attributes, HTML_DATA_ID_ATTRIBUTES.VECTOR) || '').trim().toLowerCase();
     return vectorKind === 'line' ? ITEM_ROLE.LINE : ITEM_ROLE.SHAPE;

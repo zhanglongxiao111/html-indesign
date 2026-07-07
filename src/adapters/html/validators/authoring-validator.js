@@ -407,7 +407,7 @@ function gridEdgesForItem(bounds, vertical, horizontal, item) {
     ['top', Number(bounds.y), horizontal],
   ];
   const role = String(item && item.role || '').toLowerCase();
-  if (role !== 'text' && role !== 'table') {
+  if (role !== ITEM_ROLE.TEXT && role !== ITEM_ROLE.TABLE) {
     edges.push(['bottom', Number(bounds.y) + Number(bounds.height), horizontal]);
   }
   return edges;

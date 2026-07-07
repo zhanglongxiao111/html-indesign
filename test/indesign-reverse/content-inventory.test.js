@@ -8,6 +8,7 @@ const {
   documentModelContentInventory,
   compareContentInventories,
 } = require('../../src/writers/html/audit/content-inventory');
+const { ITEM_ROLE } = require('../../src/protocol');
 
 test('compareContentInventories reports text resource page and geometry losses', () => {
   const root = path.resolve('test/workspace/content-inventory-loss');
@@ -61,6 +62,19 @@ test('documentModelContentInventory preserves visible text and source resource i
   assert.equal(inventory.summary.resources, 1);
   assert.deepEqual(inventory.pages[0].textDigest, ['会议室屏幕尺寸 3x6.5m']);
   assert.equal(inventory.pages[0].resources[0].identity, '\\\\nas\\share\\drawing.pdf');
+});
+
+test('authorPackageContentInventory classifies sourced svg elements as graphics', () => {
+  const root = path.resolve('test/workspace/content-inventory-sourced-svg-role');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(root, '<section class="page"><svg id="site-diagram" src="./diagram.svg" style="left:10px;top:20px;width:300px;height:160px"></svg></section>');
+
+  const inventory = authorPackageContentInventory(root);
+
+  assert.equal(inventory.pages[0].itemRoles.some((entry) => (
+    entry.role === ITEM_ROLE.GRAPHIC && entry.count === 1
+  )), true);
+  assert.equal(inventory.pages[0].geometry.find((entry) => entry.id === 'site-diagram').role, ITEM_ROLE.GRAPHIC);
 });
 
 test('compareContentInventories treats package-relative preview resources as stable across output roots', () => {
