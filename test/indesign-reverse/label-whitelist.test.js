@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { validateReverseLabel } = require('../../src/adapters/indesign/normalizer/label-whitelist');
+const { fieldRegistry } = require('../../src/protocol');
 
 const preset = {
   semantics: {
@@ -198,4 +199,45 @@ test('validateReverseLabel rejects page-only label fields on items in field stri
     )),
     true,
   );
+});
+
+test('validateReverseLabel keeps every registered styleRefs allowed key and rejects unknown keys', () => {
+  const allowedKeys = fieldRegistry.getByPath('items[].styleRefs').allowedKeys;
+  const styleRefs = Object.fromEntries(
+    allowedKeys.map((key) => [key, `value-${key}`]),
+  );
+  styleRefs.unregisteredStyleRef = 'ghost';
+
+  const result = validateReverseLabel({
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'styled',
+    styleRefs,
+  }, { mode: 'structured', kind: 'item' });
+
+  assert.deepEqual(result.effective.styleRefs, Object.fromEntries(
+    allowedKeys.map((key) => [key, `value-${key}`]),
+  ));
+  assert.equal(result.effective.styleRefs.unregisteredStyleRef, undefined);
+  assert.equal(result.observed.styleRefs.unregisteredStyleRef, 'ghost');
+  assert.equal(result.rejectedFields['styleRefs.unregisteredStyleRef'], 'label-field-not-registered');
+  assert.equal(result.fieldValidation.unknown.includes('styleRefs.unregisteredStyleRef'), true);
+});
+
+test('validateReverseLabel does not invent token aliases for non-token styleRefs keys', () => {
+  const result = validateReverseLabel({
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'styled',
+    styleRefs: {
+      displayNameToken: 'ghost-display-name',
+    },
+  }, { mode: 'structured', kind: 'item' });
+
+  assert.equal(result.effective.styleRefs, undefined);
+  assert.equal(result.observed.styleRefs.displayNameToken, 'ghost-display-name');
+  assert.equal(result.rejectedFields['styleRefs.displayNameToken'], 'label-field-not-registered');
+  assert.equal(result.fieldValidation.unknown.includes('styleRefs.displayNameToken'), true);
 });

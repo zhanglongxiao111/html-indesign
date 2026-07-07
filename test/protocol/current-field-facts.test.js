@@ -164,7 +164,7 @@ test('registry keeps reverse item effects as an InDesign format extension', () =
   assert.equal(canonicalVisualEffects, null);
   assert.equal(reverseEffects.fieldClass, 'formatExtension');
   assert.equal(reverseEffects.owner, 'reverse-model');
-  assert.deepEqual(reverseEffects.currentPaths, ['items[].effects', 'pages[].items[].effects']);
+  assert.deepEqual(reverseEffects.currentPaths, []);
   assert.equal(reverseEffects.migration.from, 'items[].effects');
   assert.equal(reverseEffects.migration.to, 'items[].extensions.indesign.effects');
 });
@@ -173,10 +173,7 @@ test('registry records textFrameStyle as an InDesign extension migration target'
   const textFrameStyle = fieldRegistry.getByPath('items[].extensions.indesign.textFrameStyle');
 
   assert.equal(textFrameStyle.fieldClass, 'formatExtension');
-  assert.deepEqual(textFrameStyle.currentPaths, [
-    'items[].textFrameStyle',
-    'pages[].items[].textFrameStyle',
-  ]);
+  assert.deepEqual(textFrameStyle.currentPaths, []);
   assert.equal(textFrameStyle.migration.from, 'items[].textFrameStyle');
   assert.equal(textFrameStyle.migration.to, 'items[].extensions.indesign.textFrameStyle');
 });

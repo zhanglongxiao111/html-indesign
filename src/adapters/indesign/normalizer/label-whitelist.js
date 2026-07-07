@@ -2,6 +2,37 @@
 
 const { fieldRegistry, validateLabelFields } = require('../../../protocol');
 
+const STYLE_REF_TOKEN_VALIDATION = Object.freeze({
+  paragraphStyle: Object.freeze({
+    tokenSetName: 'paragraphStyles',
+    reason: 'unknown-paragraph-style',
+  }),
+  characterStyle: Object.freeze({
+    tokenSetName: 'characterStyles',
+    reason: 'unknown-character-style',
+  }),
+  objectStyle: Object.freeze({
+    tokenSetName: 'objectStyles',
+    reason: 'unknown-object-style',
+  }),
+  frameStyle: Object.freeze({
+    tokenSetName: 'frameStyles',
+    reason: 'unknown-frame-style',
+  }),
+  tableStyle: Object.freeze({
+    tokenSetName: 'tableStyles',
+    reason: 'unknown-table-style',
+  }),
+  cellStyle: Object.freeze({
+    tokenSetName: 'cellStyles',
+    reason: 'unknown-cell-style',
+  }),
+  layer: Object.freeze({
+    tokenSetName: 'layers',
+    reason: 'unknown-layer',
+  }),
+});
+
 function validateReverseLabel(label = {}, options = {}) {
   const preset = options.preset || {};
   const known = knownTokens(preset);
@@ -156,27 +187,43 @@ function applyStyleRefs(label, known, effective, observed, rejectedFields, reaso
   const input = label.styleRefs || styleRefsFromLabel(label);
   const output = {};
   const rejected = {};
-  for (const [field, tokenSetName, reason] of [
-    ['paragraphStyle', 'paragraphStyles', 'unknown-paragraph-style'],
-    ['characterStyle', 'characterStyles', 'unknown-character-style'],
-    ['objectStyle', 'objectStyles', 'unknown-object-style'],
-    ['frameStyle', 'frameStyles', 'unknown-frame-style'],
-    ['tableStyle', 'tableStyles', 'unknown-table-style'],
-    ['cellStyle', 'cellStyles', 'unknown-cell-style'],
-    ['layer', 'layers', 'unknown-layer'],
-  ]) {
-    const value = clean(input[field] || input[`${field}Token`]);
+  const consumed = new Set();
+  for (const field of styleRefAllowedKeys()) {
+    const validation = STYLE_REF_TOKEN_VALIDATION[field];
+    const tokenAlias = validation ? `${field}Token` : null;
+    const rawValue = input[field] || (tokenAlias ? input[tokenAlias] : null);
+    const value = clean(rawValue);
+    if (Object.prototype.hasOwnProperty.call(input, field)) consumed.add(field);
+    if (tokenAlias && Object.prototype.hasOwnProperty.call(input, tokenAlias)) consumed.add(tokenAlias);
     if (!value) continue;
-    if (known.enforcedStyleKinds.has(tokenSetName) && !isKnown(known[tokenSetName], value)) {
+    if (
+      validation
+      && known.enforcedStyleKinds.has(validation.tokenSetName)
+      && !isKnown(known[validation.tokenSetName], value)
+    ) {
       rejected[field] = value;
-      rejectedFields[field] = reason;
-      reasons.push(reason);
+      rejectedFields[field] = validation.reason;
+      addReason(reasons, validation.reason);
     } else {
       output[field] = value;
     }
   }
+  for (const [field, value] of Object.entries(input)) {
+    if (consumed.has(field)) continue;
+    rejected[field] = clone(value);
+    rejectedFields[`styleRefs.${field}`] = 'label-field-not-registered';
+    addReason(reasons, 'label-field-not-registered');
+  }
   if (Object.keys(output).length) effective.styleRefs = output;
   if (Object.keys(rejected).length) observed.styleRefs = rejected;
+}
+
+function styleRefAllowedKeys() {
+  const field = fieldRegistry.getByPath('items[].styleRefs');
+  if (!field || !Array.isArray(field.allowedKeys) || !field.allowedKeys.length) {
+    throw new Error('STYLE_REFS_ALLOWED_KEYS_MISSING:items[].styleRefs');
+  }
+  return field.allowedKeys;
 }
 
 function applySourceFields(label, effective, observed) {
@@ -321,6 +368,12 @@ function addTokenList(set, value) {
 
 function isKnown(set, value) {
   return set.has(clean(value));
+}
+
+function addReason(reasons, reason) {
+  if (!reasons.includes(reason)) {
+    reasons.push(reason);
+  }
 }
 
 function clean(value) {

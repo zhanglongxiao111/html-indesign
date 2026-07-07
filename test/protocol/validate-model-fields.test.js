@@ -6,6 +6,7 @@ const {
   scanModelPaths,
   fieldRegistry,
 } = require('../../src/protocol');
+const { validateSemanticModel } = require('../../src/semantic-model/validator');
 
 test('scanModelPaths deterministically scans known model surfaces', () => {
   const model = {
@@ -990,6 +991,58 @@ test('visualStyle/vectorGeometry domain strict rejects unsupported visual fields
   assert.deepEqual(formatExtension.accepted, []);
 });
 
+test('strict DocumentModel validation rejects retired flat InDesign surface paths', () => {
+  const model = minimalDocumentModel({
+    effects: { gradientFeather: { scope: 'fill' } },
+    textFrameStyle: { inset: { top: 4, right: 6, bottom: 4, left: 6 } },
+  });
+
+  const scannedPaths = scanModelPaths(model);
+  assert.equal(scannedPaths.includes('pages[].items[].effects'), true);
+  assert.equal(scannedPaths.includes('pages[].items[].textFrameStyle'), true);
+  assert.equal(scannedPaths.includes('items[].effects'), false);
+  assert.equal(scannedPaths.includes('items[].textFrameStyle'), false);
+
+  const result = validateSemanticModel(model, { strictFields: true });
+
+  assert.equal(result.valid, false);
+  assert.equal(
+    result.fieldValidation.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'pages[].items[].effects'
+    )),
+    true,
+  );
+  assert.equal(
+    result.fieldValidation.errors.some((error) => (
+      error.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && error.path === 'pages[].items[].textFrameStyle'
+    )),
+    true,
+  );
+});
+
+test('strict DocumentModel validation accepts current InDesign extension surface paths', () => {
+  const model = minimalDocumentModel({
+    extensions: {
+      indesign: {
+        effects: { gradientFeather: { scope: 'fill' } },
+        textFrameStyle: { inset: { top: 4, right: 6, bottom: 4, left: 6 } },
+      },
+    },
+  });
+
+  const scannedPaths = scanModelPaths(model);
+  assert.equal(scannedPaths.includes('items[].extensions.indesign.effects'), true);
+  assert.equal(scannedPaths.includes('items[].extensions.indesign.textFrameStyle'), true);
+
+  const result = validateSemanticModel(model, { strictFields: true });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.fieldValidation.unknown, []);
+  assert.deepEqual(result.fieldValidation.retired, []);
+});
+
 test('table/text domain strict rejects unknown text and table fields while accepting current static spec fields', () => {
   const scannedPaths = scanModelPaths({
     kind: 'DocumentModel',
@@ -1114,3 +1167,35 @@ test('table/text domain strict rejects unknown text and table fields while accep
     false,
   );
 });
+
+function minimalDocumentModel(itemFields = {}) {
+  return {
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{
+      protocol: 'html-indesign',
+      version: 1,
+      kind: 'document',
+      id: 'doc',
+    }],
+    pages: [{
+      id: 'p1',
+      labels: [{
+        protocol: 'html-indesign',
+        version: 1,
+        kind: 'page',
+        id: 'p1',
+      }],
+      items: [{
+        id: 'i1',
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'item',
+          id: 'i1',
+        }],
+        ...itemFields,
+      }],
+    }],
+  };
+}

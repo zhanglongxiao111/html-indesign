@@ -72,10 +72,10 @@ module.exports = [
   sourceMetadata('items[].content.runs[].attributes', [], 'object'),
   formatExtension(
     'items[].extensions.indesign.effects',
-    ['items[].effects', 'pages[].items[].effects'],
+    [],
     'object',
     {
-      description: 'InDesign-specific reverse-export effects payload; flat items[].effects remains a registered migration source for old reverse inputs, while new InDesign adapter model output uses extensions.indesign.effects.',
+      description: 'InDesign-specific reverse-export effects payload; current structured DocumentModel output uses extensions.indesign.effects. Flat items[].effects is retired from current model paths and retained only as migration metadata.',
       migration: {
         from: 'items[].effects',
         to: 'items[].extensions.indesign.effects',
@@ -85,10 +85,10 @@ module.exports = [
   ),
   formatExtension(
     'items[].extensions.indesign.textFrameStyle',
-    ['items[].textFrameStyle', 'pages[].items[].textFrameStyle'],
+    [],
     'object',
     {
-      description: 'InDesign-specific text frame style payload; flat items[].textFrameStyle remains a registered migration source for old reverse inputs, while new InDesign adapter model output uses extensions.indesign.textFrameStyle.',
+      description: 'InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Flat items[].textFrameStyle is retired from current model paths and retained only as migration metadata.',
       migration: {
         from: 'items[].textFrameStyle',
         to: 'items[].extensions.indesign.textFrameStyle',
