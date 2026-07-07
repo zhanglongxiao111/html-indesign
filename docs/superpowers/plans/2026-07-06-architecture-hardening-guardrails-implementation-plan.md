@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 二次复审修复后仍有阻断问题，修复中（执行提交 `410cb15`，effects 修复提交 `00ffedd`，sentinel 修复提交 `1f62556`；`semantic: 'unknown'` direct consumer 已清，但全量测试暴露正向 HTML adapter 仍输出旧平铺 `items[].effects`，而 InDesign writer 已只读 `items[].extensions.indesign.effects`，导致 gradient feather 正向链路丢失；`node --test test/paged-html/instructions-compiler.test.js` 32/33，通过项外 1 fail；2026-07-08）。
+进度：9c 修复已提交，复审中（执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`；`semantic: 'unknown'` direct consumer 已清，HTML adapter 已将 effects 写入 `items[].extensions.indesign.effects`，InDesign writer 只读新路径；`node --test test/paged-html/instructions-compiler.test.js` 33/33 通过，相关 focused suites 通过，`npm test` 860/860 通过，`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
