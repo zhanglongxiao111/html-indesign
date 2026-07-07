@@ -1,0 +1,39 @@
+{
+  "exemptions": [
+    {
+      "rule": "G1.1 adapters-writers direction",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "requires src/writers/indesign/style-compiler.js",
+      "reason": "既有违规待收口",
+      "cleanupRef": "W3"
+    },
+    {
+      "rule": "G1.1 adapters-writers direction",
+      "file": "src/writers/indesign/graphic-instructions.js",
+      "detail": "requires src/adapters/html/reader/asset-detector.js",
+      "reason": "既有违规待收口",
+      "cleanupRef": "W3"
+    },
+    {
+      "rule": "G1.1 adapters-writers direction",
+      "file": "src/writers/indesign/instructions-compiler.js",
+      "detail": "requires src/adapters/html/normalizer/snapshot-to-model.js",
+      "reason": "既有违规待收口",
+      "cleanupRef": "W3"
+    },
+    {
+      "rule": "G1.3 src must not require scripts",
+      "file": "src/indesign-cli-plugin/tools/reverse-export.js",
+      "detail": "requires scripts/indesign-reverse-export.js",
+      "reason": "既有违规待收口",
+      "cleanupRef": "W3"
+    },
+    {
+      "rule": "G1.5 plugin uses public module entries",
+      "file": "src/indesign-cli-plugin/tools/authoring-lint.js",
+      "detail": "requires internal module src/authoring/lint.js",
+      "reason": "既有违规待收口",
+      "cleanupRef": "W3"
+    }
+  ]
+}

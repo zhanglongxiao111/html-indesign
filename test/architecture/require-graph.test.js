@@ -111,6 +111,26 @@ test('collectRequireGraph ignores member calls named require while preserving ba
   ]);
 });
 
+test('collectRequireGraph skips regular expression literals before reading require calls', () => {
+  const root = makeSampleProject({
+    'entry.js': `
+      const quotedPattern = /['"]/g;
+      const child = require('./lib/child');
+    `,
+    'lib/child.js': `module.exports = {};`,
+  });
+
+  const graph = collectRequireGraph([root]);
+  const relativeEdges = graph.edges.map((edge) => ({
+    from: path.relative(root, edge.from).replaceAll(path.sep, '/'),
+    to: path.relative(root, edge.to).replaceAll(path.sep, '/'),
+  }));
+
+  assert.deepEqual(relativeEdges, [
+    { from: 'entry.js', to: 'lib/child.js' },
+  ]);
+});
+
 test('collectRequireGraph fails visibly when a static relative require cannot be resolved', () => {
   const root = makeSampleProject({
     'entry.js': `require('./missing');`,
