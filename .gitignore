@@ -1,6 +1,7 @@
 # Node
 node_modules/
 .worktrees/
+.superpowers/
 
 # Test workspace (temporary files)
 test/workspace/
