@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9b 已完成（执行提交 `5af027f`；复审未发现阻断问题；HTML adapter 已停止产出 retired `items[].type`，`styleRefs` 改从 registry `allowedKeys` 过滤，G3 baseline 自然删除 `characterStyles` / `swatch` 两条过期豁免；2026-07-08）。
+进度：9c 进行中（9b 已完成；已定位 InDesign normalizer 仍将 item `semantic` 缺省写成 `'unknown'`，`effects` / `textFrameStyle` 仍为平铺字段，styleRefs 仍需按 registry allowedKeys 收敛；准备派执行子 agent 做 InDesign adapter 对齐；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
