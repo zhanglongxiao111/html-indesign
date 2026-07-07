@@ -15,13 +15,11 @@ const SINGLE_IMPLEMENTATION_NAMES = [
   'normalizeText',
   'safeClass',
   'safeClassToken',
-  'safeCssIdentifier',
   'sanitizeStyleName',
   'cssLengthToMm',
   'cssLengthToPx',
   'cssLengthToPt',
   'parseZIndex',
-  'normalizePathKey',
 ];
 const DEFINITION_PATTERN = new RegExp(
   String.raw`\b(?:function\s+(${SINGLE_IMPLEMENTATION_NAMES.join('|')})\b|(?:const|let|var)\s+(${SINGLE_IMPLEMENTATION_NAMES.join('|')})\s*=)`,
@@ -37,11 +35,12 @@ const G6_RULE_METADATA = {
 
 test('G6 catches duplicate helper definitions outside src/shared and reports the required fields', () => {
   const root = makeSampleProject({
-    'src/shared/text.js': 'function normalizeText(value) { return String(value); }\n',
+    'src/shared/text.js': 'function normalizeText(value) { return String(value); }\nconst safeClass = (value) => String(value);\n',
     'src/writers/html/a.js': 'function normalizeText(value) { return String(value).trim(); }\n',
     'src/adapters/html/b.js': 'const safeCssIdentifier = (value) => String(value);\n',
     'scripts/build.js': 'var parseZIndex = function parseZIndex(value) { return Number(value) || 0; };\n',
     'src/protocol/fields.js': 'function safeClass(value) { return value; }\n',
+    'src/writers/html/path-key.js': 'function normalizePathKey(value) { return String(value); }\n',
   });
 
   const violations = collectG6Violations(root);
@@ -54,8 +53,8 @@ test('G6 catches duplicate helper definitions outside src/shared and reports the
     },
     {
       rule: 'G6.1 shared helpers have a single implementation',
-      file: 'src/adapters/html/b.js',
-      detail: 'defines safeCssIdentifier',
+      file: 'src/protocol/fields.js',
+      detail: 'defines safeClass',
     },
     {
       rule: 'G6.1 shared helpers have a single implementation',
@@ -126,7 +125,7 @@ function collectG6Violations(repoRoot) {
 }
 
 function isG6Scope(relativeFile) {
-  if (relativeFile.startsWith('src/shared/') || relativeFile.startsWith('src/protocol/')) return false;
+  if (relativeFile.startsWith('src/shared/')) return false;
   return relativeFile.startsWith('src/') || relativeFile.startsWith('scripts/');
 }
 
