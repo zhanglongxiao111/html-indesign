@@ -129,8 +129,10 @@ node --test test/architecture/
 
 ### 2. G1 依赖方向护栏
 
-- [ ] 实现 spec §3 G1 六条规则的断言；扫描采集当前实际违规写入 `baselines/G1.json`（预期与审查报告 §5 一致：adapters/html→writers/indesign、writers/indesign→adapters/html ×2、plugin→scripts、plugin 绕过 authoring 入口；以实扫为准）。
-- [ ] 自测：在 fixture 中人造一条 adapters→writers require，断言护栏抓住且失败信息含四段。
+进度：已完成（提交 `5fdc397`、`c9f347b`、`c121d9b`、`d35fdd5`、`7870948`；复审未发现阻断问题；`node --test test/architecture/dependency-direction.test.js` 10/10 通过，`npm test` 783/783 通过，2026-07-07）。
+
+- [x] 实现 spec §3 G1 六条规则的断言；扫描采集当前实际违规写入 `baselines/G1.json`（预期与审查报告 §5 一致：adapters/html→writers/indesign、writers/indesign→adapters/html ×2、plugin→scripts、plugin 绕过 authoring 入口；以实扫为准）。
+- [x] 自测：在 fixture 中人造一条 adapters→writers require，断言护栏抓住且失败信息含四段。
 
 验收命令：
 
