@@ -1,3 +1,9 @@
 require('./require-graph.test');
 require('./baseline-ratchet.test');
 require('./guardrail-report.test');
+require('./dependency-direction.test');
+require('./semantic-model-contract.test');
+require('./audit-fail-closed.test');
+require('./retired-naming.test');
+require('./docs-code-sync.test');
+require('./orphan-modules.test');

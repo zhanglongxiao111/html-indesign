@@ -1,0 +1,46 @@
+{
+  "exemptions": [
+    {
+      "rule": "G8.1 src module has an owner",
+      "file": "src/adapters/html/reader/browser-element-capture.js",
+      "detail": "src module has no static incoming require edge",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G8.1 src module has an owner",
+      "file": "src/adapters/html/reader/browser-snapshot-capture.js",
+      "detail": "src module has no static incoming require edge",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G8.1 src module has an owner",
+      "file": "src/adapters/html/reader/browser-style-capture.js",
+      "detail": "src module has no static incoming require edge",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G8.1 src module has an owner",
+      "file": "src/adapters/html/reader/stacking.js",
+      "detail": "src module has no static incoming require edge",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G8.1 src module has an owner",
+      "file": "src/adapters/html/reader/style-reader.js",
+      "detail": "src module has no static incoming require edge",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G8.1 src module has an owner",
+      "file": "src/protocol/docs/generate-field-docs.js",
+      "detail": "src module has no static incoming require edge",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    }
+  ]
+}

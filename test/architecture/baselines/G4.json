@@ -1,0 +1,67 @@
+{
+  "exemptions": [
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-author-editability.js",
+      "detail": "missing test named \"audit-author-editability invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-conversion-gate.js",
+      "detail": "missing test named \"audit-conversion-gate invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-effective-diff.js",
+      "detail": "missing test named \"audit-effective-diff invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-parent-page-furniture.js",
+      "detail": "missing test named \"audit-parent-page-furniture invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-reverse-author-roundtrip.js",
+      "detail": "missing test named \"audit-reverse-author-roundtrip invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-reverse-snapshot-structure.js",
+      "detail": "missing test named \"audit-reverse-snapshot-structure invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "missing test named \"audit-reverse-visual invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-synthesized-styles.js",
+      "detail": "missing test named \"audit-synthesized-styles invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    },
+    {
+      "rule": "G4.1 audit invalid-input coverage",
+      "file": "scripts/audit-trusted-source-preservation.js",
+      "detail": "missing test named \"audit-trusted-source-preservation invalid-input 必须 fail\"",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 3"
+    }
+  ]
+}

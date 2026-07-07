@@ -115,19 +115,19 @@ function isRequireIdentifierAt(source, index) {
   if (isIdentifierCharacter(previous) || isIdentifierCharacter(next)) {
     return false;
   }
-  return previousSignificantCharacter(source, index) !== '.';
+  const previousIndex = previousSignificantIndex(source, index);
+  return previousIndex === -1 || source[previousIndex] !== '.' || isSpreadRequire(source, previousIndex);
 }
 
 function isIdentifierCharacter(character) {
   return typeof character === 'string' && /[$\w]/.test(character);
 }
 
-function previousSignificantCharacter(source, index) {
-  let cursor = index - 1;
-  while (cursor >= 0 && /\s/.test(source[cursor])) {
-    cursor -= 1;
-  }
-  return source[cursor];
+function isSpreadRequire(source, dotIndex) {
+  return source[dotIndex] === '.'
+    && source[dotIndex - 1] === '.'
+    && source[dotIndex - 2] === '.'
+    && !isIdentifierCharacter(source[dotIndex - 3]);
 }
 
 function findRequireOpenParen(source, index) {

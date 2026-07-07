@@ -80,6 +80,27 @@ test('collectRequireGraph treats legal static relative require syntaxes as edges
   ]);
 });
 
+test('collectRequireGraph treats spread require calls as bare static edges', () => {
+  const root = makeSampleProject({
+    'entry.js': `
+      const entries = [
+        ...require('./lib/spread-child'),
+      ];
+    `,
+    'lib/spread-child.js': `module.exports = [];`,
+  });
+
+  const graph = collectRequireGraph([root]);
+  const relativeEdges = graph.edges.map((edge) => ({
+    from: path.relative(root, edge.from).replaceAll(path.sep, '/'),
+    to: path.relative(root, edge.to).replaceAll(path.sep, '/'),
+  }));
+
+  assert.deepEqual(relativeEdges, [
+    { from: 'entry.js', to: 'lib/spread-child.js' },
+  ]);
+});
+
 test('collectRequireGraph ignores member calls named require while preserving bare require behavior', () => {
   const root = makeSampleProject({
     'entry.js': `
