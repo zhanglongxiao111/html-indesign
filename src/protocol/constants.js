@@ -12,11 +12,24 @@ function deriveProtocolConstants(registry) {
   }
 
   const htmlDataIdAttributeNames = htmlDataIdAttributesFor(registry);
-  const itemRoleValues = allowedValuesFor(registry, REQUIRED_VALUE_FIELDS.ITEM_ROLE_VALUES);
+  const itemRoleField = requiredField(registry, REQUIRED_VALUE_FIELDS.ITEM_ROLE_VALUES);
+  const itemRoleValues = allowedValuesForField(itemRoleField, REQUIRED_VALUE_FIELDS.ITEM_ROLE_VALUES);
   const styleKindValues = allowedValuesFor(registry, REQUIRED_VALUE_FIELDS.STYLE_KIND_VALUES);
   const synthesizedStyleKindValues = allowedValuesFor(
     registry,
     REQUIRED_VALUE_FIELDS.SYNTHESIZED_STYLE_KIND_VALUES,
+  );
+  const authoringMappableItemRoleValues = itemRoleSubsetFor(
+    itemRoleField,
+    itemRoleValues,
+    'authoringMappable',
+    'AUTHORING_MAPPABLE_ITEM_ROLE_VALUES',
+  );
+  const htmlPhysicalItemRoleValues = itemRoleSubsetFor(
+    itemRoleField,
+    itemRoleValues,
+    'htmlPhysical',
+    'HTML_PHYSICAL_ITEM_ROLE_VALUES',
   );
 
   return deepFreeze({
@@ -24,6 +37,8 @@ function deriveProtocolConstants(registry) {
     HTML_DATA_ID_ATTRIBUTE_NAMES: htmlDataIdAttributeNames,
     ITEM_ROLE: enumObjectForValues(itemRoleValues),
     ITEM_ROLE_VALUES: itemRoleValues,
+    AUTHORING_MAPPABLE_ITEM_ROLE_VALUES: authoringMappableItemRoleValues,
+    HTML_PHYSICAL_ITEM_ROLE_VALUES: htmlPhysicalItemRoleValues,
     STYLE_KIND: enumObjectForValues(styleKindValues),
     STYLE_KIND_VALUES: styleKindValues,
     SYNTHESIZED_STYLE_KIND: enumObjectForValues(synthesizedStyleKindValues),
@@ -51,15 +66,37 @@ function htmlDataIdAttributesFor(registry) {
 }
 
 function allowedValuesFor(registry, fieldPath) {
+  const field = requiredField(registry, fieldPath);
+  return allowedValuesForField(field, fieldPath);
+}
+
+function requiredField(registry, fieldPath) {
   const field = registry.getByPath(fieldPath);
   if (!field) {
     throw new Error(`PROTOCOL_CONSTANT_FIELD_MISSING:${fieldPath}`);
   }
+  return field;
+}
+
+function allowedValuesForField(field, fieldPath) {
   if (!Array.isArray(field.allowedValues) || field.allowedValues.length === 0) {
     throw new Error(`PROTOCOL_CONSTANT_VALUES_MISSING:${fieldPath}`);
   }
 
   return Object.freeze(field.allowedValues.slice());
+}
+
+function itemRoleSubsetFor(itemRoleField, itemRoleValues, subsetKey, subsetName) {
+  const selectedValues = itemRoleField.roleSubsets && itemRoleField.roleSubsets[subsetKey];
+  if (!Array.isArray(selectedValues) || selectedValues.length === 0) {
+    throw new Error(`PROTOCOL_CONSTANT_ROLE_SUBSET_MISSING:${subsetName}`);
+  }
+  const valueSet = new Set(itemRoleValues);
+  const missing = selectedValues.filter((value) => !valueSet.has(value));
+  if (missing.length) {
+    throw new Error(`PROTOCOL_CONSTANT_ROLE_SUBSET_INVALID:${subsetName}:${missing.join(',')}`);
+  }
+  return Object.freeze(selectedValues.slice());
 }
 
 function enumObjectForValues(values, prefixToRemove = '') {

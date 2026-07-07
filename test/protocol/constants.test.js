@@ -39,10 +39,25 @@ function field(canonicalPath, extra = {}) {
   };
 }
 
+function roleField(extra = {}) {
+  return field('items[].role', {
+    allowedValues: ['text', 'graphic', 'shape', 'table', 'line', 'background', 'decoration', 'annotation'],
+    roleSubsets: {
+      authoringMappable: ['text', 'graphic', 'shape', 'table'],
+      htmlPhysical: ['text', 'graphic', 'shape', 'table', 'line', 'background', 'decoration'],
+    },
+    ...extra,
+  });
+}
+
 test('protocol constants are derived from a supplied registry', () => {
   const registry = createFieldRegistry([
-    field('items[].role', {
-      allowedValues: ['testRole'],
+    roleField({
+      allowedValues: ['text', 'graphic', 'shape', 'table'],
+      roleSubsets: {
+        authoringMappable: ['text', 'graphic'],
+        htmlPhysical: ['text', 'graphic', 'shape'],
+      },
       html: {
         readAttrs: ['data-id-test-read'],
         writeAttrs: ['data-id-test-write'],
@@ -72,8 +87,10 @@ test('protocol constants are derived from a supplied registry', () => {
     TEST_READ: 'data-id-test-read',
     TEST_WRITE: 'data-id-test-write',
   });
-  assert.deepEqual(constants.ITEM_ROLE_VALUES, ['testRole']);
-  assert.deepEqual(constants.ITEM_ROLE, { TEST_ROLE: 'testRole' });
+  assert.deepEqual(constants.ITEM_ROLE_VALUES, ['text', 'graphic', 'shape', 'table']);
+  assert.deepEqual(constants.ITEM_ROLE, { TEXT: 'text', GRAPHIC: 'graphic', SHAPE: 'shape', TABLE: 'table' });
+  assert.deepEqual(constants.AUTHORING_MAPPABLE_ITEM_ROLE_VALUES, ['text', 'graphic']);
+  assert.deepEqual(constants.HTML_PHYSICAL_ITEM_ROLE_VALUES, ['text', 'graphic', 'shape']);
   assert.deepEqual(constants.STYLE_KIND_VALUES, ['testStyles']);
   assert.deepEqual(constants.STYLE_KIND, { TEST_STYLES: 'testStyles' });
   assert.deepEqual(constants.SYNTHESIZED_STYLE_KIND_VALUES, ['testSynth']);
@@ -82,7 +99,7 @@ test('protocol constants are derived from a supplied registry', () => {
 
 test('protocol constants fail visibly when required registry fields are missing', () => {
   const registry = createFieldRegistry([
-    field('items[].role', { allowedValues: ['text'] }),
+    roleField(),
     field('labels[].styleKind', { allowedValues: ['paragraphStyles'] }),
   ]);
 

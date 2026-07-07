@@ -1,4 +1,9 @@
-const { fieldRegistry } = require('../../../protocol');
+const {
+  HTML_DATA_ID_ATTRIBUTES,
+  ITEM_ROLE,
+  fieldRegistry,
+  registeredItemRole,
+} = require('../../../protocol');
 
 function compareVisualGeometry(options = {}) {
   const reference = normalizeCapture(options.reference);
@@ -255,7 +260,7 @@ function hasBorderFragmentGeometry(element, side) {
 }
 
 function isAnnotationBase(element) {
-  if (hasRegisteredRole(element, 'annotation')) return true;
+  if (hasRegisteredRole(element, ITEM_ROLE.ANNOTATION)) return true;
   return hasRegisteredObjectStyle(element, 'annotation-label');
 }
 
@@ -290,11 +295,16 @@ function isVectorRectangle(element) {
 }
 
 function hasRegisteredRole(element, role) {
-  return hasRole(element, role) && hasRegisteredDataIdAttr(element, 'data-id-role', 'canonical');
+  const registeredRole = registeredItemRole(role);
+  return Boolean(
+    registeredRole
+      && hasRole(element, registeredRole)
+      && hasRegisteredDataIdAttr(element, HTML_DATA_ID_ATTRIBUTES.ROLE, 'canonical')
+  );
 }
 
 function isRegisteredVectorRectangle(element) {
-  return isVectorRectangle(element) && hasRegisteredDataIdAttr(element, 'data-id-vector', 'canonical');
+  return isVectorRectangle(element) && hasRegisteredDataIdAttr(element, HTML_DATA_ID_ATTRIBUTES.VECTOR, 'canonical');
 }
 
 function hasRegisteredObjectStyle(element, objectStyle) {

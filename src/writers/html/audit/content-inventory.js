@@ -1,6 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const {
+  HTML_DATA_ID_ATTRIBUTES,
+  htmlItemRoleFromElementFacts,
+} = require('../../../protocol');
 
 function authorPackageContentInventory(root) {
   const packageRoot = path.resolve(root);
@@ -125,10 +129,13 @@ function resourceDigest($, root, assetAliases = new Map()) {
 
 function roleDigest($) {
   const counts = new Map();
-  $('[data-id-role],img,object,svg,p,figure,section').each((_, element) => {
+  $(`[${HTML_DATA_ID_ATTRIBUTES.ROLE}],img,object,svg,p,figure,section`).each((_, element) => {
     if (isPageFurnitureElement($, element)) return;
     const node = $(element);
-    const role = node.attr('data-id-role') || tagRole(element.tagName);
+    const role = htmlItemRoleFromElementFacts({
+      tagName: element.tagName,
+      attributes: node.attr() || {},
+    });
     counts.set(role, (counts.get(role) || 0) + 1);
   });
   return Array.from(counts.entries())
@@ -142,7 +149,10 @@ function geometryDigest($) {
     if (isPageFurnitureElement($, element)) return;
     const node = $(element);
     const style = node.attr('style') || '';
-    out.push(geometryEntry(node.attr('id'), node.attr('data-id-role') || tagRole(element.tagName), {
+    out.push(geometryEntry(node.attr('id'), htmlItemRoleFromElementFacts({
+      tagName: element.tagName,
+      attributes: node.attr() || {},
+    }), {
       x: cssNumber(style, 'left'),
       y: cssNumber(style, 'top'),
       width: cssNumber(style, 'width'),
@@ -344,14 +354,6 @@ function decodeResourcePath(value) {
   } catch (_) {
     return value;
   }
-}
-
-function tagRole(tagName) {
-  const tag = String(tagName || '').toLowerCase();
-  if (tag === 'img' || tag === 'object') return 'graphic';
-  if (tag === 'svg') return 'shape';
-  if (['p', 'span', 'figcaption', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'td', 'th'].includes(tag)) return 'text';
-  return tag || 'unknown';
 }
 
 function cssNumber(style, prop) {

@@ -1,6 +1,24 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { validateAuthoringRules } = require('../../src/adapters/html');
+const {
+  AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
+  ITEM_ROLE,
+  ITEM_ROLE_VALUES,
+} = require('../../src/protocol');
+
+test('authoring mappable role subset is explicitly derived from registry role values', () => {
+  assert.deepEqual(AUTHORING_MAPPABLE_ITEM_ROLE_VALUES, [
+    ITEM_ROLE.TEXT,
+    ITEM_ROLE.GRAPHIC,
+    ITEM_ROLE.SHAPE,
+    ITEM_ROLE.TABLE,
+  ]);
+  for (const role of AUTHORING_MAPPABLE_ITEM_ROLE_VALUES) {
+    assert.equal(ITEM_ROLE_VALUES.includes(role), true, `${role} must be a registered item role`);
+  }
+  assert.equal(AUTHORING_MAPPABLE_ITEM_ROLE_VALUES.includes(ITEM_ROLE.ANNOTATION), false);
+});
 
 test('validateAuthoringRules accepts aligned semantic grid authored pages', () => {
   const snapshot = snapshotWithPage({

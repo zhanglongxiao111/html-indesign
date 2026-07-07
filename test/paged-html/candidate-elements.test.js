@@ -1,6 +1,26 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { roleFromItem } = require('../../src/adapters/html/reader/candidate-elements');
+const {
+  ITEM_ROLE,
+  htmlItemRoleFromElementFacts,
+  registeredItemRole,
+} = require('../../src/protocol');
+
+test('htmlItemRoleFromElementFacts is the shared registry-backed SVG role source', () => {
+  assert.equal(htmlItemRoleFromElementFacts({
+    tagName: 'svg',
+    attributes: { src: './diagram.svg', 'data-id-role': ITEM_ROLE.SHAPE },
+    hasAssetSource: true,
+  }), ITEM_ROLE.GRAPHIC);
+
+  assert.equal(htmlItemRoleFromElementFacts({
+    tagName: 'svg',
+    attributes: { 'data-id-role': ITEM_ROLE.LINE, 'data-id-vector': 'line' },
+  }), ITEM_ROLE.LINE);
+
+  assert.equal(registeredItemRole(ITEM_ROLE.ANNOTATION), ITEM_ROLE.ANNOTATION);
+});
 
 test('roleFromItem uses protocol role for inline svg vectors without asset sources', () => {
   const role = roleFromItem({

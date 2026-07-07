@@ -17,8 +17,10 @@ const { validateModelFields } = require('./validators/validate-model-fields');
 const { validateRetiredFields } = require('./validators/validate-retired-fields');
 const {
   deriveProtocolConstants,
+  AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
   HTML_DATA_ID_ATTRIBUTES,
   HTML_DATA_ID_ATTRIBUTE_NAMES,
+  HTML_PHYSICAL_ITEM_ROLE_VALUES,
   ITEM_ROLE,
   ITEM_ROLE_VALUES,
   STYLE_KIND,
@@ -26,6 +28,12 @@ const {
   SYNTHESIZED_STYLE_KIND,
   SYNTHESIZED_STYLE_KIND_VALUES,
 } = require('./constants');
+const {
+  htmlItemRoleFromElementFacts,
+  htmlPhysicalItemRoleFromAttributes,
+  isAuthoringMappableItemRole,
+  registeredItemRole,
+} = require('./item-role-helpers');
 const {
   fieldEntries,
   fieldRegistry,
@@ -59,8 +67,12 @@ module.exports = Object.freeze({
   FORMATS,
   HTML_DATA_ID_ATTRIBUTES,
   HTML_DATA_ID_ATTRIBUTE_NAMES,
+  htmlItemRoleFromElementFacts,
+  htmlPhysicalItemRoleFromAttributes,
   ITEM_ROLE,
   ITEM_ROLE_VALUES,
+  AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
+  HTML_PHYSICAL_ITEM_ROLE_VALUES,
   LIFECYCLES,
   MODEL_FIELD_DOMAIN_NAMES,
   STYLE_KIND,
@@ -68,6 +80,7 @@ module.exports = Object.freeze({
   SYNTHESIZED_STYLE_KIND,
   SYNTHESIZED_STYLE_KIND_VALUES,
   isCapabilityLevel,
+  isAuthoringMappableItemRole,
   isFieldClass,
   isLifecycle,
   lifecyclePolicyFor,
@@ -77,6 +90,7 @@ module.exports = Object.freeze({
   scanInstructionPaths,
   scanModelPaths,
   uniquePaths,
+  registeredItemRole,
   validateDataIdFields,
   validateFieldEntry,
   validateInstructionFields,

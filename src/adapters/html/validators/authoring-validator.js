@@ -1,4 +1,10 @@
 const { parseCssLength, round } = require('../../../shared/geometry');
+const {
+  AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
+  HTML_DATA_ID_ATTRIBUTES,
+  ITEM_ROLE,
+  isAuthoringMappableItemRole,
+} = require('../../../protocol');
 
 const PAGE_MARGIN_RULE_MISSING = 'PAGE_MARGIN_RULE_MISSING';
 const PAGE_GRID_RULE_MISSING = 'PAGE_GRID_RULE_MISSING';
@@ -373,7 +379,7 @@ function shouldCheckGrid(item, page) {
   if (!isMappableItem(item)) return false;
   const attrs = attributesFor(item);
   if (attributeValue(attrs, 'data-id-grid-ignore') != null) return false;
-  if (attributeValue(attrs, 'data-id-role') === 'annotation') return false;
+  if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
   if (attributeValue(attrs, 'data-id-paragraph-style') === 'folio') return false;
   const bounds = item && item.boundsMm;
@@ -421,7 +427,7 @@ function nearAnyLine(value, lines, tolerance) {
 
 function isMappableItem(item) {
   const role = String(item && item.role || '').toLowerCase();
-  if (['text', 'graphic', 'shape', 'table'].includes(role)) return true;
+  if (isAuthoringMappableItemRole(role)) return true;
   const tagName = String(item && item.tagName || '').toLowerCase();
   return [
     'article', 'aside', 'blockquote', 'canvas', 'caption', 'div', 'figure', 'figcaption',
@@ -445,7 +451,7 @@ function hasStableSemanticToken(item) {
     'data-id-cell-style',
     'data-id-asset-kind',
     'data-id-object',
-    'data-id-role',
+    HTML_DATA_ID_ATTRIBUTES.ROLE,
     'data-id-semantic',
     'data-id-layer',
     'data-id-placement',
@@ -460,4 +466,5 @@ function hasStableSemanticToken(item) {
 
 module.exports = {
   validateAuthoringRules,
+  AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
 };

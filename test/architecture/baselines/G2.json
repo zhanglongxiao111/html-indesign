@@ -471,20 +471,6 @@
     },
     {
       "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/adapters/html/reader/candidate-elements.js",
-      "detail": "field data-id-paragraph-style",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/adapters/html/reader/candidate-elements.js",
-      "detail": "field data-id-role",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
       "file": "src/adapters/html/reader/source-metadata.js",
       "detail": "field data-id-document",
       "reason": "既有违规待收口",
@@ -676,13 +662,6 @@
       "rule": "G2.1 protocol literals use registry constants",
       "file": "src/adapters/html/validators/authoring-validator.js",
       "detail": "field data-id-placement",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/adapters/html/validators/authoring-validator.js",
-      "detail": "field data-id-role",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 4"
     },
@@ -1248,13 +1227,6 @@
     },
     {
       "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/writers/html/audit/content-inventory.js",
-      "detail": "field data-id-role",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
       "file": "src/writers/html/audit/source-roundtrip-diff.js",
       "detail": "field data-id-character-style",
       "reason": "既有违规待收口",
@@ -1326,13 +1298,6 @@
     {
       "rule": "G2.1 protocol literals use registry constants",
       "file": "src/writers/html/audit/visual-geometry-audit.js",
-      "detail": "field data-id-role",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/writers/html/audit/visual-geometry-audit.js",
       "detail": "field data-id-source-csv",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 4"
@@ -1348,13 +1313,6 @@
       "rule": "G2.1 protocol literals use registry constants",
       "file": "src/writers/html/audit/visual-geometry-audit.js",
       "detail": "field data-id-table-style",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/writers/html/audit/visual-geometry-audit.js",
-      "detail": "field data-id-vector",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 4"
     },

@@ -5,6 +5,22 @@ const os = require('node:os');
 const path = require('path');
 const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
 const { semanticModelToHtml } = require('../../src/writers/html');
+const {
+  AUTHOR_HTML_SAFE_TAGS,
+  REVERSE_VISUAL_HTML_CONTAINER_TAGS,
+  assertReverseVisualHtmlContainerTag,
+  safeAuthorHtmlTag,
+} = require('../../src/writers/html/safe-tags');
+
+test('HTML writers use explicit domain safe tag exports instead of duplicate local SAFE_TAGS', () => {
+  assert.equal(AUTHOR_HTML_SAFE_TAGS.has('svg'), true);
+  assert.equal(REVERSE_VISUAL_HTML_CONTAINER_TAGS.has('svg'), false);
+  assert.equal(safeAuthorHtmlTag('unknown-tag'), 'div');
+  assert.throws(
+    () => assertReverseVisualHtmlContainerTag('svg'),
+    /Unsupported reverse HTML tag: svg/,
+  );
+});
 
 test('semanticModelToHtml writes page, parent page, layout and text item tags', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));

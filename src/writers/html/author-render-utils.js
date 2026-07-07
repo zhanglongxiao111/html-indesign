@@ -1,12 +1,7 @@
-const SAFE_TAGS = new Set([
-  'section', 'article', 'header', 'footer', 'main', 'aside', 'nav',
-  'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'figure', 'figcaption', 'img', 'object', 'embed', 'picture', 'source',
-  'svg', 'canvas', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
-  'ul', 'ol', 'li', 'strong', 'em', 'small', 'sup', 'sub',
-]);
-
-const SAFE_INLINE_TAGS = new Set(['span', 'strong', 'b', 'em', 'i', 'mark', 'small', 'sup', 'sub']);
+const {
+  safeAuthorHtmlTag,
+  safeAuthorInlineHtmlTag,
+} = require('./safe-tags');
 
 function normalizeCropToken(value) {
   const text = String(value || '').trim();
@@ -29,8 +24,7 @@ function fileExtension(value) {
 }
 
 function safeInlineTag(value) {
-  const tag = String(value || '').toLowerCase();
-  return SAFE_INLINE_TAGS.has(tag) ? tag : 'span';
+  return safeAuthorInlineHtmlTag(value);
 }
 
 function hasSourceNode(sourceNode) {
@@ -85,8 +79,7 @@ function hasDataIdIgnore(attrs) {
 }
 
 function safeTag(value) {
-  const tag = String(value || '').toLowerCase();
-  return SAFE_TAGS.has(tag) ? tag : 'div';
+  return safeAuthorHtmlTag(value);
 }
 
 function tagForRole(role) {

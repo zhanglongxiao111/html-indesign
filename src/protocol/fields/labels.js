@@ -211,6 +211,10 @@ module.exports = [
     type: 'string',
     description: 'Canonical semantic role for an item.',
     allowedValues: ITEM_ROLE_VALUES,
+    roleSubsets: {
+      authoringMappable: ['text', 'graphic', 'shape', 'table'],
+      htmlPhysical: ['text', 'graphic', 'shape', 'table', 'line', 'background', 'decoration'],
+    },
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },

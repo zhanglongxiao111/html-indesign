@@ -1,4 +1,10 @@
 const { inferAssetKind, assetSourceFromElementLike } = require('../../../shared/assets');
+const {
+  HTML_DATA_ID_ATTRIBUTES,
+  ITEM_ROLE,
+  htmlItemRoleFromElementFacts,
+  htmlPhysicalItemRoleFromAttributes,
+} = require('../../../protocol');
 
 function roleFromItem(item) {
   const tagName = item.tagName;
@@ -9,21 +15,12 @@ function roleFromItem(item) {
     computedStyle: item.computedStyle,
     authoredStyle: item.authoredStyle,
   });
-  if (source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown') return 'graphic';
-  const protocolRole = protocolRoleFromAttributes(attributes);
+  const hasAssetSource = source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown';
+  if (hasAssetSource) return ITEM_ROLE.GRAPHIC;
+  const protocolRole = htmlPhysicalItemRoleFromAttributes(attributes);
   if (protocolRole) return protocolRole;
-  if (attributes['data-id-paragraph-style']) return 'text';
-  if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'figcaption'].includes(tagName)) return 'text';
-  if (['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return 'graphic';
-  if (tagName === 'table') return 'table';
-  return 'shape';
-}
-
-function protocolRoleFromAttributes(attributes) {
-  const role = String(attributes && attributes['data-id-role'] || '').trim().toLowerCase();
-  return ['text', 'graphic', 'shape', 'table', 'line', 'background', 'decoration'].includes(role)
-    ? role
-    : '';
+  if (attributes[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE]) return ITEM_ROLE.TEXT;
+  return htmlItemRoleFromElementFacts({ tagName, attributes, hasAssetSource });
 }
 
 function selectorFor(item) {

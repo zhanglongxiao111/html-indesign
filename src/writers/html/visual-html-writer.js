@@ -3,6 +3,7 @@ const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-
 const { assetHtml, assetPlacementAttrs } = require('./asset-html');
 const { renderTextContent, textContent } = require('./rich-text-html');
 const { renderTableContent, tableStyleName } = require('./table-html');
+const { assertReverseVisualHtmlContainerTag } = require('./safe-tags');
 const {
   baseCss,
   pageStyle,
@@ -19,39 +20,6 @@ const {
   requiredNumber,
   requiredString,
 } = require('./visual-html-utils');
-
-const SAFE_TAGS = new Set([
-  'article',
-  'aside',
-  'blockquote',
-  'caption',
-  'div',
-  'figcaption',
-  'figure',
-  'footer',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'header',
-  'li',
-  'main',
-  'nav',
-  'ol',
-  'p',
-  'section',
-  'span',
-  'table',
-  'tbody',
-  'td',
-  'tfoot',
-  'th',
-  'thead',
-  'tr',
-  'ul',
-]);
 
 function semanticModelToHtml(model, options = {}) {
   assertDocumentModel(model);
@@ -228,9 +196,7 @@ function containerTagForItem(item) {
 }
 
 function safeTagName(tagName) {
-  const normalized = String(tagName || '').toLowerCase();
-  if (SAFE_TAGS.has(normalized)) return normalized;
-  throw new Error(`Unsupported reverse HTML tag: ${tagName}`);
+  return assertReverseVisualHtmlContainerTag(tagName);
 }
 
 function assertDocumentModel(model) {
