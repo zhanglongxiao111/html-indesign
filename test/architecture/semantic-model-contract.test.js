@@ -160,6 +160,37 @@ test('G3 catches validateSemanticModel calls inside obviously unreachable branch
   }
 });
 
+test('G3 catches unbraced validateSemanticModel calls inside obviously unreachable branches', () => {
+  for (const guard of ['false', '0', 'null']) {
+    const root = makeSampleProject({
+      'src/adapters/html/normalizer/snapshot-to-model.js': [
+        'const { validateSemanticModel } = require("../../../semantic-model");',
+        'function snapshotToSemanticModel() {',
+        `  if (${guard}) validateSemanticModel(model);`,
+        '  return { kind: "DocumentModel" };',
+        '}',
+        'module.exports = { snapshotToSemanticModel };',
+        '',
+      ].join('\n'),
+    });
+
+    const violations = collectG3Violations(root, {
+      adapterExits: [{
+        name: 'html snapshotToSemanticModel',
+        file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+        exportName: 'snapshotToSemanticModel',
+      }],
+      skipRuntimeChecks: true,
+    });
+
+    assert.deepEqual(violations, [{
+      rule: 'G3.1 semantic exports validate model',
+      file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+      detail: 'html snapshotToSemanticModel does not call validateSemanticModel',
+    }], `unbraced guard ${guard} must not satisfy G3.1`);
+  }
+});
+
 test('G3 ignores validateSemanticModel mentions in comments and ordinary strings', () => {
   const root = makeSampleProject({
     'src/adapters/html/normalizer/snapshot-to-model.js': [
@@ -197,6 +228,31 @@ test('G3 accepts a top-level direct validateSemanticModel call in the exported a
       '  const model = { kind: "DocumentModel" };',
       '  validateSemanticModel(model);',
       '  return model;',
+      '}',
+      'module.exports = { snapshotToSemanticModel };',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG3Violations(root, {
+    adapterExits: [{
+      name: 'html snapshotToSemanticModel',
+      file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+      exportName: 'snapshotToSemanticModel',
+    }],
+    skipRuntimeChecks: true,
+  });
+
+  assert.deepEqual(violations, []);
+});
+
+test('G3 accepts a returned direct validateSemanticModel call in the exported adapter exit', () => {
+  const root = makeSampleProject({
+    'src/adapters/html/normalizer/snapshot-to-model.js': [
+      'const { validateSemanticModel } = require("../../../semantic-model");',
+      'function snapshotToSemanticModel() {',
+      '  const model = { kind: "DocumentModel" };',
+      '  return validateSemanticModel(model);',
       '}',
       'module.exports = { snapshotToSemanticModel };',
       '',
@@ -434,13 +490,17 @@ function functionBodyHasDirectCall(source, calleeName) {
       index = bodyEnd === -1 ? source.length : bodyEnd + 1;
     } else if (source.startsWith('=>', index)) {
       index = skipArrowFunctionBody(source, index);
+    } else if (blockDepth === 0 && isIdentifierAt(source, index, 'if')) {
+      index = skipIfStatement(source, index);
     } else if (source[index] === '{') {
       blockDepth += 1;
       index += 1;
     } else if (source[index] === '}') {
       blockDepth = Math.max(0, blockDepth - 1);
       index += 1;
-    } else if (blockDepth === 0 && (isIdentifierAt(source, index, 'return') || isIdentifierAt(source, index, 'throw'))) {
+    } else if (blockDepth === 0 && isIdentifierAt(source, index, 'return')) {
+      return returnStatementHasDirectCall(source, index, calleeName);
+    } else if (blockDepth === 0 && isIdentifierAt(source, index, 'throw')) {
       return false;
     } else if (blockDepth === 0 && isIdentifierAt(source, index, calleeName) && isDirectCallAt(source, index, calleeName)) {
       return true;
@@ -449,6 +509,99 @@ function functionBodyHasDirectCall(source, calleeName) {
     }
   }
   return false;
+}
+
+function returnStatementHasDirectCall(source, returnIndex, calleeName) {
+  let cursor = skipWhitespaceAndComments(source, returnIndex + 'return'.length);
+  while (source[cursor] === '(') {
+    cursor = skipWhitespaceAndComments(source, cursor + 1);
+  }
+  return isIdentifierAt(source, cursor, calleeName) && isDirectCallAt(source, cursor, calleeName);
+}
+
+function skipIfStatement(source, ifIndex) {
+  const conditionStart = skipWhitespaceAndComments(source, ifIndex + 'if'.length);
+  if (source[conditionStart] !== '(') return ifIndex + 'if'.length;
+  const conditionEnd = matchingParenIndex(source, conditionStart);
+  if (conditionEnd === -1) return source.length;
+
+  let cursor = skipSingleStatement(source, skipWhitespaceAndComments(source, conditionEnd + 1));
+  const afterConsequent = skipWhitespaceAndComments(source, cursor);
+  if (!isIdentifierAt(source, afterConsequent, 'else')) {
+    return cursor;
+  }
+
+  cursor = skipWhitespaceAndComments(source, afterConsequent + 'else'.length);
+  if (isIdentifierAt(source, cursor, 'if')) {
+    return skipIfStatement(source, cursor);
+  }
+  return skipSingleStatement(source, cursor);
+}
+
+function skipSingleStatement(source, statementIndex) {
+  if (source[statementIndex] === '{') {
+    const bodyEnd = matchingBraceIndex(source, statementIndex);
+    return bodyEnd === -1 ? source.length : bodyEnd + 1;
+  }
+
+  let cursor = statementIndex;
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let braceDepth = 0;
+  while (cursor < source.length) {
+    if (source.startsWith('//', cursor)) {
+      cursor = skipLineComment(source, cursor);
+    } else if (source.startsWith('/*', cursor)) {
+      cursor = skipBlockComment(source, cursor);
+    } else if (source[cursor] === '"' || source[cursor] === "'") {
+      cursor = skipQuotedString(source, cursor);
+    } else if (source[cursor] === '`') {
+      cursor = skipTemplateLiteral(source, cursor);
+    } else if (source[cursor] === '/' && startsRegexLiteral(source, cursor)) {
+      cursor = skipRegexLiteral(source, cursor);
+    } else if (source[cursor] === '(') {
+      parenDepth += 1;
+      cursor += 1;
+    } else if (source[cursor] === ')') {
+      if (parenDepth === 0) return cursor + 1;
+      parenDepth -= 1;
+      cursor += 1;
+    } else if (source[cursor] === '[') {
+      bracketDepth += 1;
+      cursor += 1;
+    } else if (source[cursor] === ']') {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      cursor += 1;
+    } else if (source[cursor] === '{') {
+      braceDepth += 1;
+      cursor += 1;
+    } else if (source[cursor] === '}') {
+      if (braceDepth === 0) return cursor;
+      braceDepth -= 1;
+      cursor += 1;
+    } else if (parenDepth === 0 && bracketDepth === 0 && braceDepth === 0 && /[;\n]/.test(source[cursor])) {
+      return cursor + 1;
+    } else {
+      cursor += 1;
+    }
+  }
+  return source.length;
+}
+
+function skipWhitespaceAndComments(source, index) {
+  let cursor = index;
+  while (cursor < source.length) {
+    if (/\s/.test(source[cursor])) {
+      cursor += 1;
+    } else if (source.startsWith('//', cursor)) {
+      cursor = skipLineComment(source, cursor);
+    } else if (source.startsWith('/*', cursor)) {
+      cursor = skipBlockComment(source, cursor);
+    } else {
+      return cursor;
+    }
+  }
+  return cursor;
 }
 
 function isDirectCallAt(source, index, calleeName) {
