@@ -25,8 +25,7 @@ function collectRequireGraph(rootDirs) {
 
   for (const file of files) {
     const source = fs.readFileSync(file, 'utf8');
-    for (const match of source.matchAll(/\brequire\s*\(([^)]*)\)/g)) {
-      const expression = match[1].trim();
+    for (const expression of extractRequireExpressions(source, file)) {
       const staticRequest = staticRequireRequest(expression);
       if (staticRequest === null) {
         observations.push({ from: file, expression });
@@ -55,9 +54,190 @@ function collectJavaScriptFiles(root) {
   return files;
 }
 
+function extractRequireExpressions(source, file) {
+  const expressions = [];
+  let index = 0;
+
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index, file);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index, file);
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index, file);
+    } else if (isRequireIdentifierAt(source, index)) {
+      const openParenIndex = findRequireOpenParen(source, index + 'require'.length);
+      if (openParenIndex === null) {
+        index += 'require'.length;
+      } else {
+        const closeParenIndex = findCallCloseParen(source, openParenIndex, file);
+        expressions.push(source.slice(openParenIndex + 1, closeParenIndex).trim());
+        index = closeParenIndex + 1;
+      }
+    } else {
+      index += 1;
+    }
+  }
+
+  return expressions;
+}
+
+function isRequireIdentifierAt(source, index) {
+  if (!source.startsWith('require', index)) {
+    return false;
+  }
+  const previous = source[index - 1];
+  const next = source[index + 'require'.length];
+  return !isIdentifierCharacter(previous) && !isIdentifierCharacter(next);
+}
+
+function isIdentifierCharacter(character) {
+  return typeof character === 'string' && /[$\w]/.test(character);
+}
+
+function findRequireOpenParen(source, index) {
+  let cursor = index;
+  while (cursor < source.length && /\s/.test(source[cursor])) {
+    cursor += 1;
+  }
+  return source[cursor] === '(' ? cursor : null;
+}
+
+function findCallCloseParen(source, openParenIndex, file) {
+  let depth = 1;
+  let index = openParenIndex + 1;
+
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index, file);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index, file);
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index, file);
+    } else if (source[index] === '(') {
+      depth += 1;
+      index += 1;
+    } else if (source[index] === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+      index += 1;
+    } else {
+      index += 1;
+    }
+  }
+
+  throw new Error(`Unclosed require(...) in ${file}`);
+}
+
+function skipLineComment(source, index) {
+  const newlineIndex = source.indexOf('\n', index + 2);
+  return newlineIndex === -1 ? source.length : newlineIndex + 1;
+}
+
+function skipBlockComment(source, index, file) {
+  const closeIndex = source.indexOf('*/', index + 2);
+  if (closeIndex === -1) {
+    throw new Error(`Unclosed block comment in ${file}`);
+  }
+  return closeIndex + 2;
+}
+
+function skipQuotedString(source, index, file) {
+  const quote = source[index];
+  let cursor = index + 1;
+  while (cursor < source.length) {
+    if (source[cursor] === '\\') {
+      cursor += 2;
+    } else if (source[cursor] === quote) {
+      return cursor + 1;
+    } else {
+      cursor += 1;
+    }
+  }
+  throw new Error(`Unclosed string literal in ${file}`);
+}
+
+function skipTemplateLiteral(source, index, file) {
+  let cursor = index + 1;
+  while (cursor < source.length) {
+    if (source[cursor] === '\\') {
+      cursor += 2;
+    } else if (source[cursor] === '`') {
+      return cursor + 1;
+    } else {
+      cursor += 1;
+    }
+  }
+  throw new Error(`Unclosed template literal in ${file}`);
+}
+
 function staticRequireRequest(expression) {
-  const match = /^(['"])(.*)\1$/.exec(expression);
-  return match ? match[2] : null;
+  const normalizedExpression = stripRequireExpressionComments(expression).trim();
+  if (normalizedExpression.startsWith('`')) {
+    if (normalizedExpression.includes('${')) {
+      return null;
+    }
+    return literalValue(normalizedExpression, '`');
+  }
+  if (normalizedExpression.startsWith("'") || normalizedExpression.startsWith('"')) {
+    return literalValue(normalizedExpression, normalizedExpression[0]);
+  }
+  return null;
+}
+
+function stripRequireExpressionComments(expression) {
+  let output = '';
+  let index = 0;
+
+  while (index < expression.length) {
+    if (expression.startsWith('//', index)) {
+      index = skipLineComment(expression, index);
+    } else if (expression.startsWith('/*', index)) {
+      const closeIndex = expression.indexOf('*/', index + 2);
+      if (closeIndex === -1) {
+        throw new Error(`Unclosed block comment in require(...) expression: ${expression}`);
+      }
+      index = closeIndex + 2;
+    } else if (expression[index] === '"' || expression[index] === "'") {
+      const endIndex = skipQuotedString(expression, index, 'require(...) expression');
+      output += expression.slice(index, endIndex);
+      index = endIndex;
+    } else if (expression[index] === '`') {
+      const endIndex = skipTemplateLiteral(expression, index, 'require(...) expression');
+      output += expression.slice(index, endIndex);
+      index = endIndex;
+    } else {
+      output += expression[index];
+      index += 1;
+    }
+  }
+
+  return output;
+}
+
+function literalValue(expression, quote) {
+  let value = '';
+  let index = 1;
+
+  while (index < expression.length) {
+    if (expression[index] === '\\') {
+      value += expression[index + 1] || '';
+      index += 2;
+    } else if (expression[index] === quote) {
+      return expression.slice(index + 1).trim() === '' ? value : null;
+    } else {
+      value += expression[index];
+      index += 1;
+    }
+  }
+
+  throw new Error(`Unclosed string literal in require(...) expression: ${expression}`);
 }
 
 function resolveRelativeRequire(fromFile, request) {

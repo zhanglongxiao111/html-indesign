@@ -50,6 +50,36 @@ test('collectRequireGraph resolves static relative require edges and records dyn
   ]);
 });
 
+test('collectRequireGraph treats legal static relative require syntaxes as edges', () => {
+  const root = makeSampleProject({
+    'entry.js': `
+      const templateLiteral = require(\`./lib/template-child\`);
+      const commented = require(/* static local edge */ './lib/commented-child');
+      const dynamicTemplate = require(\`./plugins/\${name}\`);
+    `,
+    'lib/template-child.js': `module.exports = {};`,
+    'lib/commented-child.js': `module.exports = {};`,
+  });
+
+  const graph = collectRequireGraph([root]);
+  const relativeEdges = graph.edges.map((edge) => ({
+    from: path.relative(root, edge.from).replaceAll(path.sep, '/'),
+    to: path.relative(root, edge.to).replaceAll(path.sep, '/'),
+  }));
+  const observations = graph.observations.map((observation) => ({
+    from: path.relative(root, observation.from).replaceAll(path.sep, '/'),
+    expression: observation.expression,
+  }));
+
+  assert.deepEqual(relativeEdges, [
+    { from: 'entry.js', to: 'lib/template-child.js' },
+    { from: 'entry.js', to: 'lib/commented-child.js' },
+  ]);
+  assert.deepEqual(observations, [
+    { from: 'entry.js', expression: '`./plugins/${name}`' },
+  ]);
+});
+
 test('collectRequireGraph fails visibly when a static relative require cannot be resolved', () => {
   const root = makeSampleProject({
     'entry.js': `require('./missing');`,

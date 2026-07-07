@@ -4,7 +4,7 @@ function formatGuardrailFailure(report) {
   }
 
   const rule = requiredField(report, 'rule');
-  const reason = requiredField(report, 'reason');
+  const reason = requiredReason(report);
   const remediation = requiredField(report, 'remediation');
   const specPath = requiredField(report, 'specPath');
   const newViolations = optionalList(report.newViolations, 'newViolations');
@@ -30,6 +30,18 @@ function requiredField(report, fieldName) {
     throw new Error(`${fieldName} is required`);
   }
   return value;
+}
+
+function requiredReason(report) {
+  const reason = requiredField(report, 'reason');
+  if (/[\r\n]/.test(reason)) {
+    throw new Error('reason must be a single line');
+  }
+  const withoutFinalSentenceTerminator = reason.trim().replace(/[.!?]\s*$/, '');
+  if (/[.!?]\s+\S/.test(withoutFinalSentenceTerminator)) {
+    throw new Error('reason must be exactly one sentence');
+  }
+  return reason;
 }
 
 function optionalList(value, fieldName) {

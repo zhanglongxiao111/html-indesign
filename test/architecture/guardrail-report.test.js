@@ -31,3 +31,27 @@ test('formatGuardrailFailure rejects missing required failure fields', () => {
     /specPath is required/
   );
 });
+
+test('formatGuardrailFailure rejects multi-sentence reasons', () => {
+  assert.throws(
+    () => formatGuardrailFailure({
+      rule: 'G1 dependency direction',
+      reason: 'Adapters must not require writers. Writers own target-format output.',
+      remediation: 'Move orchestration to a writer or shared layer.',
+      specPath: 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G1',
+    }),
+    /reason must be exactly one sentence/
+  );
+});
+
+test('formatGuardrailFailure rejects multi-line reasons', () => {
+  assert.throws(
+    () => formatGuardrailFailure({
+      rule: 'G1 dependency direction',
+      reason: 'Adapters must not require writers.\nWriters own target-format output.',
+      remediation: 'Move orchestration to a writer or shared layer.',
+      specPath: 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G1',
+    }),
+    /reason must be a single line/
+  );
+});

@@ -73,3 +73,62 @@ Observed result:
 ## Notes
 
 - Added `test/architecture/index.js` because the required command `node --test test/architecture/` is treated as a directory module entry in this Windows Node environment. The entry file loads the helper test files without adding guardrail behavior.
+
+## Reviewer fix
+
+Scope:
+
+- Fixed only Task 1 helper infrastructure under `test/architecture/`.
+- Appended this report section.
+- Did not implement later guardrails.
+- Did not edit the controller-owned plan progress file.
+
+RED:
+
+```powershell
+node --test test/architecture/
+```
+
+Observed result after adding reviewer regression tests and before implementation:
+
+```text
+# tests 10
+# pass 7
+# fail 3
+```
+
+Expected failing checks:
+
+- `collectRequireGraph treats legal static relative require syntaxes as edges` returned no static edges for `require(`./x`)` and `require(/* comment */ './x')`.
+- `formatGuardrailFailure rejects multi-sentence reasons` did not throw.
+- `formatGuardrailFailure rejects multi-line reasons` did not throw.
+
+GREEN:
+
+```powershell
+node --test test/architecture/
+```
+
+Observed result:
+
+```text
+# tests 10
+# pass 10
+# fail 0
+```
+
+Files changed:
+
+- `test/architecture/require-graph.test.js`
+- `test/architecture/helpers/require-graph.js`
+- `test/architecture/guardrail-report.test.js`
+- `test/architecture/helpers/guardrail-report.js`
+- `.superpowers/sdd/task-1-report.md`
+
+Self-review:
+
+- `require-graph.js` now records static local edges for single-quoted, double-quoted, no-interpolation template literal, and comment-wrapped require expressions.
+- Dynamic require expressions remain observations.
+- Static local require resolution still uses `createRequire(...).resolve()` and throws on unresolved local requests.
+- Unterminated comments, strings, template literals, and require calls throw visibly instead of being converted into observations.
+- `guardrail-report.js` still requires `rule`, `reason`, `remediation`, and `specPath`; `reason` must now be single-line and must not contain multiple sentence boundaries.
