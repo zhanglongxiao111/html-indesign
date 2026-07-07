@@ -234,6 +234,8 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
+进度：9a 进行中（W0 已完成；准备派执行子 agent 仅做 registry 裁定登记与 `PROTOCOL_FIELD_REGISTRY.md` 生成，不改 adapter/writer 行为；2026-07-07）。
+
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
 - [ ] **9a registry 裁定登记**：`items[].role` + `items[].sourceType` 双字段定案（HTML 侧未登记 `type` 判退役）；`semantic` 缺省 canonical 为 `null`；`styleRefs` 允许键枚举登记；`bounds` 契约（绝对页面坐标、pt）写入字段描述；format 专有字段 canonical path 迁移方案登记（`items[].extensions.indesign.*`）。重新生成 `PROTOCOL_FIELD_REGISTRY.md`。
