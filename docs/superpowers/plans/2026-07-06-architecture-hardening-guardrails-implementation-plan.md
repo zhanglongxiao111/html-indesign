@@ -163,7 +163,7 @@ npm test
 
 ### 4. G2 / G6 护栏（先立规则 + 全量豁免）
 
-进度：进行中（已派执行 agent 落地 G2/G6 护栏，2026-07-07）。
+进度：待审核（执行提交 `588cb67`；G2 baseline 338 条 / 47 文件，G6 baseline 16 条 / 14 文件；等待 G2/G6 护栏审核，2026-07-07）。
 
 - [ ] G2 协议字面量：扫描 src（protocol 除外）与 scripts 中裸 `data-id-` 字面量；当前 47 个文件（以实扫为准）全量入 `baselines/G2.json`。
 - [ ] G6 单一实现：spec §3 G6 函数名清单在 `src/shared/` 之外的重复定义扫描；现状全量入 `baselines/G6.json`。
