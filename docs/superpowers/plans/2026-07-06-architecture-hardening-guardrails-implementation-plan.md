@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9f 修复已提交，复审中（实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，缺 `role` 且仅有 `sourceType` 时不再生成 `styleRefs.synthesized*`；sourceType-only probe 通过，synthesized-styles 10/10、to-instructions 27/27、author package 29/29、G3 12/12、协议测试 155/155、`npm test` 883/883、`git diff --check` 通过；2026-07-08）。
+进度：9g 真实 InDesign 二次回环回归执行中（9f 已完成：实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；最终复审未发现 P0/P1/P2；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，sourceType-only 不再生成 current synthesized refs；`npm test` 883/883 通过；9g 将执行 `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 并检查内容库存、结构签名、二轮稳定；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
@@ -243,7 +243,7 @@ node --test test/architecture/docs-sync.test.js
 - [x] **9c InDesign adapter 对齐**：`semantic` 的 `'unknown'` 哨兵改 `null`，下游（`reconstruct.js:129-133` 等）判空收敛；styleRefs 键收敛；`effects`/`textFrameStyle` 迁入 `extensions.indesign.*`（工作量过大时允许作为 9f 独立提交，不得停在半途）。
 - [x] **9d 出口强制校验**：两个 normalizer 出口接入 `validateSemanticModel`（strict，失败即抛）；G3 静态与行为断言豁免收口。
 - [x] **9e 收 G3 同构豁免**：`baselines/G3.json` 归零。
-- [ ] **9f 剥兜底**：消灭 `role || type || sourceType` 三选一读取（`node-facts.js:21`、`author-audit.js:162` 及全量搜索所得）；writers 中因方言存在的双路径读取逐点剥除，每剥一处配测试。
+- [x] **9f 剥兜底**：消灭 `role || type || sourceType` 三选一读取（`node-facts.js:21`、`author-audit.js:162` 及全量搜索所得）；writers 中因方言存在的双路径读取逐点剥除，每剥一处配测试。
 - [ ] **9g 真实 E2E 回归**：`npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 无退化（内容库存、结构签名、二轮稳定全过）。
 
 验收命令：
