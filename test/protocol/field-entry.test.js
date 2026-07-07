@@ -169,6 +169,37 @@ test('field entry rejects malformed retired html attr policy declarations', () =
   }
 });
 
+test('field entry reports invalid retired model path policy with model path diagnostics', () => {
+  const result = validateFieldEntry({
+    canonicalPath: 'retired.model.itemsType',
+    currentPaths: ['items[].type'],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'document-model',
+    capabilities: {
+      html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      modelPaths: [{
+        path: 'items[].type',
+        replacedBy: 'items[].sourceType',
+        readPolicy: 'observe-only',
+        reason: 'split-semantic-role-from-source-format-type',
+      }],
+    },
+  });
+
+  assert.equal(result.valid, false);
+  assert.match(
+    result.errors.map((error) => error.message).join('\n'),
+    /retired\.modelPaths readPolicy is not allowed: observe-only\./,
+  );
+  assert.doesNotMatch(
+    result.errors.map((error) => error.message).join('\n'),
+    /retired\.htmlAttrs readPolicy is not allowed: observe-only\./,
+  );
+});
+
 test('field entry rejects retired html attr policies on active entries', () => {
   const result = validateFieldEntry(activeEntryWithRetiredHtmlAttrs());
 

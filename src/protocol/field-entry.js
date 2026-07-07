@@ -210,8 +210,8 @@ function validateRetiredHtmlAttrs(htmlAttrs, errors) {
     }
   }
 
-  validateRetiredPolicyValue(retiredAttr, 'readPolicy', RETIRED_READ_POLICIES, errors);
-  validateRetiredPolicyValue(retiredAttr, 'writePolicy', RETIRED_WRITE_POLICIES, errors);
+  validateRetiredPolicyValue(retiredAttr, 'readPolicy', RETIRED_READ_POLICIES, 'retired.htmlAttrs', errors);
+  validateRetiredPolicyValue(retiredAttr, 'writePolicy', RETIRED_WRITE_POLICIES, 'retired.htmlAttrs', errors);
 
   for (const key of ['replacedBy', 'reason']) {
     if (
@@ -253,11 +253,11 @@ function validateRetiredModelPaths(modelPaths, errors) {
       }
     }
 
-    validateRetiredPolicyValue(retiredPath, 'readPolicy', RETIRED_MODEL_READ_POLICIES, errors);
+    validateRetiredPolicyValue(retiredPath, 'readPolicy', RETIRED_MODEL_READ_POLICIES, 'retired.modelPaths', errors);
   }
 }
 
-function validateRetiredPolicyValue(retiredAttr, key, allowedValues, errors) {
+function validateRetiredPolicyValue(retiredAttr, key, allowedValues, policyPath, errors) {
   if (
     typeof retiredAttr[key] === 'string'
     && retiredAttr[key].length > 0
@@ -265,7 +265,7 @@ function validateRetiredPolicyValue(retiredAttr, key, allowedValues, errors) {
   ) {
     errors.push({
       code: 'RETIRED_POLICY_INVALID',
-      message: `retired.htmlAttrs ${key} is not allowed: ${retiredAttr[key]}.`,
+      message: `${policyPath} ${key} is not allowed: ${retiredAttr[key]}.`,
     });
   }
 }
