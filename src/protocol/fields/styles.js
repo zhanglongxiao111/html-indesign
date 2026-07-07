@@ -110,6 +110,8 @@ const TEXT_STYLE_RESOURCE_FIELDS = Object.freeze([
   ['capitalization', 'string'],
 ]);
 
+const SYNTHESIZED_STYLE_KIND_VALUES = Object.freeze(['text', 'line', 'object', 'asset']);
+
 module.exports = [
   synthesizedStyleField(
     'styles.synthesized',
@@ -133,6 +135,7 @@ module.exports = [
     'styles.synthesized[].kind',
     ['reverseModel.styles.synthesized[].kind', 'document.sourcePackage.styles.synthesized[].kind'],
     'string',
+    { allowedValues: SYNTHESIZED_STYLE_KIND_VALUES },
   ),
   synthesizedStyleField(
     'styles.synthesized[].fingerprint',

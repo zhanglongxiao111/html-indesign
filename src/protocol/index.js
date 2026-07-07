@@ -16,6 +16,21 @@ const { MODEL_FIELD_DOMAIN_NAMES } = require('./validators/model-field-domains')
 const { validateModelFields } = require('./validators/validate-model-fields');
 const { validateRetiredFields } = require('./validators/validate-retired-fields');
 const {
+  deriveProtocolConstants,
+  HTML_DATA_ID_ATTRIBUTES,
+  HTML_DATA_ID_ATTRIBUTE_NAMES,
+  ITEM_ROLE,
+  ITEM_ROLE_VALUES,
+  STYLE_KIND,
+  STYLE_KIND_VALUES,
+  SYNTHESIZED_STYLE_KIND,
+  SYNTHESIZED_STYLE_KIND_VALUES,
+} = require('./constants');
+const {
+  fieldEntries,
+  fieldRegistry,
+} = require('./field-entries');
+const {
   CAPABILITY_LEVELS,
   DIRECTIONS,
   FORMATS,
@@ -30,41 +45,28 @@ const {
 } = require('./lifecycle');
 const { uniquePaths } = require('./path-utils');
 
-const rawFieldEntries = [
-  ...require('./fields/document-page'),
-  ...require('./fields/document-model'),
-  ...require('./fields/styles'),
-  ...require('./fields/assets'),
-  ...require('./fields/html-authoring'),
-  ...require('./fields/labels'),
-  ...require('./fields/source-metadata'),
-  ...require('./fields/visual-style'),
-  ...require('./fields/vector-geometry'),
-  ...require('./fields/text'),
-  ...require('./fields/table'),
-  ...require('./fields/observation'),
-  ...require('./fields/reverse-surfaces'),
-  ...require('./fields/reverse-diagnostics'),
-  ...require('./fields/retired'),
-  ...require('./fields/pptx-extensions'),
-];
-
-const fieldRegistry = createFieldRegistry(rawFieldEntries);
-const fieldEntries = fieldRegistry.entries;
-
 module.exports = Object.freeze({
   CAPABILITY_LEVELS,
   assertWritable,
   capabilityFor,
   createFieldRegistry,
+  deriveProtocolConstants,
   DIRECTIONS,
   FIELD_CLASSES,
   fieldFor,
   fieldEntries,
   fieldRegistry,
   FORMATS,
+  HTML_DATA_ID_ATTRIBUTES,
+  HTML_DATA_ID_ATTRIBUTE_NAMES,
+  ITEM_ROLE,
+  ITEM_ROLE_VALUES,
   LIFECYCLES,
   MODEL_FIELD_DOMAIN_NAMES,
+  STYLE_KIND,
+  STYLE_KIND_VALUES,
+  SYNTHESIZED_STYLE_KIND,
+  SYNTHESIZED_STYLE_KIND_VALUES,
   isCapabilityLevel,
   isFieldClass,
   isLifecycle,

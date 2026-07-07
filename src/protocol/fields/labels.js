@@ -10,6 +10,25 @@ const STYLE_AND_LAYER_LABEL_KINDS = Object.freeze(['style', 'layer']);
 const PAGE_AND_ITEM_LABEL_KINDS = Object.freeze(['page', 'item']);
 const SEMANTIC_LABEL_KINDS = Object.freeze(['page', 'item', 'parentPage']);
 const GENERATED_LABEL_KINDS = Object.freeze(['page', 'item', 'parentPage']);
+const ITEM_ROLE_VALUES = Object.freeze([
+  'text',
+  'graphic',
+  'shape',
+  'table',
+  'line',
+  'background',
+  'decoration',
+  'annotation',
+  'container',
+]);
+const STYLE_KIND_VALUES = Object.freeze([
+  'paragraphStyles',
+  'characterStyles',
+  'objectStyles',
+  'frameStyles',
+  'tableStyles',
+  'cellStyles',
+]);
 const STYLE_REF_ALLOWED_KEYS = Object.freeze([
   'paragraphStyle',
   'characterStyle',
@@ -49,7 +68,10 @@ module.exports = [
   labelPayloadMetadata('labels[].name', 'string', ['parentPage']),
   labelPayloadMetadata('labels[].token', 'string', STYLE_AND_LAYER_LABEL_KINDS),
   labelPayloadMetadata('labels[].displayName', 'string', ['style', 'layer', 'parentPage']),
-  labelPayloadMetadata('labels[].styleKind', 'string', STYLE_LABEL_KINDS),
+  {
+    ...labelPayloadMetadata('labels[].styleKind', 'string', STYLE_LABEL_KINDS),
+    allowedValues: STYLE_KIND_VALUES,
+  },
   labelPayloadMetadata('labels[].htmlClass', 'string', STYLE_LABEL_KINDS),
   labelPayloadMetadata('labels[].generated', 'boolean', GENERATED_LABEL_KINDS),
   {
@@ -188,6 +210,7 @@ module.exports = [
     owner: 'label-protocol',
     type: 'string',
     description: 'Canonical semantic role for an item.',
+    allowedValues: ITEM_ROLE_VALUES,
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },
