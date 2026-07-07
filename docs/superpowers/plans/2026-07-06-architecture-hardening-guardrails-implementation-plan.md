@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9d 审核发现阻断问题，修复中（实现提交 `5831054`；审核指出两个 normalizer 出口仍用 narrowed `strictFieldDomains`，不是最终返回模型 full strict；InDesign reverse structured label 非法 payload 仍 warning-only；G3 baseline 虽 547→518 但新增 25 条豁免，不符合不得扩大要求；需改为 full strict fail-closed、labels 也 strict、并消除新增 G3 豁免；2026-07-08）。
+进度：9d 审核修复后仍有 G3 新增豁免，修复中（实现提交 `5831054`，full strict 修复提交 `f6f54d8`；两个 normalizer 出口已改为 full strict fail-closed，labels 也进入 strict；`npm test` 873/873 通过；主线程复核发现 G3 baseline 相对 9d 起点 547→434 但仍新增 5 条豁免：`effectiveLabel.htmlTag` 与 `styles.frameStyles[]` 覆盖缺口，仍需消除新增豁免；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
