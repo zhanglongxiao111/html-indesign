@@ -163,7 +163,7 @@ npm test
 
 ### 4. G2 / G6 护栏（先立规则 + 全量豁免）
 
-进度：二次修复已提交，复审中（提交 `00c6396` 修复 G6 regex literal 后漏扫并将 baseline 更新为 16 条；等待复审，2026-07-07）。
+进度：三次审核退回修复中（Task 4 review 剩余阻断仅 G2：regex literal `/data-id-role/` 被误判为裸 `data-id-*` 字符串字面量；G6 已复审通过，2026-07-07）。
 
 - [ ] G2 协议字面量：扫描 src（protocol 除外）与 scripts 中裸 `data-id-` 字面量；当前 47 个文件（以实扫为准）全量入 `baselines/G2.json`。
 - [ ] G6 单一实现：spec §3 G6 函数名清单在 `src/shared/` 之外的重复定义扫描；现状全量入 `baselines/G6.json`。
