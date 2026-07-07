@@ -227,6 +227,8 @@ node --test test/architecture/docs-sync.test.js
 
 ### 8. W0 收口检查点
 
+进度：检查发现未达标，修复中（G7/G8 已清零，G5 仅剩 W4 test 目录改名项；G4 audit baseline 仍剩 6 条 invalid-input 覆盖缺口，需先补齐并清零后才能签收，2026-07-07）。
+
 - [ ] 确认 G4（audit 部分）/G5（代码部分）/G7/G8 基线归零；G5 剩余条目应只剩 test 目录改名（W4）。
 - [ ] `npm test` 全绿。**此检查点后可编辑性基准计划方可跑首轮。**
 
