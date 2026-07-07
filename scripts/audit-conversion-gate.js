@@ -125,6 +125,7 @@ function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath
   assertEffectiveDiffReport(effectiveDiff, effectiveDiffPath);
   assertReverseVisualReport(reverseVisual, reverseVisualPath);
   if (editability) assertEditabilityReport(editability, editabilityPath);
+  if (trustedSource) assertTrustedSourceReport(trustedSource, trustedSourcePath);
   const failures = [];
   const gates = {
     effectiveDiff: effectiveDiffGate(effectiveDiff, thresholds, failures),
@@ -300,6 +301,9 @@ function assertReverseVisualReport(report, file) {
     || !Number.isFinite(Number(stats.textMismatches))) {
     throw invalidInput(`Reverse visual report is missing numeric stats: ${file}`);
   }
+  if (!hasFiniteNumber(stats, 'pageMismatches')) {
+    throw invalidInput(`Reverse visual report is missing numeric stats.pageMismatches: ${file}`);
+  }
 }
 
 function assertEditabilityReport(report, file) {
@@ -335,6 +339,31 @@ function assertEditabilityReport(report, file) {
   }
   if (!Array.isArray(report.failures)) {
     throw invalidInput(`Author editability report is missing failures array: ${file}`);
+  }
+}
+
+function assertTrustedSourceReport(report, file) {
+  const audit = report && report.trustedSourcePreservation
+    ? report.trustedSourcePreservation
+    : report;
+  if (!audit || audit.kind !== 'TrustedSourcePreservationAudit') return;
+  if (!isObject(audit.summary)) {
+    throw invalidInput(`Trusted source preservation report is missing summary metrics: ${file}`);
+  }
+  const numericFields = [
+    'trustedPages',
+    'trustedItems',
+    'checked',
+    'mutations',
+    'missing',
+  ];
+  for (const field of numericFields) {
+    if (!hasFiniteNumber(audit.summary, field)) {
+      throw invalidInput(`Trusted source preservation report is missing numeric summary.${field}: ${file}`);
+    }
+  }
+  if (!Array.isArray(audit.failures)) {
+    throw invalidInput(`Trusted source preservation report is missing failures array: ${file}`);
   }
 }
 

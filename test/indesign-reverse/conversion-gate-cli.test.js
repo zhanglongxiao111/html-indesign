@@ -94,7 +94,13 @@ test('audit-conversion-gate fails when trusted source preservation regresses', (
   const trustedSource = writeJson(root, 'trusted-source.json', {
     kind: 'TrustedSourcePreservationAudit',
     ok: false,
-    summary: { trustedItems: 2, mutations: 1 },
+    summary: {
+      trustedPages: 0,
+      trustedItems: 2,
+      checked: 2,
+      mutations: 1,
+      missing: 0,
+    },
     failures: [
       {
         code: 'TRUSTED_SOURCE_STRUCTURE_MUTATED',
@@ -181,6 +187,55 @@ test('audit-conversion-gate rejects parseable editability report with missing me
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /CONVERSION_GATE_INVALID_INPUT/);
+});
+
+test('audit-conversion-gate rejects parseable reverse visual report with missing page mismatches', () => {
+  const root = fixtureRoot('conversion-gate-invalid-reverse-visual-pages');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisualReportValue = reverseVisualReport({
+    missing: 0,
+    mismatched: 0,
+    textMismatches: 0,
+  });
+  delete reverseVisualReportValue.stats.pageMismatches;
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReportValue);
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-conversion-gate.js'),
+    '--effective-diff', effectiveDiff,
+    '--reverse-visual', reverseVisual,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CONVERSION_GATE_INVALID_INPUT/);
+  assert.match(result.stderr, /pageMismatches/);
+});
+
+test('audit-conversion-gate rejects parseable trusted source report with missing summary metrics', () => {
+  const root = fixtureRoot('conversion-gate-invalid-trusted-source-summary');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({
+    missing: 0,
+    mismatched: 0,
+    textMismatches: 0,
+  }));
+  const trustedSource = writeJson(root, 'trusted-source.json', {
+    kind: 'TrustedSourcePreservationAudit',
+    ok: true,
+    summary: {},
+    failures: [],
+  });
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-conversion-gate.js'),
+    '--effective-diff', effectiveDiff,
+    '--reverse-visual', reverseVisual,
+    '--trusted-source', trustedSource,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CONVERSION_GATE_INVALID_INPUT/);
+  assert.match(result.stderr, /Trusted source preservation report is missing numeric summary/);
 });
 
 function fixtureRoot(name) {
