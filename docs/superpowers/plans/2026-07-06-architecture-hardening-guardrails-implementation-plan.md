@@ -234,13 +234,13 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 注册表与 label allowlist 修复已提交，复审中（执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`，注册表/label 修复 `686f278`；strict model validation 已将旧平铺 `items[].effects` / `items[].textFrameStyle` 判为未登记字段，`extensions.indesign.*` 被接受，`validateReverseLabel` 改用 registry allowedKeys；`npm test` 864/864 通过，协议测试 150/150 通过，G3 10/10 通过，`git diff --check` 通过；2026-07-08）。
+进度：9c 已完成，准备进入 9d（执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`，注册表/label 修复 `686f278`；最终复审未发现 P0/P1/P2；strict model validation 已将旧平铺 `items[].effects` / `items[].textFrameStyle` 判为未登记字段，`extensions.indesign.*` 被接受，`validateReverseLabel` 改用 registry allowedKeys；`npm test` 864/864 通过，协议测试 150/150 通过，G3 10/10 通过，`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
 - [x] **9a registry 裁定登记**：`items[].role` + `items[].sourceType` 双字段定案（HTML 侧未登记 `type` 判退役）；`semantic` 缺省 canonical 为 `null`；`styleRefs` 允许键枚举登记；`bounds` 契约（绝对页面坐标、pt）写入字段描述；format 专有字段 canonical path 迁移方案登记（`items[].extensions.indesign.*`）。重新生成 `PROTOCOL_FIELD_REGISTRY.md`。
 - [x] **9b HTML adapter 对齐**：列出全部 `items[].type` 读取点后删除该字段产出；styleRefs 键收敛进枚举。
-- [ ] **9c InDesign adapter 对齐**：`semantic` 的 `'unknown'` 哨兵改 `null`，下游（`reconstruct.js:129-133` 等）判空收敛；styleRefs 键收敛；`effects`/`textFrameStyle` 迁入 `extensions.indesign.*`（工作量过大时允许作为 9f 独立提交，不得停在半途）。
+- [x] **9c InDesign adapter 对齐**：`semantic` 的 `'unknown'` 哨兵改 `null`，下游（`reconstruct.js:129-133` 等）判空收敛；styleRefs 键收敛；`effects`/`textFrameStyle` 迁入 `extensions.indesign.*`（工作量过大时允许作为 9f 独立提交，不得停在半途）。
 - [ ] **9d 出口强制校验**：两个 normalizer 出口接入 `validateSemanticModel`（strict，失败即抛）；G3 静态与行为断言豁免收口。
 - [ ] **9e 收 G3 同构豁免**：`baselines/G3.json` 归零。
 - [ ] **9f 剥兜底**：消灭 `role || type || sourceType` 三选一读取（`node-facts.js:21`、`author-audit.js:162` 及全量搜索所得）；writers 中因方言存在的双路径读取逐点剥除，每剥一处配测试。
