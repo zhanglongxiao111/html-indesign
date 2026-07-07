@@ -180,7 +180,7 @@ npm test
 
 ### 5. W0-1 门禁反假成功修复
 
-进度：复审发现阻断问题，修复中（提交 `090782b` 仍存在 `reverse-snapshot-structure` bounds 双缺失假通过、transitive asset alias 解析失败静默吞掉，以及 null/undefined corrupt input 未稳定返回原因码的问题；等待修复提交，2026-07-07）。
+进度：复审修复已提交，复审中（提交 `bdc59e4` 修复 `reverse-snapshot-structure` bounds 双缺失假通过、transitive asset alias 解析失败静默吞掉，以及 null/undefined corrupt input 裸异常；`node --test test/indesign-reverse/content-inventory.test.js test/indesign-reverse/structure-signature.test.js test/indesign-reverse/reverse-snapshot-structure.test.js` 48/48 通过，`node --test test/architecture/audit-fail-closed.test.js` 6/6 通过，等待复审，2026-07-07）。
 
 - [ ] `content-inventory.js`：空/缺失 `pages` 显式 fail（原因码 `CONTENT_INVENTORY_INPUT_INVALID`）；`readAssetAliases` 解析失败记 warning。
 - [ ] `structure-signature.js`、`reverse-snapshot-structure.js`（矢量双侧缺失）、`parent-page-furniture.js`（bounds 缺失）同模式逐一排查修复；裁定基准：空输入永远是错误，不存在"两边都空所以相等"。
