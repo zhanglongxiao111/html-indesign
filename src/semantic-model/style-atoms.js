@@ -115,14 +115,14 @@ function assetStyleAtom(item) {
 }
 
 function isTextItem(item) {
-  return item.type === 'TextFrame'
+  return item.role === 'text'
     || item.kind === 'text'
     || isPlainObject(item.textStyle)
     || (isPlainObject(item.content) && typeof item.content.text === 'string');
 }
 
 function isLineItem(item) {
-  return item.type === 'GraphicLine'
+  return item.role === 'line'
     || item.sourceType === 'GraphicLine'
     || item.kind === 'line'
     || item.vectorGeometry?.kind === 'line';
@@ -133,7 +133,15 @@ function isAssetItem(item) {
 }
 
 function isObjectItem(item) {
-  return isPlainObject(item.visualStyle);
+  return isPlainObject(item.visualStyle)
+    && (
+      item.role === 'shape'
+      || item.kind === 'object'
+      || item.sourceType === 'Rectangle'
+      || item.sourceType === 'Oval'
+      || item.sourceType === 'Polygon'
+      || item.sourceType === 'PageItem'
+    );
 }
 
 function pickDefined(source, keys) {

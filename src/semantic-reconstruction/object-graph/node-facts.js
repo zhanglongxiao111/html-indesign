@@ -18,7 +18,7 @@ function nodeFactForItem(item = {}, page = {}, itemIndex = 0) {
   }
 
   const boundsMetrics = metrics(bounds);
-  const sourceType = item.role || item.type || item.sourceType || 'unknown';
+  const sourceType = item.role || 'unknown';
   const node = {
     id: item.id || `item-${itemIndex + 1}`,
     pageId: page.id || null,

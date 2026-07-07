@@ -159,8 +159,8 @@ function isUnsupportedVectorFallback(item) {
   if (item.content && String(item.content.text || '').trim()) return false;
   const role = String(item.role || '').toLowerCase();
   if (role !== 'shape' && role !== 'line') return false;
-  const sourceType = String(item.sourceType || item.type || '').toLowerCase();
-  return sourceType === 'pageitem' || sourceType === 'unknown' || sourceType === '';
+  const sourceType = String(item.sourceType || '').toLowerCase();
+  return sourceType === 'pageitem' || sourceType === 'unknown';
 }
 
 function hasVectorGeometry(item) {

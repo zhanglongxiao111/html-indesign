@@ -10,7 +10,8 @@ const {
 function textItem(id, visualStyle = {}, textStyle = {}) {
   return {
     id,
-    type: 'TextFrame',
+    role: 'text',
+    sourceType: 'TextFrame',
     content: { text: id },
     visualStyle: {
       fillColor: null,
@@ -32,7 +33,8 @@ function textItem(id, visualStyle = {}, textStyle = {}) {
 function lineItem(id, visualStyle = {}) {
   return {
     id,
-    type: 'GraphicLine',
+    role: 'line',
+    sourceType: 'GraphicLine',
     visualStyle: {
       strokeColor: '#111111',
       strokeWeight: 0.2834645669,
@@ -48,7 +50,7 @@ function shapeItem(id, visualStyle = {}, effects = null) {
   return {
     id,
     role: 'shape',
-    type: 'Rectangle',
+    sourceType: 'Rectangle',
     visualStyle: {
       fillColor: '#eeeeee',
       strokeColor: '#111111',
@@ -66,7 +68,7 @@ function assetItem(id, placement = {}) {
   return {
     id,
     role: 'graphic',
-    type: 'Rectangle',
+    sourceType: 'Rectangle',
     asset: {
       path: '\\\\server\\share\\drawing.pdf',
       placement: {
@@ -138,6 +140,32 @@ test('creates stable line fingerprints independent of item id and page order', (
     strokeStyle: '虚线（3 和 2）',
     strokeWeight: 0.2834645669,
   });
+});
+
+test('synthesized style fingerprints ignore retired item type dialect', () => {
+  const atom = synthesizedStyleFingerprint({
+    id: 'retired-line',
+    type: 'GraphicLine',
+    visualStyle: {
+      strokeColor: '#111111',
+      strokeWeight: 1,
+    },
+  });
+
+  assert.equal(atom, null);
+});
+
+test('synthesized style fingerprints may use active sourceType observation for line atoms', () => {
+  const atom = synthesizedStyleFingerprint({
+    id: 'observed-line',
+    sourceType: 'GraphicLine',
+    visualStyle: {
+      strokeColor: '#111111',
+      strokeWeight: 1,
+    },
+  });
+
+  assert.equal(atom.kind, 'line');
 });
 
 test('builds one line style for identical dashed arrows with a Chinese name', () => {

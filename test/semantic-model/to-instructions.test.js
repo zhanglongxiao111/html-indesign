@@ -389,6 +389,73 @@ test('semanticModelToInstructions reads InDesign effects from item extensions', 
   );
 });
 
+test('semanticModelToInstructions does not fill current item fields from raw fallback dialects', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'raw-fallback-retirement',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 100,
+      height: 80,
+      items: [{
+        id: 'shape-with-raw-text',
+        role: 'shape',
+        bounds: { x: 10, y: 10, width: 40, height: 20 },
+        raw: {
+          role: 'text',
+          content: { text: 'retired raw text' },
+          styleRefs: { paragraphStyle: 'raw-paragraph' },
+          visualStyle: { fillColor: '#ff0000' },
+        },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'shape-with-raw-text');
+
+  assert.equal(item.type, 'SHAPE');
+  assert.equal(item.role, 'shape');
+  assert.equal(item.text, undefined);
+  assert.deepEqual(item.styleRefs, {});
+  assert.equal(item.visualStyle, undefined);
+});
+
+test('semanticModelToInstructions does not backfill protocol label role from instruction output type', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'label-role-retirement',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 100,
+      height: 80,
+      items: [{
+        id: 'missing-role-item',
+        bounds: { x: 10, y: 10, width: 40, height: 20 },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'missing-role-item');
+
+  assert.equal(item.type, 'SHAPE');
+  assert.equal(item.role, undefined);
+  assert.equal(item.labels[0].role, null);
+});
+
 test('semanticModelToInstructions preserves observed text frame bounds despite larger line height', () => {
   const model = {
     kind: 'DocumentModel',

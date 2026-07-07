@@ -81,6 +81,33 @@ test('buildDocumentObjectGraph reports objects missing bounds as unresolved node
   ]);
 });
 
+test('buildDocumentObjectGraph does not infer semantic role from retired type or sourceType', () => {
+  const pass = buildDocumentObjectGraph({
+    kind: 'DocumentModel',
+    pages: [
+      {
+        id: 'page-1',
+        width: 1000,
+        height: 500,
+        items: [
+          {
+            id: 'retired-text-dialect',
+            type: 'text',
+            sourceType: 'TextFrame',
+            bounds: { x: 100, y: 100, width: 300, height: 40 },
+            content: { text: '旧方言不应变成语义角色' },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(pass.summary.nodes, 1);
+  const node = pass.pages[0].nodes[0];
+  assert.equal(node.sourceType, 'unknown');
+  assert.equal(node.textFacts, null);
+});
+
 test('buildDocumentObjectGraph creates geometric evidence edges without mutating semantics', () => {
   assert.equal(typeof buildDocumentObjectGraph, 'function');
 

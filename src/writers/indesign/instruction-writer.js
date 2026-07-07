@@ -187,29 +187,27 @@ function parentPageBounds(parentPage, model) {
 }
 
 function instructionItemsFor(modelItem, assets, page, layout, options, styles, report) {
-  const item = modelItem.raw || modelItem;
   const baseItem = instructionItemFor(modelItem, assets, page, layout, options, styles, report);
   if (!baseItem) return [];
   return [
     baseItem,
-    ...decorationItemsFor(item, baseItem, layout),
+    ...decorationItemsFor(modelItem, baseItem, layout),
   ].map(ensureItemLabels);
 }
 
 function instructionItemFor(modelItem, assets, page, layout, options, styles, report) {
-  const item = modelItem.raw || modelItem;
-  const styleRefs = modelItem.styleRefs || item.styleRefs || {};
-  const content = modelItem.content || item.content || { text: item.text || '', runs: item.runs || [] };
-  const vectorGeometry = vectorGeometryFor(modelItem, item);
-  const visualStyle = modelItem.visualStyle || item.visualStyle || null;
+  const styleRefs = modelItem.styleRefs || {};
+  const content = modelItem.content || { text: '', runs: [] };
+  const vectorGeometry = vectorGeometryFor(modelItem);
+  const visualStyle = modelItem.visualStyle || null;
   const indesignEffects = modelItem.extensions?.indesign?.effects ?? null;
   const base = {
     id: modelItem.id,
-    role: modelItem.role || item.role,
-    bounds: modelItem.bounds || itemBounds(item, page, layout),
-    zIndex: modelItem.zIndex || item.zIndex || 0,
+    role: modelItem.role,
+    bounds: modelItem.bounds || itemBounds(modelItem, page, layout),
+    zIndex: modelItem.zIndex || 0,
     layer: layerForModelItem(modelItem, options),
-    sourceSelector: modelItem.sourceSelector || item.sourceSelector,
+    sourceSelector: modelItem.sourceSelector,
     styleRefs,
     labels: modelItem.labels || [],
     effects: effectsForInstruction(indesignEffects, page, layout),
@@ -221,7 +219,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     return {
       ...base,
       type: 'TEXT',
-      bounds: textFrameBounds(item, base.bounds, layout),
+      bounds: textFrameBounds(modelItem, base.bounds, layout),
       text,
       paragraphStyle: styleRefs.paragraphStyle,
       objectStyle: styleRefs.objectStyle,
@@ -233,9 +231,9 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     };
   }
   if (base.role === 'graphic') {
-    const asset = assetForItem(item, assets);
-    const placement = asset ? placementForItem(item, asset) : null;
-    const contentBounds = graphicContentBounds(item, base.bounds, layout, placement);
+    const asset = assetForItem(modelItem, assets);
+    const placement = asset ? placementForItem(modelItem, asset) : null;
+    const contentBounds = graphicContentBounds(modelItem, base.bounds, layout, placement);
     const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
     return {
       ...base,
@@ -261,10 +259,10 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     };
   }
   if (base.role === 'table') {
-    const table = modelItem.table && !Array.isArray(modelItem.table) ? modelItem.table : item.table || item.content || {};
-    const rows = tableRowsForInstruction(item, page, layout);
-    const rowHeights = tableRowHeightsForInstruction(item, rows, layout);
-    const columnWidths = tableColumnWidthsForInstruction(item, rows, layout);
+    const table = modelItem.table && !Array.isArray(modelItem.table) ? modelItem.table : modelItem.content || {};
+    const rows = tableRowsForInstruction(modelItem, page, layout);
+    const rowHeights = tableRowHeightsForInstruction(modelItem, rows, layout);
+    const columnWidths = tableColumnWidthsForInstruction(modelItem, rows, layout);
     return {
       ...base,
       type: 'TABLE',
@@ -272,14 +270,14 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
       tableStyle: styleRefs.tableStyle,
       objectStyle: styleRefs.objectStyle,
       frameStyle: styleRefs.frameStyle,
-      text: item.text,
+      text: modelItem.text,
       rows,
       columnCount: table.columnCount || 0,
       columnWidths,
       rowHeights,
     };
   }
-  const line = nativeLineFor(modelItem, item, base.bounds, layout, styles, vectorGeometry, visualStyle);
+  const line = nativeLineFor(modelItem, base.bounds, layout, styles, vectorGeometry, visualStyle);
   if (line) {
     const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
     return {
@@ -299,7 +297,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     type: 'SHAPE',
     objectStyle: styleRefs.objectStyle,
     frameStyle: styleRefs.frameStyle,
-    shapeKind: shapeKindFor(item, vectorGeometry),
+    shapeKind: shapeKindFor(modelItem, vectorGeometry),
     ...(vectorGeometry ? { vectorGeometry } : {}),
     ...(visualStyle ? { visualStyle } : {}),
     ...(styleOverride ? { styleOverride } : {}),
@@ -328,46 +326,42 @@ function ensureInstructionSwatch(styles, normalized) {
   }
 }
 
-function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles, vectorGeometry = null, visualStyle = null) {
-  const item = modelItem || rawItem;
-  const raw = rawItem || modelItem || {};
+function nativeLineFor(item, baseBounds, layout, styles, vectorGeometry = null, visualStyle = null) {
   if (!item) return null;
-  const classNames = item.classList || raw.classList || [];
-  const styleRefs = item.styleRefs || raw.styleRefs || {};
+  const classNames = item.classList || [];
+  const styleRefs = item.styleRefs || {};
   const objectStyle = styleRefs.objectStyle;
-  const sourceLine = sourceLineStroke(item) || sourceLineStroke(raw);
+  const sourceLine = sourceLineStroke(item);
   const objectStyleStroke = objectStyleLineStroke(styles, objectStyle, baseBounds);
-  const explicitLine = (item.role || raw.role) === 'line'
+  const explicitLine = item.role === 'line'
     || classNames.includes('line')
     || /(^|-)line($|-)/.test(String(objectStyle || ''))
     || sourceNodeAttribute(item, 'data-id-vector') === 'line'
-    || sourceNodeAttribute(raw, 'data-id-vector') === 'line'
     || vectorLineCandidate(vectorGeometry, baseBounds);
   const thinVectorLine = (sourceLine || objectStyleStroke) && lineLikeBounds(baseBounds);
-  const edge = raw.box && raw.box.borders && raw.box.borders.top;
+  const edge = item.box && item.box.borders && item.box.borders.top;
   const stroke = visibleBorder(edge)
     ? { color: edge.color, weight: edge.widthPt }
     : visualLineStroke(visualStyle, styles) || sourceLine || objectStyleStroke;
   const hasMarker = visualLineMarker(visualStyle);
-  const styleItem = raw || item;
-  const rawBoundsMm = styleItem.boundsMm || baseBounds || {};
+  const rawBoundsMm = item.boundsMm || baseBounds || {};
   if ((!explicitLine && !thinVectorLine) || (!stroke && !hasMarker)) return null;
   const bounds = layout.unitMode === 'presentation'
     ? {
-      x: styleLengthTarget(styleItem, 'left', baseBounds.x, layout),
-      y: styleLengthTarget(styleItem, 'top', baseBounds.y, layout),
-      width: styleLengthTarget(styleItem, 'width', baseBounds.width, layout),
-      height: styleLengthTarget(styleItem, 'height', baseBounds.height, layout),
+      x: styleLengthTarget(item, 'left', baseBounds.x, layout),
+      y: styleLengthTarget(item, 'top', baseBounds.y, layout),
+      width: styleLengthTarget(item, 'width', baseBounds.width, layout),
+      height: styleLengthTarget(item, 'height', baseBounds.height, layout),
     }
     : {
-      x: styleLengthMm(styleItem, 'left', rawBoundsMm.x),
-      y: styleLengthMm(styleItem, 'top', rawBoundsMm.y),
-      width: styleLengthMm(styleItem, 'width', rawBoundsMm.width),
-      height: styleLengthMm(styleItem, 'height', rawBoundsMm.height),
+      x: styleLengthMm(item, 'left', rawBoundsMm.x),
+      y: styleLengthMm(item, 'top', rawBoundsMm.y),
+      width: styleLengthMm(item, 'width', rawBoundsMm.width),
+      height: styleLengthMm(item, 'height', rawBoundsMm.height),
     };
   const out = {
     bounds,
-    rotationAngle: rotationAngleFor(styleItem),
+    rotationAngle: rotationAngleFor(item),
   };
   if (stroke && stroke.weight) {
     out.strokeColor = stroke.color;
@@ -376,8 +370,8 @@ function nativeLineFor(modelItem, rawItem, baseBounds, layout, styles, vectorGeo
   return out;
 }
 
-function vectorGeometryFor(modelItem, rawItem) {
-  const vector = modelItem && modelItem.vectorGeometry || rawItem && rawItem.vectorGeometry || null;
+function vectorGeometryFor(modelItem) {
+  const vector = modelItem && modelItem.vectorGeometry || null;
   if (!vector || !Array.isArray(vector.paths)) return null;
   const paths = vector.paths
     .map((path) => ({

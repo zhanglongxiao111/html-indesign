@@ -23,7 +23,7 @@ function ensureItemLabels(item) {
       kind: 'item',
       id: item.id,
       source: 'html-to-indesign',
-      role: item.role || String(item.type || '').toLowerCase(),
+      role: item.role || null,
       generated: item.role === 'background' || item.role === 'decoration',
     }),
   };

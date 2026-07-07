@@ -115,7 +115,7 @@ test('auditReverseAuthorPackage warns when unknown InDesign PageItem geometry is
             {
               id: 'complex-vector',
               role: 'shape',
-              type: 'PageItem',
+              sourceType: 'PageItem',
               semantic: null,
               bounds: { x: 10, y: 10, width: 20, height: 20 },
               visualStyle: { fillColor: '#000000' },
@@ -128,6 +128,45 @@ test('auditReverseAuthorPackage warns when unknown InDesign PageItem geometry is
 
   assert.equal(audit.ok, true);
   assert.equal(audit.warnings.some((warning) => warning.code === 'AUTHOR_UNSUPPORTED_VECTOR_FALLBACK'), true);
+});
+
+test('auditReverseAuthorPackage does not use retired item type as sourceType', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-audit-retired-vector-type');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(path.join(outDir, 'pages'), { recursive: true });
+  fs.mkdirSync(path.join(outDir, 'styles'), { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'retired-vector-type',
+    entry: 'deck.html',
+    styles: ['styles/layout.css', 'styles/reverse-overrides.css'],
+    pages: [{ id: 'page-1', file: 'pages/00-page.html' }],
+  }), 'utf8');
+  fs.writeFileSync(path.join(outDir, 'pages/00-page.html'), '<section class="page"><div id="complex-vector"></div></section>', 'utf8');
+  fs.writeFileSync(path.join(outDir, 'styles/layout.css'), '.page { display:grid; grid-template-columns:repeat(12, 1fr); }');
+  fs.writeFileSync(path.join(outDir, 'styles/reverse-overrides.css'), '#complex-vector { position:absolute; left:10px; top:10px; width:20px; height:20px; }');
+
+  const audit = auditReverseAuthorPackage(outDir, {
+    model: {
+      pages: [
+        {
+          id: 'page-1',
+          items: [
+            {
+              id: 'complex-vector',
+              role: 'shape',
+              type: 'PageItem',
+              bounds: { x: 10, y: 10, width: 20, height: 20 },
+              visualStyle: { fillColor: '#000000' },
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(audit.ok, true);
+  assert.equal(audit.warnings.some((warning) => warning.code === 'AUTHOR_UNSUPPORTED_VECTOR_FALLBACK'), false);
 });
 
 test('auditReverseAuthorPackage does not warn for PageItem vectors with preserved path geometry', () => {

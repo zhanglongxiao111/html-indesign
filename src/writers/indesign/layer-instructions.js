@@ -6,7 +6,7 @@ function layerForModelItem(modelItem, options) {
       ? modelItem.layer
       : mappedLayerName(modelItem.layer, options);
   }
-  return layerForItem(modelItem.raw || modelItem, options);
+  return layerForItem(modelItem, options);
 }
 
 function layerForItem(item, options) {
