@@ -51,6 +51,37 @@ test('G4 catches an audit script with no invalid-input 必须 fail test and a si
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
 });
 
+test('G4 ignores invalid-input coverage text in comments and ordinary strings', () => {
+  const root = makeSampleProject({
+    'scripts/audit-commented.js': 'process.exit(1);\n',
+    'test/audit-commented.test.js': [
+      '// audit-commented invalid-input 必须 fail',
+      'const note = "audit-commented invalid-input 必须 fail";',
+      'test("audit-commented happy path", () => {});',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G4.1 audit invalid-input coverage',
+    file: 'scripts/audit-commented.js',
+    detail: 'missing test named "audit-commented invalid-input 必须 fail"',
+  }]);
+});
+
+test('G4 accepts a real Node test case named for invalid-input coverage', () => {
+  const root = makeSampleProject({
+    'scripts/audit-covered.js': 'process.exit(1);\n',
+    'test/audit-covered.test.js': 'test("audit-covered invalid-input 必须 fail", () => {});\n',
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, []);
+});
+
 test('G4 current audit fail-closed violations match the ratchet baseline', () => {
   const actualViolations = collectG4Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -63,14 +94,14 @@ test('G4 current audit fail-closed violations match the ratchet baseline', () =>
 
 function collectG4Violations(repoRoot) {
   const scripts = collectAuditScripts(repoRoot);
-  const testText = collectTestText(repoRoot);
+  const testNames = collectNodeTestNames(repoRoot);
   const violations = [];
 
   for (const script of scripts) {
     const basename = path.basename(script, '.js');
     const relativeScript = repoRelative(repoRoot, script);
     const expectedName = `${basename} invalid-input 必须 fail`;
-    if (!testText.includes(expectedName)) {
+    if (!testNames.has(expectedName)) {
       violations.push({
         rule: 'G4.1 audit invalid-input coverage',
         file: relativeScript,
@@ -104,14 +135,199 @@ function collectAuditScripts(repoRoot) {
     .sort();
 }
 
-function collectTestText(repoRoot) {
+function collectNodeTestNames(repoRoot) {
   const testDir = path.join(repoRoot, 'test');
-  if (!fs.existsSync(testDir)) return '';
-  return collectFiles(testDir)
+  const names = new Set();
+  if (!fs.existsSync(testDir)) return names;
+  for (const file of collectFiles(testDir)
     .filter((file) => file.endsWith('.test.js'))
-    .filter((file) => !repoRelative(repoRoot, file).startsWith('test/architecture/'))
-    .map((file) => fs.readFileSync(file, 'utf8'))
-    .join('\n');
+    .filter((file) => !repoRelative(repoRoot, file).startsWith('test/architecture/'))) {
+    for (const name of extractNodeTestNames(fs.readFileSync(file, 'utf8'))) {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
+function extractNodeTestNames(source) {
+  const names = [];
+  let index = 0;
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index).end;
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index).end;
+    } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
+      index = skipRegexLiteral(source, index);
+    } else if (isBareTestIdentifierAt(source, index)) {
+      const openParenIndex = findCallOpenParen(source, index + testIdentifierAt(source, index).length);
+      if (openParenIndex === null) {
+        index += 1;
+        continue;
+      }
+      const firstArgumentIndex = nextArgumentIndex(source, openParenIndex + 1);
+      const literal = readStaticStringLiteral(source, firstArgumentIndex);
+      if (literal) names.push(literal.value);
+      index = openParenIndex + 1;
+    } else {
+      index += 1;
+    }
+  }
+  return names;
+}
+
+function isBareTestIdentifierAt(source, index) {
+  const identifier = testIdentifierAt(source, index);
+  if (!identifier) return false;
+  const previousIndex = previousSignificantIndex(source, index);
+  return previousIndex === -1 || source[previousIndex] !== '.';
+}
+
+function testIdentifierAt(source, index) {
+  for (const identifier of ['test', 'it']) {
+    if (
+      source.startsWith(identifier, index)
+      && !isIdentifierCharacter(source[index - 1])
+      && !isIdentifierCharacter(source[index + identifier.length])
+    ) {
+      return identifier;
+    }
+  }
+  return null;
+}
+
+function findCallOpenParen(source, index) {
+  let cursor = index;
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+  return source[cursor] === '(' ? cursor : null;
+}
+
+function nextArgumentIndex(source, index) {
+  let cursor = index;
+  while (cursor < source.length) {
+    if (/\s/.test(source[cursor])) {
+      cursor += 1;
+    } else if (source.startsWith('//', cursor)) {
+      cursor = skipLineComment(source, cursor);
+    } else if (source.startsWith('/*', cursor)) {
+      cursor = skipBlockComment(source, cursor);
+    } else {
+      return cursor;
+    }
+  }
+  return source.length;
+}
+
+function readStaticStringLiteral(source, index) {
+  if (source[index] === '"' || source[index] === "'") return skipQuotedString(source, index);
+  if (source[index] === '`') {
+    const literal = skipTemplateLiteral(source, index);
+    return literal.isStatic ? literal : null;
+  }
+  return null;
+}
+
+function skipLineComment(source, index) {
+  const newlineIndex = source.indexOf('\n', index + 2);
+  return newlineIndex === -1 ? source.length : newlineIndex + 1;
+}
+
+function skipBlockComment(source, index) {
+  const closeIndex = source.indexOf('*/', index + 2);
+  return closeIndex === -1 ? source.length : closeIndex + 2;
+}
+
+function skipQuotedString(source, index) {
+  const quote = source[index];
+  let cursor = index + 1;
+  let value = '';
+  while (cursor < source.length) {
+    if (source[cursor] === '\\') {
+      value += source[cursor + 1] || '';
+      cursor += 2;
+    } else if (source[cursor] === quote) {
+      return { value, end: cursor + 1 };
+    } else {
+      value += source[cursor];
+      cursor += 1;
+    }
+  }
+  return { value, end: source.length };
+}
+
+function skipTemplateLiteral(source, index) {
+  let cursor = index + 1;
+  let value = '';
+  let isStatic = true;
+  while (cursor < source.length) {
+    if (source[cursor] === '\\') {
+      value += source[cursor + 1] || '';
+      cursor += 2;
+    } else if (source.startsWith('${', cursor)) {
+      isStatic = false;
+      cursor += 2;
+    } else if (source[cursor] === '`') {
+      return { value, end: cursor + 1, isStatic };
+    } else {
+      value += source[cursor];
+      cursor += 1;
+    }
+  }
+  return { value, end: source.length, isStatic: false };
+}
+
+function startsRegexLiteral(source, index) {
+  const previousIndex = previousSignificantIndex(source, index);
+  if (previousIndex === -1) return true;
+  const previous = source[previousIndex];
+  if (/[[({=,:;!&|?+\-*~^<>%]/.test(previous)) return true;
+  const token = previousIdentifierToken(source, previousIndex);
+  return ['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'yield', 'await'].includes(token);
+}
+
+function previousSignificantIndex(source, index) {
+  let cursor = index - 1;
+  while (cursor >= 0 && /\s/.test(source[cursor])) cursor -= 1;
+  return cursor;
+}
+
+function previousIdentifierToken(source, index) {
+  if (!isIdentifierCharacter(source[index])) return '';
+  let start = index;
+  while (start > 0 && isIdentifierCharacter(source[start - 1])) start -= 1;
+  return source.slice(start, index + 1);
+}
+
+function skipRegexLiteral(source, index) {
+  let cursor = index + 1;
+  let inCharacterClass = false;
+  while (cursor < source.length) {
+    const character = source[cursor];
+    if (character === '\\') {
+      cursor += 2;
+    } else if (character === '[') {
+      inCharacterClass = true;
+      cursor += 1;
+    } else if (character === ']') {
+      inCharacterClass = false;
+      cursor += 1;
+    } else if (character === '/' && !inCharacterClass) {
+      cursor += 1;
+      while (cursor < source.length && /[A-Za-z]/.test(source[cursor])) cursor += 1;
+      return cursor;
+    } else {
+      cursor += 1;
+    }
+  }
+  return source.length;
+}
+
+function isIdentifierCharacter(character) {
+  return typeof character === 'string' && /[$\w]/.test(character);
 }
 
 function collectFiles(root) {

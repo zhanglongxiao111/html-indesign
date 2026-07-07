@@ -73,6 +73,22 @@ test('G8 treats package script targets and browser runtime asset scripts as owne
   }]);
 });
 
+test('G8 does not treat test-only requires as src module ownership', () => {
+  const root = makeSampleProject({
+    'index.js': 'module.exports = {};\n',
+    'src/test-only.js': 'module.exports = {};\n',
+    'test/test-only.test.js': 'require("../src/test-only");\n',
+  });
+
+  const violations = collectG8Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G8.1 src module has an owner',
+    file: 'src/test-only.js',
+    detail: 'src module has no static incoming require edge',
+  }]);
+});
+
 test('G8 current orphan module violations match the ratchet baseline', () => {
   const actualViolations = collectG8Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -91,35 +107,51 @@ function collectG8Violations(repoRoot) {
   const graphFiles = [
     ...srcFiles,
     ...collectJavaScriptFiles(path.join(repoRoot, 'scripts')),
-    ...collectJavaScriptFiles(path.join(repoRoot, 'test')),
     path.join(repoRoot, 'index.js'),
     ...packageScriptEntrypoints,
   ].filter((file) => fs.existsSync(file));
   const graph = collectRequireGraphFromFiles(graphFiles);
-  const incoming = new Set(
-    [
-      ...graph.edges,
-      ...collectStaticAssetEdges(graphFiles),
-    ]
-      .map((edge) => edge.to)
-      .filter((file) => isUnder(file, srcRoot))
-      .map((file) => path.resolve(file)),
-  );
-  const allowedEntrypoints = new Set([
+  const ownershipRoots = new Set([
+    path.join(repoRoot, 'index.js'),
     path.join(repoRoot, 'src/indesign-cli-plugin/index.js'),
     ...packageScriptEntrypoints,
-  ].map((file) => path.resolve(file)));
+  ].filter((file) => fs.existsSync(file)).map((file) => path.resolve(file)));
+  const owned = collectOwnedFiles(ownershipRoots, [
+    ...graph.edges,
+    ...collectStaticAssetEdges(graphFiles),
+  ]);
 
   return srcFiles
     .map((file) => path.resolve(file))
-    .filter((file) => !allowedEntrypoints.has(file))
-    .filter((file) => !incoming.has(file))
+    .filter((file) => !owned.has(file))
     .map((file) => ({
       rule: 'G8.1 src module has an owner',
       file: repoRelative(repoRoot, file),
       detail: 'src module has no static incoming require edge',
     }))
     .sort((a, b) => a.file.localeCompare(b.file));
+}
+
+function collectOwnedFiles(roots, edges) {
+  const outgoing = new Map();
+  for (const edge of edges) {
+    const from = path.resolve(edge.from);
+    const to = path.resolve(edge.to);
+    if (!outgoing.has(from)) outgoing.set(from, []);
+    outgoing.get(from).push(to);
+  }
+
+  const owned = new Set();
+  const queue = [...roots];
+  while (queue.length > 0) {
+    const file = queue.shift();
+    if (owned.has(file)) continue;
+    owned.add(file);
+    for (const target of outgoing.get(file) || []) {
+      if (!owned.has(target)) queue.push(target);
+    }
+  }
+  return owned;
 }
 
 function collectJavaScriptFiles(root) {
