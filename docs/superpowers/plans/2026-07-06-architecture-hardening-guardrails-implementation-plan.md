@@ -214,7 +214,7 @@ npm test
 
 ### 7. W0-3 文档同步
 
-进度：复审修复已提交，复审中（提交 `c923521` 将 `audit:synthesized-styles` 修正为带 `--model <semantic-model.json>` 的真实命令；`node --test test/architecture/docs-code-sync.test.js` 2/2 通过，等待复审，2026-07-07）。
+进度：复审发现问题，修复中（提交 `c923521` 仍少一个 npm 参数分隔符；PowerShell 下需写成 `npm run audit:synthesized-styles -- -- --model <semantic-model.json> [--out <report.json>]`，2026-07-07）。
 
 - [ ] AGENTS.md §4 补登 `src/authoring`、`src/semantic-preset`、`src/shared`（含一句话边界规则）；§9 补登 `audit:synthesized-styles`。
 - [ ] 收 `baselines/G7.json` 全部条目。
