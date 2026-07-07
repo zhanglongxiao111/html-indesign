@@ -227,7 +227,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 8. W0 收口检查点
 
-进度：复审发现阻断问题，修复中（提交 `921fd2f` 已修掉上一轮点名场景，但 `audit-conversion-gate` 仍会把 reverse-visual 缺 `stats.pageMismatches`、trusted-source summary 残缺的 parseable 输入按 0 兜底并返回 green；等待窄范围修复，2026-07-07）。
+进度：二次复审修复已提交，复审中（提交 `36b2c23` 修复 `audit-conversion-gate` 对 reverse-visual 缺 `stats.pageMismatches`、trusted-source summary 残缺输入按 0 兜底返回 green 的问题；`node --test test/indesign-reverse/conversion-gate-cli.test.js test/architecture/audit-fail-closed.test.js` 15/15 通过，等待复审，2026-07-07）。
 
 - [ ] 确认 G4（audit 部分）/G5（代码部分）/G7/G8 基线归零；G5 剩余条目应只剩 test 目录改名（W4）。
 - [ ] `npm test` 全绿。**此检查点后可编辑性基准计划方可跑首轮。**
