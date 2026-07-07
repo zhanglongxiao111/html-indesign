@@ -241,20 +241,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits unregistered model path items[].styleRefs.characterStyles",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits unregistered model path items[].styleRefs.swatch",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
       "detail": "html emits unregistered model path labels[].semanticPreset",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"

@@ -7,12 +7,19 @@ const {
   itemBounds,
 } = require('../../../semantic-model/layout');
 const { createProtocolLabel } = require('../../../shared/labels');
+const { fieldRegistry } = require('../../../protocol');
 const {
   sourcePackageFromDocument,
   sourceNodeForSnapshotItem,
   gridLayoutFromCssVars,
 } = require('../reader/source-metadata');
 const { vectorFactsFromSvgItem } = require('./svg-vector-geometry');
+
+const ITEM_STYLE_REFS_FIELD = fieldRegistry.getByPath('items[].styleRefs');
+if (!ITEM_STYLE_REFS_FIELD || !Array.isArray(ITEM_STYLE_REFS_FIELD.allowedKeys)) {
+  throw new Error('ITEM_STYLE_REFS_ALLOWED_KEYS_UNREGISTERED');
+}
+const ITEM_STYLE_REF_ALLOWED_KEYS = new Set(ITEM_STYLE_REFS_FIELD.allowedKeys);
 
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
@@ -306,19 +313,18 @@ function itemModelFor(item, page, layout) {
   const itemLayout = gridLayoutFromCssVars(item.cssVars || {});
   const parentId = nearestSourceParentId(item, page);
   const structure = { parentId, order: item.documentOrder || 0, containerPolicy: parentId === page.id ? 'group' : 'child' };
-  const styleRefs = {
+  const styleRefs = filterItemStyleRefs({
     ...(item.styleRefs || {}),
     ...(attrs['data-id-layer'] ? { layer: attrs['data-id-layer'] } : {}),
     ...(attrs['data-id-style-token'] ? { synthesizedToken: attrs['data-id-style-token'] } : {}),
     ...(attrs['data-id-style-name'] ? { synthesizedName: attrs['data-id-style-name'] } : {}),
-  };
+  });
   const parentPageName = attrs['data-id-parent-page-item'] || null;
   const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;
   return {
     id: item.id,
     raw: item,
     role: item.role,
-    type: item.role,
     tagName: item.tagName || null,
     semantic,
     sourceSelector: item.sourceSelector || null,
@@ -360,6 +366,16 @@ function itemModelFor(item, page, layout) {
       layout: itemLayout,
     })],
   };
+}
+
+function filterItemStyleRefs(styleRefs) {
+  const filtered = {};
+  for (const [key, value] of Object.entries(styleRefs || {})) {
+    if (ITEM_STYLE_REF_ALLOWED_KEYS.has(key)) {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
 }
 
 function mergeVisualStyleFacts(...facts) {

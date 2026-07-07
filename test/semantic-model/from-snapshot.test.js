@@ -573,6 +573,106 @@ test('snapshotToSemanticModel uses observed panel style names as executable styl
   assert.equal(model.pages[0].items[0].styleRefs.objectStyle, '基本文本框架');
 });
 
+test('snapshotToSemanticModel emits canonical role without retired item type', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'copy',
+        role: 'text',
+        tagName: 'p',
+        classList: ['id-object'],
+        attributes: {},
+        rectPx: { x: 10, y: 20, width: 60, height: 10 },
+        computedStyle: {},
+        text: '正文',
+        runs: [],
+      }],
+    }],
+    assets: [],
+    styles: {},
+  }, { unitMode: 'print' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.role, 'text');
+  assert.equal(Object.hasOwn(item, 'type'), false);
+});
+
+test('snapshotToSemanticModel filters item styleRefs to registry allowed keys', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'styled-copy',
+        role: 'text',
+        tagName: 'p',
+        classList: ['id-object'],
+        attributes: {
+          'data-id-layer': '正文图层',
+          'data-id-style-token': 'synth-copy',
+          'data-id-style-name': '正文合成样式',
+        },
+        rectPx: { x: 10, y: 20, width: 60, height: 10 },
+        computedStyle: {},
+        styleRefs: {
+          paragraphStyle: '正文',
+          characterStyle: '强调',
+          objectStyle: '文本框',
+          frameStyle: '正文框',
+          tableStyle: '表格',
+          cellStyle: '单元格',
+          paragraphStyleDisplayName: '正文显示名',
+          characterStyleDisplayName: '强调显示名',
+          objectStyleDisplayName: '文本框显示名',
+          frameStyleDisplayName: '正文框显示名',
+          tableStyleDisplayName: '表格显示名',
+          displayName: '通用显示名',
+          genericStyle: '通用样式',
+          characterStyles: ['旧复数样式'],
+          swatch: '旧色板',
+        },
+        text: '正文',
+        runs: [],
+      }],
+    }],
+    assets: [],
+    styles: {},
+  }, { unitMode: 'print' });
+
+  assert.deepEqual(model.pages[0].items[0].styleRefs, {
+    paragraphStyle: '正文',
+    characterStyle: '强调',
+    objectStyle: '文本框',
+    frameStyle: '正文框',
+    tableStyle: '表格',
+    cellStyle: '单元格',
+    paragraphStyleDisplayName: '正文显示名',
+    characterStyleDisplayName: '强调显示名',
+    objectStyleDisplayName: '文本框显示名',
+    frameStyleDisplayName: '正文框显示名',
+    tableStyleDisplayName: '表格显示名',
+    displayName: '通用显示名',
+    genericStyle: '通用样式',
+    layer: '正文图层',
+    synthesizedToken: 'synth-copy',
+    synthesizedName: '正文合成样式',
+  });
+});
+
 test('snapshotToSemanticModel ignores retired parent page display-name alias', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },
