@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9a 已完成（执行提交 `3b95d66`，修复提交 `9c049c1`，诊断清理提交 `0df6641`；二次复审未发现阻断问题；`node --test "test/protocol/*.test.js"` 148/148 通过，`node --test test/architecture/semantic-model-contract.test.js` 10/10 通过；2026-07-08）。
+进度：9b 进行中（9a 已完成；已定位 HTML normalizer 仍写 `type: item.role`，且 `styleRefs` 直接透传 `item.styleRefs` 会带出非枚举键如 `characterStyles` / `swatch`；准备派执行子 agent 仅做 HTML adapter 对齐；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
