@@ -37,11 +37,62 @@ function requiredReason(report) {
   if (/[\r\n]/.test(reason)) {
     throw new Error('reason must be a single line');
   }
-  const withoutFinalSentenceTerminator = reason.trim().replace(/[.!?。！？｡]\s*$/, '');
-  if (/[.!?。！？｡]\s*\S/.test(withoutFinalSentenceTerminator)) {
+  if (hasMultipleSentences(reason)) {
     throw new Error('reason must be exactly one sentence');
   }
   return reason;
+}
+
+function hasMultipleSentences(reason) {
+  const withoutFinalSentenceTerminator = reason.trim().replace(/[.!?。！？｡]\s*$/, '');
+  for (let index = 0; index < withoutFinalSentenceTerminator.length; index += 1) {
+    const character = withoutFinalSentenceTerminator[index];
+    if (!isSentenceTerminator(character)) {
+      continue;
+    }
+    if (character === '.' && isInternalPeriod(withoutFinalSentenceTerminator, index)) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+function isSentenceTerminator(character) {
+  return /[.!?。！？｡]/.test(character);
+}
+
+function isInternalPeriod(text, index) {
+  const previous = text[index - 1];
+  const next = text[index + 1];
+  if (!previous || !next) {
+    return false;
+  }
+
+  const token = periodTokenAt(text, index);
+  if (isAbbreviationToken(token)) {
+    return true;
+  }
+
+  return /[a-z0-9]/.test(previous) && /[a-z0-9]/.test(next);
+}
+
+function periodTokenAt(text, index) {
+  let start = index;
+  while (start > 0 && !/\s/.test(text[start - 1])) {
+    start -= 1;
+  }
+
+  let end = index + 1;
+  while (end < text.length && !/\s/.test(text[end])) {
+    end += 1;
+  }
+
+  return text.slice(start, end);
+}
+
+function isAbbreviationToken(token) {
+  return /^(?:[A-Za-z]\.){2,}[A-Za-z]?$/.test(token);
 }
 
 function optionalList(value, fieldName) {

@@ -32,6 +32,23 @@ test('formatGuardrailFailure rejects missing required failure fields', () => {
   );
 });
 
+test('formatGuardrailFailure accepts one-sentence reasons with internal periods', () => {
+  for (const reason of [
+    'Use Node.js only.',
+    'Load index.js only.',
+    'Keep under 1.0 MB.',
+  ]) {
+    const message = formatGuardrailFailure({
+      rule: 'G1 dependency direction',
+      reason,
+      remediation: 'Move orchestration to a writer or shared layer.',
+      specPath: 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G1',
+    });
+
+    assert.match(message, new RegExp(`Reason: ${escapeRegExp(reason)}`));
+  }
+});
+
 test('formatGuardrailFailure rejects multi-sentence reasons', () => {
   assert.throws(
     () => formatGuardrailFailure({
@@ -43,6 +60,10 @@ test('formatGuardrailFailure rejects multi-sentence reasons', () => {
     /reason must be exactly one sentence/
   );
 });
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 test('formatGuardrailFailure rejects malformed multi-sentence reasons without spaces', () => {
   assert.throws(

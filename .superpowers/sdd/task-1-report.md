@@ -191,3 +191,57 @@ Self-review:
 - Member calls named `require`, including optional chaining, are no longer parsed as CommonJS require calls.
 - `guardrail-report.js` now rejects multi-sentence reasons with no ASCII space between sentences and CJK sentence punctuation.
 - No later guardrails, compatibility branches, fallback behavior, legacy naming, or dead code were added.
+
+## Third reviewer fix
+
+Scope:
+
+- Fixed only `test/architecture/helpers/guardrail-report.js` and `test/architecture/guardrail-report.test.js`.
+- Appended this report section.
+- Did not touch `require-graph`.
+- Did not implement later guardrails.
+- Did not edit the controller-owned plan progress file.
+
+RED:
+
+```powershell
+node --test test/architecture/
+```
+
+Observed result after adding positive regression tests and before implementation:
+
+```text
+# tests 14
+# pass 13
+# fail 1
+```
+
+Expected failing check:
+
+- `formatGuardrailFailure accepts one-sentence reasons with internal periods` failed with `reason must be exactly one sentence` for legal internal-period reasons such as `Use Node.js only.`, `Load index.js only.`, and `Keep under 1.0 MB.`.
+
+GREEN:
+
+```powershell
+node --test test/architecture/
+```
+
+Observed result:
+
+```text
+# tests 14
+# pass 14
+# fail 0
+```
+
+Files changed:
+
+- `test/architecture/guardrail-report.test.js`
+- `test/architecture/helpers/guardrail-report.js`
+- `.superpowers/sdd/task-1-report.md`
+
+Self-review:
+
+- One-sentence reasons with internal lowercase or numeric periods now pass.
+- Existing rejections for `A. B.`, `A.B.`, `A。B。`, and multi-line reasons remain covered.
+- No silent fallback, compatibility branch, legacy naming, dead code, `require-graph` change, or later guardrail implementation was added.
