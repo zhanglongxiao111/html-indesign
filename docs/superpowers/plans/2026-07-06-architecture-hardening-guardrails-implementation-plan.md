@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 复审修复已提交，二次复审中（执行提交 `410cb15`，修复提交 `00ffedd`；InDesign writer 已改为只读 `items[].extensions.indesign.effects`，未引入旧平铺 effects fallback；`node --test test/semantic-model/to-instructions.test.js` 25/25 通过，G3 10/10 通过，协议测试 148/148 通过，`git diff --check` 通过；2026-07-08）。
+进度：9c 二次复审发现阻断问题，修复中（执行提交 `410cb15`，effects 修复提交 `00ffedd`；InDesign writer 已改为只读 `items[].extensions.indesign.effects`；二次复审指出 `semantic: 'unknown'` 旧哨兵仍残留在 `src/semantic-reconstruction/reconstruct.js`、`src/writers/html/author-render-utils.js` 和对应测试中，未完成计划点名的判空收敛；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
