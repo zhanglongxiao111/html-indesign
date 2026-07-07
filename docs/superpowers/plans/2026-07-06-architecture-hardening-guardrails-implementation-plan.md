@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9a 实现已提交，复审中（执行提交 `3b95d66`；范围为 registry 裁定登记、生成文档和协议测试，未改 adapter/writer 行为；2026-07-08）。
+进度：9a 复审发现阻断问题，修复中（执行提交 `3b95d66`；复审指出真实 `DocumentModel` 中 `items[].type` 因 scanner structural key 被 fail-open，且 retired model path 文档标题不精确；另需补齐 active `styleRefs.genericStyle` 的 allowedKeys 裁定；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
