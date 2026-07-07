@@ -180,12 +180,12 @@ npm test
 
 ### 5. W0-1 门禁反假成功修复
 
-进度：复审修复已提交，复审中（提交 `bdc59e4` 修复 `reverse-snapshot-structure` bounds 双缺失假通过、transitive asset alias 解析失败静默吞掉，以及 null/undefined corrupt input 裸异常；`node --test test/indesign-reverse/content-inventory.test.js test/indesign-reverse/structure-signature.test.js test/indesign-reverse/reverse-snapshot-structure.test.js` 48/48 通过，`node --test test/architecture/audit-fail-closed.test.js` 6/6 通过，等待复审，2026-07-07）。
+进度：已完成（提交 `090782b`、`bdc59e4`；最终复审未发现阻断问题；G4 baseline 9 条收缩到 6 条；`node --test test/indesign-reverse/content-inventory.test.js test/indesign-reverse/structure-signature.test.js test/indesign-reverse/reverse-snapshot-structure.test.js` 48/48 通过，`node --test test/indesign-reverse/effective-diff-audit.test.js test/indesign-reverse/parent-page-furniture-audit.test.js` 13/13 通过，`node --test test/architecture/audit-fail-closed.test.js` 6/6 通过，`npm test` 828/828 通过，2026-07-07）。
 
-- [ ] `content-inventory.js`：空/缺失 `pages` 显式 fail（原因码 `CONTENT_INVENTORY_INPUT_INVALID`）；`readAssetAliases` 解析失败记 warning。
-- [ ] `structure-signature.js`、`reverse-snapshot-structure.js`（矢量双侧缺失）、`parent-page-furniture.js`（bounds 缺失）同模式逐一排查修复；裁定基准：空输入永远是错误，不存在"两边都空所以相等"。
-- [ ] `scripts/audit-effective-diff.js` CLI 出口：无法判定时 exitCode 非 0。
-- [ ] 每处修复补"invalid-input 必须 fail"回归用例；收 `baselines/G4.json` 对应条目。
+- [x] `content-inventory.js`：空/缺失 `pages` 显式 fail（原因码 `CONTENT_INVENTORY_INPUT_INVALID`）；`readAssetAliases` 解析失败记 warning。
+- [x] `structure-signature.js`、`reverse-snapshot-structure.js`（矢量双侧缺失）、`parent-page-furniture.js`（bounds 缺失）同模式逐一排查修复；裁定基准：空输入永远是错误，不存在"两边都空所以相等"。
+- [x] `scripts/audit-effective-diff.js` CLI 出口：无法判定时 exitCode 非 0。
+- [x] 每处修复补"invalid-input 必须 fail"回归用例；收 `baselines/G4.json` 对应条目。
 
 验收命令：
 
