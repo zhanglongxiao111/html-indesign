@@ -46,6 +46,41 @@ function synthesizedStyleField(canonicalPath, currentPaths, type, extra = {}) {
   };
 }
 
+function styleFormatExtension(canonicalPath, type, extra = {}) {
+  return {
+    canonicalPath,
+    currentPaths: [],
+    fieldClass: 'formatExtension',
+    lifecycle: 'active',
+    owner: 'style-resources',
+    type,
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    ...extra,
+  };
+}
+
+function compiledStyleFields(collection, fields, options = {}) {
+  return [
+    ...(options.includeCollection ? [styleFormatExtension(`styles.${collection}`, 'object')] : []),
+    ...fields.map(([name, type]) => styleFormatExtension(`styles.${collection}[].${name}`, type)),
+  ];
+}
+
+const TEXT_STYLE_RESOURCE_FIELDS = Object.freeze([
+  ['appliedFont', 'string'],
+  ['fontStyleName', 'string'],
+  ['pointSize', 'number'],
+  ['fontWeight', 'string|number'],
+  ['fontStyle', 'string'],
+  ['fillColor', 'string'],
+  ['tracking', 'number'],
+  ['capitalization', 'string'],
+]);
+
 module.exports = [
   synthesizedStyleField(
     'styles.synthesized',
@@ -142,6 +177,45 @@ module.exports = [
       },
     },
   ),
+  ...compiledStyleFields('swatches', [
+    ['name', 'string'],
+    ['model', 'string'],
+    ['space', 'string'],
+    ['value', 'string'],
+  ], { includeCollection: true }),
+  ...compiledStyleFields('fonts', [
+    ['family', 'string'],
+    ['fallback', 'string'],
+  ], { includeCollection: true }),
+  ...compiledStyleFields('paragraphStyles', [
+    ...TEXT_STYLE_RESOURCE_FIELDS,
+    ['leading', 'number'],
+    ['justification', 'string'],
+    ['spaceBefore', 'number'],
+    ['spaceAfter', 'number'],
+  ]),
+  ...compiledStyleFields('characterStyles', [
+    ...TEXT_STYLE_RESOURCE_FIELDS,
+    ['verticalPosition', 'string'],
+    ['textDecoration', 'string'],
+  ]),
+  ...compiledStyleFields('objectStyles', [
+    ['fillColor', 'string'],
+    ['fillOpacity', 'number'],
+    ['strokeColor', 'string'],
+    ['strokeWeight', 'number'],
+    ['strokeStyle', 'string'],
+    ['strokeAlignment', 'string'],
+    ['cornerRadius', 'number'],
+    ['opacity', 'number'],
+    ['blendMode', 'string'],
+  ]),
+  ...compiledStyleFields('frameStyles', [
+    ['fit', 'string'],
+    ['position', 'string'],
+    ['inset', 'object'],
+    ['overflow', 'string'],
+  ]),
   {
     canonicalPath: 'items[].styleRefs.paragraphStyle',
     currentPaths: ['items[].paragraphStyle', 'labels[].paragraphStyle', 'labels[].paragraphStyleToken'],

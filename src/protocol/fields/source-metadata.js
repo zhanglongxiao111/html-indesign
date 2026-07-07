@@ -46,6 +46,22 @@ function htmlSourceMetadataField(canonicalPath, currentPaths, htmlAttr, type = '
   };
 }
 
+function htmlModelSourceMetadataField(canonicalPath, currentPaths, type) {
+  return {
+    canonicalPath,
+    currentPaths,
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type,
+    capabilities: {
+      html: { read: 'native', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  };
+}
+
 module.exports = [
   documentSourcePackageField(
     'document.sourcePackage.config',
@@ -85,15 +101,27 @@ module.exports = [
     ['pages[].source', 'items[].source', 'sourceNode.attributes.data-id-source'],
     'data-id-source',
   ),
+  htmlModelSourceMetadataField('pages[].attributes', [], 'object'),
+  htmlModelSourceMetadataField('document.styleLayout', ['styleLayout'], 'object'),
+  htmlModelSourceMetadataField('pages[].classList', [], 'array'),
+  htmlModelSourceMetadataField('pages[].computedStyle', [], 'object'),
+  htmlModelSourceMetadataField('items[].attributes', [], 'object'),
+  htmlModelSourceMetadataField('items[].classList', [], 'array'),
+  htmlModelSourceMetadataField('items[].computedStyle', [], 'object'),
+  htmlModelSourceMetadataField('items[].authoredStyle', [], 'object'),
+  htmlModelSourceMetadataField('items[].sourceSelector', [], 'string'),
+  htmlModelSourceMetadataField('items[].boundsMm', [], 'object'),
+  htmlModelSourceMetadataField('items[].box', [], 'object'),
+  htmlModelSourceMetadataField('items[].table.sourceRows', [], 'array'),
   htmlSourceMetadataField(
     'items[].parentPageItem',
-    ['pages[].items[].parentPageItem', 'sourceNode.attributes.data-id-parent-page-item'],
+    ['parentPages[].items[].parentPageItem', 'sourceNode.attributes.data-id-parent-page-item'],
     'data-id-parent-page-item',
     'boolean|string',
   ),
   htmlSourceMetadataField(
     'items[].parentPageSourceId',
-    ['pages[].items[].parentPageSourceId', 'sourceNode.attributes.data-id-parent-page-source-id'],
+    ['parentPages[].items[].parentPageSourceId', 'sourceNode.attributes.data-id-parent-page-source-id'],
     'data-id-parent-page-source-id',
   ),
   {

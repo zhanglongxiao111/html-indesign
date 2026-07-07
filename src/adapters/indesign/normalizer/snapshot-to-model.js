@@ -1,10 +1,20 @@
 const { loadStandardSemanticPreset } = require('../../../semantic-preset');
 const { normalizeSynthesizedStyles } = require('../../../semantic-model/synthesized-styles');
+const { validateSemanticModel } = require('../../../semantic-model');
 const { fieldRegistry } = require('../../../protocol');
+const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
+const STRICT_MODEL_DOMAINS = Object.freeze([
+  'asset.placement',
+  'source.metadata',
+  'styles',
+  'styleRefs',
+  'visualStyle.vectorGeometry',
+  'table.text',
+]);
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
@@ -26,16 +36,25 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   };
   const pages = (snapshot.pages || []).map((page) => reversePage(page, styleMaps, context));
   const report = diagnostics.report.messages.length ? diagnostics.report : null;
+  const documentId = documentLabel.id || 'indesign-document';
+  const title = documentLabel.title || (documentLabel.sourcePackage && documentLabel.sourcePackage.title) || (snapshot.document && snapshot.document.name) || documentId;
+  const sourcePackage = sourcePackageFor(documentLabel, semanticProfile);
   const model = {
     kind: 'DocumentModel',
-    id: documentLabel.id || 'indesign-document',
-    title: documentLabel.title || (documentLabel.sourcePackage && documentLabel.sourcePackage.title) || (snapshot.document && snapshot.document.name) || documentLabel.id || 'indesign-document',
+    id: documentId,
+    title,
     profile: semanticProfile,
     source: snapshot.metadata && snapshot.metadata.sourceDocument,
     unitMode: documentLabel.unitMode || 'presentation',
     coordinateUnit: documentLabel.coordinateUnit || 'pt',
-    labels: (snapshot.document && snapshot.document.labels) || [],
-    sourcePackage: sourcePackageFor(documentLabel, semanticProfile),
+    labels: labelsWithRequiredKind(snapshot.document && snapshot.document.labels, 'document', documentId, {
+      title,
+      unitMode: documentLabel.unitMode || 'presentation',
+      coordinateUnit: documentLabel.coordinateUnit || 'pt',
+      profile: semanticProfile || null,
+      sourcePackage,
+    }),
+    sourcePackage,
     parentPages: (snapshot.parentPages || []).map((parentPage) => reverseParentPage(parentPage, styleMaps, context)),
     pages,
     layers: (snapshot.layers || []).map(reverseLayer),
@@ -48,7 +67,19 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     valid: diagnostics.errors.length === 0,
     reverseMode,
   };
-  return normalizeSynthesizedStyles(model);
+  const normalized = normalizeSynthesizedStyles(model);
+  const validation = validateSemanticModel(normalized, semanticModelValidationOptions(options));
+  throwIfSemanticModelInvalid(normalized, validation, 'indesign reverseSnapshotToSemanticModel');
+  return normalized;
+}
+
+function semanticModelValidationOptions(options = {}) {
+  return {
+    strictFields: true,
+    strictFieldDomains: options.strictFields === true
+      ? [...STRICT_MODEL_DOMAINS, 'labels']
+      : STRICT_MODEL_DOMAINS,
+  };
 }
 
 function reversePage(page, styleMaps, context = {}) {
@@ -82,7 +113,7 @@ function reversePage(page, styleMaps, context = {}) {
     observedLabel: observed,
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
-    labels: page.labels || [],
+    labels: labelsWithRequiredKind(page.labels, 'page', label.id || page.id),
     items: effectiveReversePageItems(page)
       .filter((item) => shouldKeepReverseItem(item, context))
       .map((item) => reverseItem(item, styleMaps, { ...context, pageId: page.id || null })),
@@ -191,7 +222,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
     asset: item.placedAsset || null,
-    labels: item.labels || [],
+    labels: labelsWithRequiredKind(item.labels, 'item', label.id || item.id, { role }),
   };
 }
 
@@ -235,7 +266,16 @@ function reverseParentPage(parentPage, styleMaps, context = {}) {
     bounds: parentPage.bounds || null,
     guides: normalizeReverseGuides(parentPage.guides || [], 'parent-page'),
     labels: parentPage.labels || [],
-    items: (parentPage.items || []).filter((item) => shouldKeepReverseItem(item, context)).map((item) => reverseItem(item, styleMaps, context)),
+    items: (parentPage.items || [])
+      .filter((item) => shouldKeepReverseItem(item, context))
+      .map((item) => {
+        const normalized = reverseItem(item, styleMaps, context);
+        return {
+          ...normalized,
+          parentPageItem: true,
+          parentPageSourceId: item.id || normalized.id || null,
+        };
+      }),
   };
 }
 
@@ -609,6 +649,41 @@ function observedLabelWithReasons(validation) {
 
 function firstLabel(labels, kind) {
   return (labels || []).find((label) => label && label.kind === kind) || null;
+}
+
+function labelsWithRequiredKind(labels, kind, id, payload = {}) {
+  const list = Array.isArray(labels) ? labels.slice() : [];
+  if (firstLabel(list, kind)) return list;
+  return [
+    createProtocolLabel({
+      kind,
+      id: id || `${kind}-unknown`,
+      source: 'indesign-reverse',
+      ...payload,
+    }),
+    ...list,
+  ];
+}
+
+function throwIfSemanticModelInvalid(model, validation, adapter) {
+  const modelErrors = Array.isArray(model.errors) ? model.errors : [];
+  if (validation.valid && model.valid !== false) return;
+  const issues = [
+    ...(validation.errors || []),
+    ...modelErrors,
+  ];
+  const firstIssue = issues[0] || { code: 'SEMANTIC_MODEL_INVALID', message: 'Semantic model validation failed.' };
+  const details = issues
+    .slice(0, 5)
+    .map((issue) => issue.path || issue.code || issue.message)
+    .filter(Boolean)
+    .join(', ');
+  const error = new Error(`SEMANTIC_MODEL_VALIDATION_FAILED:${adapter}:${details || firstIssue.message}`);
+  error.code = 'SEMANTIC_MODEL_VALIDATION_FAILED';
+  error.adapter = adapter;
+  error.validation = validation;
+  error.model = model;
+  throw error;
 }
 
 function roleFromInDesignType(type, item = {}) {

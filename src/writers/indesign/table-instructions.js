@@ -2,7 +2,8 @@ const { round } = require('../../shared/geometry');
 const { itemBounds } = require('../../semantic-model/layout');
 
 function tableRowsForInstruction(item, page, layout) {
-  const rows = item.content.rows || [];
+  const table = tablePayload(item);
+  const rows = table.rows || [];
   if (layout.unitMode !== 'presentation') return rows;
   return rows.map((row) => ({
     ...row,
@@ -17,13 +18,18 @@ function tableRowsForInstruction(item, page, layout) {
 }
 
 function tableCellSnapshot(item, rowIndex, cellIndex) {
-  const row = (item.table || []).find((candidate) => Number(candidate.index) === Number(rowIndex));
+  const table = tablePayload(item);
+  const sourceRows = Array.isArray(table.sourceRows)
+    ? table.sourceRows
+    : Array.isArray(item.table) ? item.table : [];
+  const row = sourceRows.find((candidate) => Number(candidate.index) === Number(rowIndex));
   if (!row) return null;
   return (row.cells || []).find((candidate) => Number(candidate.index) === Number(cellIndex)) || null;
 }
 
 function tableColumnWidthsForInstruction(item, rows, layout) {
-  if (layout.unitMode !== 'presentation') return item.content.columnWidths || [];
+  const table = tablePayload(item);
+  if (layout.unitMode !== 'presentation') return table.columnWidths || [];
   const sourceRow = (rows || []).find((row) => (row.cells || []).every((cell) => cell.bounds && Number(cell.bounds.width) > 0));
   if (!sourceRow) return [];
   const widths = [];
@@ -36,11 +42,18 @@ function tableColumnWidthsForInstruction(item, rows, layout) {
 }
 
 function tableRowHeightsForInstruction(item, rows, layout) {
-  if (layout.unitMode !== 'presentation') return item.content.rowHeights || [];
+  const table = tablePayload(item);
+  if (layout.unitMode !== 'presentation') return table.rowHeights || [];
   return (rows || []).map((row) => {
     const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell)), 0);
     return round(height, 2);
   });
+}
+
+function tablePayload(item) {
+  if (item && item.table && !Array.isArray(item.table)) return item.table;
+  if (item && item.content) return item.content;
+  return {};
 }
 
 function minimumTableCellHeight(cell) {

@@ -944,6 +944,8 @@ test('visualStyle/vectorGeometry domain strict rejects unsupported visual fields
     'items[].visualStyle.strokeMiterLimit',
     'items[].visualStyle.cornerRadius',
     'items[].visualStyle.strokeAlignment',
+    'items[].visualStyle.lineStartMarker',
+    'items[].visualStyle.lineEndMarker',
     'items[].vectorGeometry.kind',
     'items[].vectorGeometry.paths',
   ]) {
@@ -951,8 +953,6 @@ test('visualStyle/vectorGeometry domain strict rejects unsupported visual fields
     assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
   }
   for (const path of [
-    'items[].visualStyle.lineStartMarker',
-    'items[].visualStyle.lineEndMarker',
     'items[].visualStyle.blendMode',
     'items[].visualStyle.effects',
     'items[].visualStyle.rawIndesignBlendMode',

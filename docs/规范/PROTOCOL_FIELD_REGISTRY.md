@@ -66,14 +66,19 @@
 | items[].table.rowHeights | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows | instructions.pages[].items[].table.rows, reverseModel.pages[].items[].table.rows | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells | instructions.pages[].items[].table.rows[].cells, reverseModel.pages[].items[].table.rows[].cells | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].cells[].borderColor | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].borders | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].cells[].borderWeight | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].cells[].bounds | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].cellStyle | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].colSpan | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].fillColor | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].cells[].fillOpacity | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].header | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].index | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].leading | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].padding | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].cells[].paddingUnit | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].paragraphStyle | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].pointSize | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].rowSpan | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
@@ -86,6 +91,7 @@
 | items[].table.rows[].cells[].text | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].textAlign | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].cells[].textColor | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].table.rows[].header | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].index | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].textStyle | reverseModel.pages[].items[].textStyle | text-content | active | native/native/native | native/native/native | unsupported/approximate/lossless | n/a |
 | items[].textStyle.composer | reverseModel.pages[].items[].textStyle.composer, sourceNode.attributes.data-id-paragraph-composer | text-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -95,7 +101,9 @@
 | items[].visualStyle.cornerRadius | reverseModel.pages[].items[].visualStyle.cornerRadius | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.fillColor | reverseModel.pages[].items[].visualStyle.fillColor | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.fillOpacity | reverseModel.pages[].items[].visualStyle.fillOpacity | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
+| items[].visualStyle.lineEndMarker | reverseModel.pages[].items[].visualStyle.lineEndMarker | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.lineEndMarker.rawName | reverseModel.pages[].items[].visualStyle.lineEndMarker.rawName, sourceNode.attributes.data-id-line-end-marker-raw-name | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
+| items[].visualStyle.lineStartMarker | reverseModel.pages[].items[].visualStyle.lineStartMarker | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.lineStartMarker.rawName | reverseModel.pages[].items[].visualStyle.lineStartMarker.rawName, sourceNode.attributes.data-id-line-start-marker-raw-name | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.opacity | reverseModel.pages[].items[].visualStyle.opacity | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.strokeAlignment | reverseModel.pages[].items[].visualStyle.strokeAlignment, sourceNode.attributes.data-id-stroke-alignment | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
@@ -197,6 +205,7 @@
 | document.sourcePackage.config | sourcePackage.config, labels[].sourcePackage.config, sourcePackageInput.attributes.data-id-source-package-config | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.parentPages | sourcePackage.parentPages, sourcePackageInput.parentPages | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.schemaVersion | sourcePackage.schemaVersion, labels[].sourcePackage.schemaVersion, sourcePackageInput.attributes.data-id-source-package-schema | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| document.styleLayout | styleLayout | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.cropped | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.graphicType | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.imageCropped | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -207,6 +216,12 @@
 | items[].asset.preview.kind | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.preview.path | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.status | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].attributes | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].authoredStyle | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].boundsMm | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].box | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].classList | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].content.runs[].attributes | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].content.runs[].classList | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].content.runs[].tagName | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -216,8 +231,8 @@
 | items[].htmlClass | pages[].items[].htmlClass | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].inlineStyle | pages[].items[].inlineStyle | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].layerName | pages[].items[].layerName | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].parentPageItem | pages[].items[].parentPageItem, sourceNode.attributes.data-id-parent-page-item | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].parentPageSourceId | pages[].items[].parentPageSourceId, sourceNode.attributes.data-id-parent-page-source-id | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].parentPageItem | parentPages[].items[].parentPageItem, sourceNode.attributes.data-id-parent-page-item | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].parentPageSourceId | parentPages[].items[].parentPageSourceId, sourceNode.attributes.data-id-parent-page-source-id | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].source | pages[].source, items[].source, sourceNode.attributes.data-id-source | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceAncestorNodes | labels[].sourceAncestorNodes, effectiveLabel.sourceAncestorNodes, pages[].effectiveLabel.sourceAncestorNodes | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceClassName | labels[].className, effectiveLabel.className, pages[].effectiveLabel.className | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -228,9 +243,11 @@
 | items[].sourceNode.attributes.data-id-source-csv | sourceNode.attributes.data-id-source-csv, labels[].sourceNode.attributes.data-id-source-csv, effectiveLabel.sourceNode.attributes.data-id-source-csv, pages[].items[].sourceNode.attributes.data-id-source-csv | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceNode.attributes.data-id-source-xml | sourceNode.attributes.data-id-source-xml, labels[].sourceNode.attributes.data-id-source-xml, effectiveLabel.sourceNode.attributes.data-id-source-xml, pages[].items[].sourceNode.attributes.data-id-source-xml | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceRuns | labels[].sourceRuns, effectiveLabel.sourceRuns, pages[].effectiveLabel.sourceRuns | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].sourceSelector | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceText | labels[].sourceText, effectiveLabel.sourceText, pages[].effectiveLabel.sourceText | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceType | pages[].items[].sourceType | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | Observed source-format object type, not a semantic role. |
 | items[].structure | labels[].structure, effectiveLabel.structure, pages[].effectiveLabel.structure | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].table.sourceRows | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].tagName | pages[].items[].tagName | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].displayName | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].htmlClass | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
@@ -243,6 +260,9 @@
 | labels[].token | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].version | n/a | label-protocol | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | layers[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| pages[].attributes | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| pages[].classList | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| pages[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].effectiveLabel | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].parentPage | labels[].parentPage, pages[].effectiveLabel.parentPage | document-page | active | observe-only/observe-only/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].parentPageName | labels[].parentPageName, pages[].effectiveLabel.parentPageName | document-page | active | observe-only/observe-only/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -281,6 +301,7 @@
 | extensions.pptx.placeholder | n/a | pptx-adapter | candidate | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | native/native/native | n/a |
 | extensions.pptx.speakerNotes | n/a | pptx-adapter | candidate | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | native/native/native | n/a |
 | extensions.pptx.transition | n/a | pptx-adapter | candidate | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | native/native/native | n/a |
+| items[].content.runs[].textStyle | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | items[].extensions.indesign.effects | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | InDesign-specific reverse-export effects payload; current structured DocumentModel output uses extensions.indesign.effects. Flat items[].effects is retired from current model paths and retained only as migration metadata.; migration=items[].effects -> items[].extensions.indesign.effects (adapter-migrated) |
 | items[].extensions.indesign.textFrameStyle | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Flat items[].textFrameStyle is retired from current model paths and retained only as migration metadata.; migration=items[].textFrameStyle -> items[].extensions.indesign.textFrameStyle (adapter-migrated) |
 | styles.cellStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
@@ -289,12 +310,22 @@
 | styles.cellStyles[].indesignFeatures.grepStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.cellStyles[].indesignFeatures.list | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.cellStyles[].indesignFeatures.nestedStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].appliedFont | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].capitalization | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].fillColor | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].fontStyle | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].fontStyleName | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].fontWeight | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].indesignFeatures.compositeFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].indesignFeatures.dropCap | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].indesignFeatures.grepStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].indesignFeatures.list | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.characterStyles[].indesignFeatures.nestedStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].pointSize | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].textDecoration | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].tracking | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.characterStyles[].verticalPosition | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].cjkWeight | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].entries | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
@@ -306,24 +337,57 @@
 | styles.compositeFonts[].name | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].romanWeight | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].safeName | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.fonts | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.fonts[].fallback | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.fonts[].family | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.frameStyles[].fit | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].indesignFeatures.compositeFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].indesignFeatures.dropCap | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].indesignFeatures.grepStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].indesignFeatures.list | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.frameStyles[].indesignFeatures.nestedStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.frameStyles[].inset | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.frameStyles[].overflow | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.frameStyles[].position | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].blendMode | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].cornerRadius | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].fillColor | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].fillOpacity | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].indesignFeatures.compositeFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].indesignFeatures.dropCap | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].indesignFeatures.grepStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].indesignFeatures.list | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.objectStyles[].indesignFeatures.nestedStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].opacity | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].strokeAlignment | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].strokeColor | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].strokeStyle | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.objectStyles[].strokeWeight | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].appliedFont | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].capitalization | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].fillColor | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].fontStyle | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].fontStyleName | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].fontWeight | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].indesignFeatures.compositeFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].indesignFeatures.dropCap | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].indesignFeatures.grepStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].indesignFeatures.list | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.paragraphStyles[].indesignFeatures.nestedStyles | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].justification | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].leading | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].pointSize | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].spaceAfter | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].spaceBefore | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.paragraphStyles[].tracking | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.swatches | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.swatches[].model | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.swatches[].name | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.swatches[].space | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.swatches[].value | n/a | style-resources | active | native/native/native | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.tableStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.tableStyles[].indesignFeatures.compositeFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.tableStyles[].indesignFeatures.dropCap | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |

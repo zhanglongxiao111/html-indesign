@@ -16,6 +16,7 @@ const ROOT_FIELD_PATHS = Object.freeze({
   source: 'document.source',
   unitMode: 'document.unitMode',
   coordinateUnit: 'document.coordinateUnit',
+  styleLayout: 'document.styleLayout',
   sourcePackage: 'document.sourcePackage',
   parentPages: 'parentPages',
   layers: 'layers',
@@ -32,6 +33,9 @@ const PAGE_FIELD_PATHS = Object.freeze({
   id: 'pages[].id',
   index: 'pages[].index',
   semantic: 'pages[].semantic',
+  attributes: 'pages[].attributes',
+  classList: 'pages[].classList',
+  computedStyle: 'pages[].computedStyle',
   layout: 'pages[].layout',
   semanticLayout: 'pages[].semanticLayout',
   sourceNode: 'pages[].sourceNode',
@@ -104,6 +108,13 @@ const ITEM_FIELD_PATHS = Object.freeze({
   sourceType: 'items[].sourceType',
   tagName: 'items[].tagName',
   htmlClass: 'items[].htmlClass',
+  attributes: 'items[].attributes',
+  classList: 'items[].classList',
+  computedStyle: 'items[].computedStyle',
+  authoredStyle: 'items[].authoredStyle',
+  sourceSelector: 'items[].sourceSelector',
+  boundsMm: 'items[].boundsMm',
+  box: 'items[].box',
   bounds: 'items[].bounds',
   layerName: 'items[].layerName',
   semantic: 'items[].semantic',
@@ -224,6 +235,7 @@ const ITEM_CONTENT_RUN_FIELD_PATHS = Object.freeze({
   classList: 'items[].content.runs[].classList',
   attributes: 'items[].content.runs[].attributes',
   characterStyle: 'items[].content.runs[].characterStyle',
+  textStyle: 'items[].content.runs[].textStyle',
 });
 
 const ITEM_TABLE_FIELD_PATHS = Object.freeze({
@@ -233,10 +245,12 @@ const ITEM_TABLE_FIELD_PATHS = Object.freeze({
   columnCount: 'items[].table.columnCount',
   columnWidths: 'items[].table.columnWidths',
   rowHeights: 'items[].table.rowHeights',
+  sourceRows: 'items[].table.sourceRows',
 });
 
 const ITEM_TABLE_ROW_FIELD_PATHS = Object.freeze({
   index: 'items[].table.rows[].index',
+  header: 'items[].table.rows[].header',
   cells: 'items[].table.rows[].cells',
 });
 
@@ -249,11 +263,16 @@ const ITEM_TABLE_CELL_FIELD_PATHS = Object.freeze({
   paragraphStyle: 'items[].table.rows[].cells[].paragraphStyle',
   cellStyle: 'items[].table.rows[].cells[].cellStyle',
   fillColor: 'items[].table.rows[].cells[].fillColor',
+  fillOpacity: 'items[].table.rows[].cells[].fillOpacity',
+  borderColor: 'items[].table.rows[].cells[].borderColor',
+  borderWeight: 'items[].table.rows[].cells[].borderWeight',
   textColor: 'items[].table.rows[].cells[].textColor',
+  bounds: 'items[].table.rows[].cells[].bounds',
   pointSize: 'items[].table.rows[].cells[].pointSize',
   leading: 'items[].table.rows[].cells[].leading',
   textAlign: 'items[].table.rows[].cells[].textAlign',
   padding: 'items[].table.rows[].cells[].padding',
+  paddingUnit: 'items[].table.rows[].cells[].paddingUnit',
   borders: 'items[].table.rows[].cells[].borders',
   runs: 'items[].table.rows[].cells[].runs',
 });

@@ -3,6 +3,15 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { renderSnapshot, snapshotToSemanticModel } = require('../../src/adapters/html');
 
+function captureThrow(fn) {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  assert.fail('Expected function to throw');
+}
+
 test('snapshotToSemanticModel builds document pages, styles, assets, and items', async () => {
   const snapshot = await renderSnapshot({
     htmlPath: path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html'),
@@ -62,6 +71,38 @@ test('snapshotToSemanticModel emits InDesign effects through item extensions', (
   const wash = model.pages[0].items[0];
   assert.equal(Object.hasOwn(wash, 'effects'), false);
   assert.equal(wash.extensions.indesign.effects.gradientFeather.scope, 'fill');
+});
+
+test('snapshotToSemanticModel throws when normalized output contains an unregistered field', () => {
+  const error = captureThrow(() => snapshotToSemanticModel({
+    metadata: { source: 'bad-style-surface.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [],
+    }],
+    styles: {
+      adapterGhostStyles: {},
+    },
+    assets: [],
+  }, { unitMode: 'print' }));
+
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'html snapshotToSemanticModel');
+  assert.equal(error.validation.valid, false);
+  assert.equal(
+    error.validation.errors.some((issue) => (
+      issue.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'styles.adapterGhostStyles'
+    )),
+    true,
+  );
+  assert.match(error.message, /styles\.adapterGhostStyles/);
 });
 
 test('snapshotToSemanticModel preserves page layout and parent page metadata', () => {
@@ -310,7 +351,7 @@ test('snapshotToSemanticModel does not infer page semantic from data-page', () =
     assets: [],
   }, { unitMode: 'print' });
 
-  assert.equal(model.pages[0].pageToken, 'cover');
+  assert.equal(model.pages[0].sourceNode.attributes['data-page'], 'cover');
   assert.equal(model.pages[0].semantic, null);
   assert.equal(model.pages[0].labels[0].semantic, null);
 });
@@ -805,7 +846,7 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
   }, { unitMode: 'presentation', targetSize: 'same' });
 
   assert.equal(model.sourcePackage.config, 'deck.config.json');
-  assert.deepEqual(model.semanticPreset, {
+  assert.deepEqual(model.sourcePackage.semanticPreset, {
     source: 'project',
     id: 'architecture-report',
     relativePath: 'semantic-preset.json',
@@ -820,7 +861,7 @@ test('snapshotToSemanticModel preserves authoring source package labels', () => 
   const itemLabel = model.pages[0].items[0].labels.find((label) => label.kind === 'item');
 
   assert.equal(documentLabel.sourcePackage.config, 'deck.config.json');
-  assert.deepEqual(documentLabel.semanticPreset, {
+  assert.deepEqual(documentLabel.sourcePackage.semanticPreset, {
     source: 'project',
     id: 'architecture-report',
     relativePath: 'semantic-preset.json',

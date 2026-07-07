@@ -70,6 +70,7 @@ module.exports = [
   sourceMetadata('items[].content.runs[].tagName', [], 'string'),
   sourceMetadata('items[].content.runs[].classList', [], 'array'),
   sourceMetadata('items[].content.runs[].attributes', [], 'object'),
+  formatExtension('items[].content.runs[].textStyle', [], 'object'),
   formatExtension(
     'items[].extensions.indesign.effects',
     [],

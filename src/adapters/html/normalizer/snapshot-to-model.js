@@ -14,12 +14,24 @@ const {
   gridLayoutFromCssVars,
 } = require('../reader/source-metadata');
 const { vectorFactsFromSvgItem } = require('./svg-vector-geometry');
+const { validateSemanticModel } = require('../../../semantic-model');
 
 const ITEM_STYLE_REFS_FIELD = fieldRegistry.getByPath('items[].styleRefs');
 if (!ITEM_STYLE_REFS_FIELD || !Array.isArray(ITEM_STYLE_REFS_FIELD.allowedKeys)) {
   throw new Error('ITEM_STYLE_REFS_ALLOWED_KEYS_UNREGISTERED');
 }
 const ITEM_STYLE_REF_ALLOWED_KEYS = new Set(ITEM_STYLE_REFS_FIELD.allowedKeys);
+const ADAPTER_VALIDATION_OPTIONS = Object.freeze({
+  strictFields: true,
+  strictFieldDomains: [
+    'asset.placement',
+    'source.metadata',
+    'styles',
+    'styleRefs',
+    'visualStyle.vectorGeometry',
+    'table.text',
+  ],
+});
 
 function snapshotToSemanticModel(snapshot, options = {}) {
   const layout = resolveLayout(snapshot, options);
@@ -46,17 +58,15 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     error.warnings = synthesizedWarnings;
     throw error;
   }
-  return {
+  const model = {
     kind: 'DocumentModel',
     id: documentId,
     title: options.title || sourcePackage && sourcePackage.title || documentId,
     source: styled.metadata && styled.metadata.source,
     unitMode: layout.unitMode,
     coordinateUnit: layout.targetUnit,
-    layoutInfo: layout,
-    pageSize: pages[0] ? { width: pages[0].width, height: pages[0].height, unit: layout.targetUnit } : null,
+    styleLayout: styled.styleLayout || null,
     sourcePackage,
-    semanticPreset,
     labels: [createProtocolLabel({
       kind: 'document',
       id: documentId,
@@ -66,7 +76,6 @@ function snapshotToSemanticModel(snapshot, options = {}) {
       coordinateUnit: layout.targetUnit,
       profile: options.profile || sourcePackage && sourcePackage.profile || null,
       sourcePackage,
-      semanticPreset,
     })],
     parentPages,
     pages,
@@ -76,6 +85,9 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     warnings: (styled.warnings || []).concat(synthesizedWarnings),
     report: styled.report || null,
   };
+  const validation = validateSemanticModel(model, ADAPTER_VALIDATION_OPTIONS);
+  throwIfSemanticModelInvalid(model, validation, 'html snapshotToSemanticModel');
+  return model;
 }
 
 function documentIdFor(snapshot, options, sourcePackage = null) {
@@ -101,14 +113,15 @@ function pageModelFor(page, layout) {
   const allItems = (page.items || []).map((item) => itemModelFor(item, page, layout));
   const parentPageItems = parentPageItemsFor(allItems);
   const inferredParentPage = parentPageItems[0] || null;
-  const effectiveParentPageId = parentPageId || inferredParentPage && inferredParentPage.parentPageId || null;
-  const effectiveParentPageName = parentPageName || inferredParentPage && inferredParentPage.parentPageName || null;
+  const effectiveParentPageId = parentPageId || inferredParentPage && inferredParentPage.parentPageItem || null;
+  const effectiveParentPageName = parentPageName || inferredParentPage && inferredParentPage.parentPageItem || null;
   return {
     id: pageId,
-    raw: page,
     index: page.index,
-    pageToken: attrs['data-page'] || null,
     semantic,
+    attributes: { ...(page.attributes || {}) },
+    classList: Array.isArray(page.classList) ? page.classList.slice() : [],
+    computedStyle: { ...(page.computedStyle || {}) },
     parentPageId: effectiveParentPageId,
     parentPageName: effectiveParentPageName,
     layout: layoutToken,
@@ -198,8 +211,11 @@ function parentPagesFor(pages, sourceParentPages = []) {
     const parentPage = {
       id,
       name: name || id,
+      semantic: id,
       parentPageId: sourceParentPage && sourceParentPage.parentPageId || null,
       parentPageName: sourceParentPage && sourceParentPage.parentPageName || null,
+      provides: sourceParentPage && Array.isArray(sourceParentPage.provides) ? sourceParentPage.provides : [],
+      bounds: sourceParentPage && sourceParentPage.bounds || null,
       guides: sourceParentPage ? sourceParentPageGuides(sourceParentPage.guides || []) : [],
       labels: [createProtocolLabel({
         kind: 'parentPage',
@@ -223,7 +239,7 @@ function parentPagesFor(pages, sourceParentPages = []) {
   }
   for (const page of pages) {
     for (const item of page.parentPageItems || []) {
-      const parentPage = ensureParentPage(item.parentPageId || page.parentPageId, item.parentPageName || page.parentPageName);
+      const parentPage = ensureParentPage(item.parentPageItem || page.parentPageId, item.parentPageItem || page.parentPageName);
       if (!parentPage) continue;
       const modelItem = parentPageModelItemFor(item, parentPage);
       const key = `${parentPage.id}::${modelItem.id}`;
@@ -276,8 +292,6 @@ function parentPageModelItemFor(item, parentPage) {
     ...item,
     id,
     parentPageItem: true,
-    parentPageId: parentPage.id,
-    parentPageName: parentPage.name,
     structure: null,
     labels: [createProtocolLabel({
       kind: 'item',
@@ -322,30 +336,31 @@ function itemModelFor(item, page, layout) {
   const parentPageName = attrs['data-id-parent-page-item'] || null;
   const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;
   const extensions = itemExtensionsFor(item);
-  return {
+  const modelItem = {
     id: item.id,
-    raw: item,
     role: item.role,
     tagName: item.tagName || null,
     semantic,
+    attributes: { ...(item.attributes || {}) },
+    classList: Array.isArray(item.classList) ? item.classList.slice() : [],
+    computedStyle: { ...(item.computedStyle || {}) },
+    authoredStyle: { ...(item.authoredStyle || {}) },
     sourceSelector: item.sourceSelector || null,
     bounds,
+    boundsMm: item.boundsMm || null,
+    box: item.box || null,
     zIndex: item.zIndex || 0,
     layer: attrs['data-id-layer'] || null,
-    classList: item.classList || [],
-    attributes: attrs,
     sourceFile,
     sourceNode,
     sourceAncestorNodes,
     parentPageItem: parentPageName || null,
-    parentPageId: parentPageName,
-    parentPageName,
     parentPageSourceId,
     structure,
     layout: itemLayout,
     styleRefs,
     content: contentForItem(item),
-    table: item.table || null,
+    table: tableForItem(item),
     vectorGeometry: item.vectorGeometry || vectorFacts.vectorGeometry || null,
     visualStyle,
     ...(extensions ? { extensions } : {}),
@@ -367,6 +382,9 @@ function itemModelFor(item, page, layout) {
       layout: itemLayout,
     })],
   };
+  if (!modelItem.parentPageItem) delete modelItem.parentPageItem;
+  if (!modelItem.parentPageSourceId) delete modelItem.parentPageSourceId;
+  return modelItem;
 }
 
 function itemExtensionsFor(item) {
@@ -460,9 +478,40 @@ function arrayOrEmpty(value) {
 }
 
 function contentForItem(item) {
-  if (item.content) return item.content;
+  if (item.role === 'table') return null;
+  if (item.content && (Object.prototype.hasOwnProperty.call(item.content, 'text') || Object.prototype.hasOwnProperty.call(item.content, 'runs'))) {
+    return {
+      text: item.content.text || '',
+      runs: Array.isArray(item.content.runs) ? item.content.runs : [],
+      ...(typeof item.content.sourceHtml === 'string' ? { sourceHtml: item.content.sourceHtml } : {}),
+    };
+  }
   if (item.text != null) return { text: item.text, runs: item.runs || [] };
   return null;
+}
+
+function tableForItem(item) {
+  if (item.role !== 'table') return item.table || null;
+  if (item.content && Array.isArray(item.content.rows)) {
+    const table = {};
+    for (const key of ['rows', 'tableStyle', 'rowCount', 'columnCount', 'columnWidths', 'rowHeights']) {
+      if (Object.prototype.hasOwnProperty.call(item.content, key)) {
+        table[key] = item.content[key];
+      }
+    }
+    if (Array.isArray(item.table)) table.sourceRows = item.table;
+    return Object.keys(table).length ? table : null;
+  }
+  if (item.table && !Array.isArray(item.table)) return item.table;
+  if (Array.isArray(item.table)) return { rows: item.table, sourceRows: item.table };
+  if (!item.content) return null;
+  const table = {};
+  for (const key of ['rows', 'tableStyle', 'rowCount', 'columnCount', 'columnWidths', 'rowHeights']) {
+    if (Object.prototype.hasOwnProperty.call(item.content, key)) {
+      table[key] = item.content[key];
+    }
+  }
+  return Object.keys(table).length ? table : null;
 }
 
 function sourceTextForItem(item) {
@@ -569,6 +618,23 @@ function stylesCompatibleWithLayout(styleLayout, layout) {
   const actual = styleLayout.targetSize || {};
   return Math.abs(Number(actual.width || 0) - Number(expected.width || 0)) < 0.01
     && Math.abs(Number(actual.height || 0) - Number(expected.height || 0)) < 0.01;
+}
+
+function throwIfSemanticModelInvalid(model, validation, adapter) {
+  if (validation.valid) return;
+  const issues = validation.errors || [];
+  const firstIssue = issues[0] || { code: 'SEMANTIC_MODEL_INVALID', message: 'Semantic model validation failed.' };
+  const details = issues
+    .slice(0, 5)
+    .map((issue) => issue.path || issue.code || issue.message)
+    .filter(Boolean)
+    .join(', ');
+  const error = new Error(`SEMANTIC_MODEL_VALIDATION_FAILED:${adapter}:${details || firstIssue.message}`);
+  error.code = 'SEMANTIC_MODEL_VALIDATION_FAILED';
+  error.adapter = adapter;
+  error.validation = validation;
+  error.model = model;
+  throw error;
 }
 
 module.exports = {

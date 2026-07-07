@@ -500,6 +500,48 @@ test('reverseSnapshotToSemanticModel output is strict-valid for registered rever
   }
 });
 
+test('reverseSnapshotToSemanticModel throws when normalized output contains an unregistered field', () => {
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'bad-visual-style.indd', mode: 'observation' },
+    document: {
+      name: 'bad-visual-style.indd',
+      labels: [{ protocol: 'html-indesign', version: 1, kind: 'document', id: 'bad-doc' }],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'page', id: 'page-1' }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'shape-1',
+            type: 'Rectangle',
+            bounds: { x: 40, y: 50, width: 120, height: 80 },
+            visualStyle: {
+              fillColor: '#ffffff',
+              adapterGhostVisualFact: true,
+            },
+            labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'shape-1', role: 'shape' }],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' }));
+
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'indesign reverseSnapshotToSemanticModel');
+  assert.equal(error.validation.valid, false);
+  assert.equal(
+    error.validation.errors.some((issue) => (
+      issue.code === 'MODEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'items[].visualStyle.adapterGhostVisualFact'
+    )),
+    true,
+  );
+  assert.match(error.message, /items\[\]\.visualStyle\.adapterGhostVisualFact/);
+});
+
 test('reverseSnapshotToSemanticModel surfaces observation label field warnings', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'observed-label.indd', mode: 'observation' },
@@ -537,7 +579,7 @@ test('reverseSnapshotToSemanticModel surfaces observation label field warnings',
 });
 
 test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => {
-  const model = reverseSnapshotToSemanticModel({
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'strict-label.indd', mode: 'structured' },
     document: { name: 'strict-label.indd', labels: [] },
     pages: [
@@ -566,16 +608,28 @@ test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => 
         ],
       },
     ],
-  }, { strictFields: true, profile: 'architecture-report' });
+  }, { strictFields: true, profile: 'architecture-report' }));
 
-  assert.equal(model.valid, false);
-  assert.equal(model.errors.length, 1);
-  assert.equal(model.errors[0].code, 'LABEL_FIELD_NOT_REGISTERED');
-  assert.equal(model.errors[0].path, 'unknownPayload');
-  assert.equal(model.errors[0].labelKind, 'item');
-  assert.equal(model.report.errorCount, 1);
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'indesign reverseSnapshotToSemanticModel');
   assert.equal(
-    model.fieldValidation.some((validation) => (
+    error.validation.errors.some((issue) => (
+      issue.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'unknownPayload'
+      && issue.labelPath === 'pages[0].items[0].labels[0]'
+    )),
+    true,
+  );
+  assert.equal(
+    error.model.errors.some((issue) => (
+      issue.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'unknownPayload'
+      && issue.labelKind === 'item'
+    )),
+    true,
+  );
+  assert.equal(
+    error.model.fieldValidation.some((validation) => (
       validation.labelKind === 'item'
       && validation.valid === false
       && validation.unknown.includes('unknownPayload')

@@ -40,7 +40,7 @@ const { applySynthesizedStyleInstructions } = require('./synthesized-style-instr
 
 function semanticModelToInstructions(model, options = {}) {
   model = applySynthesizedStyleInstructions(model);
-  const layout = model.layoutInfo || {
+  const layout = model.styleLayout || model.layoutInfo || {
     unitMode: model.unitMode || 'print',
     targetUnit: model.coordinateUnit || 'mm',
     targetSize: model.pageSize || null,
@@ -261,6 +261,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     };
   }
   if (base.role === 'table') {
+    const table = modelItem.table && !Array.isArray(modelItem.table) ? modelItem.table : item.table || item.content || {};
     const rows = tableRowsForInstruction(item, page, layout);
     const rowHeights = tableRowHeightsForInstruction(item, rows, layout);
     const columnWidths = tableColumnWidthsForInstruction(item, rows, layout);
@@ -273,7 +274,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
       frameStyle: styleRefs.frameStyle,
       text: item.text,
       rows,
-      columnCount: item.content.columnCount || 0,
+      columnCount: table.columnCount || 0,
       columnWidths,
       rowHeights,
     };

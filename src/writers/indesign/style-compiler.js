@@ -168,6 +168,15 @@ function contentForItem(item) {
     };
   }
   if (item.role === 'table') {
+    if (item.content && Array.isArray(item.content.rows)) {
+      return {
+        rows: item.content.rows,
+        columnCount: item.content.columnCount || 0,
+        columnWidths: Array.isArray(item.content.columnWidths) ? item.content.columnWidths : [],
+        rowHeights: Array.isArray(item.content.rowHeights) ? item.content.rowHeights : [],
+        tableStyle: item.content.tableStyle || null,
+      };
+    }
     return {
       rows: [],
       columnCount: 0,

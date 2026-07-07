@@ -141,6 +141,14 @@ module.exports = [
       writeAttrs: ['data-id-stroke-style'],
     },
   }),
+  visualStyleField('items[].visualStyle.lineStartMarker', 'object', {
+    currentPaths: [
+      'reverseModel.pages[].items[].visualStyle.lineStartMarker',
+    ],
+    indesign: {
+      snapshotPaths: ['visualStyle.lineStartMarker'],
+    },
+  }),
   visualStyleField('items[].visualStyle.lineStartMarker.rawName', 'string', {
     currentPaths: [
       'reverseModel.pages[].items[].visualStyle.lineStartMarker.rawName',
@@ -152,6 +160,14 @@ module.exports = [
     },
     indesign: {
       snapshotPaths: ['visualStyle.lineStartMarker.rawName'],
+    },
+  }),
+  visualStyleField('items[].visualStyle.lineEndMarker', 'object', {
+    currentPaths: [
+      'reverseModel.pages[].items[].visualStyle.lineEndMarker',
+    ],
+    indesign: {
+      snapshotPaths: ['visualStyle.lineEndMarker'],
     },
   }),
   visualStyleField('items[].visualStyle.lineEndMarker.rawName', 'string', {
