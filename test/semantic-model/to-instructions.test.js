@@ -339,6 +339,56 @@ test('semanticModelToInstructions emits bounded text fit for observed reverse te
   });
 });
 
+test('semanticModelToInstructions reads InDesign effects from item extensions', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'reverse-effects-deck',
+    unitMode: 'print',
+    coordinateUnit: 'mm',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 100,
+      height: 80,
+      items: [{
+        id: 'gradient-veil',
+        role: 'shape',
+        bounds: { x: 10, y: 12, width: 40, height: 20 },
+        styleRefs: {},
+        extensions: {
+          indesign: {
+            effects: {
+              gradientFeather: {
+                scope: 'fill',
+                type: 'linear',
+                angle: 0,
+                start: { x: 10, y: 12 },
+                length: 40,
+                stops: [
+                  { offset: 0, opacity: 94 },
+                  { offset: 100, opacity: 8 },
+                ],
+              },
+            },
+          },
+        },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'gradient-veil');
+
+  assert.notEqual(item.effects, null);
+  assert.deepEqual(
+    item.effects.gradientFeather,
+    model.pages[0].items[0].extensions.indesign.effects.gradientFeather,
+  );
+});
+
 test('semanticModelToInstructions preserves observed text frame bounds despite larger line height', () => {
   const model = {
     kind: 'DocumentModel',

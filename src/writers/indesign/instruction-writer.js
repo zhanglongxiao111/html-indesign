@@ -202,6 +202,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
   const content = modelItem.content || item.content || { text: item.text || '', runs: item.runs || [] };
   const vectorGeometry = vectorGeometryFor(modelItem, item);
   const visualStyle = modelItem.visualStyle || item.visualStyle || null;
+  const indesignEffects = modelItem.extensions?.indesign?.effects ?? null;
   const base = {
     id: modelItem.id,
     role: modelItem.role || item.role,
@@ -211,7 +212,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     sourceSelector: modelItem.sourceSelector || item.sourceSelector,
     styleRefs,
     labels: modelItem.labels || [],
-    effects: effectsForInstruction(modelItem.effects || item.effects || null, page, layout),
+    effects: effectsForInstruction(indesignEffects, page, layout),
   };
   if (base.role === 'text') {
     const textFit = textFitPolicy(modelItem, options);
