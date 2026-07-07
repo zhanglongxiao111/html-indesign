@@ -234,12 +234,12 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9b 实现已提交，复审中（执行提交 `5af027f`；HTML adapter 已停止产出 retired `items[].type`，`styleRefs` 改从 registry `allowedKeys` 过滤，G3 baseline 自然删除 `characterStyles` / `swatch` 两条过期豁免；2026-07-08）。
+进度：9b 已完成（执行提交 `5af027f`；复审未发现阻断问题；HTML adapter 已停止产出 retired `items[].type`，`styleRefs` 改从 registry `allowedKeys` 过滤，G3 baseline 自然删除 `characterStyles` / `swatch` 两条过期豁免；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
 - [x] **9a registry 裁定登记**：`items[].role` + `items[].sourceType` 双字段定案（HTML 侧未登记 `type` 判退役）；`semantic` 缺省 canonical 为 `null`；`styleRefs` 允许键枚举登记；`bounds` 契约（绝对页面坐标、pt）写入字段描述；format 专有字段 canonical path 迁移方案登记（`items[].extensions.indesign.*`）。重新生成 `PROTOCOL_FIELD_REGISTRY.md`。
-- [ ] **9b HTML adapter 对齐**：列出全部 `items[].type` 读取点后删除该字段产出；styleRefs 键收敛进枚举。
+- [x] **9b HTML adapter 对齐**：列出全部 `items[].type` 读取点后删除该字段产出；styleRefs 键收敛进枚举。
 - [ ] **9c InDesign adapter 对齐**：`semantic` 的 `'unknown'` 哨兵改 `null`，下游（`reconstruct.js:129-133` 等）判空收敛；styleRefs 键收敛；`effects`/`textFrameStyle` 迁入 `extensions.indesign.*`（工作量过大时允许作为 9f 独立提交，不得停在半途）。
 - [ ] **9d 出口强制校验**：两个 normalizer 出口接入 `validateSemanticModel`（strict，失败即抛）；G3 静态与行为断言豁免收口。
 - [ ] **9e 收 G3 同构豁免**：`baselines/G3.json` 归零。
