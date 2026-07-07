@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9f 审核发现阻断问题，style-atoms 修复中（实现提交 `b93f5cd`；审核指出 `src/semantic-model/style-atoms.js` 仍在缺 `role` 时用 `sourceType: GraphicLine/Rectangle/Oval/Polygon/PageItem` 生成 current synthesized style atom，并通过 `normalizeSynthesizedStyles` 写回 current `styleRefs.synthesized*`；需改为只由 canonical `role` 驱动 current style atom，`sourceType` 仅保留观察信息；2026-07-08）。
+进度：9f 修复已提交，复审中（实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，缺 `role` 且仅有 `sourceType` 时不再生成 `styleRefs.synthesized*`；sourceType-only probe 通过，synthesized-styles 10/10、to-instructions 27/27、author package 29/29、G3 12/12、协议测试 155/155、`npm test` 883/883、`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
