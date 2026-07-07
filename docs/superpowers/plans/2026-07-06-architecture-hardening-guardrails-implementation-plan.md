@@ -214,10 +214,10 @@ npm test
 
 ### 7. W0-3 文档同步
 
-进度：二次复审修复已提交，复审中（提交 `6b8a94a` 将 `audit:synthesized-styles` 修正为 PowerShell/npm 可执行的双分隔符命令；`node --test test/architecture/docs-code-sync.test.js` 2/2 通过，实际命令 `npm run audit:synthesized-styles -- -- --model test/workspace/task7-minimal-semantic-model.json` 已跑通，等待复审，2026-07-07）。
+进度：已完成（提交 `b32b92c`、`c923521`、`6b8a94a`；最终复审未发现阻断问题；AGENTS.md §4 / §9 已同步，G7 baseline 5 条清零；实际文件 `node --test test/architecture/docs-code-sync.test.js` 2/2 通过，`node --test test/architecture/` 57/57 通过，`npm run audit:synthesized-styles -- -- --model test/workspace/task7-minimal-semantic-model.json` 已跑通，2026-07-07）。
 
-- [ ] AGENTS.md §4 补登 `src/authoring`、`src/semantic-preset`、`src/shared`（含一句话边界规则）；§9 补登 `audit:synthesized-styles`。
-- [ ] 收 `baselines/G7.json` 全部条目。
+- [x] AGENTS.md §4 补登 `src/authoring`、`src/semantic-preset`、`src/shared`（含一句话边界规则）；§9 补登 `audit:synthesized-styles`。
+- [x] 收 `baselines/G7.json` 全部条目。
 
 验收命令：
 
