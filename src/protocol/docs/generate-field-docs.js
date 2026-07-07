@@ -80,8 +80,8 @@ function compareEntries(left, right) {
 
 function tableHeader() {
   return [
-    '| canonicalPath | currentPaths | owner | lifecycle | HTML read/write/persist | InDesign read/write/persist | PPTX read/write/persist |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    '| canonicalPath | currentPaths | owner | lifecycle | HTML read/write/persist | InDesign read/write/persist | PPTX read/write/persist | notes |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
   ].join('\n');
 }
 
@@ -94,6 +94,7 @@ function tableRow(registry, entry) {
     capabilityCell(registry, entry, 'html'),
     capabilityCell(registry, entry, 'indesign'),
     capabilityCell(registry, entry, 'pptx'),
+    rowNotes(entry),
   ].map(escapeTableCell).join(' | ').replace(/^/, '| ').replace(/$/, ' |');
 }
 
@@ -119,6 +120,7 @@ function capabilityCell(registry, entry, format) {
 function notesFor(entry) {
   const notes = [];
   const retiredHtmlAttrs = entry.retired && entry.retired.htmlAttrs;
+  const retiredModelPaths = entry.retired && entry.retired.modelPaths;
 
   if (Array.isArray(retiredHtmlAttrs)) {
     for (const retiredAttr of retiredHtmlAttrs) {
@@ -139,7 +141,60 @@ function notesFor(entry) {
     }
   }
 
+  if (Array.isArray(retiredModelPaths)) {
+    for (const retiredPath of retiredModelPaths) {
+      const parts = [
+        `retiredModelPath=${retiredPath.path}`,
+        `readPolicy=${retiredPath.readPolicy}`,
+      ];
+
+      if (retiredPath.replacedBy) {
+        parts.push(`replacedBy=${retiredPath.replacedBy}`);
+      }
+      if (retiredPath.reason) {
+        parts.push(`reason=${retiredPath.reason}`);
+      }
+
+      notes.push(parts.join('; '));
+    }
+  }
+
   return notes;
+}
+
+function rowNotes(entry) {
+  const notes = [];
+
+  if (entry.description) {
+    notes.push(entry.description);
+  }
+  if (Object.prototype.hasOwnProperty.call(entry, 'defaultValue')) {
+    notes.push(`default=${formatValue(entry.defaultValue)}`);
+  }
+  if (Array.isArray(entry.allowedKeys) && entry.allowedKeys.length > 0) {
+    notes.push(`allowedKeys=${entry.allowedKeys.join(', ')}`);
+  }
+  if (entry.contract && typeof entry.contract === 'object' && !Array.isArray(entry.contract)) {
+    notes.push(`contract=${Object.entries(entry.contract).map(([key, value]) => `${key}:${formatValue(value)}`).join(', ')}`);
+  }
+  if (entry.migration && typeof entry.migration === 'object' && !Array.isArray(entry.migration)) {
+    const from = entry.migration.from || 'n/a';
+    const to = entry.migration.to || 'n/a';
+    const status = entry.migration.status ? ` (${entry.migration.status})` : '';
+    notes.push(`migration=${from} -> ${to}${status}`);
+  }
+
+  return notes.length > 0 ? notes.join('; ') : 'n/a';
+}
+
+function formatValue(value) {
+  if (value === null) {
+    return 'null';
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  return String(value);
 }
 
 function escapeTableCell(value) {

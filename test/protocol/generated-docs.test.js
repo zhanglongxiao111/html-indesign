@@ -30,7 +30,7 @@ test('generated field docs include registry fields, lifecycle, field class, and 
   assert.match(markdown, /fieldClass/);
   assert.match(
     markdown,
-    /\| canonicalPath \| currentPaths \| owner \| lifecycle \| HTML read\/write\/persist \| InDesign read\/write\/persist \| PPTX read\/write\/persist \|/,
+    /\| canonicalPath \| currentPaths \| owner \| lifecycle \| HTML read\/write\/persist \| InDesign read\/write\/persist \| PPTX read\/write\/persist \| notes \|/,
   );
 
   assert.match(markdown, /items\[\]\.asset\.placement\.pageNumber/);
@@ -52,6 +52,23 @@ test('generated field docs include retired data-id-page as observe-only observat
   assert.match(markdown, /data-id-page/);
   assert.match(markdown, /observe-only\/unsupported\/unsupported/);
   assert.match(markdown, /retired/);
+});
+
+test('generated field docs render W1 registry adjudication metadata', () => {
+  const markdown = generateFieldDocsMarkdown(fieldRegistry);
+
+  assert.match(markdown, /items\[\]\.semantic/);
+  assert.match(markdown, /default=null/);
+  assert.match(markdown, /items\[\]\.styleRefs/);
+  assert.match(markdown, /allowedKeys=paragraphStyle, characterStyle, objectStyle, frameStyle, tableStyle, cellStyle/);
+  assert.match(markdown, /paragraphStyleDisplayName, characterStyleDisplayName, objectStyleDisplayName, frameStyleDisplayName, tableStyleDisplayName/);
+  assert.match(markdown, /synthesizedToken, synthesizedName, layer/);
+  assert.match(markdown, /items\[\]\.bounds/);
+  assert.match(markdown, /contract=coordinateSystem:absolute-page, unit:pt/);
+  assert.match(markdown, /items\[\]\.extensions\.indesign\.effects/);
+  assert.match(markdown, /migration=items\[\]\.effects -> items\[\]\.extensions\.indesign\.effects/);
+  assert.match(markdown, /retired\.model\.itemsType/);
+  assert.match(markdown, /retiredModelPath=items\[\]\.type/);
 });
 
 test('generated field docs are deterministic', () => {

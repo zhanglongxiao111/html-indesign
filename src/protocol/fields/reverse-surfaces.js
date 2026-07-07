@@ -16,7 +16,7 @@ const CANONICAL_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'fallback', persist: 'lossless', fallbackKind: 'text-runs' },
 });
 
-function sourceMetadata(canonicalPath, currentPaths, type) {
+function sourceMetadata(canonicalPath, currentPaths, type, extra = {}) {
   return {
     canonicalPath,
     currentPaths,
@@ -25,10 +25,11 @@ function sourceMetadata(canonicalPath, currentPaths, type) {
     owner: 'reverse-model',
     type,
     capabilities: SOURCE_METADATA_CAPABILITIES,
+    ...extra,
   };
 }
 
-function formatExtension(canonicalPath, currentPaths, type) {
+function formatExtension(canonicalPath, currentPaths, type, extra = {}) {
   return {
     canonicalPath,
     currentPaths,
@@ -37,6 +38,7 @@ function formatExtension(canonicalPath, currentPaths, type) {
     owner: 'reverse-model',
     type,
     capabilities: FORMAT_EXTENSION_CAPABILITIES,
+    ...extra,
   };
 }
 
@@ -54,7 +56,9 @@ function canonical(canonicalPath, currentPaths, type) {
 
 module.exports = [
   sourceMetadata('pages[].effectiveLabel', [], 'object'),
-  sourceMetadata('items[].sourceType', ['pages[].items[].sourceType'], 'string'),
+  sourceMetadata('items[].sourceType', ['pages[].items[].sourceType'], 'string', {
+    description: 'Observed source-format object type, not a semantic role.',
+  }),
   sourceMetadata('items[].tagName', ['pages[].items[].tagName'], 'string'),
   sourceMetadata('items[].htmlClass', ['pages[].items[].htmlClass'], 'string'),
   sourceMetadata('items[].layerName', ['pages[].items[].layerName'], 'string'),
@@ -66,6 +70,30 @@ module.exports = [
   sourceMetadata('items[].content.runs[].tagName', [], 'string'),
   sourceMetadata('items[].content.runs[].classList', [], 'array'),
   sourceMetadata('items[].content.runs[].attributes', [], 'object'),
-  formatExtension('items[].effects', ['pages[].items[].effects'], 'object'),
-  formatExtension('items[].textFrameStyle', ['pages[].items[].textFrameStyle'], 'object'),
+  formatExtension(
+    'items[].extensions.indesign.effects',
+    ['items[].effects', 'pages[].items[].effects'],
+    'object',
+    {
+      description: 'InDesign-specific reverse-export effects payload; flat items[].effects is the current carrier until adapter migration.',
+      migration: {
+        from: 'items[].effects',
+        to: 'items[].extensions.indesign.effects',
+        status: 'registered-target',
+      },
+    },
+  ),
+  formatExtension(
+    'items[].extensions.indesign.textFrameStyle',
+    ['items[].textFrameStyle', 'pages[].items[].textFrameStyle'],
+    'object',
+    {
+      description: 'InDesign-specific text frame style payload; flat items[].textFrameStyle is the current carrier until adapter migration.',
+      migration: {
+        from: 'items[].textFrameStyle',
+        to: 'items[].extensions.indesign.textFrameStyle',
+        status: 'registered-target',
+      },
+    },
+  ),
 ];

@@ -9,6 +9,7 @@ const { uniquePaths } = require('./path-utils');
 const hasOwn = Object.prototype.hasOwnProperty;
 const RETIRED_READ_POLICIES = new Set(['observe-only']);
 const RETIRED_WRITE_POLICIES = new Set(['forbidden']);
+const RETIRED_MODEL_READ_POLICIES = new Set(['retired']);
 
 function normalizeFieldEntry(input) {
   const source = input && typeof input === 'object' ? input : {};
@@ -151,19 +152,38 @@ function validateRetiredPolicy(input, errors) {
     && typeof retired === 'object'
     && !Array.isArray(retired)
     && hasOwn.call(retired, 'htmlAttrs');
+  const hasRetiredModelPaths = retired
+    && typeof retired === 'object'
+    && !Array.isArray(retired)
+    && hasOwn.call(retired, 'modelPaths');
 
   if (input.lifecycle !== 'retired') {
-    if (hasRetiredHtmlAttrs) {
+    if (hasRetiredHtmlAttrs || hasRetiredModelPaths) {
       errors.push({
         code: 'RETIRED_POLICY_INVALID',
-        message: 'retired.htmlAttrs may only be declared by retired lifecycle entries.',
+        message: 'retired policy metadata may only be declared by retired lifecycle entries.',
       });
     }
     return;
   }
 
-  const htmlAttrs = hasRetiredHtmlAttrs ? retired.htmlAttrs : undefined;
+  if (!hasRetiredHtmlAttrs && !hasRetiredModelPaths) {
+    errors.push({
+      code: 'RETIRED_POLICY_INVALID',
+      message: 'retired entries must declare retired.htmlAttrs or retired.modelPaths.',
+    });
+    return;
+  }
 
+  if (hasRetiredHtmlAttrs) {
+    validateRetiredHtmlAttrs(retired.htmlAttrs, errors);
+  }
+  if (hasRetiredModelPaths) {
+    validateRetiredModelPaths(retired.modelPaths, errors);
+  }
+}
+
+function validateRetiredHtmlAttrs(htmlAttrs, errors) {
   if (!Array.isArray(htmlAttrs) || htmlAttrs.length !== 1) {
     errors.push({
       code: 'RETIRED_POLICY_INVALID',
@@ -203,6 +223,37 @@ function validateRetiredPolicy(input, errors) {
         message: `retired.htmlAttrs ${key} must be a non-empty string when present.`,
       });
     }
+  }
+}
+
+function validateRetiredModelPaths(modelPaths, errors) {
+  if (!Array.isArray(modelPaths) || modelPaths.length === 0) {
+    errors.push({
+      code: 'RETIRED_POLICY_INVALID',
+      message: 'retired.modelPaths must contain at least one retired model path policy record.',
+    });
+    return;
+  }
+
+  for (const retiredPath of modelPaths) {
+    if (!retiredPath || typeof retiredPath !== 'object' || Array.isArray(retiredPath)) {
+      errors.push({
+        code: 'RETIRED_POLICY_INVALID',
+        message: 'retired.modelPaths record must be an object.',
+      });
+      continue;
+    }
+
+    for (const key of ['path', 'readPolicy', 'replacedBy', 'reason']) {
+      if (typeof retiredPath[key] !== 'string' || retiredPath[key].length === 0) {
+        errors.push({
+          code: 'RETIRED_POLICY_INVALID',
+          message: `retired.modelPaths record must include ${key}.`,
+        });
+      }
+    }
+
+    validateRetiredPolicyValue(retiredPath, 'readPolicy', RETIRED_MODEL_READ_POLICIES, errors);
   }
 }
 

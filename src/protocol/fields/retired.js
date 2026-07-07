@@ -1,5 +1,29 @@
 module.exports = [
   {
+    canonicalPath: 'retired.model.itemsType',
+    currentPaths: ['items[].type'],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'document-model',
+    type: 'string',
+    description: 'Retired item dialect field. Use items[].role for semantic role and items[].sourceType for source-format observation.',
+    capabilities: {
+      html: { read: 'observe-only', write: 'unsupported', persist: 'unsupported' },
+      indesign: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      modelPaths: [
+        {
+          path: 'items[].type',
+          replacedBy: 'items[].sourceType',
+          readPolicy: 'retired',
+          reason: 'split-semantic-role-from-source-format-type',
+        },
+      ],
+    },
+  },
+  {
     canonicalPath: 'retired.htmlAttrs.dataIdPage',
     currentPaths: [],
     fieldClass: 'observation',

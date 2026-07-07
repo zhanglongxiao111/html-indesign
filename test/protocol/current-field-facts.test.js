@@ -69,6 +69,63 @@ test('registry contains effectiveLabel and observedLabel observation boundaries'
   assert.equal(fieldRegistry.getByPath('items[].observedLabel').fieldClass, 'observation');
 });
 
+test('registry adjudicates role plus sourceType and retires the old item type dialect', () => {
+  const role = fieldRegistry.getByPath('items[].role');
+  const sourceType = fieldRegistry.getByPath('items[].sourceType');
+  const retiredType = fieldRegistry.getByPath('items[].type');
+
+  assert.equal(role.fieldClass, 'canonical');
+  assert.equal(role.lifecycle, 'active');
+  assert.equal(role.description, 'Canonical semantic role for an item.');
+
+  assert.equal(sourceType.fieldClass, 'sourceMetadata');
+  assert.equal(sourceType.lifecycle, 'active');
+  assert.equal(sourceType.description, 'Observed source-format object type, not a semantic role.');
+
+  assert.equal(retiredType.lifecycle, 'retired');
+  assert.equal(retiredType.fieldClass, 'observation');
+  assert.equal(retiredType.retired.modelPaths[0].path, 'items[].type');
+  assert.equal(retiredType.retired.modelPaths[0].replacedBy, 'items[].sourceType');
+  assert.notEqual(retiredType.lifecycle, 'active');
+});
+
+test('registry records item semantic default as null', () => {
+  const semantic = fieldRegistry.getByPath('items[].semantic');
+
+  assert.equal(semantic.defaultValue, null);
+  assert.match(semantic.description, /Defaults to null/);
+});
+
+test('registry records the styleRefs allowed key adjudication', () => {
+  const styleRefs = fieldRegistry.getByPath('items[].styleRefs');
+
+  assert.deepEqual(styleRefs.allowedKeys, [
+    'paragraphStyle',
+    'characterStyle',
+    'objectStyle',
+    'frameStyle',
+    'tableStyle',
+    'cellStyle',
+    'paragraphStyleDisplayName',
+    'characterStyleDisplayName',
+    'objectStyleDisplayName',
+    'frameStyleDisplayName',
+    'tableStyleDisplayName',
+    'displayName',
+    'synthesizedToken',
+    'synthesizedName',
+    'layer',
+  ]);
+});
+
+test('registry records item bounds as absolute page coordinates in pt', () => {
+  const bounds = fieldRegistry.getByPath('items[].bounds');
+
+  assert.equal(bounds.contract.coordinateSystem, 'absolute-page');
+  assert.equal(bounds.contract.unit, 'pt');
+  assert.match(bounds.description, /Absolute page coordinates/);
+});
+
 test('registry keeps reverse diagnostics out of canonical model facts', () => {
   assert.equal(fieldRegistry.getByPath('pages[].observedLabel').fieldClass, 'observation');
   assert.equal(fieldRegistry.getByPath('items[].observedLabel').fieldClass, 'observation');
@@ -101,11 +158,26 @@ test('registry keeps sourceRuns metadata separate from canonical text runs', () 
 
 test('registry keeps reverse item effects as an InDesign format extension', () => {
   const canonicalVisualEffects = fieldRegistry.getByPath('items[].visualStyle.effects');
-  const reverseEffects = fieldRegistry.getByPath('items[].effects');
+  const reverseEffects = fieldRegistry.getByPath('items[].extensions.indesign.effects');
 
   assert.equal(canonicalVisualEffects, null);
   assert.equal(reverseEffects.fieldClass, 'formatExtension');
   assert.equal(reverseEffects.owner, 'reverse-model');
+  assert.deepEqual(reverseEffects.currentPaths, ['items[].effects', 'pages[].items[].effects']);
+  assert.equal(reverseEffects.migration.from, 'items[].effects');
+  assert.equal(reverseEffects.migration.to, 'items[].extensions.indesign.effects');
+});
+
+test('registry records textFrameStyle as an InDesign extension migration target', () => {
+  const textFrameStyle = fieldRegistry.getByPath('items[].extensions.indesign.textFrameStyle');
+
+  assert.equal(textFrameStyle.fieldClass, 'formatExtension');
+  assert.deepEqual(textFrameStyle.currentPaths, [
+    'items[].textFrameStyle',
+    'pages[].items[].textFrameStyle',
+  ]);
+  assert.equal(textFrameStyle.migration.from, 'items[].textFrameStyle');
+  assert.equal(textFrameStyle.migration.to, 'items[].extensions.indesign.textFrameStyle');
 });
 
 test('registry does not declare reverse visualStyle fields as native InDesign write fields', () => {

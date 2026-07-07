@@ -404,6 +404,22 @@ test('validateModelFields rejects retired paths only in strict mode', () => {
   );
 });
 
+test('validateModelFields treats retired item type as retired instead of active accepted', () => {
+  const result = validateModelFields(fieldRegistry, ['items[].type'], { strict: true });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.accepted, []);
+  assert.deepEqual(result.unknown, []);
+  assert.deepEqual(result.retired.map((item) => item.path), ['items[].type']);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_RETIRED'
+      && error.path === 'items[].type'
+    )),
+    true,
+  );
+});
+
 test('scanModelPaths scans effectiveLabel nested registered and unknown fields', () => {
   const scannedPaths = scanModelPaths({
     pages: [{

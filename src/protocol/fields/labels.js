@@ -9,6 +9,23 @@ const STYLE_LABEL_KINDS = Object.freeze(['style']);
 const STYLE_AND_LAYER_LABEL_KINDS = Object.freeze(['style', 'layer']);
 const PAGE_AND_ITEM_LABEL_KINDS = Object.freeze(['page', 'item']);
 const SEMANTIC_LABEL_KINDS = Object.freeze(['page', 'item', 'parentPage']);
+const STYLE_REF_ALLOWED_KEYS = Object.freeze([
+  'paragraphStyle',
+  'characterStyle',
+  'objectStyle',
+  'frameStyle',
+  'tableStyle',
+  'cellStyle',
+  'paragraphStyleDisplayName',
+  'characterStyleDisplayName',
+  'objectStyleDisplayName',
+  'frameStyleDisplayName',
+  'tableStyleDisplayName',
+  'displayName',
+  'synthesizedToken',
+  'synthesizedName',
+  'layer',
+]);
 
 function labelPayloadMetadata(canonicalPath, type = 'string', labelKinds = ALL_LABEL_KINDS) {
   return {
@@ -124,6 +141,8 @@ module.exports = [
     lifecycle: 'active',
     owner: 'label-protocol',
     type: 'string',
+    defaultValue: null,
+    description: 'Canonical item semantic token. Defaults to null when no accepted semantic is present.',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
@@ -165,6 +184,7 @@ module.exports = [
     lifecycle: 'active',
     owner: 'label-protocol',
     type: 'string',
+    description: 'Canonical semantic role for an item.',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },
@@ -190,6 +210,8 @@ module.exports = [
     lifecycle: 'active',
     owner: 'style-refs',
     type: 'object',
+    description: 'Canonical style reference object; only registered allowedKeys are valid styleRefs members.',
+    allowedKeys: STYLE_REF_ALLOWED_KEYS,
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'native', write: 'native', persist: 'native' },

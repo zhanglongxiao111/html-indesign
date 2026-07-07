@@ -181,5 +181,11 @@ module.exports = [
       customDataPaths: ['htmlIndesign.pages[].guides'],
     },
   }),
-  canonical('items[].bounds', ['pages[].items[].bounds'], 'object'),
+  canonical('items[].bounds', ['pages[].items[].bounds'], 'object', {
+    description: 'Absolute page coordinates for the item bounds, measured in pt.',
+    contract: {
+      coordinateSystem: 'absolute-page',
+      unit: 'pt',
+    },
+  }),
 ];
