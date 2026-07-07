@@ -198,12 +198,12 @@ npm test
 
 ### 6. W0-2 legacy 死分支与孤儿模块
 
-进度：实现已提交，复审中（提交 `588cc60` 删除 executor 退役路径与 `stacking.js` / `style-reader.js` 孤儿模块；baseline G5 6→2、G8 2→0、G6 16→15；等待复审，2026-07-07）。
+进度：已完成（提交 `588cc60`；最终复审未发现阻断问题；删除 executor 退役路径与 `stacking.js` / `style-reader.js` 孤儿模块；baseline G5 6→2、G8 2→0、G6 16→15；`node --test test/indesign-executor/executor-script-static.test.js` 41/41 通过，`node --test test/architecture/retired-naming.test.js test/architecture/orphan-modules.test.js test/architecture/single-implementation.test.js` 11/11 通过，`node --test "test/indesign-executor/*.test.js" "test/architecture/*.test.js"` 104/104 通过，`npm test` 829/829 通过，2026-07-07）。
 
-- [ ] 删除 `hi_executor.jsxinc` 的 `runLegacyBuildInstructions` 与 legacy schema 分支；`runPagedHtmlBuildInstructions` 改名（如 `runBuildInstructions`），错误提示文本不再引用不存在的 `pagedHtml.compileInstructions`。
-- [ ] 同步修正 `executor-script-static.test.js` 断言（删除对 legacy API 必须存在的断言，改为断言其不存在）。
-- [ ] 删除 `src/adapters/html/reader/stacking.js`、`style-reader.js`。
-- [ ] 收 `baselines/G5.json` 代码部分与 `baselines/G8.json` 全部条目。
+- [x] 删除 `hi_executor.jsxinc` 的 `runLegacyBuildInstructions` 与 legacy schema 分支；`runPagedHtmlBuildInstructions` 改名（如 `runBuildInstructions`），错误提示文本不再引用不存在的 `pagedHtml.compileInstructions`。
+- [x] 同步修正 `executor-script-static.test.js` 断言（删除对 legacy API 必须存在的断言，改为断言其不存在）。
+- [x] 删除 `src/adapters/html/reader/stacking.js`、`style-reader.js`。
+- [x] 收 `baselines/G5.json` 代码部分与 `baselines/G8.json` 全部条目。
 
 验收命令：
 
