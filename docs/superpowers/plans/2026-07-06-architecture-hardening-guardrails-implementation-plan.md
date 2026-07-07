@@ -227,7 +227,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 8. W0 收口检查点
 
-进度：补漏已提交，复审中（提交 `919632e` 补齐 6 个 audit 脚本 invalid-input fail-closed 测试并将 G4 baseline 6 条清零；当前 G4=0、G7=0、G8=0，G5 仅剩 W4 test path 2 条；等待复审，2026-07-07）。
+进度：复审发现阻断问题，修复中（提交 `919632e` 只完成 G4 baseline 表面清零，但 `audit-conversion-gate` 畸形 editability、`audit-reverse-visual` 零页面 HTML、`audit-author-editability` 无 pages 包、`audit-reverse-author-roundtrip` 空 source 包、`audit-synthesized-styles` / `audit-trusted-source-preservation` 残缺 DocumentModel 仍会假成功；等待实质 fail-closed 修复，2026-07-07）。
 
 - [ ] 确认 G4（audit 部分）/G5（代码部分）/G7/G8 基线归零；G5 剩余条目应只剩 test 目录改名（W4）。
 - [ ] `npm test` 全绿。**此检查点后可编辑性基准计划方可跑首轮。**
