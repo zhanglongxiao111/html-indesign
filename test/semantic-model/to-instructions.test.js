@@ -82,7 +82,7 @@ test('semanticModelToInstructions emits parent pages and page parent references'
       items: [{
         id: 'parent-rule',
         role: 'line',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 10, y: 12, width: 80, height: 1 },
         styleRefs: { objectStyle: '装饰线' },
         visualStyle: { strokeColor: '#999999', strokeWeight: 1 },
@@ -317,7 +317,7 @@ test('semanticModelToInstructions emits bounded text fit for observed reverse te
       items: [{
         id: 'text-1',
         role: 'text',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 10, y: 20, width: 80, height: 20 },
         content: { text: '2026年1月26日区委专题会' },
         sourceNode: { attributes: { 'data-id-observed': 'true', 'data-id-reverse-mode': 'observation' } },
@@ -410,7 +410,7 @@ test('semanticModelToInstructions preserves observed text frame bounds despite l
       items: [{
         id: 'space-text-frame',
         role: 'text',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 370.5, y: 610.13, width: 36.26, height: 15.43 },
         computedStyle: { fontSize: '18px', lineHeight: '28px' },
         content: { text: ' ' },
@@ -447,7 +447,7 @@ test('semanticModelToInstructions emits bounded text fit for observed source nod
       items: [{
         id: 'text-1',
         role: 'text',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 10, y: 20, width: 80, height: 20 },
         content: { text: '2026年1月26日区委专题会' },
         labels: [{

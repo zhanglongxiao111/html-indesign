@@ -44,7 +44,7 @@ function isUsefulCharacterStyle(value) {
 
 function isUsefulSemantic(value) {
   const semantic = String(value || '').trim();
-  return Boolean(semantic && semantic !== 'unknown');
+  return Boolean(semantic);
 }
 
 function positiveIntegerOrNull(value) {

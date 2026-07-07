@@ -55,7 +55,7 @@
 
 - 不要求标签。
 - 尽量保留视觉、坐标、样式、资源和可见性事实；InDesign 文档图层名只作为观察事实。
-- 所有未识别语义都标记为 `unknown`。
+- 未识别或缺失的语义保持为 `null` 或省略，并进入 unresolved / 观察信息；不得写成 `unknown` 哨兵。
 
 用途：
 
@@ -67,12 +67,9 @@
 ```html
 <section class="page observed-page"
          data-page="observed-page-1"
-         data-id-observed="true"
-         data-id-margin="unknown"
-         data-id-grid="unknown">
+         data-id-observed="true">
   <div class="observed-text"
        data-id-role="text"
-       data-id-semantic="unknown"
        data-id-observed-id="page-1-item-12"
        style="left:20mm;top:30mm;width:100mm;height:20mm">
     项目标题
@@ -287,7 +284,7 @@ PDF 反向导出必须保留：
 
 `reconstruction-report.json` 由 `src/semantic-reconstruction/` 生成，记录语义重建层实际执行了什么算法、识别了什么、哪些对象仍然 unresolved。
 
-当前脚手架状态为 `observed-only`：表示没有执行语义算法，只统计 unknown 或被拒绝标签的对象。这个状态不得被解释为作者包已经语义化。
+当前脚手架状态为 `observed-only`：表示没有执行语义算法，只统计语义缺失或被拒绝标签的对象。这个状态不得被解释为作者包已经语义化。
 
 规则：
 
@@ -309,7 +306,7 @@ PDF 反向导出必须保留：
 - 资源链接丢失。
 - 样式无法映射。
 - 模板信息只能部分恢复。
-- observation 模式中的 unknown 对象数量。
+- observation 模式中的 unresolved / 语义缺失对象数量。
 - inferred 模式中的推断来源、置信度和证据。
 - 标签复核摘要：接受、局部接受、降级观察的数量和原因。
 
@@ -326,7 +323,7 @@ PDF 反向导出必须保留：
 | Style | 推荐有 `kind=style` 和稳定 token | warning；无法恢复 token 时生成 observed style |
 | Guide | 网格/边距参考线必须有标签或可由页面 grid 重建 | warning；未知参考线作为 observed guide |
 | Core PageItem | 文本、图框、表格、形状、线、组必须有 `kind=item` | error |
-| Decorative PageItem | 纯背景、装饰线、非核心视觉元素 | warning；保留视觉但标记 `unknown` |
+| Decorative PageItem | 纯背景、装饰线、非核心视觉元素 | warning；保留视觉并标记为 observed / unresolved |
 
 核心对象缺标签时，`structured` 模式不得用视觉猜测补语义；应失败或要求改用 `observation` 模式。
 
@@ -514,7 +511,7 @@ read blueprint.json
 
 | 检查 | 等级 | 说明 |
 | ---- | ---- | ---- |
-| `ITEM_SEMANTIC_UNKNOWN` | warning | 对象缺少语义 |
+| `ITEM_SEMANTIC_MISSING` | warning | 对象缺少语义 |
 | `ITEM_TYPE_UNSUPPORTED` | warning/error | 对象类型无法映射 |
 | `ASSET_LINK_MISSING` | warning/error | 链接资源丢失 |
 | `TEXT_RUN_LOSSY` | warning | 局部字符样式无法完整表达 |

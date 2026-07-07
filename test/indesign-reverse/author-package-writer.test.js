@@ -115,7 +115,7 @@ test('writeReverseAuthorPackage writes observed InDesign layer protocol attr', (
           {
             id: 'observed-shape',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 10, y: 20, width: 120, height: 40 },
             layerName: '原始图层',
@@ -377,7 +377,7 @@ test('writeReverseAuthorPackage writes observed InDesign paragraph composer prot
           {
             id: 'date-caption',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'p',
             bounds: { x: 10, y: 20, width: 128, height: 50 },
             styleRefs: { paragraphStyle: 'date-caption' },
@@ -416,7 +416,7 @@ test('writeReverseAuthorPackage writes observed stroke facts as protocol attrs',
           {
             id: 'fine-caption',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'p',
             bounds: { x: 10, y: 20, width: 200, height: 40 },
             styleRefs: { objectStyle: '[基本文本框架]' },
@@ -467,7 +467,7 @@ test('writeReverseAuthorPackage writes observed page margins and panel style nam
           {
             id: 'observed-copy',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'p',
             bounds: { x: 40, y: 50, width: 360, height: 72 },
             styleRefs: {
@@ -526,7 +526,7 @@ test('writeReverseAuthorPackage renders applied parent page decoration without t
             role: 'line',
             layerName: 'text',
             sourceType: 'GraphicLine',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 40, y: 420, width: 720, height: 0 },
             vectorGeometry: {
@@ -543,7 +543,7 @@ test('writeReverseAuthorPackage renders applied parent page decoration without t
             role: 'text',
             layerName: 'text',
             sourceType: 'TextFrame',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 40, y: 40, width: 420, height: 40 },
             content: { text: '中文本页标题/ English Page Title', runs: [] },
             textStyle: { pointSize: 24, fillColor: '#123456' },
@@ -553,7 +553,7 @@ test('writeReverseAuthorPackage renders applied parent page decoration without t
             role: 'text',
             layerName: 'PageNotes',
             sourceType: 'TextFrame',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 40, y: 80, width: 420, height: 40 },
             content: { text: '本页一般用于放效果图', runs: [] },
           },
@@ -562,7 +562,7 @@ test('writeReverseAuthorPackage renders applied parent page decoration without t
             role: 'graphic',
             layerName: '图片',
             sourceType: 'Rectangle',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 120, y: 120, width: 240, height: 160 },
             visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
           },
@@ -796,7 +796,7 @@ test('writeReverseAuthorPackage writes clean structured author markup', () => {
   model.pages[0].items.push({
     id: 'legend-swatch',
     role: 'shape',
-    semantic: 'unknown',
+    semantic: null,
     sourceNode: {
       tagName: 'span',
       classList: ['swatch'],
@@ -983,7 +983,7 @@ test('writeReverseAuthorPackage reports accepted partial and observed reverse la
   model.pages[0].items.push({
     id: 'foreign-item',
     role: 'text',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x: 20, y: 140, width: 160, height: 40 },
     styleRefs: {},
     content: { text: '外来标签', runs: [] },
@@ -1027,7 +1027,7 @@ test('writeReverseAuthorPackage keeps structured source geometry in html instead
     {
       id: 'chapter-1-border-left',
       role: 'shape',
-      semantic: 'unknown',
+      semantic: null,
       sourceNode: { tagName: 'div', id: 'chapter-1-border-left', classList: ['id-object'], attributes: {} },
       structure: { parentId: 'agenda-page', order: 3 },
       labels: [{ generated: true }],
@@ -1127,7 +1127,7 @@ function observedModel() {
           {
             id: 'observed-title',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'p',
             bounds: { x: 40, y: 50, width: 360, height: 72 },
             styleRefs: {},

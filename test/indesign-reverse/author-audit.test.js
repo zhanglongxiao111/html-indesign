@@ -75,7 +75,7 @@ test('auditReverseAuthorPackage rejects observed positioned items without fallba
             {
               id: 'floating-title',
               role: 'text',
-              semantic: 'unknown',
+              semantic: null,
               bounds: { x: 40, y: 50, width: 360, height: 72 },
               layout: null,
               sourceNode: null,
@@ -116,7 +116,7 @@ test('auditReverseAuthorPackage warns when unknown InDesign PageItem geometry is
               id: 'complex-vector',
               role: 'shape',
               type: 'PageItem',
-              semantic: 'unknown',
+              semantic: null,
               bounds: { x: 10, y: 10, width: 20, height: 20 },
               visualStyle: { fillColor: '#000000' },
             },

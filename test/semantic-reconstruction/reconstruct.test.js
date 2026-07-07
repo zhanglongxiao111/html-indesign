@@ -24,7 +24,7 @@ test('reconstructSemanticModel creates an explicit pass-through report without i
           {
             id: 'text-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 120, width: 400, height: 48 },
             content: { text: 'Observed title' },
           },
@@ -37,7 +37,7 @@ test('reconstructSemanticModel creates an explicit pass-through report without i
   const result = reconstructSemanticModel(observedModel, { mode: 'observation' });
 
   assert.notEqual(result.model, observedModel);
-  assert.equal(result.model.pages[0].items[0].semantic, 'unknown');
+  assert.equal(result.model.pages[0].items[0].semantic, null);
   assert.equal(result.report.kind, 'SemanticReconstructionReport');
   assert.equal(result.report.status, 'observed-only');
   assert.equal(result.report.summary.pages, 1);
@@ -46,7 +46,7 @@ test('reconstructSemanticModel creates an explicit pass-through report without i
   assert.equal(result.report.summary.unresolvedItems, 1);
   assert.deepEqual(result.report.algorithms, []);
   assert.equal(result.report.unresolved[0].path, 'pages[0].items[0]');
-  assert.equal(result.report.unresolved[0].reason, 'semantic-unknown');
+  assert.equal(result.report.unresolved[0].reason, 'semantic-missing');
 });
 
 test('reconstructSemanticModel fails visibly for invalid model input', () => {
@@ -71,7 +71,7 @@ test('reconstructSemanticModel can run page object graph without mutating semant
           {
             id: 'text-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 100, width: 300, height: 40 },
             content: { text: '普通文字' },
           },
@@ -87,7 +87,7 @@ test('reconstructSemanticModel can run page object graph without mutating semant
   });
 
   assert.notEqual(result.model, observedModel);
-  assert.equal(result.model.pages[0].items[0].semantic, 'unknown');
+  assert.equal(result.model.pages[0].items[0].semantic, null);
   assert.deepEqual(result.report.algorithms, ['page-object-graph']);
   assert.equal(result.report.passes.length, 1);
   assert.equal(result.report.passes[0].name, 'page-object-graph');
@@ -109,7 +109,7 @@ test('reconstructSemanticModel can apply high-confidence caption structure to au
           {
             id: 'image-1',
             role: 'graphic',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 100, width: 300, height: 180 },
             zIndex: 1,
             asset: { kind: 'image', path: 'assets/image-1.png' },
@@ -118,7 +118,7 @@ test('reconstructSemanticModel can apply high-confidence caption structure to au
           {
             id: 'caption-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 285, width: 300, height: 24 },
             zIndex: 2,
             content: { text: '总平面效果图' },
@@ -127,7 +127,7 @@ test('reconstructSemanticModel can apply high-confidence caption structure to au
           {
             id: 'body-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 500, width: 300, height: 80 },
             zIndex: 3,
             content: { text: '这段文字距离图片较远，不应被合并。' },
@@ -180,7 +180,7 @@ test('reconstructSemanticModel does not apply low-confidence caption candidates 
           {
             id: 'drawing-1',
             role: 'graphic',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 100, width: 300, height: 180 },
             asset: { kind: 'pdf', path: 'assets/drawing.pdf' },
             structure: { parentId: 'page-1', order: 1 },
@@ -188,7 +188,7 @@ test('reconstructSemanticModel does not apply low-confidence caption candidates 
           {
             id: 'annotation-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 100, y: 305, width: 300, height: 24 },
             content: { text: '往3F会议' },
             structure: { parentId: 'page-1', order: 2 },
@@ -314,7 +314,7 @@ test('reconstructSemanticModel can group captioned figures into an editable figu
           {
             id: 'body-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             bounds: { x: 650, y: 120, width: 220, height: 100 },
             content: { text: '旁边正文不应该进入图片矩阵。' },
             structure: { parentId: 'page-1', order: 9 },
@@ -448,7 +448,7 @@ function graphic(id, x, y, width, height, order) {
   return {
     id,
     role: 'graphic',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x, y, width, height },
     zIndex: order,
     asset: { kind: 'image', path: `assets/${id}.png` },
@@ -460,7 +460,7 @@ function caption(id, x, y, text, order) {
   return {
     id,
     role: 'text',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x, y, width: 180, height: 24 },
     zIndex: order,
     content: { text },
@@ -472,7 +472,7 @@ function textFrame(id, x, y, width, height, text, order) {
   return {
     id,
     role: 'text',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x, y, width, height },
     zIndex: order,
     styleRefs: { paragraphStyle: '正文' },

@@ -69,7 +69,7 @@ function countCandidate(map, kind, token, suggestedName) {
 
 function usefulToken(value) {
   const token = String(value || '').trim();
-  if (!token || token === 'unknown') return null;
+  if (!token) return null;
   return token;
 }
 

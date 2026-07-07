@@ -127,7 +127,6 @@ function collectUnresolvedItems(model) {
 
 function unresolvedReason(item = {}) {
   if (!item.semantic) return 'semantic-missing';
-  if (item.semantic === 'unknown') return 'semantic-unknown';
   if (item.labelStatus && item.labelStatus !== 'accepted') return `label-${item.labelStatus}`;
   if (Array.isArray(item.rejectionReasons) && item.rejectionReasons.length) return 'label-rejected';
   return null;

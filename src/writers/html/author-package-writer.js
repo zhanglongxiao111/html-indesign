@@ -404,7 +404,7 @@ function sourcePageAttrs(page, sourceFile, options) {
     const guidesAttr = pageGuidesAttrValue(page.guides);
     if (guidesAttr) attrs['data-id-guides'] = guidesAttr;
   }
-  if (options.mode === 'observation' || page.semantic === 'unknown') attrs['data-id-observed'] = 'true';
+  if (options.mode === 'observation') attrs['data-id-observed'] = 'true';
   if (options.mode && options.mode !== 'structured') attrs['data-id-reverse-mode'] = options.mode;
   if (page.grid) {
     attrs['data-id-grid'] = attrs['data-id-grid'] || `${page.grid.columns}x${page.grid.rows}`;

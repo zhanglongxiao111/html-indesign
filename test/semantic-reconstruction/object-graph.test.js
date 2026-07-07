@@ -20,7 +20,7 @@ test('buildDocumentObjectGraph creates normalized nodes and records InDesign lay
           {
             id: 'text-1',
             role: 'text',
-            semantic: 'unknown',
+            semantic: null,
             layerName: '标题',
             bounds: { x: 100, y: 100, width: 300, height: 40 },
             zIndex: 4,
@@ -107,7 +107,7 @@ test('buildDocumentObjectGraph creates geometric evidence edges without mutating
   const pass = buildDocumentObjectGraph(model);
   const edges = pass.pages[0].edges;
 
-  assert.equal(model.pages[0].items[2].semantic, 'unknown');
+  assert.equal(model.pages[0].items[2].semantic, null);
   assertEdge(edges, 'containment', 'background', 'main-image');
   assertEdge(edges, 'alignment', 'main-image', 'caption');
   assertEdge(edges, 'caption-candidate', 'main-image', 'caption');
@@ -121,7 +121,7 @@ function text(id, x, y, width, height, zIndex, content) {
   return {
     id,
     role: 'text',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x, y, width, height },
     zIndex,
     content: { text: content },
@@ -132,7 +132,7 @@ function graphic(id, x, y, width, height, zIndex) {
   return {
     id,
     role: 'graphic',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x, y, width, height },
     zIndex,
     asset: { kind: 'image', path: `assets/${id}.png` },
@@ -143,7 +143,7 @@ function shape(id, x, y, width, height, zIndex, visualStyle = {}) {
   return {
     id,
     role: 'shape',
-    semantic: 'unknown',
+    semantic: null,
     bounds: { x, y, width, height },
     zIndex,
     visualStyle,

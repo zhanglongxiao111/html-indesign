@@ -76,7 +76,7 @@ test('semanticModelToHtml skips virtual author structure containers', () => {
           {
             id: 'image-1',
             role: 'graphic',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'figure',
             bounds: { x: 100, y: 80, width: 240, height: 160 },
             structure: { parentId: 'page-1-figure-grid-1', order: 1 },
@@ -163,7 +163,7 @@ test('semanticModelToHtml renders placed image content geometry inside the visib
           {
             id: 'cropped-image',
             role: 'graphic',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'figure',
             bounds: { x: 100, y: 80, width: 240, height: 160 },
             styleRefs: {},
@@ -209,7 +209,7 @@ test('semanticModelToHtml keeps generated placed-asset previews from being stret
           {
             id: 'cropped-pdf',
             role: 'graphic',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'figure',
             bounds: { x: 100, y: 80, width: 240, height: 160 },
             styleRefs: {},
@@ -257,7 +257,7 @@ test('semanticModelToHtml treats JFIF links as raster images', () => {
           {
             id: 'jfif-image',
             role: 'graphic',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'figure',
             bounds: { x: 0, y: 0, width: 240, height: 160 },
             styleRefs: {},
@@ -293,7 +293,7 @@ test('semanticModelToHtml renders observed vector paths as SVG instead of rectan
           {
             id: 'axis-line',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 10, y: 20, width: 180, height: 0 },
             visualStyle: {
@@ -349,7 +349,7 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
           {
             id: 'route-arrow',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 40, y: 60, width: 180, height: 80 },
             visualStyle: {
@@ -382,7 +382,7 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
           {
             id: 'zone-fill',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 240, y: 60, width: 80, height: 60 },
             visualStyle: {
@@ -411,7 +411,7 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
           {
             id: 'marker-only-line',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 330, y: 40, width: 0, height: 120 },
             visualStyle: {
@@ -438,7 +438,7 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
           {
             id: 'closed-marker',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 40, y: 160, width: 80, height: 50 },
             visualStyle: {
@@ -501,7 +501,7 @@ test('semanticModelToHtml maps reverse blend modes without faking opacity', () =
           {
             id: 'multiply-fill',
             role: 'shape',
-            semantic: 'unknown',
+            semantic: null,
             tagName: 'div',
             bounds: { x: 40, y: 60, width: 180, height: 80 },
             visualStyle: {

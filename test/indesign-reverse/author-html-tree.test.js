@@ -85,7 +85,7 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
       {
         id: 'chapter-1-background',
         role: 'shape',
-        semantic: 'unknown',
+        semantic: null,
         sourceNode: { tagName: 'div', id: 'chapter-1-background', classList: ['id-object'], attributes: {} },
         structure: { parentId: 'agenda-page', order: 2 },
         labels: [{ namespace: 'html_indesign', generated: true }],
@@ -93,7 +93,7 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
       {
         id: 'chapter-1-border-left',
         role: 'shape',
-        semantic: 'unknown',
+        semantic: null,
         sourceNode: { tagName: 'div', id: 'chapter-1-border-left', classList: ['id-object'], attributes: {} },
         structure: { parentId: 'agenda-page', order: 3 },
       },
@@ -114,7 +114,7 @@ test('pageItemsToAuthorHtml writes vector point type metadata for stable roundtr
       {
         id: 'observed-vector',
         role: 'shape',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 10, y: 20, width: 100, height: 50 },
         sourceNode: {
           tagName: 'svg',
@@ -470,7 +470,7 @@ test('pageItemsToAuthorHtml preserves sourced inline style for absolute annotati
       {
         id: 'legend-swatch',
         role: 'shape',
-        semantic: 'unknown',
+        semantic: null,
         sourceNode: {
           tagName: 'span',
           id: 'legend-swatch',
@@ -540,14 +540,14 @@ test('pageItemsToAuthorHtml renders observed placed assets as real resource elem
       {
         id: 'nas-image',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 1 },
         asset: { path: '\\\\daga-nas5\\share\\效果图 A.jpg', graphicType: 'image' },
       },
       {
         id: 'nas-pdf',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 2 },
         asset: { path: '\\\\daga-nas5\\share\\图纸 A.pdf', graphicType: 'pdf' },
       },
@@ -573,7 +573,7 @@ test('pageItemsToAuthorHtml preserves placed image frame and content geometry fo
       {
         id: 'cropped-image',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 100, y: 80, width: 240, height: 160 },
         structure: { parentId: 'observed-page', order: 1 },
         asset: {
@@ -619,7 +619,7 @@ test('pageItemsToAuthorHtml keeps generated placed asset frames addressable in s
       {
         id: 'cropped-image',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 100, y: 80, width: 240, height: 160 },
         structure: { parentId: 'observed-page', order: 1 },
         asset: {
@@ -652,7 +652,7 @@ test('pageItemsToAuthorHtml keeps generated placed-asset previews from being str
       {
         id: 'cropped-pdf',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 100, y: 80, width: 240, height: 160 },
         structure: { parentId: 'observed-page', order: 1 },
         asset: {
@@ -696,7 +696,7 @@ test('pageItemsToAuthorHtml renders generated previews for embedded images witho
       {
         id: 'embedded-image',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 20, y: 30, width: 240, height: 160 },
         sourceNode: {
           tagName: 'figure',
@@ -744,7 +744,7 @@ test('pageItemsToAuthorHtml keeps roundtripped generated image previews as previ
       {
         id: 'embedded-image',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 20, y: 30, width: 240, height: 160 },
         sourceNode: {
           tagName: 'figure',
@@ -796,7 +796,7 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
       {
         id: 'layered-pdf',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 1 },
         asset: {
           path: '\\\\daga-nas5\\share\\图纸 A.pdf',
@@ -813,7 +813,7 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
       {
         id: 'layered-ai',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 2 },
         asset: {
           path: '\\\\daga-nas5\\share\\总图.ai',
@@ -826,7 +826,7 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
       {
         id: 'layered-psd',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 3 },
         asset: {
           path: '\\\\daga-nas5\\share\\效果图.psd',
@@ -868,7 +868,7 @@ test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable s
       {
         id: 'vector-1',
         role: 'shape',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 100, y: 120, width: 200, height: 80 },
         visualStyle: {
           fillColor: '#8ca064',
@@ -919,7 +919,7 @@ test('pageItemsToAuthorHtml preserves open vector fill as protocol fact without 
       {
         id: 'filled-open-line',
         role: 'line',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 10, y: 20, width: 0, height: 100 },
         visualStyle: {
           fillColor: '#000000',
@@ -954,7 +954,7 @@ test('pageItemsToAuthorHtml maps InDesign multiply blend mode to SVG mix-blend-m
       {
         id: 'program-fill',
         role: 'shape',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 100, y: 120, width: 200, height: 80 },
         visualStyle: {
           fillColor: '#ff9339',
@@ -991,7 +991,7 @@ test('pageItemsToAuthorHtml gives zero-height vector lines a non-zero viewBox', 
       {
         id: 'axis-line',
         role: 'line',
-        semantic: 'unknown',
+        semantic: null,
         bounds: { x: 10, y: 20, width: 180, height: 0 },
         visualStyle: {
           fillColor: null,
@@ -1141,7 +1141,7 @@ test('pageItemsToAuthorHtml writes PDF page numbers only through data-id-pdf-pag
       {
         id: 'layered-pdf',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 1 },
         asset: {
           path: '\\\\daga-nas5\\share\\图纸 A.pdf',
@@ -1169,7 +1169,7 @@ test('pageItemsToAuthorHtml does not invent first-page PDF previews without expl
       {
         id: 'untagged-pdf',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         structure: { parentId: 'observed-page', order: 1 },
         asset: {
           path: '\\\\daga-nas5\\share\\多页图纸.pdf',
@@ -1194,7 +1194,7 @@ test('pageItemsToAuthorHtml ignores invalid PDF page facts when deriving preview
       {
         id: 'invalid-page-pdf',
         role: 'graphic',
-        semantic: 'unknown',
+        semantic: null,
         sourceNode: {
           tagName: 'object',
           id: 'invalid-page-pdf',
@@ -1301,7 +1301,7 @@ test('pageItemsToAuthorHtml folds generated text companions back into sourced an
       {
         id: 'annotation-1-text',
         role: 'text',
-        semantic: 'unknown',
+        semantic: null,
         sourceNode: null,
         labels: [{ protocol: 'html-indesign', kind: 'item', generated: false }],
         structure: null,
