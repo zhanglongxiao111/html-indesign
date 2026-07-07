@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9d 实现已提交，审核中（提交 `5831054`；两个 normalizer 出口已接入 strict `validateSemanticModel`，失败即抛；strict 出口暴露的当前字段已补登记，G3 baseline 547→518；`node --test test/semantic-model/from-snapshot.test.js` 23/23 通过，`node --test test/indesign-reverse/reverse-model.test.js` 32/32 通过，G3 10/10 通过，协议测试 150/150 通过，`npm test` 866/866 通过，`git diff --check` 通过；2026-07-08）。
+进度：9d 审核发现阻断问题，修复中（实现提交 `5831054`；审核指出两个 normalizer 出口仍用 narrowed `strictFieldDomains`，不是最终返回模型 full strict；InDesign reverse structured label 非法 payload 仍 warning-only；G3 baseline 虽 547→518 但新增 25 条豁免，不符合不得扩大要求；需改为 full strict fail-closed、labels 也 strict、并消除新增 G3 豁免；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
