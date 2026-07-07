@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9e G3 同构豁免归零实现中（9d 已完成：实现提交 `5831054`，full strict 修复 `f6f54d8`，G3 added 豁免修复 `f923aaa`；最终复审未发现 P0/P1/P2；两个 normalizer 出口已改为 full strict fail-closed，labels 也进入 strict；G3 baseline 相对 9d 起点 547→428，addedCount=0，removedCount=119；`npm test` 874/874 通过；2026-07-08）。
+进度：9e 实现已提交，审核中（提交 `3b38701`；G3 baseline 已归零为 `exemptions: []`，`blueprintMigrationToSemanticModel` 接入 strict fail-closed，registry capability / scanner / adapter sample 覆盖已调整；G3 12/12 通过，baseline exemptions=0，HTML from-snapshot 24/24 通过，InDesign reverse-model 33/33 通过，协议测试 155/155 通过，`npm test` 875/875 通过，`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
