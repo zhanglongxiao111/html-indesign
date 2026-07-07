@@ -65,6 +65,7 @@ test('npm test does not scan ignored workspace artifacts', () => {
   const pkg = readJson('package.json');
   assert.doesNotMatch(pkg.scripts.test, /test\/\*\*\/\*\.test\.js/);
   assert.doesNotMatch(pkg.scripts.test, /test[\\/]workspace/);
+  assert.match(pkg.scripts.test, /test\/architecture\/\*\*\/\*\.test\.js/);
   assert.match(pkg.scripts.test, /node --test/);
 });
 

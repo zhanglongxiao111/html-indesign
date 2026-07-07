@@ -112,10 +112,12 @@ npm test
 
 ### 1. 护栏基础设施
 
-- [ ] 实现 `require-graph.js`：给定根目录集合返回边列表 `{from, to}`（解析静态 `require('...')` 相对路径；动态 require 记录为观察项不参与断言）。
-- [ ] 实现 `baseline-ratchet.js`：输入实际违规集合与基线 JSON，输出新违规清单与过期豁免清单，两者任一非空即 fail。
-- [ ] 实现 `guardrail-report.js`：格式化四段失败信息；缺任一段抛错（保证后续护栏不偷工）。
-- [ ] 三个 helper 各配单测（含人造样本）。
+进度：已完成（Task 1 审核通过；focused helper suite 14/14 通过；`npm test` 已纳入 `test/architecture/**/*.test.js`，2026-07-07）。
+
+- [x] 实现 `require-graph.js`：给定根目录集合返回边列表 `{from, to}`（解析静态 `require('...')` 相对路径；动态 require 记录为观察项不参与断言）。
+- [x] 实现 `baseline-ratchet.js`：输入实际违规集合与基线 JSON，输出新违规清单与过期豁免清单，两者任一非空即 fail。
+- [x] 实现 `guardrail-report.js`：格式化四段失败信息；缺任一段抛错（保证后续护栏不偷工）。
+- [x] 三个 helper 各配单测（含人造样本）。
 
 验收命令：
 
