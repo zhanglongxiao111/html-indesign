@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 进行中（9b 已完成；已定位 InDesign normalizer 仍将 item `semantic` 缺省写成 `'unknown'`，`effects` / `textFrameStyle` 仍为平铺字段，styleRefs 仍需按 registry allowedKeys 收敛；准备派执行子 agent 做 InDesign adapter 对齐；2026-07-08）。
+进度：9c 实现已提交，复审中（执行提交 `410cb15`；InDesign adapter 将缺省 item `semantic` 改为 `null`，styleRefs 按 registry allowedKeys 过滤，`effects` / `textFrameStyle` 迁入 `extensions.indesign.*`，反向 HTML 直接消费者已切新路径；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
