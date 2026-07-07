@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9f 实现已提交，审核中（提交 `b93f5cd`；已清理 `node-facts`、author audit、InDesign instruction writer/guide/layer、style atoms 中的旧方言兜底；保留的 `item.type` 读取限定为 instruction output schema、raw InDesign snapshot 迁移、blueprint migration 和 raw audit/report 边界；object graph 4/4、author audit 12/12、to-instructions 27/27、author package 29/29、G3 12/12、协议测试 155/155、`npm test` 881/881、`git diff --check` 通过；2026-07-08）。
+进度：9f 审核发现阻断问题，style-atoms 修复中（实现提交 `b93f5cd`；审核指出 `src/semantic-model/style-atoms.js` 仍在缺 `role` 时用 `sourceType: GraphicLine/Rectangle/Oval/Polygon/PageItem` 生成 current synthesized style atom，并通过 `normalizeSynthesizedStyles` 写回 current `styleRefs.synthesized*`；需改为只由 canonical `role` 驱动 current style atom，`sourceType` 仅保留观察信息；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
