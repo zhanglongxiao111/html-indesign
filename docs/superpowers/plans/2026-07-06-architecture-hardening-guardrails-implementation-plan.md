@@ -198,6 +198,8 @@ npm test
 
 ### 6. W0-2 legacy 死分支与孤儿模块
 
+进度：进行中（已进入 W0-2，准备派执行子 agent 删除 `hi_executor.jsxinc` legacy 分支和 `stacking.js` / `style-reader.js` 孤儿模块，并收缩对应 baseline，2026-07-07）。
+
 - [ ] 删除 `hi_executor.jsxinc` 的 `runLegacyBuildInstructions` 与 legacy schema 分支；`runPagedHtmlBuildInstructions` 改名（如 `runBuildInstructions`），错误提示文本不再引用不存在的 `pagedHtml.compileInstructions`。
 - [ ] 同步修正 `executor-script-static.test.js` 断言（删除对 legacy API 必须存在的断言，改为断言其不存在）。
 - [ ] 删除 `src/adapters/html/reader/stacking.js`、`style-reader.js`。
