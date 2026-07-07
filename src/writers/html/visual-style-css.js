@@ -63,11 +63,12 @@ function boundsStyle(itemId, bounds, inlineStyle) {
 }
 
 function itemInlineStyle(item) {
+  const indesign = item && item.extensions && item.extensions.indesign || {};
   return [
     visualStyleCss(item.visualStyle),
-    effectsCss(item.effects, item.visualStyle),
+    effectsCss(indesign.effects, item.visualStyle),
     item.inlineStyle ? '' : textStyleCss(item.textStyle),
-    textFrameStyleCss(item.textFrameStyle),
+    textFrameStyleCss(indesign.textFrameStyle),
     cssForHtml(item.inlineStyle),
     zIndexCss(item.zIndex),
   ].filter(Boolean).map((value) => String(value).trim().replace(/;+$/, '')).join(';');

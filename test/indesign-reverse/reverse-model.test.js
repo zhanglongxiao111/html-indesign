@@ -78,6 +78,34 @@ test('reverseSnapshotToSemanticModel preserves observed InDesign layer as a form
   assert.equal(item.styleRefs.layer, '原始图层');
 });
 
+test('reverseSnapshotToSemanticModel defaults missing item semantic to null', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'semantic-default.indd', mode: 'observation' },
+    document: { name: 'semantic-default.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'untagged-note',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Observed note',
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.semantic, null);
+  assert.notEqual(item.semantic, 'unknown');
+});
+
 test('validateSemanticModel rejects nested unknown effectiveLabel style refs', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
   const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });
@@ -821,8 +849,43 @@ test('reverseSnapshotToSemanticModel preserves observed item effects', () => {
   }, { mode: 'structured', profile: 'architecture-report' });
 
   const veil = model.pages[0].items[0];
-  assert.equal(veil.effects.gradientFeather.scope, 'fill');
-  assert.deepEqual(veil.effects.gradientFeather.stops.map((stop) => stop.opacity), [94, 55, 8]);
+  assert.equal(veil.effects, undefined);
+  assert.equal(veil.extensions.indesign.effects.gradientFeather.scope, 'fill');
+  assert.deepEqual(veil.extensions.indesign.effects.gradientFeather.stops.map((stop) => stop.opacity), [94, 55, 8]);
+});
+
+test('reverseSnapshotToSemanticModel writes text frame style under the InDesign extension', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'text-frame-style.indd', mode: 'structured' },
+    document: { name: 'text-frame-style.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'copy',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Copy',
+            textFrameStyle: {
+              inset: { top: 4, right: 6, bottom: 4, left: 6 },
+              columnCount: 2,
+              columnGap: 18,
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured', profile: 'architecture-report' });
+
+  const copy = model.pages[0].items[0];
+  assert.equal(copy.textFrameStyle, undefined);
+  assert.deepEqual(copy.extensions.indesign.textFrameStyle.inset, { top: 4, right: 6, bottom: 4, left: 6 });
+  assert.equal(copy.extensions.indesign.textFrameStyle.columnCount, 2);
 });
 
 test('reverseSnapshotToSemanticModel preserves observed text style per text item', () => {
@@ -1076,7 +1139,7 @@ test('reverseSnapshotToSemanticModel observes labels outside the active whitelis
   });
 
   const item = model.pages[0].items[0];
-  assert.equal(item.semantic, 'unknown');
+  assert.equal(item.semantic, null);
   assert.equal(item.labelStatus, 'observed');
   assert.equal(item.effectiveLabel.semantic, null);
   assert.equal(item.sourceNode, null);
@@ -1086,6 +1149,41 @@ test('reverseSnapshotToSemanticModel observes labels outside the active whitelis
   assert.deepEqual(item.rejectionReasons.sort(), ['unknown-paragraph-style', 'unknown-semantic'].sort());
   assert.equal(item.textStyle.pointSize, 32);
   assert.equal(item.textStyle.fillColor, '#123456');
+});
+
+test('reverseSnapshotToSemanticModel filters item styleRefs through the registry allowed keys', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'style-refs.indd', mode: 'observation' },
+    document: { name: 'style-refs.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'styled-shape',
+            type: 'Rectangle',
+            bounds: { x: 40, y: 50, width: 120, height: 80 },
+            layerName: '图形',
+            styleRefs: {
+              displayName: '展示名',
+              genericStyle: 'generic-token',
+              ghostStyle: 'must-not-enter-model',
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const refs = model.pages[0].items[0].styleRefs;
+  assert.equal(refs.displayName, '展示名');
+  assert.equal(refs.genericStyle, 'generic-token');
+  assert.equal(refs.layer, '图形');
+  assert.equal(Object.prototype.hasOwnProperty.call(refs, 'ghostStyle'), false);
 });
 
 test('reverseSnapshotToSemanticModel preserves observed character runs per text item', () => {

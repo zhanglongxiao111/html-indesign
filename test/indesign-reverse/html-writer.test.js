@@ -780,16 +780,20 @@ test('semanticModelToHtml renders reverse gradient feather effects over observed
               opacity: 100,
               cornerRadius: null,
             },
-            effects: {
-              gradientFeather: {
-                type: 'linear',
-                scope: 'fill',
-                angle: 0,
-                stops: [
-                  { location: 0, opacity: 94 },
-                  { location: 45, opacity: 55 },
-                  { location: 100, opacity: 8 },
-                ],
+            extensions: {
+              indesign: {
+                effects: {
+                  gradientFeather: {
+                    type: 'linear',
+                    scope: 'fill',
+                    angle: 0,
+                    stops: [
+                      { location: 0, opacity: 94 },
+                      { location: 45, opacity: 55 },
+                      { location: 100, opacity: 8 },
+                    ],
+                  },
+                },
               },
             },
             styleRefs: {},

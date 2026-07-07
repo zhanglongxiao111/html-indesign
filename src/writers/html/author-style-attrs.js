@@ -3,11 +3,12 @@
 const { blendModeCss } = require('./css-blend-mode');
 
 function authorInlineStyleForItem(item, sourceStyle) {
+  const indesign = item && item.extensions && item.extensions.indesign || {};
   return mergeCss([
     sourceStyle,
     visualStyleCss(item && item.visualStyle),
     textStyleCss(item && item.textStyle),
-    textFrameStyleCss(item && item.textFrameStyle),
+    textFrameStyleCss(indesign.textFrameStyle),
     cssForHtml(item && item.inlineStyle),
     zIndexCss(item && item.zIndex),
   ]);

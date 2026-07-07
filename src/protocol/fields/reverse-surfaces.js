@@ -75,11 +75,11 @@ module.exports = [
     ['items[].effects', 'pages[].items[].effects'],
     'object',
     {
-      description: 'InDesign-specific reverse-export effects payload; flat items[].effects is the current carrier until adapter migration.',
+      description: 'InDesign-specific reverse-export effects payload; flat items[].effects remains a registered migration source for old reverse inputs, while new InDesign adapter model output uses extensions.indesign.effects.',
       migration: {
         from: 'items[].effects',
         to: 'items[].extensions.indesign.effects',
-        status: 'registered-target',
+        status: 'adapter-migrated',
       },
     },
   ),
@@ -88,11 +88,11 @@ module.exports = [
     ['items[].textFrameStyle', 'pages[].items[].textFrameStyle'],
     'object',
     {
-      description: 'InDesign-specific text frame style payload; flat items[].textFrameStyle is the current carrier until adapter migration.',
+      description: 'InDesign-specific text frame style payload; flat items[].textFrameStyle remains a registered migration source for old reverse inputs, while new InDesign adapter model output uses extensions.indesign.textFrameStyle.',
       migration: {
         from: 'items[].textFrameStyle',
         to: 'items[].extensions.indesign.textFrameStyle',
-        status: 'registered-target',
+        status: 'adapter-migrated',
       },
     },
   ),

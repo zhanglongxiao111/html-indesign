@@ -157,6 +157,13 @@ const ITEM_ASSET_PLACEMENT_FIELD_PATHS = Object.freeze({
   layers: 'items[].asset.placement.layers',
 });
 
+const ITEM_EXTENSION_FIELD_PATHS = Object.freeze({
+  indesign: Object.freeze({
+    effects: 'items[].extensions.indesign.effects',
+    textFrameStyle: 'items[].extensions.indesign.textFrameStyle',
+  }),
+});
+
 const ITEM_STYLE_REFS_FIELD_PATHS = Object.freeze({
   paragraphStyle: 'items[].styleRefs.paragraphStyle',
   characterStyle: 'items[].styleRefs.characterStyle',
@@ -354,6 +361,8 @@ function scanItems(paths, seen, items, unknownPrefix) {
         addPath(paths, seen, ITEM_FIELD_PATHS[key]);
       } else if (key === 'asset') {
         scanItemAsset(paths, seen, value);
+      } else if (key === 'extensions') {
+        scanItemExtensions(paths, seen, value, unknownPrefix);
       } else if (key === 'styleRefs') {
         scanObjectSurface(paths, seen, value, ITEM_STYLE_REFS_FIELD_PATHS, 'items[].styleRefs');
       } else if (key === 'visualStyle') {
@@ -367,6 +376,20 @@ function scanItems(paths, seen, items, unknownPrefix) {
       } else if (!STRUCTURAL_KEYS.has(key)) {
         addPath(paths, seen, `${unknownPrefix}.${key}`);
       }
+    }
+  }
+}
+
+function scanItemExtensions(paths, seen, extensions, unknownPrefix) {
+  if (!isPlainObject(extensions)) {
+    return;
+  }
+  for (const [format, value] of Object.entries(extensions)) {
+    const mapping = ITEM_EXTENSION_FIELD_PATHS[format];
+    if (mapping) {
+      scanObjectSurface(paths, seen, value, mapping, `items[].extensions.${format}`);
+    } else {
+      addPath(paths, seen, `${unknownPrefix}.extensions.${format}`);
     }
   }
 }

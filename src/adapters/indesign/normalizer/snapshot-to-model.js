@@ -1,7 +1,10 @@
 const { loadStandardSemanticPreset } = require('../../../semantic-preset');
 const { normalizeSynthesizedStyles } = require('../../../semantic-model/synthesized-styles');
+const { fieldRegistry } = require('../../../protocol');
 const { createReport, addMessage } = require('../../../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
+
+const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
@@ -145,17 +148,19 @@ function reverseItem(item, styleMaps = {}, context = {}) {
   const role = label.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
   const vectorGeometry = reverseVectorGeometry(item.vectorGeometry);
+  const extensions = reverseItemExtensions(item);
   return {
     id: label.id || item.id,
     role,
     sourceType: item.type || null,
-    semantic: effective.semantic || 'unknown',
+    semantic: effective.semantic || null,
     tagName: effective.htmlTag || htmlTagForRole(role),
     htmlClass: effective.className || null,
     bounds: item.bounds,
     layerName: item.layerName || null,
     layer: item.layerName || null,
-    styleRefs: {
+    styleRefs: reverseStyleRefs({
+      ...(isPlainObject(item.styleRefs) ? item.styleRefs : {}),
       paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', item.paragraphStyleName),
       paragraphStyleDisplayName: item.paragraphStyleName || null,
       objectStyle: mapStyleName(styleMaps, 'objectStyles', item.objectStyleName),
@@ -165,14 +170,13 @@ function reverseItem(item, styleMaps = {}, context = {}) {
       tableStyle: table && table.tableStyle ? table.tableStyle : null,
       tableStyleDisplayName: table && table.tableStyleDisplayName ? table.tableStyleDisplayName : null,
       layer: item.layerName || null,
-    },
+    }),
     content: contentForReverseItem(role, item, effective, styleMaps),
     table,
     vectorGeometry,
     visualStyle: item.visualStyle || null,
-    effects: item.effects || null,
     textStyle: item.textStyle || null,
-    textFrameStyle: item.textFrameStyle || null,
+    ...(extensions ? { extensions } : {}),
     inlineStyle: item.inlineStyle || item.inlineCSS || null,
     zIndex: numberOrNull(item.zIndex),
     firstLineFont: item.firstLineFont || null,
@@ -189,6 +193,33 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     asset: item.placedAsset || null,
     labels: item.labels || [],
   };
+}
+
+function reverseStyleRefs(styleRefs) {
+  const out = {};
+  for (const key of STYLE_REF_ALLOWED_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(styleRefs, key)) {
+      out[key] = styleRefs[key];
+    }
+  }
+  return out;
+}
+
+function styleRefAllowedKeysFromRegistry() {
+  const field = fieldRegistry.getByPath('items[].styleRefs');
+  if (!field || !Array.isArray(field.allowedKeys) || !field.allowedKeys.length) {
+    throw new Error('STYLE_REFS_ALLOWED_KEYS_MISSING:items[].styleRefs');
+  }
+  return Object.freeze(field.allowedKeys.slice());
+}
+
+function reverseItemExtensions(item = {}) {
+  const indesign = {};
+  if (item.effects) indesign.effects = item.effects;
+  if (item.textFrameStyle) indesign.textFrameStyle = item.textFrameStyle;
+  return Object.keys(indesign).length
+    ? { indesign }
+    : null;
 }
 
 function reverseParentPage(parentPage, styleMaps, context = {}) {

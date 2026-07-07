@@ -108,7 +108,7 @@ function shouldOmitAuthorItem(item) {
   if (isGeneratedLabel(item)) return true;
   const id = String(item.id || '');
   if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
-  if (item.semantic === 'unknown' && /-background$/i.test(id)) return true;
+  if (item.semantic == null && /-background$/i.test(id)) return true;
   return false;
 }
 

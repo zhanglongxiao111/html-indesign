@@ -247,11 +247,15 @@ test('pageItemsToAuthorHtml merges observed text style into sourced text nodes',
           tracking: 20,
           justification: 'center',
         },
-        textFrameStyle: {
-          inset: { top: 4, right: 6, bottom: 4, left: 6 },
-          columnCount: 1,
-          columnGap: 0,
-          verticalJustification: 'flex-start',
+        extensions: {
+          indesign: {
+            textFrameStyle: {
+              inset: { top: 4, right: 6, bottom: 4, left: 6 },
+              columnCount: 1,
+              columnGap: 0,
+              verticalJustification: 'flex-start',
+            },
+          },
         },
         zIndex: 7,
       },
