@@ -214,7 +214,7 @@ npm test
 
 ### 7. W0-3 文档同步
 
-进度：实现已提交，复审中（提交 `b32b92c` 同步 AGENTS.md §4 / §9，并将 G7 baseline 5 条清零；等待复审，2026-07-07）。
+进度：复审发现问题，修复中（提交 `b32b92c` 将 `audit:synthesized-styles` 记成不可直接运行的裸命令；需要改为带 `--model <semantic-model.json>` 的真实命令，2026-07-07）。
 
 - [ ] AGENTS.md §4 补登 `src/authoring`、`src/semantic-preset`、`src/shared`（含一句话边界规则）；§9 补登 `audit:synthesized-styles`。
 - [ ] 收 `baselines/G7.json` 全部条目。
