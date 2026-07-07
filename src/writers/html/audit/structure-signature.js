@@ -86,8 +86,11 @@ function comparePageNodes(expectedPage, actualPage, errors) {
 }
 
 function pageStructureNodes($) {
+  const structureElements = $(STRUCTURE_TAGS).toArray()
+    .filter((element) => !isIgnoredStructureElement($, element));
+  const orderByParent = structureOrderByParent($, structureElements);
   const nodes = [];
-  $(STRUCTURE_TAGS).each((_, element) => {
+  for (const element of structureElements) {
     const node = $(element);
     const key = nodeKey($, element);
     nodes.push({
@@ -96,11 +99,11 @@ function pageStructureNodes($) {
       tag: tagName(element),
       classList: classList(node.attr('class')),
       parentKey: parentStructureKey($, element),
-      order: siblingStructureOrder($, element),
+      order: orderByParent.get(element) || 0,
       text: normalizeText(node.children().length ? '' : node.text()),
       resource: node.attr('src') || node.attr('data') || null,
     });
-  });
+  }
   return nodes;
 }
 
@@ -112,15 +115,22 @@ function nodeKey($, element) {
 }
 
 function parentStructureKey($, element) {
-  const parent = $(element).parents(STRUCTURE_TAGS).first();
-  if (!parent.length) return 'page-root';
-  return nodeKey($, parent[0]);
+  const parents = $(element).parents(STRUCTURE_TAGS).toArray();
+  const parent = parents.find((candidate) => !isIgnoredStructureElement($, candidate));
+  if (!parent) return 'page-root';
+  return nodeKey($, parent);
 }
 
-function siblingStructureOrder($, element) {
-  const parent = $(element).parent();
-  const siblings = parent.children(STRUCTURE_TAGS).toArray();
-  return siblings.indexOf(element) + 1;
+function structureOrderByParent($, elements) {
+  const counters = new Map();
+  const orderByElement = new Map();
+  for (const element of elements) {
+    const parentKey = parentStructureKey($, element);
+    const next = (counters.get(parentKey) || 0) + 1;
+    counters.set(parentKey, next);
+    orderByElement.set(element, next);
+  }
+  return orderByElement;
 }
 
 function structurePath(element) {
@@ -143,6 +153,10 @@ function tagName(element) {
 
 function classList(value) {
   return String(value || '').split(/\s+/).map((item) => item.trim()).filter(Boolean).sort();
+}
+
+function isIgnoredStructureElement($, element) {
+  return $(element).attr('data-id-ignore') != null;
 }
 
 function normalizeText(value) {

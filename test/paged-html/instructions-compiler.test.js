@@ -754,15 +754,18 @@ test('compileInstructions scales browser pixels into a target presentation canva
   const firstInstructionPage = instructions.pages[0];
   const cardSnapshot = firstSnapshotPage.items.find((item) => item.attributes['data-id-object-style'] === 'metric-card');
   const card = firstInstructionPage.items.find((item) => item.id === cardSnapshot.id);
-  const folio = firstInstructionPage.items.find((item) => item.paragraphStyle === 'folio');
+  const reportParent = instructions.document.parentPages.find((parentPage) => parentPage.id === 'report-parent');
+  const folio = reportParent && reportParent.items.find((item) => item.id === 'report-folio');
   const folioStyle = instructions.styles.paragraphStyles.folio;
   const scale = 2560 / firstSnapshotPage.rectPx.width;
   const sitePage = instructions.pages.find((page) => page.id === 'site-analysis-page');
-  const annotationLine = sitePage.items.find((item) => item.id === 'p3-el6');
-  const coverVeil = firstInstructionPage.items.find((item) => item.objectStyle === 'cover-veil');
+  const annotationLine = sitePage.items.find((item) => item.id === 'site-entry-line');
+  const coverVeil = firstInstructionPage.items.find((item) => item.id === 'cover-hero-veil');
 
   assert.equal(instructions.document.coordinateUnit, 'pt');
   assert.equal(instructions.document.pages[0].id, 'cover-page');
+  assert.ok(reportParent);
+  assert.ok(firstInstructionPage.parentPageId && firstInstructionPage.parentPageId.includes('report-parent'));
   assert.equal(instructions.document.pages[0].width, 2560);
   assert.equal(instructions.document.pages[0].height, 1440);
   assert.equal(firstInstructionPage.width, 2560);
@@ -775,7 +778,7 @@ test('compileInstructions scales browser pixels into a target presentation canva
   assert.equal(annotationLine.bounds.x, Number((269 * 96 / 25.4 * scale).toFixed(2)));
   assert.equal(annotationLine.bounds.y, Number((102 * 96 / 25.4 * scale).toFixed(2)));
   assert.equal(annotationLine.bounds.width, Number((46 * 96 / 25.4 * scale).toFixed(2)));
-  assert.deepEqual(coverVeil.effects.gradientFeather.start, { x: -1280, y: 720 });
+  assert.deepEqual(coverVeil.bounds, { x: 0, y: 0, width: 2560, height: 1440 });
 });
 
 test('compileInstructions recompiles pre-styled snapshots when presentation layout changes', async () => {

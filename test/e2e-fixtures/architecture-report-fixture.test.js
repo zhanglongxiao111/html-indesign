@@ -70,6 +70,29 @@ test('architecture report fixture uses coarse grid-first page modules', () => {
   }
 });
 
+test('architecture report fixture classifies direct non-grid page objects', () => {
+  const html = fs.readFileSync(deckPath, 'utf8');
+  const $ = cheerio.load(html);
+  const missing = [];
+
+  for (const element of $('.page > *:not(.grid-item):not([data-id-ignore])').toArray()) {
+    const node = $(element);
+    const label = `${node.closest('[data-page]').attr('data-page')}:${element.tagName}.${node.attr('class') || ''}`;
+    for (const attr of ['id', 'data-id-object', 'data-id-role', 'data-id-placement']) {
+      if (node.attr(attr) == null) missing.push(`${label} missing ${attr}`);
+    }
+  }
+
+  assert.deepEqual(missing, []);
+
+  for (const element of $('.page-number').toArray()) {
+    const node = $(element);
+    assert.equal(node.attr('data-id-placement'), 'parent-page-furniture');
+    assert.equal(node.attr('data-id-parent-page-item'), 'report-parent');
+    assert.equal(node.attr('data-id-parent-page-source-id'), 'report-folio');
+  }
+});
+
 test('architecture report fixture declares stable parent page and layout tokens', () => {
   const html = fs.readFileSync(deckPath, 'utf8');
   const $ = cheerio.load(html);

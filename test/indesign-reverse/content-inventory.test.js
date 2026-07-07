@@ -79,6 +79,119 @@ test('compareContentInventories treats package-relative preview resources as sta
   assert.equal(diff.ok, true);
 });
 
+test('authorPackageContentInventory excludes parent page furniture from page text', () => {
+  const root = path.resolve('test/workspace/content-inventory-parent-furniture');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><p id="title">正文</p><span id="folio" data-id-object data-id-role="text" data-id-placement="parent-page-furniture" data-id-parent-page-item="report-folio">01</span></section>');
+  writeAuthorPackage(reverseRoot, '<section class="page"><p id="title">正文</p></section>');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(authorPackageContentInventory(sourceRoot).pages[0].textDigest, ['正文']);
+});
+
+test('compareContentInventories matches copied package assets to original asset path', () => {
+  const root = path.resolve('test/workspace/content-inventory-original-asset-path');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  const originalAsset = path.join(root, 'shared/photo.png');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFile(originalAsset, 'image-bytes');
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="../shared/photo.png"></section>');
+  writeAuthorPackage(reverseRoot, `<section class="page"><img src="assets/photo.png" data-id-asset-path="${htmlAttr(originalAsset)}"></section>`);
+  writeFile(path.join(reverseRoot, 'assets/photo.png'), 'image-bytes');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories uses authoring report asset map for copied resources', () => {
+  const root = path.resolve('test/workspace/content-inventory-authoring-report-assets');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  const originalAsset = path.join(root, 'shared/diagram.svg');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFile(originalAsset, '<svg/>');
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="../shared/diagram.svg"></section>');
+  writeAuthorPackage(reverseRoot, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(path.join(reverseRoot, 'assets/diagram.svg'), '<svg/>');
+  writeFile(path.join(reverseRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [{
+        originalPath: originalAsset,
+        htmlPath: 'assets/diagram.svg',
+        reason: 'local-copy-for-preview',
+      }],
+    },
+  }, null, 2));
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories follows copied asset aliases across a second authoring pass', () => {
+  const root = path.resolve('test/workspace/content-inventory-transitive-authoring-assets');
+  const originalRoot = path.join(root, 'original');
+  const firstRoot = path.join(root, 'first-reverse');
+  const secondRoot = path.join(root, 'second-reverse');
+  const originalAsset = path.join(originalRoot, 'shared/diagram.svg');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFile(originalAsset, '<svg/>');
+  writeAuthorPackage(firstRoot, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(path.join(firstRoot, 'assets/diagram.svg'), '<svg/>');
+  writeFile(path.join(firstRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [{
+        originalPath: originalAsset,
+        htmlPath: 'assets/diagram.svg',
+        reason: 'local-copy-for-preview',
+      }],
+    },
+  }, null, 2));
+  writeAuthorPackage(secondRoot, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(path.join(secondRoot, 'assets/diagram.svg'), '<svg/>');
+  writeFile(path.join(secondRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [{
+        originalPath: path.join(firstRoot, 'assets/diagram.svg'),
+        htmlPath: 'assets/diagram.svg',
+        reason: 'local-copy-for-preview',
+      }],
+    },
+  }, null, 2));
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(firstRoot),
+    authorPackageContentInventory(secondRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('authorPackageContentInventory ignores preview-only resources marked data-id-ignore', () => {
+  const root = path.resolve('test/workspace/content-inventory-ignore-preview');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(root, '<section class="page"><img src="assets/preview.png" data-id-ignore><object data="assets/source.pdf"></object></section>');
+
+  const inventory = authorPackageContentInventory(root);
+
+  assert.deepEqual(inventory.pages[0].resources, [{ kind: 'object', identity: 'assets\\source.pdf' }]);
+});
+
 test('compareContentInventories does not treat regenerated preview file names as source content loss', () => {
   const root = path.resolve('test/workspace/content-inventory-preview-cache');
   const sourceRoot = path.join(root, 'source');
@@ -169,4 +282,8 @@ function inventoryWithText(textDigest) {
     }],
     summary: { pages: 1, texts: textDigest.length, resources: 0, geometryItems: 0 },
   };
+}
+
+function htmlAttr(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }

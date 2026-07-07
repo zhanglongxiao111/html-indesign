@@ -163,6 +163,14 @@
       "bleed",
       "art",
       "crop"
+    ],
+    "placements": [
+      "cover-hero",
+      "cover-overlay",
+      "parent-page-furniture",
+      "timeline-annotation",
+      "map-callout",
+      "drawing-callout"
     ]
   }
 }

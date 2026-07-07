@@ -1,56 +1,56 @@
 <section class="page" data-page="metrics-table" id="metrics-table-page" data-id-parent-page="report-parent" data-id-parent-page-name="汇报母版" data-id-layout="metrics-table-summary" data-id-margin="14mm 16mm 10mm 18mm" data-id-grid="12x8" data-id-column-gutter="6mm" data-id-row-gutter="5mm" data-id-baseline="4mm">
-  <p class="eyebrow grid-item" style="--grid-col:1;--grid-span:3;--grid-row:1;--grid-row-span:1" data-id-paragraph-style="deck-eyebrow">Metrics</p>
-  <h2 class="page-title grid-item" style="--grid-col:1;--grid-span:4;--grid-row:2;--grid-row-span:1" data-id-paragraph-style="page-title">场馆功能指标与面积表</h2>
-  <p class="body-copy grid-item" style="--grid-col:1;--grid-span:4;--grid-row:3;--grid-row-span:2" data-id-paragraph-style="body-copy">表格页测试 table / cell style 语义、行列边框、指标数字、图例和正文混排，并覆盖 CSV/XML 数据资产存在性。</p>
-  <table class="data-table grid-item" style="--grid-col:5;--grid-span:8;--grid-row:2;--grid-row-span:5" data-id-table-style="area-table" data-id-object-style="table-frame" data-id-source-csv="../smoke-assets/data/metrics.csv" data-id-source-xml="../smoke-assets/路径 测试/site data 中文.xml">
-    <thead>
-      <tr>
-        <th data-id-paragraph-style="table-heading">Space</th>
-        <th data-id-paragraph-style="table-heading">Area</th>
-        <th data-id-paragraph-style="table-heading">Ratio</th>
-        <th data-id-paragraph-style="table-heading">Note</th>
+  <p id="metrics-eyebrow" class="eyebrow grid-item" style="--grid-col:1;--grid-span:3;--grid-row:1;--grid-row-span:1" data-id-paragraph-style="deck-eyebrow">Metrics</p>
+  <h2 id="metrics-title" class="page-title grid-item" style="--grid-col:1;--grid-span:4;--grid-row:2;--grid-row-span:1" data-id-paragraph-style="page-title">场馆功能指标与面积表</h2>
+  <p id="metrics-copy" class="body-copy grid-item" style="--grid-col:1;--grid-span:4;--grid-row:3;--grid-row-span:2" data-id-paragraph-style="body-copy">表格页测试 table / cell style 语义、行列边框、指标数字、图例和正文混排，并覆盖 CSV/XML 数据资产存在性。</p>
+  <table id="metrics-area-table" class="data-table grid-item" style="--grid-col:5;--grid-span:8;--grid-row:2;--grid-row-span:5" data-id-object data-id-layer="tables" data-id-table-style="area-table" data-id-object-style="table-frame" data-id-source-csv="../smoke-assets/data/metrics.csv" data-id-source-xml="../smoke-assets/路径 测试/site data 中文.xml">
+    <thead id="metrics-area-table-head">
+      <tr id="metrics-area-table-heading-row">
+        <th id="metrics-area-table-heading-space" data-id-paragraph-style="table-heading">Space</th>
+        <th id="metrics-area-table-heading-area" data-id-paragraph-style="table-heading">Area</th>
+        <th id="metrics-area-table-heading-ratio" data-id-paragraph-style="table-heading">Ratio</th>
+        <th id="metrics-area-table-heading-note" data-id-paragraph-style="table-heading">Note</th>
       </tr>
     </thead>
-    <tbody>
-      <tr>
-        <td data-id-paragraph-style="table-body">Ice rink + spectator edge</td>
-        <td data-id-paragraph-style="table-body">7,600 sqm</td>
-        <td data-id-paragraph-style="table-body">32%</td>
-        <td data-id-paragraph-style="table-body">Core activity zone</td>
+    <tbody id="metrics-area-table-body">
+      <tr id="metrics-area-table-row-rink">
+        <td id="metrics-area-table-rink-space" data-id-paragraph-style="table-body">Ice rink + spectator edge</td>
+        <td id="metrics-area-table-rink-area" data-id-paragraph-style="table-body">7,600 sqm</td>
+        <td id="metrics-area-table-rink-ratio" data-id-paragraph-style="table-body">32%</td>
+        <td id="metrics-area-table-rink-note" data-id-paragraph-style="table-body">Core activity zone</td>
       </tr>
-      <tr>
-        <td data-id-paragraph-style="table-body">Skate rental + service</td>
-        <td data-id-paragraph-style="table-body">2,400 sqm</td>
-        <td data-id-paragraph-style="table-body">10%</td>
-        <td data-id-paragraph-style="table-body">Peak turnover support</td>
+      <tr id="metrics-area-table-row-rental">
+        <td id="metrics-area-table-rental-space" data-id-paragraph-style="table-body">Skate rental + service</td>
+        <td id="metrics-area-table-rental-area" data-id-paragraph-style="table-body">2,400 sqm</td>
+        <td id="metrics-area-table-rental-ratio" data-id-paragraph-style="table-body">10%</td>
+        <td id="metrics-area-table-rental-note" data-id-paragraph-style="table-body">Peak turnover support</td>
       </tr>
-      <tr>
-        <td data-id-paragraph-style="table-body">Locker + athlete rooms</td>
-        <td data-id-paragraph-style="table-body">3,100 sqm</td>
-        <td data-id-paragraph-style="table-body">13%</td>
-        <td data-id-paragraph-style="table-body">Controlled circulation</td>
+      <tr id="metrics-area-table-row-athlete">
+        <td id="metrics-area-table-athlete-space" data-id-paragraph-style="table-body">Locker + athlete rooms</td>
+        <td id="metrics-area-table-athlete-area" data-id-paragraph-style="table-body">3,100 sqm</td>
+        <td id="metrics-area-table-athlete-ratio" data-id-paragraph-style="table-body">13%</td>
+        <td id="metrics-area-table-athlete-note" data-id-paragraph-style="table-body">Controlled circulation</td>
       </tr>
-      <tr>
-        <td data-id-paragraph-style="table-body">Temporary operation</td>
-        <td data-id-paragraph-style="table-body">4,800 sqm</td>
-        <td data-id-paragraph-style="table-body">20%</td>
-        <td data-id-paragraph-style="table-body">Event and retail zone</td>
+      <tr id="metrics-area-table-row-operation">
+        <td id="metrics-area-table-operation-space" data-id-paragraph-style="table-body">Temporary operation</td>
+        <td id="metrics-area-table-operation-area" data-id-paragraph-style="table-body">4,800 sqm</td>
+        <td id="metrics-area-table-operation-ratio" data-id-paragraph-style="table-body">20%</td>
+        <td id="metrics-area-table-operation-note" data-id-paragraph-style="table-body">Event and retail zone</td>
       </tr>
-      <tr>
-        <td data-id-paragraph-style="table-body">Equipment + BOH</td>
-        <td data-id-paragraph-style="table-body">5,900 sqm</td>
-        <td data-id-paragraph-style="table-body">25%</td>
-        <td data-id-paragraph-style="table-body">Plant, storage, service</td>
+      <tr id="metrics-area-table-row-equipment">
+        <td id="metrics-area-table-equipment-space" data-id-paragraph-style="table-body">Equipment + BOH</td>
+        <td id="metrics-area-table-equipment-area" data-id-paragraph-style="table-body">5,900 sqm</td>
+        <td id="metrics-area-table-equipment-ratio" data-id-paragraph-style="table-body">25%</td>
+        <td id="metrics-area-table-equipment-note" data-id-paragraph-style="table-body">Plant, storage, service</td>
       </tr>
     </tbody>
   </table>
-  <div class="metric-card grid-item grid-frame" style="--grid-col:1;--grid-span:2;--grid-row:6;--grid-row-span:2" data-id-object data-id-layer="text" data-id-object-style="metric-card">
-    <p class="metric-value" data-id-paragraph-style="metric-value">23,800</p>
-    <p class="metric-label" data-id-paragraph-style="metric-label">Program sqm</p>
+  <div id="metrics-card-program" class="metric-card grid-item grid-frame" style="--grid-col:1;--grid-span:2;--grid-row:6;--grid-row-span:2" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+    <p id="metrics-card-program-value" class="metric-value" data-id-paragraph-style="metric-value">23,800</p>
+    <p id="metrics-card-program-label" class="metric-label" data-id-paragraph-style="metric-label">Program sqm</p>
   </div>
-  <div class="metric-card grid-item grid-frame" style="--grid-col:3;--grid-span:2;--grid-row:6;--grid-row-span:2" data-id-object data-id-layer="text" data-id-object-style="metric-card">
-    <p class="metric-value" data-id-paragraph-style="metric-value">4</p>
-    <p class="metric-label" data-id-paragraph-style="metric-label">Plan zones</p>
+  <div id="metrics-card-zones" class="metric-card grid-item grid-frame" style="--grid-col:3;--grid-span:2;--grid-row:6;--grid-row-span:2" data-id-object data-id-layer="text" data-id-object-style="metric-card">
+    <p id="metrics-card-zones-value" class="metric-value" data-id-paragraph-style="metric-value">4</p>
+    <p id="metrics-card-zones-label" class="metric-label" data-id-paragraph-style="metric-label">Plan zones</p>
   </div>
-  <span class="page-number" data-id-paragraph-style="folio">06</span>
+  <span id="metrics-folio" class="page-number" data-id-object data-id-role="text" data-id-placement="parent-page-furniture" data-id-parent-page-item="report-parent" data-id-parent-page-source-id="report-folio" data-id-paragraph-style="folio">06</span>
 </section>

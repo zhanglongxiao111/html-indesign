@@ -5,6 +5,7 @@ const cheerio = require('cheerio');
 function authorPackageContentInventory(root) {
   const packageRoot = path.resolve(root);
   const config = JSON.parse(fs.readFileSync(path.join(packageRoot, 'deck.config.json'), 'utf8'));
+  const assetAliases = readAssetAliases(packageRoot);
   const pages = (config.pages || []).map((page) => {
     const filePath = path.join(packageRoot, page.file);
     const html = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
@@ -13,7 +14,7 @@ function authorPackageContentInventory(root) {
       id: page.id || page.file,
       size: pageSize($),
       textDigest: textDigest($),
-      resources: resourceDigest($, packageRoot),
+      resources: resourceDigest($, packageRoot, assetAliases),
       itemRoles: roleDigest($),
       geometry: geometryDigest($),
     };
@@ -90,20 +91,26 @@ function pageSize($) {
 function textDigest($) {
   const out = [];
   $('section.page').first().find('h1,h2,h3,h4,h5,h6,p,figcaption,li,td,th,span').each((_, element) => {
+    if (isPageFurnitureElement($, element)) return;
     const text = normalizeText($(element).text());
     if (text) out.push(text);
   });
   return out;
 }
 
-function resourceDigest($, root) {
+function resourceDigest($, root, assetAliases = new Map()) {
   const out = [];
   $('img[src],object[data]').each((_, element) => {
+    if (isPageFurnitureElement($, element)) return;
     const node = $(element);
-    const value = node.attr('src') || node.attr('data') || '';
+    if (node.attr('data-id-ignore') != null) return;
+    const htmlValue = node.attr('src') || node.attr('data') || '';
+    const explicitAssetPath = node.attr('data-id-asset-path') || '';
+    const value = explicitAssetPath || htmlValue;
+    const alias = explicitAssetPath ? null : assetAliases.get(resourceIdentity(null, htmlValue));
     out.push({
       kind: String(element.tagName || '').toLowerCase() === 'object' ? 'object' : 'image',
-      identity: resourceIdentity(root, value),
+      identity: alias || resourceIdentity(root, value),
     });
   });
   return out;
@@ -112,6 +119,7 @@ function resourceDigest($, root) {
 function roleDigest($) {
   const counts = new Map();
   $('[data-id-role],img,object,svg,p,figure,section').each((_, element) => {
+    if (isPageFurnitureElement($, element)) return;
     const node = $(element);
     const role = node.attr('data-id-role') || tagRole(element.tagName);
     counts.set(role, (counts.get(role) || 0) + 1);
@@ -124,6 +132,7 @@ function roleDigest($) {
 function geometryDigest($) {
   const out = [];
   $('[id]').each((_, element) => {
+    if (isPageFurnitureElement($, element)) return;
     const node = $(element);
     const style = node.attr('style') || '';
     out.push(geometryEntry(node.attr('id'), node.attr('data-id-role') || tagRole(element.tagName), {
@@ -215,7 +224,72 @@ function resourceIdentity(root, value) {
   if (nas) return `\\\\${nas[1]}\\${nas[2].replace(/\//g, '\\')}`;
   if (/^\\\\|^\/\//.test(raw)) return raw.replace(/\//g, '\\');
   if (/^[a-zA-Z]:[\\/]/.test(raw)) return path.normalize(raw);
+  if (root && escapesPackageRoot(raw)) return path.normalize(path.resolve(root, raw));
   return path.normalize(raw).replace(/^\.?[\\/]+/, '');
+}
+
+function readAssetAliases(root, seenReports = new Set()) {
+  const reportPath = path.join(root, 'reports', 'authoring-report.json');
+  if (!fs.existsSync(reportPath)) return new Map();
+  const normalizedReportPath = path.normalize(reportPath);
+  if (seenReports.has(normalizedReportPath)) return new Map();
+  seenReports.add(normalizedReportPath);
+  try {
+    const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+    const entries = report && report.assets && Array.isArray(report.assets.entries)
+      ? report.assets.entries
+      : [];
+    const aliases = new Map();
+    for (const entry of entries) {
+      const htmlPath = entry && entry.htmlPath;
+      const originalPath = entry && entry.originalPath;
+      if (!htmlPath || !originalPath) continue;
+      const key = resourceIdentity(null, htmlPath);
+      const transitiveOriginalPath = resolveTransitiveAssetAlias(originalPath, seenReports);
+      const value = resourceIdentity(null, transitiveOriginalPath || originalPath);
+      if (!aliases.has(key) || isAbsoluteHostPath(originalPath)) {
+        aliases.set(key, value);
+      }
+    }
+    return aliases;
+  } catch (_) {
+    return new Map();
+  }
+}
+
+function resolveTransitiveAssetAlias(originalPath, seenReports) {
+  if (!/^[a-zA-Z]:[\\/]/.test(String(originalPath || ''))) return null;
+  const absolutePath = path.normalize(originalPath);
+  let current = path.dirname(absolutePath);
+  const root = path.parse(absolutePath).root;
+  while (current && current !== root) {
+    const reportPath = path.join(current, 'reports', 'authoring-report.json');
+    if (fs.existsSync(reportPath)) {
+      const relativePath = path.relative(current, absolutePath);
+      const aliases = readAssetAliases(current, new Set(seenReports));
+      const alias = aliases.get(resourceIdentity(null, relativePath));
+      if (alias && alias !== resourceIdentity(null, originalPath)) return alias;
+    }
+    const next = path.dirname(current);
+    if (next === current) break;
+    current = next;
+  }
+  return null;
+}
+
+function isPageFurnitureElement($, element) {
+  const node = $(element);
+  return node.closest('[data-id-placement="parent-page-furniture"],[data-id-parent-page-item]').length > 0;
+}
+
+function escapesPackageRoot(value) {
+  const normalized = path.normalize(String(value || ''));
+  return normalized === '..' || normalized.startsWith(`..${path.sep}`) || normalized.startsWith('../') || normalized.startsWith('..\\');
+}
+
+function isAbsoluteHostPath(value) {
+  const raw = String(value || '').trim();
+  return /^\\\\|^\/nas\/|^[a-zA-Z]:[\\/]/i.test(raw);
 }
 
 function isDerivedPreviewResource(entry) {

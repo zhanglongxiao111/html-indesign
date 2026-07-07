@@ -45,6 +45,23 @@ test('compareStructureSignatures accepts formatting-only source changes', () => 
   assert.deepEqual(diff.errors, []);
 });
 
+test('compareStructureSignatures ignores preview-only data-id-ignore nodes and wrapper drift', () => {
+  const root = path.resolve('test/workspace/structure-signature-ignore-preview');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(first, '<section class="page"><p id="lead">图纸</p><img class="pdf-preview" src="preview.png" data-id-ignore><object id="pdf" data="drawing.pdf"></object><p id="note">说明</p></section>');
+  writeAuthorPackage(second, '<section class="page"><p id="lead">图纸</p><div class="drawing-frame" data-id-ignore><img class="pdf-preview" src="preview.png" data-id-ignore><object id="pdf" data="drawing.pdf"></object></div><p id="note">说明</p></section>');
+
+  const diff = compareStructureSignatures(
+    authorPackageStructureSignature(first),
+    authorPackageStructureSignature(second),
+  );
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
