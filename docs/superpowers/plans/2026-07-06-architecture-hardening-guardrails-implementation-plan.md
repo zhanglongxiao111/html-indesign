@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 已完成，准备进入 9d（执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`，注册表/label 修复 `686f278`；最终复审未发现 P0/P1/P2；strict model validation 已将旧平铺 `items[].effects` / `items[].textFrameStyle` 判为未登记字段，`extensions.indesign.*` 被接受，`validateReverseLabel` 改用 registry allowedKeys；`npm test` 864/864 通过，协议测试 150/150 通过，G3 10/10 通过，`git diff --check` 通过；2026-07-08）。
+进度：9d 出口强制校验实现中（9c 已完成：执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`，注册表/label 修复 `686f278`；最终复审未发现 P0/P1/P2；9d 将把两个 normalizer 出口接入 `validateSemanticModel` strict，失败即抛，并收口 G3 静态与行为断言豁免；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
