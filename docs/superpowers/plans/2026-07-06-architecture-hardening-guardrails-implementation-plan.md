@@ -143,14 +143,14 @@ npm test
 
 ### 3. G3 / G4 / G5 / G7 / G8 护栏
 
-进度：四次修复已提交，复审中（提交 `1c6fd4c` 修复 G3.1 unbraced false branch 与 return direct call 边界；等待复审，2026-07-07）。
+进度：已完成（提交 `d6de355`、`c10098d`、`e1cb881`、`08f6051`、`57fd390`、`1c6fd4c` 等；最终复审未发现阻断问题；当前 baseline：G3=549、G4=9、G5=6、G7=5、G8=2；`node --test test/architecture/` 51/51 通过，`npm test` 809/809 通过，2026-07-07）。
 
-- [ ] G3 模型出口契约：三条断言（出口调用 validateSemanticModel 的静态断言、非法输入行为断言、双 adapter 同构断言）；已知方言差异写入 `baselines/G3.json` 豁免。同构断言的字段面清单由 registry 生成，不手抄。
-- [ ] G4 门禁反假成功：枚举审计模块清单，断言对应测试文件存在"invalid-input 必须 fail"命名约定的用例；`scripts/audit-*.js` 子进程冒烟断言"无法判定时 exitCode 非 0"。当前不满足项入 `baselines/G4.json`。
-- [ ] G5 退役命名：禁用标识符扫描（`legacy` / `pagedHtml` / `paged-html`，白名单：`legacy-label` 观察标签、protocol lifecycle 词表、`docs/legacy/`）；现状入 `baselines/G5.json`（hi_executor、两个 test 目录名）。
-- [ ] G7 文档-代码同步：src 顶层目录 ⊆ AGENTS.md §4 表格；`audit:*`/`benchmark:*` scripts ⊆ AGENTS.md §9 表格。现状入 `baselines/G7.json`。
-- [ ] G8 孤儿模块：src 下无人 require 的文件 fail；现状入 `baselines/G8.json`（stacking.js、style-reader.js）。
-- [ ] 每条护栏各配人造违规自测。
+- [x] G3 模型出口契约：三条断言（出口调用 validateSemanticModel 的静态断言、非法输入行为断言、双 adapter 同构断言）；已知方言差异写入 `baselines/G3.json` 豁免。同构断言的字段面清单由 registry 生成，不手抄。
+- [x] G4 门禁反假成功：枚举审计模块清单，断言对应测试文件存在"invalid-input 必须 fail"命名约定的用例；`scripts/audit-*.js` 子进程冒烟断言"无法判定时 exitCode 非 0"。当前不满足项入 `baselines/G4.json`。
+- [x] G5 退役命名：禁用标识符扫描（`legacy` / `pagedHtml` / `paged-html`，白名单：`legacy-label` 观察标签、protocol lifecycle 词表、`docs/legacy/`）；现状入 `baselines/G5.json`（hi_executor、两个 test 目录名）。
+- [x] G7 文档-代码同步：src 顶层目录 ⊆ AGENTS.md §4 表格；`audit:*`/`benchmark:*` scripts ⊆ AGENTS.md §9 表格。现状入 `baselines/G7.json`。
+- [x] G8 孤儿模块：src 下无人 require 的文件 fail；现状入 `baselines/G8.json`（stacking.js、style-reader.js）。
+- [x] 每条护栏各配人造违规自测。
 
 验收命令：
 
