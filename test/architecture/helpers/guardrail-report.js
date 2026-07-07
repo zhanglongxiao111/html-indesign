@@ -37,8 +37,8 @@ function requiredReason(report) {
   if (/[\r\n]/.test(reason)) {
     throw new Error('reason must be a single line');
   }
-  const withoutFinalSentenceTerminator = reason.trim().replace(/[.!?]\s*$/, '');
-  if (/[.!?]\s+\S/.test(withoutFinalSentenceTerminator)) {
+  const withoutFinalSentenceTerminator = reason.trim().replace(/[.!?。！？｡]\s*$/, '');
+  if (/[.!?。！？｡]\s*\S/.test(withoutFinalSentenceTerminator)) {
     throw new Error('reason must be exactly one sentence');
   }
   return reason;

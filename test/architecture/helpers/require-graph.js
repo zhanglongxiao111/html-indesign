@@ -90,11 +90,22 @@ function isRequireIdentifierAt(source, index) {
   }
   const previous = source[index - 1];
   const next = source[index + 'require'.length];
-  return !isIdentifierCharacter(previous) && !isIdentifierCharacter(next);
+  if (isIdentifierCharacter(previous) || isIdentifierCharacter(next)) {
+    return false;
+  }
+  return previousSignificantCharacter(source, index) !== '.';
 }
 
 function isIdentifierCharacter(character) {
   return typeof character === 'string' && /[$\w]/.test(character);
+}
+
+function previousSignificantCharacter(source, index) {
+  let cursor = index - 1;
+  while (cursor >= 0 && /\s/.test(source[cursor])) {
+    cursor -= 1;
+  }
+  return source[cursor];
 }
 
 function findRequireOpenParen(source, index) {

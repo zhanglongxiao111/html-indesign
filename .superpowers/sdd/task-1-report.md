@@ -132,3 +132,62 @@ Self-review:
 - Static local require resolution still uses `createRequire(...).resolve()` and throws on unresolved local requests.
 - Unterminated comments, strings, template literals, and require calls throw visibly instead of being converted into observations.
 - `guardrail-report.js` still requires `rule`, `reason`, `remediation`, and `specPath`; `reason` must now be single-line and must not contain multiple sentence boundaries.
+
+## Second reviewer fix
+
+Scope:
+
+- Fixed only Task 1 architecture helper files under `test/architecture/`.
+- Appended this report section.
+- Did not implement later guardrails.
+- Did not edit the controller-owned plan progress file.
+
+RED:
+
+```powershell
+node --test test/architecture/
+```
+
+Observed result after adding second-review regression tests and before implementation:
+
+```text
+# tests 13
+# pass 10
+# fail 3
+```
+
+Expected failing checks:
+
+- `collectRequireGraph ignores member calls named require while preserving bare require behavior` still collected `loader.require('./lib/member-child')` and `obj?.require('./lib/optional-member-child')` as static edges.
+- `formatGuardrailFailure rejects malformed multi-sentence reasons without spaces` did not throw for `A.B.`.
+- `formatGuardrailFailure rejects Chinese or Japanese punctuation multi-sentence reasons` did not throw for `A。B。`.
+
+GREEN:
+
+```powershell
+node --test test/architecture/
+```
+
+Observed result:
+
+```text
+# tests 13
+# pass 13
+# fail 0
+```
+
+Files changed:
+
+- `test/architecture/require-graph.test.js`
+- `test/architecture/helpers/require-graph.js`
+- `test/architecture/guardrail-report.test.js`
+- `test/architecture/helpers/guardrail-report.js`
+- `.superpowers/sdd/task-1-report.md`
+
+Self-review:
+
+- Bare static `require('./x')`, no-interpolation template literal require, and comment-wrapped string require remain static edges.
+- Bare dynamic `require('./plugins/' + name)` remains an observation.
+- Member calls named `require`, including optional chaining, are no longer parsed as CommonJS require calls.
+- `guardrail-report.js` now rejects multi-sentence reasons with no ASCII space between sentences and CJK sentence punctuation.
+- No later guardrails, compatibility branches, fallback behavior, legacy naming, or dead code were added.

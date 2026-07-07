@@ -80,6 +80,37 @@ test('collectRequireGraph treats legal static relative require syntaxes as edges
   ]);
 });
 
+test('collectRequireGraph ignores member calls named require while preserving bare require behavior', () => {
+  const root = makeSampleProject({
+    'entry.js': `
+      loader.require('./lib/member-child');
+      obj?.require('./lib/optional-member-child');
+      const bareStatic = require('./lib/bare-child');
+      const bareDynamic = require('./plugins/' + name);
+    `,
+    'lib/member-child.js': `module.exports = {};`,
+    'lib/optional-member-child.js': `module.exports = {};`,
+    'lib/bare-child.js': `module.exports = {};`,
+  });
+
+  const graph = collectRequireGraph([root]);
+  const relativeEdges = graph.edges.map((edge) => ({
+    from: path.relative(root, edge.from).replaceAll(path.sep, '/'),
+    to: path.relative(root, edge.to).replaceAll(path.sep, '/'),
+  }));
+  const observations = graph.observations.map((observation) => ({
+    from: path.relative(root, observation.from).replaceAll(path.sep, '/'),
+    expression: observation.expression,
+  }));
+
+  assert.deepEqual(relativeEdges, [
+    { from: 'entry.js', to: 'lib/bare-child.js' },
+  ]);
+  assert.deepEqual(observations, [
+    { from: 'entry.js', expression: "'./plugins/' + name" },
+  ]);
+});
+
 test('collectRequireGraph fails visibly when a static relative require cannot be resolved', () => {
   const root = makeSampleProject({
     'entry.js': `require('./missing');`,
