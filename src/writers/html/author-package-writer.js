@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { writeAuthorPackageEntry } = require('../../authoring');
+const { fieldRegistry } = require('../../protocol');
 const { writeAuthorCssFiles } = require('./author-css-writer');
 const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
@@ -9,11 +10,14 @@ const { pageItemsToAuthorHtml } = require('./author-html-tree');
 const { collectSemanticCandidates } = require('./semantic-candidates');
 const { loadStandardSemanticPreset } = require('../../semantic-preset');
 const { writeRevealPresentation } = require('./reveal-presentation-writer');
+const { isUsefulSemantic } = require('./author-render-utils');
 const {
   filterEffectiveParentPages,
   pageHasEffectiveParentPage,
   parentPageKeySet,
 } = require('../../semantic-model/parent-pages');
+
+const SEMANTIC_ATTR = htmlWriteAttrFromRegistry('items[].semantic');
 
 function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
@@ -387,6 +391,7 @@ function sourcePageAttrs(page, sourceFile, options) {
   attrs.class = sourceNode.classList && sourceNode.classList.length ? sourceNode.classList.join(' ') : 'page';
   attrs.id = sourceNode.id || page.id;
   attrs['data-page'] = page.pageToken || sourceNodeAttribute(page, 'data-page') || page.semantic || page.id;
+  if (!attrs[SEMANTIC_ATTR] && isUsefulSemantic(page.semantic)) attrs[SEMANTIC_ATTR] = page.semantic;
   attrs['data-id-source-file'] = sourceFile;
   if (shouldWritePageParentAttrs(page, options)) {
     if (page.parentPageId) attrs['data-id-parent-page'] = attrs['data-id-parent-page'] || page.parentPageId;
@@ -561,6 +566,15 @@ function orderPageAttrs(attrs) {
     if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = attrs[key];
   }
   return out;
+}
+
+function htmlWriteAttrFromRegistry(modelPath) {
+  const field = fieldRegistry.getByPath(modelPath);
+  const attrs = field && field.html && field.html.writeAttrs;
+  if (!Array.isArray(attrs) || !attrs[0]) {
+    throw new Error(`HTML_WRITE_ATTR_MISSING:${modelPath}`);
+  }
+  return attrs[0];
 }
 
 function indent(value, spaces) {

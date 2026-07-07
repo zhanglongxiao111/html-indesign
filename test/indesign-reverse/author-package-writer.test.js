@@ -35,7 +35,9 @@ test('writeReverseAuthorPackage splits tagged model into author source package',
   const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
   assert.match(pageHtml, /<section class="page"/);
   assert.match(pageHtml, /data-id-source-file="pages\/01-agenda\.html"/);
+  assert.match(pageHtml, /<section[^>]+data-id-semantic="agenda"/);
   assert.match(pageHtml, /<h2[^>]+class="[^"]*page-title[^"]*grid-item[^"]*pstyle-page-title/);
+  assert.match(pageHtml, /<h2[^>]+data-id-semantic="page-title"/);
   assert.match(pageHtml, /--grid-col:1/);
 
   const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
@@ -1044,6 +1046,19 @@ test('writeReverseAuthorPackage keeps structured source geometry in html instead
   assert.doesNotMatch(pageHtml, /chapter-1-border-left/);
   assert.doesNotMatch(overrides, /#timeline/);
   assert.doesNotMatch(overrides, /#chapter-1-border-left/);
+});
+
+test('writeReverseAuthorPackage does not write unknown semantic markers', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-unknown-semantic-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const model = taggedModel();
+  model.pages[0].semantic = 'unknown';
+  model.pages[0].items[0].semantic = 'unknown';
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'structured' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  assert.doesNotMatch(pageHtml, /data-id-semantic="unknown"/);
 });
 
 function taggedModel() {

@@ -92,7 +92,7 @@ function pageToHtml(page, model, options) {
     `class="page"`,
     `id="${attr(pageId)}"`,
     `data-page="${attr(pageId)}"`,
-    page.semantic ? `data-id-semantic="${attr(page.semantic)}"` : null,
+    writableSemantic(page.semantic) ? `data-id-semantic="${attr(writableSemantic(page.semantic))}"` : null,
     page.parentPageId ? `data-id-parent-page="${attr(page.parentPageId)}"` : null,
     page.parentPageName ? `data-id-parent-page-name="${attr(page.parentPageName)}"` : null,
     page.layout ? `data-id-layout="${attr(page.layout)}"` : null,
@@ -117,7 +117,7 @@ function itemToHtml(item, model, options) {
     `data-id-object="${attr(itemId)}"`,
     item.source ? `data-id-source="${attr(item.source)}"` : null,
     item.role ? `data-id-role="${attr(item.role)}"` : null,
-    item.semantic ? `data-id-semantic="${attr(item.semantic)}"` : null,
+    writableSemantic(item.semantic) ? `data-id-semantic="${attr(writableSemantic(item.semantic))}"` : null,
     item.layerName ? `data-id-layer="${attr(item.layerName)}"` : null,
     item.styleRefs && item.styleRefs.paragraphStyle
       ? `data-id-paragraph-style="${attr(item.styleRefs.paragraphStyle)}"`
@@ -164,7 +164,7 @@ function vectorItemToHtml(item, model) {
     `class="${attr(classes)}"`,
     `data-id-object="${attr(itemId)}"`,
     item.role ? `data-id-role="${attr(item.role)}"` : null,
-    item.semantic ? `data-id-semantic="${attr(item.semantic)}"` : null,
+    writableSemantic(item.semantic) ? `data-id-semantic="${attr(writableSemantic(item.semantic))}"` : null,
     item.layerName ? `data-id-layer="${attr(item.layerName)}"` : null,
     item.styleRefs && item.styleRefs.objectStyle
       ? `data-id-object-style="${attr(item.styleRefs.objectStyle)}"`
@@ -184,6 +184,12 @@ function vectorInlineStyle(item) {
     blendModeCss(item.visualStyle && item.visualStyle.blendMode),
     zIndexCss(item.zIndex),
   ].filter(Boolean).join(';');
+}
+
+function writableSemantic(value) {
+  const semantic = String(value || '').trim();
+  if (!semantic || semantic.toLowerCase() === 'unknown') return '';
+  return semantic;
 }
 
 function vectorMinSizeCss(item) {

@@ -92,6 +92,35 @@ test('semanticModelToHtml skips virtual author structure containers', () => {
   assert.match(html, /id="image-1"/);
 });
 
+test('semanticModelToHtml does not write unknown semantic markers', () => {
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'visual-unknown-semantic',
+    title: 'visual-unknown-semantic',
+    reverseMode: 'structured',
+    pages: [
+      {
+        id: 'page-1',
+        semantic: 'unknown',
+        width: 800,
+        height: 450,
+        items: [
+          {
+            id: 'item-1',
+            role: 'text',
+            semantic: 'unknown',
+            tagName: 'p',
+            bounds: { x: 40, y: 50, width: 120, height: 40 },
+            content: { text: 'Unknown semantic must stay out of HTML', runs: [] },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.doesNotMatch(html, /data-id-semantic="unknown"/);
+});
+
 test('semanticModelToHtml renders observed shapes and placed image assets', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',

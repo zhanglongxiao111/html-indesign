@@ -107,6 +107,67 @@ test('reverseSnapshotToSemanticModel defaults missing item semantic to null', ()
   assert.notEqual(item.semantic, 'unknown');
 });
 
+test('reverseSnapshotToSemanticModel restores page semantic from source package page files only when whitelisted', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'source-page-semantic.indd', mode: 'structured' },
+    document: {
+      name: 'source-page-semantic.indd',
+      labels: [{
+        protocol: 'html-indesign',
+        version: 1,
+        kind: 'document',
+        id: 'architecture-report',
+        profile: 'architecture-report',
+        sourcePackage: {
+          schemaVersion: 1,
+          profile: 'architecture-report',
+          pageFiles: [
+            { id: 'cover', file: 'pages/00-cover.html' },
+            { id: 'foreign-page', file: 'pages/99-foreign.html' },
+          ],
+        },
+      }],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'page',
+          id: 'cover-page',
+          semantic: null,
+          sourceFile: 'pages/00-cover.html',
+        }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+      {
+        id: '2',
+        index: 1,
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'page',
+          id: 'foreign-page',
+          semantic: null,
+          sourceFile: 'pages/99-foreign.html',
+        }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [],
+      },
+    ],
+  }, { mode: 'structured' });
+
+  assert.equal(model.pages[0].semantic, 'cover');
+  assert.equal(model.pages[0].effectiveLabel.semantic, 'cover');
+  assert.equal(model.pages[0].labelStatus, 'accepted');
+  assert.equal(model.pages[1].semantic, null);
+  assert.equal(model.pages[1].effectiveLabel.semantic, null);
+  assert.notEqual(model.pages[1].semantic, 'unknown');
+});
+
 test('validateSemanticModel rejects nested unknown effectiveLabel style refs', () => {
   const snapshot = readReverseSnapshot(path.resolve(__dirname, '../fixtures/indesign-reverse/tagged-snapshot.json'));
   const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'structured', strictFields: true, profile: 'architecture-report' });

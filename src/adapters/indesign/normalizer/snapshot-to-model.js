@@ -7,6 +7,7 @@ const { createReport, addMessage } = require('../../../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
+const SOURCE_FILE_ATTR = htmlReadAttrFromRegistry('items[].sourceFile');
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
@@ -14,10 +15,16 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const reverseMode = options.mode || (snapshot.metadata && snapshot.metadata.mode) || 'structured';
   const semanticProfile = activeSemanticProfile(snapshot, documentLabel, options);
   const semanticPreset = activeSemanticPreset(snapshot, documentLabel, options, semanticProfile);
+  const sourcePackage = sourcePackageFor(documentLabel, semanticProfile);
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
   const diagnostics = createLabelDiagnostics();
   const context = {
     semanticPreset,
+    sourcePageSemanticByFile: sourcePageSemanticByFile(sourcePackage, semanticPreset, {
+      mode: reverseMode,
+      strictFields: options.strictFields === true,
+      warnFields: options.warnFields === true,
+    }),
     layerVisibility,
     diagnostics,
     labelOptions: {
@@ -30,7 +37,6 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const report = diagnostics.report.messages.length ? diagnostics.report : null;
   const documentId = documentLabel.id || 'indesign-document';
   const title = documentLabel.title || (documentLabel.sourcePackage && documentLabel.sourcePackage.title) || (snapshot.document && snapshot.document.name) || documentId;
-  const sourcePackage = sourcePackageFor(documentLabel, semanticProfile);
   const model = {
     kind: 'DocumentModel',
     id: documentId,
@@ -81,12 +87,14 @@ function reversePage(page, styleMaps, context = {}) {
   });
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
+  const sourcePackageSemantic = pageSemanticFromSourcePackage(label, effective, observed, context);
+  const effectiveForPage = sourcePackageSemantic ? { ...effective, semantic: sourcePackageSemantic } : effective;
   const parent = effective.parentPage || {};
   const appliedParentPageName = page.appliedParentPageName || null;
   return {
     id: label.id || page.id,
     index: page.index,
-    semantic: effective.semantic || null,
+    semantic: effectiveForPage.semantic || null,
     parentPageId: effective.parentPageId || parent.id || appliedParentPageName || null,
     parentPageName: effective.parentPageName || parent.name || appliedParentPageName,
     layout: effective.layout || null,
@@ -98,7 +106,7 @@ function reversePage(page, styleMaps, context = {}) {
     margins: effective.margins || page.margins || null,
     guides: page.guides || [],
     labelStatus: validation.status,
-    effectiveLabel: effective,
+    effectiveLabel: effectiveForPage,
     observedLabel: observed,
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
@@ -122,6 +130,42 @@ function effectiveReversePageItems(page = {}) {
     out.push(item);
   }
   return out;
+}
+
+function sourcePageSemanticByFile(sourcePackage, semanticPreset, labelOptions = {}) {
+  const out = new Map();
+  for (const pageFile of Array.isArray(sourcePackage && sourcePackage.pageFiles) ? sourcePackage.pageFiles : []) {
+    const token = cleanString(pageFile && pageFile.id);
+    const file = slash(pageFile && pageFile.file);
+    if (!token || !file) continue;
+    const validation = validateReverseLabel({
+      kind: 'page',
+      id: token,
+      semantic: token,
+    }, {
+      preset: semanticPreset,
+      kind: 'page',
+      ...labelOptions,
+    });
+    if (validation.effective && validation.effective.semantic === token) {
+      out.set(file, token);
+    }
+  }
+  return out;
+}
+
+function pageSemanticFromSourcePackage(label, effective, observed, context = {}) {
+  if (effective && effective.semantic) return null;
+  if (observed && observed.semantic) return null;
+  const byFile = context.sourcePageSemanticByFile;
+  if (!byFile || !byFile.size) return null;
+  const sourceFile = slash(
+    effective && effective.sourceFile
+      || label && label.sourceFile
+      || label && label.sourceNode && label.sourceNode.attributes && label.sourceNode.attributes[SOURCE_FILE_ATTR]
+  );
+  if (!sourceFile) return null;
+  return byFile.get(sourceFile) || null;
 }
 
 function auditItemsById(items) {
@@ -231,6 +275,15 @@ function styleRefAllowedKeysFromRegistry() {
     throw new Error('STYLE_REFS_ALLOWED_KEYS_MISSING:items[].styleRefs');
   }
   return Object.freeze(field.allowedKeys.slice());
+}
+
+function htmlReadAttrFromRegistry(modelPath) {
+  const field = fieldRegistry.getByPath(modelPath);
+  const attrs = field && field.html && field.html.readAttrs;
+  if (!Array.isArray(attrs) || !attrs[0]) {
+    throw new Error(`HTML_READ_ATTR_MISSING:${modelPath}`);
+  }
+  return attrs[0];
 }
 
 function reverseItemExtensions(item = {}) {
@@ -633,6 +686,14 @@ function firstProfile(values) {
     if (profile) return profile;
   }
   return null;
+}
+
+function cleanString(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function slash(value) {
+  return cleanString(value).replace(/\\/g, '/');
 }
 
 function observedLabelWithReasons(validation) {
