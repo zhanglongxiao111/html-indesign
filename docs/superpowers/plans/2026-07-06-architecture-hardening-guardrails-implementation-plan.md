@@ -180,6 +180,8 @@ npm test
 
 ### 5. W0-1 门禁反假成功修复
 
+进度：进行中（已进入 W0-1，准备派执行子 agent 修复 invalid-input 假通过并收缩 G4 baseline，2026-07-07）。
+
 - [ ] `content-inventory.js`：空/缺失 `pages` 显式 fail（原因码 `CONTENT_INVENTORY_INPUT_INVALID`）；`readAssetAliases` 解析失败记 warning。
 - [ ] `structure-signature.js`、`reverse-snapshot-structure.js`（矢量双侧缺失）、`parent-page-furniture.js`（bounds 缺失）同模式逐一排查修复；裁定基准：空输入永远是错误，不存在"两边都空所以相等"。
 - [ ] `scripts/audit-effective-diff.js` CLI 出口：无法判定时 exitCode 非 0。
