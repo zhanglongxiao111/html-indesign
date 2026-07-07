@@ -129,6 +129,92 @@ test('G3 catches exported adapter exits when an uncalled nested helper validates
   }]);
 });
 
+test('G3 catches validateSemanticModel calls inside obviously unreachable branches', () => {
+  for (const guard of ['false', '0', 'null']) {
+    const root = makeSampleProject({
+      'src/adapters/html/normalizer/snapshot-to-model.js': [
+        'const { validateSemanticModel } = require("../../../semantic-model");',
+        'function snapshotToSemanticModel() {',
+        `  if (${guard}) { validateSemanticModel(model); }`,
+        '  return { kind: "DocumentModel" };',
+        '}',
+        'module.exports = { snapshotToSemanticModel };',
+        '',
+      ].join('\n'),
+    });
+
+    const violations = collectG3Violations(root, {
+      adapterExits: [{
+        name: 'html snapshotToSemanticModel',
+        file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+        exportName: 'snapshotToSemanticModel',
+      }],
+      skipRuntimeChecks: true,
+    });
+
+    assert.deepEqual(violations, [{
+      rule: 'G3.1 semantic exports validate model',
+      file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+      detail: 'html snapshotToSemanticModel does not call validateSemanticModel',
+    }], `guard ${guard} must not satisfy G3.1`);
+  }
+});
+
+test('G3 ignores validateSemanticModel mentions in comments and ordinary strings', () => {
+  const root = makeSampleProject({
+    'src/adapters/html/normalizer/snapshot-to-model.js': [
+      'function snapshotToSemanticModel() {',
+      '  // validateSemanticModel(model);',
+      '  const note = "validateSemanticModel(model)";',
+      '  return { kind: "DocumentModel" };',
+      '}',
+      'module.exports = { snapshotToSemanticModel };',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG3Violations(root, {
+    adapterExits: [{
+      name: 'html snapshotToSemanticModel',
+      file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+      exportName: 'snapshotToSemanticModel',
+    }],
+    skipRuntimeChecks: true,
+  });
+
+  assert.deepEqual(violations, [{
+    rule: 'G3.1 semantic exports validate model',
+    file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+    detail: 'html snapshotToSemanticModel does not call validateSemanticModel',
+  }]);
+});
+
+test('G3 accepts a top-level direct validateSemanticModel call in the exported adapter exit', () => {
+  const root = makeSampleProject({
+    'src/adapters/html/normalizer/snapshot-to-model.js': [
+      'const { validateSemanticModel } = require("../../../semantic-model");',
+      'function snapshotToSemanticModel() {',
+      '  const model = { kind: "DocumentModel" };',
+      '  validateSemanticModel(model);',
+      '  return model;',
+      '}',
+      'module.exports = { snapshotToSemanticModel };',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG3Violations(root, {
+    adapterExits: [{
+      name: 'html snapshotToSemanticModel',
+      file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+      exportName: 'snapshotToSemanticModel',
+    }],
+    skipRuntimeChecks: true,
+  });
+
+  assert.deepEqual(violations, []);
+});
+
 test('G3 reports registry comparable paths missing from both adapter sample collectors', () => {
   const root = makeSampleProject({
     'src/protocol/index.js': [
@@ -330,6 +416,7 @@ function validateAdapterSurfaceIsomorphism(repoRoot) {
 
 function functionBodyHasDirectCall(source, calleeName) {
   let index = 0;
+  let blockDepth = 0;
   while (index < source.length) {
     if (source.startsWith('//', index)) {
       index = skipLineComment(source, index);
@@ -341,13 +428,21 @@ function functionBodyHasDirectCall(source, calleeName) {
       index = skipTemplateLiteral(source, index);
     } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
       index = skipRegexLiteral(source, index);
-    } else if (isIdentifierAt(source, index, 'function')) {
+    } else if (blockDepth === 0 && isIdentifierAt(source, index, 'function')) {
       const bodyStart = functionBodyOpenBrace(source, index);
       const bodyEnd = bodyStart === -1 ? -1 : matchingBraceIndex(source, bodyStart);
       index = bodyEnd === -1 ? source.length : bodyEnd + 1;
     } else if (source.startsWith('=>', index)) {
       index = skipArrowFunctionBody(source, index);
-    } else if (isIdentifierAt(source, index, calleeName) && isDirectCallAt(source, index, calleeName)) {
+    } else if (source[index] === '{') {
+      blockDepth += 1;
+      index += 1;
+    } else if (source[index] === '}') {
+      blockDepth = Math.max(0, blockDepth - 1);
+      index += 1;
+    } else if (blockDepth === 0 && (isIdentifierAt(source, index, 'return') || isIdentifierAt(source, index, 'throw'))) {
+      return false;
+    } else if (blockDepth === 0 && isIdentifierAt(source, index, calleeName) && isDirectCallAt(source, index, calleeName)) {
       return true;
     } else {
       index += 1;

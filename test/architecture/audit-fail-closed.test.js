@@ -56,7 +56,9 @@ test('G4 ignores invalid-input coverage text in comments and ordinary strings', 
     'scripts/audit-commented.js': 'process.exit(1);\n',
     'test/audit-commented.test.js': [
       '// audit-commented invalid-input 必须 fail',
+      'const fakeImport = "const test = require(\'node:test\');";',
       'const note = "audit-commented invalid-input 必须 fail";',
+      'test("audit-commented invalid-input 必须 fail", () => {});',
       'test("audit-commented happy path", () => {});',
       '',
     ].join('\n'),
@@ -74,7 +76,45 @@ test('G4 ignores invalid-input coverage text in comments and ordinary strings', 
 test('G4 accepts a real Node test case named for invalid-input coverage', () => {
   const root = makeSampleProject({
     'scripts/audit-covered.js': 'process.exit(1);\n',
-    'test/audit-covered.test.js': 'test("audit-covered invalid-input 必须 fail", () => {});\n',
+    'test/audit-covered.test.js': [
+      'const test = require("node:test");',
+      'test("audit-covered invalid-input 必须 fail", () => {});',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, []);
+});
+
+test('G4 rejects invalid-input coverage when test is shadowed by a local function', () => {
+  const root = makeSampleProject({
+    'scripts/audit-shadowed.js': 'process.exit(1);\n',
+    'test/audit-shadowed.test.js': [
+      'function test(_name, _fn) {}',
+      'test("audit-shadowed invalid-input 必须 fail", () => {});',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G4.1 audit invalid-input coverage',
+    file: 'scripts/audit-shadowed.js',
+    detail: 'missing test named "audit-shadowed invalid-input 必须 fail"',
+  }]);
+});
+
+test('G4 accepts a destructured node:test import for invalid-input coverage', () => {
+  const root = makeSampleProject({
+    'scripts/audit-destructured.js': 'process.exit(1);\n',
+    'test/audit-destructured.test.js': [
+      'const { test } = require("node:test");',
+      'test("audit-destructured invalid-input 必须 fail", () => {});',
+      '',
+    ].join('\n'),
   });
 
   const violations = collectG4Violations(root);
@@ -150,7 +190,9 @@ function collectNodeTestNames(repoRoot) {
 }
 
 function extractNodeTestNames(source) {
+  const apiNames = collectNodeTestApiNames(source);
   const names = [];
+  if (apiNames.size === 0) return names;
   let index = 0;
   while (index < source.length) {
     if (source.startsWith('//', index)) {
@@ -163,8 +205,8 @@ function extractNodeTestNames(source) {
       index = skipTemplateLiteral(source, index).end;
     } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
       index = skipRegexLiteral(source, index);
-    } else if (isBareTestIdentifierAt(source, index)) {
-      const openParenIndex = findCallOpenParen(source, index + testIdentifierAt(source, index).length);
+    } else if (isBareTestIdentifierAt(source, index, apiNames)) {
+      const openParenIndex = findCallOpenParen(source, index + testIdentifierAt(source, index, apiNames).length);
       if (openParenIndex === null) {
         index += 1;
         continue;
@@ -180,15 +222,85 @@ function extractNodeTestNames(source) {
   return names;
 }
 
-function isBareTestIdentifierAt(source, index) {
-  const identifier = testIdentifierAt(source, index);
+function collectNodeTestApiNames(source) {
+  const codeMask = codeMaskFor(source);
+  const names = new Set();
+  for (const match of source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\(\s*['"]node:test['"]\s*\)/g)) {
+    if (!codeMask[match.index]) continue;
+    names.add(match[1]);
+  }
+  for (const match of source.matchAll(/\b(?:const|let|var)\s*\{([^}]+)\}\s*=\s*require\(\s*['"]node:test['"]\s*\)/g)) {
+    if (!codeMask[match.index]) continue;
+    addNamedNodeTestImports(names, match[1]);
+  }
+  for (const match of source.matchAll(/\bimport\s+([A-Za-z_$][\w$]*)\s+from\s+['"]node:test['"]/g)) {
+    if (!codeMask[match.index]) continue;
+    names.add(match[1]);
+  }
+  for (const match of source.matchAll(/\bimport\s*\{([^}]+)\}\s*from\s+['"]node:test['"]/g)) {
+    if (!codeMask[match.index]) continue;
+    addNamedNodeTestImports(names, match[1]);
+  }
+
+  for (const shadowed of collectShadowedTestApiNames(source, codeMask)) {
+    names.delete(shadowed);
+  }
+  return names;
+}
+
+function addNamedNodeTestImports(names, specifierList) {
+  for (const specifier of specifierList.split(',')) {
+    const match = specifier.trim().match(/^(test|it)(?:\s*:\s*([A-Za-z_$][\w$]*))?$/);
+    if (match) names.add(match[2] || match[1]);
+  }
+}
+
+function collectShadowedTestApiNames(source, codeMask) {
+  const names = new Set();
+  for (const match of source.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)) {
+    if (!codeMask[match.index]) continue;
+    names.add(match[1]);
+  }
+  for (const match of source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g)) {
+    if (!codeMask[match.index]) continue;
+    const declaration = source.slice(match.index, Math.min(source.length, match.index + 160));
+    if (/=\s*require\(\s*['"]node:test['"]\s*\)/.test(declaration)) continue;
+    names.add(match[1]);
+  }
+  return names;
+}
+
+function codeMaskFor(source) {
+  let index = 0;
+  const mask = new Array(source.length).fill(false);
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index).end;
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index).end;
+    } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
+      index = skipRegexLiteral(source, index);
+    } else {
+      mask[index] = true;
+      index += 1;
+    }
+  }
+  return mask;
+}
+
+function isBareTestIdentifierAt(source, index, apiNames) {
+  const identifier = testIdentifierAt(source, index, apiNames);
   if (!identifier) return false;
   const previousIndex = previousSignificantIndex(source, index);
   return previousIndex === -1 || source[previousIndex] !== '.';
 }
 
-function testIdentifierAt(source, index) {
-  for (const identifier of ['test', 'it']) {
+function testIdentifierAt(source, index, apiNames) {
+  for (const identifier of apiNames) {
     if (
       source.startsWith(identifier, index)
       && !isIdentifierCharacter(source[index - 1])
