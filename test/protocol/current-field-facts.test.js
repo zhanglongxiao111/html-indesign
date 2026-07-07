@@ -112,6 +112,7 @@ test('registry records the styleRefs allowed key adjudication', () => {
     'frameStyleDisplayName',
     'tableStyleDisplayName',
     'displayName',
+    'genericStyle',
     'synthesizedToken',
     'synthesizedName',
     'layer',

@@ -100,6 +100,7 @@ const LABEL_FIELD_PATHS = Object.freeze({
 });
 
 const ITEM_FIELD_PATHS = Object.freeze({
+  type: 'items[].type',
   sourceType: 'items[].sourceType',
   tagName: 'items[].tagName',
   htmlClass: 'items[].htmlClass',

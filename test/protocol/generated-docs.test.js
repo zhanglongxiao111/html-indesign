@@ -54,6 +54,20 @@ test('generated field docs include retired data-id-page as observe-only observat
   assert.match(markdown, /retired/);
 });
 
+test('generated field docs render retired model paths separately from retired HTML attrs', () => {
+  const markdown = generateFieldDocsMarkdown(fieldRegistry);
+
+  assert.match(markdown, /^退役 HTML 属性：$/m);
+  assert.match(markdown, /^退役模型路径：$/m);
+
+  const htmlAttrSection = markdown.slice(
+    markdown.indexOf('退役 HTML 属性：'),
+    markdown.indexOf('退役模型路径：'),
+  );
+  assert.match(htmlAttrSection, /retiredHtmlAttr=data-id-page/);
+  assert.doesNotMatch(htmlAttrSection, /retiredModelPath=items\[\]\.type/);
+});
+
 test('generated field docs render W1 registry adjudication metadata', () => {
   const markdown = generateFieldDocsMarkdown(fieldRegistry);
 
@@ -62,7 +76,7 @@ test('generated field docs render W1 registry adjudication metadata', () => {
   assert.match(markdown, /items\[\]\.styleRefs/);
   assert.match(markdown, /allowedKeys=paragraphStyle, characterStyle, objectStyle, frameStyle, tableStyle, cellStyle/);
   assert.match(markdown, /paragraphStyleDisplayName, characterStyleDisplayName, objectStyleDisplayName, frameStyleDisplayName, tableStyleDisplayName/);
-  assert.match(markdown, /synthesizedToken, synthesizedName, layer/);
+  assert.match(markdown, /displayName, genericStyle, synthesizedToken, synthesizedName, layer/);
   assert.match(markdown, /items\[\]\.bounds/);
   assert.match(markdown, /contract=coordinateSystem:absolute-page, unit:pt/);
   assert.match(markdown, /items\[\]\.extensions\.indesign\.effects/);

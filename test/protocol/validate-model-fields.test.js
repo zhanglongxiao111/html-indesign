@@ -420,6 +420,41 @@ test('validateModelFields treats retired item type as retired instead of active 
   );
 });
 
+test('scanModelPaths scans retired item type from DocumentModel objects without accepting root or page type', () => {
+  const scannedPaths = scanModelPaths({
+    kind: 'DocumentModel',
+    type: 'root-structural',
+    id: 'doc',
+    pages: [{
+      id: 'p1',
+      type: 'page-structural',
+      items: [{
+        id: 'i1',
+        type: 'TextFrame',
+        sourceType: 'TextFrame',
+      }],
+    }],
+  });
+
+  assert.equal(scannedPaths.includes('type'), false);
+  assert.equal(scannedPaths.includes('pages[].type'), false);
+  assert.equal(scannedPaths.includes('items[].type'), true);
+
+  const result = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.accepted.includes('items[].sourceType'), true);
+  assert.equal(result.accepted.includes('items[].type'), false);
+  assert.deepEqual(result.retired.map((item) => item.path), ['items[].type']);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'MODEL_FIELD_RETIRED'
+      && error.path === 'items[].type'
+    )),
+    true,
+  );
+});
+
 test('scanModelPaths scans effectiveLabel nested registered and unknown fields', () => {
   const scannedPaths = scanModelPaths({
     pages: [{

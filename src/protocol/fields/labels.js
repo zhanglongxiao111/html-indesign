@@ -22,6 +22,7 @@ const STYLE_REF_ALLOWED_KEYS = Object.freeze([
   'frameStyleDisplayName',
   'tableStyleDisplayName',
   'displayName',
+  'genericStyle',
   'synthesizedToken',
   'synthesizedName',
   'layer',

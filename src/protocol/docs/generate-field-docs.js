@@ -29,7 +29,8 @@ function generateFieldDocsMarkdown(fieldRegistry) {
 
   const entriesBySection = groupEntries(fieldRegistry.entries);
   for (const section of SECTION_ORDER) {
-    const sectionNotes = [];
+    const sectionRetiredHtmlAttrNotes = [];
+    const sectionRetiredModelPathNotes = [];
 
     lines.push(`## ${section}`);
     lines.push('');
@@ -37,15 +38,23 @@ function generateFieldDocsMarkdown(fieldRegistry) {
 
     for (const entry of entriesBySection.get(section) || []) {
       lines.push(tableRow(fieldRegistry, entry));
-      for (const note of notesFor(entry)) {
-        sectionNotes.push(note);
+      const notes = retiredNotesFor(entry);
+      sectionRetiredHtmlAttrNotes.push(...notes.htmlAttrs);
+      sectionRetiredModelPathNotes.push(...notes.modelPaths);
+    }
+
+    if (sectionRetiredHtmlAttrNotes.length > 0) {
+      lines.push('');
+      lines.push('退役 HTML 属性：');
+      for (const note of sectionRetiredHtmlAttrNotes) {
+        lines.push(`- ${note}`);
       }
     }
 
-    if (sectionNotes.length > 0) {
+    if (sectionRetiredModelPathNotes.length > 0) {
       lines.push('');
-      lines.push('退役 HTML 属性：');
-      for (const note of sectionNotes) {
+      lines.push('退役模型路径：');
+      for (const note of sectionRetiredModelPathNotes) {
         lines.push(`- ${note}`);
       }
     }
@@ -117,8 +126,11 @@ function capabilityCell(registry, entry, format) {
   return metadata.length > 0 ? `${level} (${metadata.join('; ')})` : level;
 }
 
-function notesFor(entry) {
-  const notes = [];
+function retiredNotesFor(entry) {
+  const notes = {
+    htmlAttrs: [],
+    modelPaths: [],
+  };
   const retiredHtmlAttrs = entry.retired && entry.retired.htmlAttrs;
   const retiredModelPaths = entry.retired && entry.retired.modelPaths;
 
@@ -137,7 +149,7 @@ function notesFor(entry) {
         parts.push(`reason=${retiredAttr.reason}`);
       }
 
-      notes.push(parts.join('; '));
+      notes.htmlAttrs.push(parts.join('; '));
     }
   }
 
@@ -155,7 +167,7 @@ function notesFor(entry) {
         parts.push(`reason=${retiredPath.reason}`);
       }
 
-      notes.push(parts.join('; '));
+      notes.modelPaths.push(parts.join('; '));
     }
   }
 
