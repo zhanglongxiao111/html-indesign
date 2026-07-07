@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 复审发现阻断问题，修复中（执行提交 `410cb15`；复审指出 reverse model 已迁入 `extensions.indesign.effects`，但 InDesign writer 仍只读旧平铺 `item.effects`，会在回写 instructions 时静默丢失 effects；需直接消费者改读新路径且不得引入旧路径 fallback；2026-07-08）。
+进度：9c 复审修复已提交，二次复审中（执行提交 `410cb15`，修复提交 `00ffedd`；InDesign writer 已改为只读 `items[].extensions.indesign.effects`，未引入旧平铺 effects fallback；`node --test test/semantic-model/to-instructions.test.js` 25/25 通过，G3 10/10 通过，协议测试 148/148 通过，`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
