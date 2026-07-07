@@ -155,7 +155,7 @@ test('synthesized style fingerprints ignore retired item type dialect', () => {
   assert.equal(atom, null);
 });
 
-test('synthesized style fingerprints may use active sourceType observation for line atoms', () => {
+test('synthesized style fingerprints ignore sourceType observation without canonical line role', () => {
   const atom = synthesizedStyleFingerprint({
     id: 'observed-line',
     sourceType: 'GraphicLine',
@@ -165,7 +165,56 @@ test('synthesized style fingerprints may use active sourceType observation for l
     },
   });
 
-  assert.equal(atom.kind, 'line');
+  assert.equal(atom, null);
+});
+
+test('normalizeSynthesizedStyles does not write current refs for sourceType-only line observations', () => {
+  const result = normalizeSynthesizedStyles({
+    kind: 'DocumentModel',
+    id: 'doc',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'observed-line',
+        sourceType: 'GraphicLine',
+        visualStyle: {
+          strokeColor: '#111111',
+          strokeWeight: 1,
+        },
+      }],
+    }],
+  });
+
+  assert.deepEqual(result.styles.synthesized, []);
+  assert.equal(result.pages[0].items[0].sourceType, 'GraphicLine');
+  assert.equal(result.pages[0].items[0].styleRefs?.synthesizedToken, undefined);
+  assert.equal(result.pages[0].items[0].styleRefs?.synthesizedName, undefined);
+});
+
+test('normalizeSynthesizedStyles does not write current object refs for sourceType-only shape observations', () => {
+  for (const sourceType of ['Rectangle', 'PageItem']) {
+    const result = normalizeSynthesizedStyles({
+      kind: 'DocumentModel',
+      id: `doc-${sourceType}`,
+      pages: [{
+        id: 'p1',
+        items: [{
+          id: `observed-${sourceType}`,
+          sourceType,
+          visualStyle: {
+            fillColor: '#eeeeee',
+            strokeColor: '#111111',
+            strokeWeight: 1,
+          },
+        }],
+      }],
+    });
+
+    assert.deepEqual(result.styles.synthesized, []);
+    assert.equal(result.pages[0].items[0].sourceType, sourceType);
+    assert.equal(result.pages[0].items[0].styleRefs?.synthesizedToken, undefined);
+    assert.equal(result.pages[0].items[0].styleRefs?.synthesizedName, undefined);
+  }
 });
 
 test('builds one line style for identical dashed arrows with a Chinese name', () => {

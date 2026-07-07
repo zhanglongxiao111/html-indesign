@@ -115,33 +115,19 @@ function assetStyleAtom(item) {
 }
 
 function isTextItem(item) {
-  return item.role === 'text'
-    || item.kind === 'text'
-    || isPlainObject(item.textStyle)
-    || (isPlainObject(item.content) && typeof item.content.text === 'string');
+  return item.role === 'text';
 }
 
 function isLineItem(item) {
-  return item.role === 'line'
-    || item.sourceType === 'GraphicLine'
-    || item.kind === 'line'
-    || item.vectorGeometry?.kind === 'line';
+  return item.role === 'line';
 }
 
 function isAssetItem(item) {
-  return isPlainObject(item.asset) && isPlainObject(item.asset.placement);
+  return item.role === 'graphic' && isPlainObject(item.asset) && isPlainObject(item.asset.placement);
 }
 
 function isObjectItem(item) {
-  return isPlainObject(item.visualStyle)
-    && (
-      item.role === 'shape'
-      || item.kind === 'object'
-      || item.sourceType === 'Rectangle'
-      || item.sourceType === 'Oval'
-      || item.sourceType === 'Polygon'
-      || item.sourceType === 'PageItem'
-    );
+  return item.role === 'shape' && isPlainObject(item.visualStyle);
 }
 
 function pickDefined(source, keys) {
