@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9e 实现已提交，审核中（提交 `3b38701`；G3 baseline 已归零为 `exemptions: []`，`blueprintMigrationToSemanticModel` 接入 strict fail-closed，registry capability / scanner / adapter sample 覆盖已调整；G3 12/12 通过，baseline exemptions=0，HTML from-snapshot 24/24 通过，InDesign reverse-model 33/33 通过，协议测试 155/155 通过，`npm test` 875/875 通过，`git diff --check` 通过；2026-07-08）。
+进度：9f 剥兜底实现中（9e 已完成：提交 `3b38701`；最终审核未发现 P0/P1/P2；G3 baseline 已归零为 `exemptions: []`，`collectG3Violations(REPO_ROOT)` 返回 0，`blueprintMigrationToSemanticModel` 接入 strict fail-closed；`npm test` 875/875 通过；9f 将清理 `role || type || sourceType` 与 writer/consumer 双路径读取；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
@@ -242,7 +242,7 @@ node --test test/architecture/docs-sync.test.js
 - [x] **9b HTML adapter 对齐**：列出全部 `items[].type` 读取点后删除该字段产出；styleRefs 键收敛进枚举。
 - [x] **9c InDesign adapter 对齐**：`semantic` 的 `'unknown'` 哨兵改 `null`，下游（`reconstruct.js:129-133` 等）判空收敛；styleRefs 键收敛；`effects`/`textFrameStyle` 迁入 `extensions.indesign.*`（工作量过大时允许作为 9f 独立提交，不得停在半途）。
 - [x] **9d 出口强制校验**：两个 normalizer 出口接入 `validateSemanticModel`（strict，失败即抛）；G3 静态与行为断言豁免收口。
-- [ ] **9e 收 G3 同构豁免**：`baselines/G3.json` 归零。
+- [x] **9e 收 G3 同构豁免**：`baselines/G3.json` 归零。
 - [ ] **9f 剥兜底**：消灭 `role || type || sourceType` 三选一读取（`node-facts.js:21`、`author-audit.js:162` 及全量搜索所得）；writers 中因方言存在的双路径读取逐点剥除，每剥一处配测试。
 - [ ] **9g 真实 E2E 回归**：`npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 无退化（内容库存、结构签名、二轮稳定全过）。
 
