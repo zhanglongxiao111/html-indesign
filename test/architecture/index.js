@@ -5,5 +5,7 @@ require('./dependency-direction.test');
 require('./semantic-model-contract.test');
 require('./audit-fail-closed.test');
 require('./retired-naming.test');
+require('./protocol-literals.test');
+require('./single-implementation.test');
 require('./docs-code-sync.test');
 require('./orphan-modules.test');

@@ -1,0 +1,2370 @@
+{
+  "exemptions": [
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-source-csv",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-source-xml",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/audit-reverse-visual.js",
+      "detail": "field data-id-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/indesign-e2e.js",
+      "detail": "field data-id-layout",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/indesign-e2e.js",
+      "detail": "field data-id-parent-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "scripts/indesign-e2e.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-baseline",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-baseline-guides",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-column-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-grid",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-guide-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-guides",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-layout",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-line-end-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-line-start-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-observed",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-parent-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-parent-page-item",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-parent-page-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-parent-page-source-id",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-reverse-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-row-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-source-file",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-stroke-alignment",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-stroke-color",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-stroke-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-stroke-weight",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-style-token",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-fill-color",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-fill-opacity",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-line-end-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-line-start-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-point-types",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-stroke-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/normalizer/svg-vector-geometry.js",
+      "detail": "field data-id-vector-points",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-artboard",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-content-height",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-content-scale-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-content-scale-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-content-width",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-content-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-content-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-crop",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-fit",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-hidden-layers",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-layer-comp",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-pdf-hidden-layers",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-pdf-visible-layers",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-preserve-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-preview-src",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/asset-detector.js",
+      "detail": "field data-id-visible-layers",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/browser-element-capture.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/browser-element-capture.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/browser-element-capture.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/browser-element-capture.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/browser-snapshot-capture.js",
+      "detail": "field data-id-source-file",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/browser-snapshot-capture.js",
+      "detail": "field data-id-source-package-parent-pages",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/candidate-elements.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/candidate-elements.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/source-metadata.js",
+      "detail": "field data-id-document",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/source-metadata.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/source-metadata.js",
+      "detail": "field data-id-profile",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/source-metadata.js",
+      "detail": "field data-id-semantic-preset",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/source-metadata.js",
+      "detail": "field data-id-source-package-config",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/reader/source-metadata.js",
+      "detail": "field data-id-source-package-schema",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-artboard",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-asset-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-baseline",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-cell-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-column-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-fit",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-grid",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-grid-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-margin",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-margin-",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-margin-bottom",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-margin-left",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-margin-right",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-margin-top",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-placement",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-row-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-snap-grid",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-snap-grid-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-snap-grid-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/html/validators/authoring-validator.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-cell-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/label-whitelist.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/adapters/indesign/normalizer/snapshot-to-model.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-document",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-grid",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-layout",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-margin",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-profile",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-semantic-preset",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-source-file",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-source-package-config",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-source-package-parent-pages",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/authoring/source-package.js",
+      "detail": "field data-id-source-package-schema",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-baseline",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-baseline-guides",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-column-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-grid",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-guide-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-guide-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-margin",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-margin-bottom",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-margin-left",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-margin-right",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-margin-top",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-observed",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-reverse-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-model/layout.js",
+      "detail": "field data-id-row-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-asset-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-cell-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-crop",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-fit",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-preset/audit-authoring.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/semantic-reconstruction/caption-structure.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/shared/assets.js",
+      "detail": "field data-id-asset-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/shared/assets.js",
+      "detail": "field data-id-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/shared/assets.js",
+      "detail": "field data-id-preview-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/shared/assets.js",
+      "detail": "field data-id-preview-src",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-artboard",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-content-height",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-content-scale-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-content-scale-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-content-width",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-content-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-content-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-fit",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-preview-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-html.js",
+      "detail": "field data-id-preview-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "field data-id-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "field data-id-preview-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "field data-id-preview-src",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "field data-id-source-csv",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "field data-id-source-xml",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/author-editability.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/author-editability.js",
+      "detail": "field data-id-content-",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/author-editability.js",
+      "detail": "field data-id-vector-points",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/content-inventory.js",
+      "detail": "field data-id-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/content-inventory.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/content-inventory.js",
+      "detail": "field data-id-parent-page-item",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/content-inventory.js",
+      "detail": "field data-id-placement",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/content-inventory.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-crop",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-fit",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-reverse-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/structure-signature.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-source-csv",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-source-xml",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/audit/visual-geometry-audit.js",
+      "detail": "field data-id-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-artboard",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-asset-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-content-height",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-content-scale-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-content-scale-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-content-width",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-content-x",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-content-y",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-crop",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-fit",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-hidden-layers",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-preview-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-preview-src",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-attrs.js",
+      "detail": "field data-id-visible-layers",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-packager.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-packager.js",
+      "detail": "field data-id-source-csv",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-packager.js",
+      "detail": "field data-id-source-xml",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-asset-renderer.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-attribute-writer.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-attribute-writer.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-cell-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-character-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-frame-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-line-end-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-line-start-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-object-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-observed-label-status",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-observed-reasons",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-paragraph-composer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-paragraph-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-parent-page-item",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-parent-page-source-id",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-stroke-alignment",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-stroke-color",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-stroke-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-stroke-weight",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-style-token",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-node-attrs.js",
+      "detail": "field data-id-table-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-baseline",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-column-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-grid",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-guides",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-layout",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-margin",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-observed",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-parent-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-parent-page-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-reverse-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-row-gutter",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-package-writer.js",
+      "detail": "field data-id-source-file",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-pdf-renderer.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-pdf-renderer.js",
+      "detail": "field data-id-pdf-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-render-utils.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-render-utils.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-resource-paths.js",
+      "detail": "field data-id-preview-src",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-rich-text-renderer.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-cell-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-style-token",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-table-renderer.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-table-renderer.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-vector-renderer.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-vector-renderer.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-vector-renderer.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/author-vector-renderer.js",
+      "detail": "field data-id-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/reveal-presentation-writer.js",
+      "detail": "field data-id-ignore",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/reveal-presentation-writer.js",
+      "detail": "field data-id-source-file",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/table-html.js",
+      "detail": "field data-id-cell-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/table-html.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-fill-color",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-fill-opacity",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-line-end-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-line-start-marker-raw-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-point-types",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-stroke-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/vector-svg.js",
+      "detail": "field data-id-vector-points",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-asset-path",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-confidence",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-document",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-image-cropped",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-layout",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-margin",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-migration-slot",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-object",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-parent-page",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-parent-page-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-profile",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-reverse-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-semantic",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-slot-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-slot-type",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-source",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-html-writer.js",
+      "detail": "field data-id-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-style-css.js",
+      "detail": "field data-id-preview-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/html/visual-style-css.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/instruction-writer.js",
+      "detail": "field data-id-vector",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/layer-instructions.js",
+      "detail": "field data-id-layer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-asset-kind",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-paragraph-composer",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-role",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-stroke-alignment",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-stroke-color",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-stroke-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-compiler.js",
+      "detail": "field data-id-stroke-weight",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-character-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-character-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-frame-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-frame-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-object-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-object-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-paragraph-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-paragraph-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-table-style",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/style-identities.js",
+      "detail": "field data-id-table-style-name",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/text-instructions.js",
+      "detail": "field data-id-observed",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G2.1 protocol literals use registry constants",
+      "file": "src/writers/indesign/text-instructions.js",
+      "detail": "field data-id-reverse-mode",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    }
+  ]
+}

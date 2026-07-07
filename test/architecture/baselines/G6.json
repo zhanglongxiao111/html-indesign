@@ -1,0 +1,116 @@
+{
+  "exemptions": [
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/adapters/html/reader/browser-snapshot.js",
+      "detail": "defines parseZIndex",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/adapters/html/reader/stacking.js",
+      "detail": "defines parseZIndex",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/adapters/indesign/audit/parent-page-furniture.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/adapters/indesign/audit/reverse-snapshot-structure.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/adapters/indesign/normalizer/blueprint-migration.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/adapters/indesign/normalizer/blueprint-migration.js",
+      "detail": "defines safeClassToken",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/semantic-model/layout.js",
+      "detail": "defines cssLengthToMm",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/asset-reference-policy.js",
+      "detail": "defines normalizePathKey",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/audit/author-editability.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/audit/content-inventory.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/audit/structure-signature.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/author-asset-packager.js",
+      "detail": "defines normalizePathKey",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/author-resource-paths.js",
+      "detail": "defines normalizePathKey",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/author-style-attrs.js",
+      "detail": "defines safeClass",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/indesign/box-model.js",
+      "detail": "defines cssLengthToMm",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/indesign/box-model.js",
+      "detail": "defines cssLengthToPx",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    }
+  ]
+}
