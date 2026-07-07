@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9b 进行中（9a 已完成；已定位 HTML normalizer 仍写 `type: item.role`，且 `styleRefs` 直接透传 `item.styleRefs` 会带出非枚举键如 `characterStyles` / `swatch`；准备派执行子 agent 仅做 HTML adapter 对齐；2026-07-08）。
+进度：9b 实现已提交，复审中（执行提交 `5af027f`；HTML adapter 已停止产出 retired `items[].type`，`styleRefs` 改从 registry `allowedKeys` 过滤，G3 baseline 自然删除 `characterStyles` / `swatch` 两条过期豁免；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
