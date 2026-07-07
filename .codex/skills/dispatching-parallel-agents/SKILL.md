@@ -1,6 +1,6 @@
 ---
 name: dispatching-parallel-agents
-description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
+description: 遇到 2 个及以上彼此独立、无需共享状态或串行依赖的任务时使用。
 ---
 
 # Dispatching Parallel Agents
