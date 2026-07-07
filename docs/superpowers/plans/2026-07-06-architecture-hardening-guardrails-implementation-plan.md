@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9a 复审发现阻断问题，修复中（执行提交 `3b95d66`；复审指出真实 `DocumentModel` 中 `items[].type` 因 scanner structural key 被 fail-open，且 retired model path 文档标题不精确；另需补齐 active `styleRefs.genericStyle` 的 allowedKeys 裁定；2026-07-08）。
+进度：9a 复审修复已提交，二次复审中（执行提交 `3b95d66`，修复提交 `9c049c1`；已修真实 `DocumentModel` 中 `items[].type` fail-open、retired model path 文档标题和 active `styleRefs.genericStyle` allowedKeys 缺口；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
