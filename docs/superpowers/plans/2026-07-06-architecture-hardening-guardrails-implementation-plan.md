@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9d 出口强制校验实现中（9c 已完成：执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`，注册表/label 修复 `686f278`；最终复审未发现 P0/P1/P2；9d 将把两个 normalizer 出口接入 `validateSemanticModel` strict，失败即抛，并收口 G3 静态与行为断言豁免；2026-07-08）。
+进度：9d 实现已提交，审核中（提交 `5831054`；两个 normalizer 出口已接入 strict `validateSemanticModel`，失败即抛；strict 出口暴露的当前字段已补登记，G3 baseline 547→518；`node --test test/semantic-model/from-snapshot.test.js` 23/23 通过，`node --test test/indesign-reverse/reverse-model.test.js` 32/32 通过，G3 10/10 通过，协议测试 150/150 通过，`npm test` 866/866 通过，`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
