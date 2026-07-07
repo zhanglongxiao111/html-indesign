@@ -69,6 +69,7 @@ module.exports = [
   tableField('items[].table.rows[].cells[].borderColor', 'string'),
   tableField('items[].table.rows[].cells[].borderWeight', 'number'),
   tableField('items[].table.rows[].cells[].textColor', 'string'),
+  tableSourceMetadata('items[].table.rows[].cells[].textStyle', 'object'),
   tableField('items[].table.rows[].cells[].bounds', 'object'),
   tableField('items[].table.rows[].cells[].pointSize', 'number'),
   tableField('items[].table.rows[].cells[].leading', 'number'),
@@ -82,4 +83,6 @@ module.exports = [
   tableSourceMetadata('items[].table.rows[].cells[].runs[].classList', 'array'),
   tableSourceMetadata('items[].table.rows[].cells[].runs[].attributes', 'object'),
   tableField('items[].table.rows[].cells[].runs[].characterStyle', 'string'),
+  tableSourceMetadata('items[].table.rows[].cells[].runs[].textStyle', 'object'),
+  tableSourceMetadata('items[].table.rows[].cells[].runs[].inlineStyle', 'string'),
 ];

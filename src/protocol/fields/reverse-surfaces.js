@@ -83,6 +83,7 @@ module.exports = [
   sourceMetadata('items[].content.runs[].classList', [], 'array'),
   sourceMetadata('items[].content.runs[].attributes', [], 'object'),
   formatExtension('items[].content.runs[].textStyle', [], 'object'),
+  sourceMetadata('items[].content.runs[].inlineStyle', [], 'string'),
   formatExtension(
     'items[].extensions.indesign.effects',
     [],

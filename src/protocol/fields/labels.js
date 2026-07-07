@@ -9,6 +9,7 @@ const STYLE_LABEL_KINDS = Object.freeze(['style']);
 const STYLE_AND_LAYER_LABEL_KINDS = Object.freeze(['style', 'layer']);
 const PAGE_AND_ITEM_LABEL_KINDS = Object.freeze(['page', 'item']);
 const SEMANTIC_LABEL_KINDS = Object.freeze(['page', 'item', 'parentPage']);
+const GENERATED_LABEL_KINDS = Object.freeze(['page', 'item', 'parentPage']);
 const STYLE_REF_ALLOWED_KEYS = Object.freeze([
   'paragraphStyle',
   'characterStyle',
@@ -50,6 +51,7 @@ module.exports = [
   labelPayloadMetadata('labels[].displayName', 'string', ['style', 'layer', 'parentPage']),
   labelPayloadMetadata('labels[].styleKind', 'string', STYLE_LABEL_KINDS),
   labelPayloadMetadata('labels[].htmlClass', 'string', STYLE_LABEL_KINDS),
+  labelPayloadMetadata('labels[].generated', 'boolean', GENERATED_LABEL_KINDS),
   {
     canonicalPath: 'labels[].protocol',
     currentPaths: [],

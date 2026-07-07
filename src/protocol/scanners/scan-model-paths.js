@@ -53,8 +53,10 @@ const PAGE_FIELD_PATHS = Object.freeze({
 });
 
 const ASSET_FIELD_PATHS = Object.freeze({
+  name: 'assets[].name',
   kind: 'assets[].kind',
   path: 'assets[].path',
+  status: 'assets[].status',
   src: 'assets[].src',
   resolvedPath: 'assets[].resolvedPath',
   fileName: 'assets[].fileName',
@@ -76,6 +78,7 @@ const LABEL_FIELD_PATHS = Object.freeze({
   displayName: 'labels[].displayName',
   styleKind: 'labels[].styleKind',
   htmlClass: 'labels[].htmlClass',
+  generated: 'labels[].generated',
   title: 'document.title',
   profile: 'document.profile',
   source: 'labels[].source',
@@ -163,6 +166,7 @@ const ITEM_ASSET_FIELD_PATHS = Object.freeze({
   name: 'items[].asset.name',
   path: 'items[].asset.path',
   status: 'items[].asset.status',
+  bounds: 'items[].asset.bounds',
   graphicType: 'items[].asset.graphicType',
   imageTypeName: 'items[].asset.imageTypeName',
   cropped: 'items[].asset.cropped',
@@ -175,9 +179,19 @@ const ITEM_ASSET_FIELD_PATHS = Object.freeze({
 const ITEM_ASSET_PLACEMENT_FIELD_PATHS = Object.freeze({
   pageNumber: 'items[].asset.placement.pageNumber',
   crop: 'items[].asset.placement.crop',
+  fit: 'items[].asset.placement.fit',
+  artboard: 'items[].asset.placement.artboard',
+  layerComp: 'items[].asset.placement.layerComp',
   transparentBackground: 'items[].asset.placement.transparentBackground',
   visibleLayers: 'items[].asset.placement.visibleLayers',
   hiddenLayers: 'items[].asset.placement.hiddenLayers',
+  preserveVector: 'items[].asset.placement.preserveVector',
+  frameBounds: 'items[].asset.placement.frameBounds',
+  contentBounds: 'items[].asset.placement.contentBounds',
+  contentOffset: 'items[].asset.placement.contentOffset',
+  contentSize: 'items[].asset.placement.contentSize',
+  contentScale: 'items[].asset.placement.contentScale',
+  pdfCrop: 'items[].asset.placement.pdfCrop',
   layers: 'items[].asset.placement.layers',
 });
 
@@ -293,6 +307,7 @@ const ITEM_CONTENT_RUN_FIELD_PATHS = Object.freeze({
   attributes: 'items[].content.runs[].attributes',
   characterStyle: 'items[].content.runs[].characterStyle',
   textStyle: 'items[].content.runs[].textStyle',
+  inlineStyle: 'items[].content.runs[].inlineStyle',
 });
 
 const ITEM_TABLE_FIELD_PATHS = Object.freeze({
@@ -324,6 +339,7 @@ const ITEM_TABLE_CELL_FIELD_PATHS = Object.freeze({
   borderColor: 'items[].table.rows[].cells[].borderColor',
   borderWeight: 'items[].table.rows[].cells[].borderWeight',
   textColor: 'items[].table.rows[].cells[].textColor',
+  textStyle: 'items[].table.rows[].cells[].textStyle',
   bounds: 'items[].table.rows[].cells[].bounds',
   pointSize: 'items[].table.rows[].cells[].pointSize',
   leading: 'items[].table.rows[].cells[].leading',
@@ -340,6 +356,8 @@ const ITEM_TABLE_CELL_RUN_FIELD_PATHS = Object.freeze({
   classList: 'items[].table.rows[].cells[].runs[].classList',
   attributes: 'items[].table.rows[].cells[].runs[].attributes',
   characterStyle: 'items[].table.rows[].cells[].runs[].characterStyle',
+  textStyle: 'items[].table.rows[].cells[].runs[].textStyle',
+  inlineStyle: 'items[].table.rows[].cells[].runs[].inlineStyle',
 });
 
 const STRUCTURAL_KEYS = new Set(['id', 'kind', 'type']);

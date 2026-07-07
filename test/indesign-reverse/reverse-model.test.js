@@ -1355,6 +1355,85 @@ test('reverseSnapshotToSemanticModel preserves observed character runs per text 
   assert.equal(title.content.runs[1].textStyle.fontStyle, 'italic');
 });
 
+test('reverseSnapshotToSemanticModel accepts current reverse-only style and asset observation fields under strict validation', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'reverse-current.indd', mode: 'structured' },
+    document: { name: 'reverse-current.indd', labels: [] },
+    styles: {},
+    assets: [{ name: 'site-plan.pdf', path: '\\\\nas\\share\\site-plan.pdf', status: 'NORMAL' }],
+    pages: [
+      {
+        id: 'p1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'caption',
+            type: 'TextFrame',
+            text: 'Caption',
+            textRuns: [{
+              text: 'Caption',
+              characterStyle: null,
+              textStyle: { fillColor: '#123456' },
+              inlineStyle: 'color:#123456',
+            }],
+            labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'caption', generated: false }],
+          },
+          {
+            id: 'metric-table',
+            type: 'Table',
+            table: {
+              rows: [{
+                cells: [{
+                  text: 'Area',
+                  textStyle: { pointSize: 10 },
+                  runs: [{
+                    text: 'Area',
+                    textStyle: { fillColor: '#123456' },
+                    inlineStyle: 'color:#123456',
+                  }],
+                }],
+              }],
+            },
+            labels: [],
+          },
+          {
+            id: 'placed-plan',
+            type: 'PDF',
+            placedAsset: {
+              name: 'site-plan.pdf',
+              path: '\\\\nas\\share\\site-plan.pdf',
+              status: 'NORMAL',
+              kind: 'pdf',
+              bounds: { x: 20, y: 30, width: 200, height: 100 },
+              placement: {
+                pageNumber: 1,
+                fit: 'manual',
+                pdfCrop: 'CROP_CONTENT_VISIBLE_LAYERS',
+                frameBounds: { x: 20, y: 30, width: 200, height: 100 },
+                contentBounds: { x: 10, y: 25, width: 240, height: 120 },
+                contentOffset: { x: -10, y: -5 },
+                contentSize: { width: 240, height: 120 },
+                contentScale: { x: 1.2, y: 1.2 },
+              },
+            },
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'structured', profile: 'architecture-report' });
+
+  const [caption, table, placedPlan] = model.pages[0].items;
+  assert.equal(caption.content.runs[0].inlineStyle, 'color:#123456');
+  assert.equal(caption.labels[0].generated, false);
+  assert.equal(table.table.rows[0].cells[0].textStyle.pointSize, 10);
+  assert.equal(table.table.rows[0].cells[0].runs[0].inlineStyle, 'color:#123456');
+  assert.equal(placedPlan.asset.placement.contentScale.x, 1.2);
+  assert.equal(model.assets[0].status, 'NORMAL');
+});
+
 test('reverseSnapshotToSemanticModel maps InDesign display style names back to source tokens', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'tokens.indd', mode: 'structured' },

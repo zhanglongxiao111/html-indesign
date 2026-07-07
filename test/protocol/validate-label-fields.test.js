@@ -29,11 +29,45 @@ test('validateLabelFields accepts registered common label payload fields', () =>
     sourceHtml: '<span>Cover</span>',
     sourceRuns: [{ text: 'Cover' }],
     structure: { parentId: 'cover-page' },
+    generated: true,
   }, { strict: true });
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.unknown, []);
   assert.equal(result.errors.length, 0);
+});
+
+test('validateLabelFields accepts generated only on generated-capable structural labels', () => {
+  for (const kind of ['page', 'item', 'parentPage']) {
+    const result = validateLabelFields(fieldRegistry, {
+      protocol: 'html-indesign',
+      version: 1,
+      kind,
+      id: `${kind}-generated`,
+      generated: false,
+    }, { strict: true });
+
+    assert.equal(result.valid, true, `${kind} generated flag should be valid`);
+    assert.equal(result.accepted.includes('generated'), true);
+  }
+
+  const styleResult = validateLabelFields(fieldRegistry, {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'style',
+    id: 'style-generated',
+    generated: true,
+  }, { strict: true });
+
+  assert.equal(styleResult.valid, false);
+  assert.equal(
+    styleResult.errors.some((error) => (
+      error.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
+      && error.path === 'generated'
+      && error.labelKind === 'style'
+    )),
+    true,
+  );
 });
 
 test('label identity payload fields remain source metadata fields', () => {

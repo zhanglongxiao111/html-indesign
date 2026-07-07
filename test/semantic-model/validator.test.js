@@ -282,6 +282,7 @@ test('validateSemanticModel accepts current DocumentModel fields in strict field
     sourcePackage: { config: 'deck.config.json', profile: 'architecture-report' },
     labels: [{ kind: 'document', id: 'doc' }],
     parentPages: [{ id: 'parent-a', name: 'A-Parent' }],
+    assets: [{ name: 'site-plan.pdf', path: '\\\\nas\\share\\site-plan.pdf', status: 'NORMAL' }],
     pages: [{
       id: 'p1',
       index: 0,
@@ -296,12 +297,47 @@ test('validateSemanticModel accepts current DocumentModel fields in strict field
       guides: [{ axis: 'x', position: 40 }],
       items: [{
         id: 'item-1',
-        labels: [{ kind: 'item', id: 'item-1' }],
+        labels: [{ kind: 'item', id: 'item-1', generated: false }],
+        content: {
+          text: 'Area',
+          runs: [{
+            text: 'Area',
+            textStyle: { fillColor: '#123456' },
+            inlineStyle: 'color:#123456',
+          }],
+        },
+        table: {
+          rows: [{
+            cells: [{
+              text: 'Area',
+              textStyle: { pointSize: 10 },
+              runs: [{
+                text: 'Area',
+                textStyle: { fillColor: '#123456' },
+                inlineStyle: 'color:#123456',
+              }],
+            }],
+          }],
+        },
+        asset: {
+          name: 'site-plan.pdf',
+          path: '\\\\nas\\share\\site-plan.pdf',
+          status: 'NORMAL',
+          bounds: { x: 20, y: 30, width: 200, height: 100 },
+          placement: {
+            fit: 'manual',
+            frameBounds: { x: 20, y: 30, width: 200, height: 100 },
+            contentBounds: { x: 10, y: 25, width: 240, height: 120 },
+            contentOffset: { x: -10, y: -5 },
+            contentSize: { width: 240, height: 120 },
+            contentScale: { x: 1.2, y: 1.2 },
+            pdfCrop: 'CROP_CONTENT_VISIBLE_LAYERS',
+          },
+        },
       }],
     }],
     layers: [{ token: 'text', displayName: 'Text' }],
     styles: { paragraphStyles: {} },
-    assets: [],
   }, { strictFields: true });
 
   assert.equal(result.valid, true);

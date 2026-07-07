@@ -572,19 +572,34 @@ test('validateModelFields rejects invalid model field domain names', () => {
 test('asset placement domain strict rejects placement unknowns without escalating unrelated unknowns', () => {
   const scannedPaths = scanModelPaths({
     kind: 'DocumentModel',
+    assets: [{
+      name: 'site-plan.pdf',
+      path: '\\\\nas\\share\\site-plan.pdf',
+      status: 'NORMAL',
+    }],
     pages: [{
       id: 'p1',
       items: [{
         id: 'asset-1',
         madeUpField: true,
         asset: {
+          name: 'site-plan.pdf',
+          status: 'NORMAL',
+          bounds: { x: 20, y: 30, width: 200, height: 100 },
           placement: {
             pageNumber: 1,
             crop: 'trim',
+            fit: 'manual',
             transparentBackground: true,
             visibleLayers: ['site'],
             hiddenLayers: ['notes'],
             layers: ['site', 'notes'],
+            frameBounds: { x: 20, y: 30, width: 200, height: 100 },
+            contentBounds: { x: 10, y: 25, width: 240, height: 120 },
+            contentOffset: { x: -10, y: -5 },
+            contentSize: { width: 240, height: 120 },
+            contentScale: { x: 1.2, y: 1.2 },
+            pdfCrop: 'CROP_CONTENT_VISIBLE_LAYERS',
             fakePlacement: true,
           },
         },
@@ -600,12 +615,25 @@ test('asset placement domain strict rejects placement unknowns without escalatin
 
   assert.equal(result.valid, false);
   for (const path of [
+    'assets[].name',
+    'assets[].path',
+    'assets[].status',
+    'items[].asset.name',
+    'items[].asset.status',
+    'items[].asset.bounds',
     'items[].asset.placement.pageNumber',
     'items[].asset.placement.crop',
+    'items[].asset.placement.fit',
     'items[].asset.placement.transparentBackground',
     'items[].asset.placement.visibleLayers',
     'items[].asset.placement.hiddenLayers',
     'items[].asset.placement.layers',
+    'items[].asset.placement.frameBounds',
+    'items[].asset.placement.contentBounds',
+    'items[].asset.placement.contentOffset',
+    'items[].asset.placement.contentSize',
+    'items[].asset.placement.contentScale',
+    'items[].asset.placement.pdfCrop',
   ]) {
     assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
     assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);
@@ -1096,6 +1124,8 @@ test('table/text domain strict rejects unknown text and table fields while accep
             classList: ['metric'],
             attributes: { 'data-id-character-style': 'emphasis' },
             characterStyle: 'emphasis',
+            textStyle: { fillColor: '#123456' },
+            inlineStyle: 'color:#123456',
           }],
         },
         table: {
@@ -1120,6 +1150,7 @@ test('table/text domain strict rejects unknown text and table fields while accep
               pointSize: 10,
               leading: 12,
               textAlign: 'center',
+              textStyle: { pointSize: 10, fillColor: '#111111' },
               padding: { top: 4 },
               borders: { left: { color: '#111111' } },
               runs: [{
@@ -1128,6 +1159,8 @@ test('table/text domain strict rejects unknown text and table fields while accep
                 classList: ['metric'],
                 attributes: {},
                 characterStyle: 'emphasis',
+                textStyle: { fillColor: '#123456' },
+                inlineStyle: 'color:#123456',
               }],
             }],
           }],
@@ -1152,6 +1185,8 @@ test('table/text domain strict rejects unknown text and table fields while accep
     'items[].content.runs[].classList',
     'items[].content.runs[].attributes',
     'items[].content.runs[].characterStyle',
+    'items[].content.runs[].textStyle',
+    'items[].content.runs[].inlineStyle',
     'items[].table.tableStyle',
     'items[].table.rowCount',
     'items[].table.columnCount',
@@ -1172,6 +1207,7 @@ test('table/text domain strict rejects unknown text and table fields while accep
     'items[].table.rows[].cells[].pointSize',
     'items[].table.rows[].cells[].leading',
     'items[].table.rows[].cells[].textAlign',
+    'items[].table.rows[].cells[].textStyle',
     'items[].table.rows[].cells[].padding',
     'items[].table.rows[].cells[].borders',
     'items[].table.rows[].cells[].runs',
@@ -1180,6 +1216,8 @@ test('table/text domain strict rejects unknown text and table fields while accep
     'items[].table.rows[].cells[].runs[].classList',
     'items[].table.rows[].cells[].runs[].attributes',
     'items[].table.rows[].cells[].runs[].characterStyle',
+    'items[].table.rows[].cells[].runs[].textStyle',
+    'items[].table.rows[].cells[].runs[].inlineStyle',
   ]) {
     assert.equal(result.accepted.includes(path), true, `${path} should be accepted`);
     assert.equal(result.unknown.includes(path), false, `${path} should not be unknown`);

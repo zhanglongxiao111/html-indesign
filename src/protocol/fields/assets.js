@@ -38,6 +38,22 @@ function assetSourceMetadata(canonicalPath, type, snapshotPath, extra = {}) {
   };
 }
 
+function rootAssetSourceMetadata(canonicalPath, type, snapshotPath, extra = {}) {
+  return {
+    canonicalPath,
+    currentPaths: [],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'asset-placement',
+    type,
+    capabilities: ASSET_SOURCE_METADATA_CAPABILITIES,
+    indesign: {
+      snapshotPaths: [snapshotPath],
+    },
+    ...extra,
+  };
+}
+
 function htmlAssetSourceMetadata(canonicalPath, type) {
   return {
     canonicalPath,
@@ -120,6 +136,8 @@ module.exports = [
       customDataPaths: ['htmlIndesign.assets[].path'],
     },
   },
+  rootAssetSourceMetadata('assets[].name', 'string', 'assets[].name'),
+  rootAssetSourceMetadata('assets[].status', 'string', 'assets[].status'),
   htmlAssetSourceMetadata('assets[].fileName', 'string'),
   htmlAssetSourceMetadata('assets[].linked', 'boolean'),
   htmlAssetSourceMetadata('assets[].placement', 'object'),
@@ -165,6 +183,7 @@ module.exports = [
   },
   assetSourceMetadata('items[].asset.name', 'string', 'placedAsset.name'),
   assetSourceMetadata('items[].asset.status', 'string', 'placedAsset.status'),
+  assetSourceMetadata('items[].asset.bounds', 'object', 'placedAsset.bounds'),
   assetSourceMetadata('items[].asset.graphicType', 'string', 'placedAsset.graphicType'),
   assetSourceMetadata('items[].asset.imageTypeName', 'string', 'placedAsset.imageTypeName'),
   assetSourceMetadata('items[].asset.cropped', 'boolean', 'placedAsset.cropped'),
@@ -272,5 +291,11 @@ module.exports = [
       writeAttrs: ['data-id-content-scale-y'],
     },
   }),
+  assetSourceMetadata('items[].asset.placement.frameBounds', 'object', 'placedAsset.placement.frameBounds'),
+  assetSourceMetadata('items[].asset.placement.contentBounds', 'object', 'placedAsset.placement.contentBounds'),
+  assetSourceMetadata('items[].asset.placement.contentOffset', 'object', 'placedAsset.placement.contentOffset'),
+  assetSourceMetadata('items[].asset.placement.contentSize', 'object', 'placedAsset.placement.contentSize'),
+  assetSourceMetadata('items[].asset.placement.contentScale', 'object', 'placedAsset.placement.contentScale'),
+  assetSourceMetadata('items[].asset.placement.pdfCrop', 'string', 'placedAsset.placement.pdfCrop'),
   assetSourceMetadata('items[].asset.placement.layers', 'array', 'placedAsset.placement.layers'),
 ];
