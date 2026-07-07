@@ -143,7 +143,7 @@ npm test
 
 ### 3. G3 / G4 / G5 / G7 / G8 护栏
 
-进度：审核退回修复中（Task 3 review 要求修复 G3 registry 字段面覆盖不足、G8 合法入口/浏览器脚本误入 orphan baseline、G3.1 静态断言假阳性，并收窄 G5 噪声，2026-07-07）。
+进度：修复已提交，复审中（提交 `c10098d` 修复 G3 registry 覆盖缺口可见化、G8 合法入口/浏览器脚本误判、G3.1 假阳性与 G5 噪声；等待复审，2026-07-07）。
 
 - [ ] G3 模型出口契约：三条断言（出口调用 validateSemanticModel 的静态断言、非法输入行为断言、双 adapter 同构断言）；已知方言差异写入 `baselines/G3.json` 豁免。同构断言的字段面清单由 registry 生成，不手抄。
 - [ ] G4 门禁反假成功：枚举审计模块清单，断言对应测试文件存在"invalid-input 必须 fail"命名约定的用例；`scripts/audit-*.js` 子进程冒烟断言"无法判定时 exitCode 非 0"。当前不满足项入 `baselines/G4.json`。
