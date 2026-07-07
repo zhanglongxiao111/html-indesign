@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 复审发现阻断问题，注册表与 label allowlist 修复中（执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`；复审指出旧平铺 `items[].effects` / `items[].textFrameStyle` 仍被 strict model validation 当作合法 current path 接受，`validateReverseLabel` 仍有手写 styleRefs allowlist 且会丢弃 registry 已登记键；需封死当前 DocumentModel 旧路径并改为 registry allowedKeys；2026-07-08）。
+进度：9c 注册表与 label allowlist 修复已提交，复审中（执行提交 `410cb15`，effects writer 修复 `00ffedd`，sentinel 修复 `1f62556`，HTML effects extension 修复 `c672686`，注册表/label 修复 `686f278`；strict model validation 已将旧平铺 `items[].effects` / `items[].textFrameStyle` 判为未登记字段，`extensions.indesign.*` 被接受，`validateReverseLabel` 改用 registry allowedKeys；`npm test` 864/864 通过，协议测试 150/150 通过，G3 10/10 通过，`git diff --check` 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
