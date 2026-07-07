@@ -387,6 +387,47 @@ test('semanticModelToInstructions does not duplicate text for structured shape g
   assert.equal(ids.includes('legend-text'), false);
 });
 
+test('semanticModelToInstructions preserves shape text when structured children are non-text', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'shape-text-with-decoration-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 640,
+      height: 360,
+      items: [{
+        id: 'callout',
+        role: 'shape',
+        bounds: { x: 40, y: 80, width: 220, height: 120 },
+        styleRefs: { objectStyle: 'callout-block', frameStyle: 'callout-frame', paragraphStyle: 'callout-label' },
+        content: { text: 'Main entry', runs: [{ text: 'Main entry', characterStyle: null }] },
+        structure: { parentId: 'p1', order: 1, containerPolicy: 'group' },
+      }, {
+        id: 'callout-dot',
+        role: 'shape',
+        bounds: { x: 56, y: 96, width: 12, height: 12 },
+        styleRefs: { objectStyle: 'legend-marker' },
+        structure: { parentId: 'callout', order: 2, containerPolicy: 'child' },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const byId = Object.fromEntries(instructions.pages[0].items.map((item) => [item.id, item]));
+
+  assert.equal(byId.callout.type, 'SHAPE');
+  assert.equal(byId['callout-dot'].type, 'SHAPE');
+  assert.ok(byId['callout-text'], 'expected shape text instruction to remain when children are non-text');
+  assert.equal(byId['callout-text'].type, 'TEXT');
+  assert.equal(byId['callout-text'].text, 'Main entry');
+});
+
 test('semanticModelToInstructions normalizes native table width delta only within the bounded tolerance', () => {
   const model = {
     kind: 'DocumentModel',

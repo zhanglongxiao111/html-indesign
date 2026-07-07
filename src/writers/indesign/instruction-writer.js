@@ -692,7 +692,7 @@ function borderDecorationBounds(bounds, side, width) {
 function objectTextItemFor(item, baseItem, layout, siblingItems = []) {
   if (baseItem.type !== 'SHAPE') return null;
   if (!item.content || !item.content.text) return null;
-  if (hasStructuredChildItems(item, siblingItems)) return null;
+  if (hasStructuredTextChildCarryingItemText(item, siblingItems)) return null;
   const padding = paddingForItem(item, layout);
   return {
     id: `${item.id}-text`,
@@ -709,14 +709,28 @@ function objectTextItemFor(item, baseItem, layout, siblingItems = []) {
   };
 }
 
-function hasStructuredChildItems(item, siblingItems = []) {
+function hasStructuredTextChildCarryingItemText(item, siblingItems = []) {
   if (!item || !item.id || !Array.isArray(siblingItems)) return false;
-  return siblingItems.some((candidate) => (
-    candidate
-    && candidate !== item
-    && candidate.structure
-    && candidate.structure.parentId === item.id
-  ));
+  const parentText = normalizeInstructionText(item.content && item.content.text);
+  if (!parentText) return false;
+  const childTexts = siblingItems
+    .filter((candidate) => (
+      candidate
+      && candidate !== item
+      && candidate.role === 'text'
+      && candidate.structure
+      && candidate.structure.parentId === item.id
+    ))
+    .sort((a, b) => Number(a.structure.order || 0) - Number(b.structure.order || 0))
+    .map((candidate) => normalizeInstructionText(candidate.content && candidate.content.text))
+    .filter(Boolean);
+  if (childTexts.length === 0) return false;
+  if (childTexts.some((text) => text === parentText)) return true;
+  return normalizeInstructionText(childTexts.join(' ')) === parentText;
+}
+
+function normalizeInstructionText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 function visibleBorder(edge) {
