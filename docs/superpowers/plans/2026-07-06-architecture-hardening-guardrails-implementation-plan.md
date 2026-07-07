@@ -258,6 +258,8 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
+进度：10a 实施中（已创建 `.superpowers/sdd/task-10a-brief.md`，准备调度实施子 agent 只做 `src/protocol/constants.js` 与 `src/protocol/index.js` 导出、focused protocol tests；10b/10c/10d 暂不触碰，避免把漂移裁定、共享工具收敛和 47 文件字面量迁移混入同一提交；2026-07-08）。
+
 - [ ] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [ ] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
 - [ ] **10c 共享工具收敛**：`src/shared/text.js` 按语义拆分命名（如 `normalizeLineEndings` / `collapseWhitespace` / NBSP 变体）；`safeClass` 族收敛到 `shared/style-utils.js`（合并前先确认 synth token → CSS class 链路行为不变，有差异的实现先取证再定统一行为）；单位换算收敛（`authoring-validator.js` 的动态换算属不同概念，命名区分不强并）；NAS 路径逻辑复用 `shared/nas-paths.js`。逐点替换引用并收 `baselines/G6.json`。
