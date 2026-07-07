@@ -80,6 +80,40 @@ test('G1 catches an adapters to writers require sample and reports the required 
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
 });
 
+test('G1.2 catches shared truth layers requiring downstream modules', () => {
+  const root = makeSampleProject({
+    'src/semantic-model/model.js': "module.exports = require('../writers/indesign/instructions-compiler');\n",
+    'src/writers/indesign/instructions-compiler.js': 'module.exports = {};\n',
+  });
+
+  const violations = collectG1Violations(root);
+
+  assert.deepEqual(violations, [
+    {
+      rule: 'G1.2 shared truth layers stay upstream',
+      file: 'src/semantic-model/model.js',
+      detail: 'requires downstream module src/writers/indesign/instructions-compiler.js',
+    },
+  ]);
+});
+
+test('G1.3 catches src modules requiring command wrapper scripts', () => {
+  const root = makeSampleProject({
+    'src/tools/run-export.js': "module.exports = require('../../scripts/export-wrapper');\n",
+    'scripts/export-wrapper.js': 'module.exports = {};\n',
+  });
+
+  const violations = collectG1Violations(root);
+
+  assert.deepEqual(violations, [
+    {
+      rule: 'G1.3 src must not require scripts',
+      file: 'src/tools/run-export.js',
+      detail: 'requires scripts/export-wrapper.js',
+    },
+  ]);
+});
+
 test('G1.4 catches semantic-reconstruction requires to local root public entries', () => {
   const root = makeSampleProject({
     'index.js': 'module.exports = {};\n',
@@ -104,6 +138,23 @@ test('G1.4 catches semantic-reconstruction requires to local root public entries
   assert.match(message, /Rule: G1\.4 semantic-reconstruction dependencies/);
   assert.match(message, /Reason: Semantic reconstruction may only depend on its own layer, semantic-model, protocol, or shared\./);
   assert.doesNotMatch(message, /Move cross-format orchestration into semantic-model/);
+});
+
+test('G1.5 catches plugin tools bypassing public module entries', () => {
+  const root = makeSampleProject({
+    'src/indesign-cli-plugin/tools/authoring-lint.js': "module.exports = require('../../authoring/lint');\n",
+    'src/authoring/lint.js': 'module.exports = {};\n',
+  });
+
+  const violations = collectG1Violations(root);
+
+  assert.deepEqual(violations, [
+    {
+      rule: 'G1.5 plugin uses public module entries',
+      file: 'src/indesign-cli-plugin/tools/authoring-lint.js',
+      detail: 'requires internal module src/authoring/lint.js',
+    },
+  ]);
 });
 
 test('G1.6 catches dependency cycles through local root public entries', () => {
