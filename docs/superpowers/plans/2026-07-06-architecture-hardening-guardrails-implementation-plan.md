@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9g 真实 InDesign 二次回环回归执行中（9f 已完成：实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；最终复审未发现 P0/P1/P2；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，sourceType-only 不再生成 current synthesized refs；`npm test` 883/883 通过；9g 首轮真实 E2E 暴露 `indesign-cli` 当前 JSON schema 解析问题，已由提交 `509b667` 修复并以 `npm test` 884/884 验证；随后暴露 `metrics-area-table` 原生表格 text frame overset，已由提交 `c137914` 将表格 frame slack 从固定 12pt 改为由行数驱动且至少 24pt，但最新真实 E2E 仍在同一表格 overset；已调度实施子 agent `Hume`（gpt-5.5 high）限定在 native table row-height / frame sizing / 测试范围内修复，主控继续只读核查并等待集成；2026-07-08）。
+进度：9g 真实 InDesign 二次回环回归执行中（9f 已完成：实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；最终复审未发现 P0/P1/P2；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，sourceType-only 不再生成 current synthesized refs；`npm test` 883/883 通过；9g 首轮真实 E2E 暴露 `indesign-cli` 当前 JSON schema 解析问题，已由提交 `509b667` 修复并以 `npm test` 884/884 验证；随后暴露 `metrics-area-table` 原生表格 text frame overset，`c137914` 的 frame slack 修复不足，实施子 agent `Hume` 已提交 `dc95801` 改为从 cell geometry 计算 presentation native table row/column sizing，普通真实 E2E `npm run e2e:indesign` 已通过且 `oversetTextFrames: 0`；完整 `--reverse-roundtrip --second-pass-roundtrip` 已越过 table overset，但仍失败于 reverse 校验未登记字段（如 `items[].content.runs[].inlineStyle`、`labels[].generated`、`items[].asset.*`、`items[].table.rows[].cells[].textStyle`），需继续收口字段注册/反向模型出口；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
