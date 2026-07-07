@@ -36,7 +36,7 @@
     "plugin:validate": "indesign-cli plugin validate .",
     "plugin:install": "indesign-cli plugin install .",
     "pack:dry-run": "npm pack --dry-run --json",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/indesign-e2e-runner.test.js\" \"test/public-api.test.js\" \"test/artifacts/**/*.test.js\" \"test/authoring/**/*.test.js\" \"test/e2e-fixtures/**/*.test.js\" \"test/fixtures/**/*.test.js\" \"test/indesign-cli-plugin/**/*.test.js\" \"test/indesign-executor/**/*.test.js\" \"test/indesign-reverse/**/*.test.js\" \"test/paged-html/**/*.test.js\" \"test/protocol/**/*.test.js\" \"test/reference/**/*.test.js\" \"test/semantic-model/**/*.test.js\" \"test/semantic-preset/**/*.test.js\" \"test/semantic-reconstruction/**/*.test.js\" \"test/shared/**/*.test.js\" \"test/skills/**/*.test.js\""
   },
   "keywords": [
     "indesign",

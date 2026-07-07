@@ -53,11 +53,19 @@ test('npm package ships only runtime plugin files and keeps workspace artifacts 
 
 test('npm package exposes plugin validation helpers and runtime browser dependencies', () => {
   const pkg = readJson('package.json');
+  const lock = readJson('package-lock.json');
   assert.equal(pkg.scripts['plugin:validate'], 'indesign-cli plugin validate .');
   assert.equal(pkg.scripts['plugin:install'], 'indesign-cli plugin install .');
   assert.equal(pkg.scripts['pack:dry-run'], 'npm pack --dry-run --json');
-  assert.equal(pkg.dependencies.playwright, '^1.56.0');
+  assert.equal(pkg.dependencies.playwright, lock.packages['node_modules/playwright'].version);
   assert.equal(Object.prototype.hasOwnProperty.call(pkg.devDependencies || {}, 'playwright'), false);
+});
+
+test('npm test does not scan ignored workspace artifacts', () => {
+  const pkg = readJson('package.json');
+  assert.doesNotMatch(pkg.scripts.test, /test\/\*\*\/\*\.test\.js/);
+  assert.doesNotMatch(pkg.scripts.test, /test[\\/]workspace/);
+  assert.match(pkg.scripts.test, /node --test/);
 });
 
 test('npm package has a bilingual root README with Sa install commands', () => {

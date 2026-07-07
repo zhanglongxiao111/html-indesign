@@ -107,8 +107,8 @@ npm test
 
 ### 0. 准备执行环境
 
-- [ ] `git status --short --branch` 记录起点；`npm test` 确认全绿。
-- [ ] 通读 spec 与审查报告；确认理解 §6 治理规则。
+- [x] `git status --short --branch` 记录起点；`npm test` 确认全绿。
+- [x] 通读 spec 与审查报告；确认理解 §6 治理规则。
 
 ### 1. 护栏基础设施
 
