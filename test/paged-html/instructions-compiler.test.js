@@ -821,7 +821,7 @@ test('compileInstructions gives presentation tables enough native row height for
   const rowTotal = table.rowHeights.reduce((sum, height) => sum + height, 0);
 
   assert.equal(table.rowHeights[0] >= Number(minHeight.toFixed(2)), true);
-  assert.equal(table.bounds.height >= Number((rowTotal + 12).toFixed(2)), true);
+  assert.equal(table.bounds.height >= Number((rowTotal + 24).toFixed(2)), true);
 });
 
 test('compileInstructions preserves native table column widths and row heights', async () => {

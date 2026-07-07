@@ -76,7 +76,9 @@ function scaleBounds(bounds, layout) {
 
 function nativeTableBounds(bounds, rowHeights, layout) {
   const rowTotal = (rowHeights || []).reduce((sum, height) => sum + Number(height || 0), 0);
-  const slack = layout && layout.unitMode === 'presentation' ? 12 : 1;
+  const slack = layout && layout.unitMode === 'presentation'
+    ? Math.max(24, (rowHeights || []).length * 4)
+    : 1;
   const requiredHeight = rowTotal > 0 ? rowTotal + slack : 0;
   if (requiredHeight <= Number(bounds.height || 0)) return bounds;
   return {
