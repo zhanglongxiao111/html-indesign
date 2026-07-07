@@ -4,6 +4,7 @@ const {
 } = require('./reverse-snapshot-structure');
 
 const P0_CODES = new Set([
+  'REVERSE_SNAPSHOT_INPUT_INVALID',
   'REVERSE_SNAPSHOT_PAGE_COUNT_CHANGED',
   'REVERSE_SNAPSHOT_PAGE_MISSING',
   'REVERSE_SNAPSHOT_PAGE_EXTRA',

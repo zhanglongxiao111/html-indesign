@@ -5,7 +5,8 @@ const cheerio = require('cheerio');
 function authorPackageContentInventory(root) {
   const packageRoot = path.resolve(root);
   const config = JSON.parse(fs.readFileSync(path.join(packageRoot, 'deck.config.json'), 'utf8'));
-  const assetAliases = readAssetAliases(packageRoot);
+  const warnings = [];
+  const assetAliases = readAssetAliases(packageRoot, new Set(), warnings);
   const pages = (config.pages || []).map((page) => {
     const filePath = path.join(packageRoot, page.file);
     const html = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
@@ -19,7 +20,7 @@ function authorPackageContentInventory(root) {
       geometry: geometryDigest($),
     };
   });
-  return inventoryResult(pages);
+  return inventoryResult(pages, warnings);
 }
 
 function documentModelContentInventory(model) {
@@ -42,7 +43,12 @@ function documentModelContentInventory(model) {
 
 function compareContentInventories(expected, actual, options = {}) {
   const errors = [];
-  const warnings = [];
+  const warnings = [
+    ...inputWarnings(expected, 'expected'),
+    ...inputWarnings(actual, 'actual'),
+  ];
+  validateInventoryInput(expected, 'expected', errors);
+  validateInventoryInput(actual, 'actual', errors);
   comparePageCounts(expected, actual, errors);
   const actualPages = new Map((actual.pages || []).map((page) => [page.id, page]));
   for (const expectedPage of expected.pages || []) {
@@ -166,10 +172,11 @@ function modelRoleDigest(items) {
     .sort((a, b) => a.role.localeCompare(b.role));
 }
 
-function inventoryResult(pages) {
+function inventoryResult(pages, warnings = []) {
   return {
     kind: 'AuthorContentInventory',
     pages,
+    warnings,
     summary: {
       pages: pages.length,
       texts: pages.reduce((sum, page) => sum + page.textDigest.length, 0),
@@ -187,6 +194,29 @@ function comparePageCounts(expected, actual, errors) {
       actual: (actual.pages || []).length,
     });
   }
+}
+
+function validateInventoryInput(inventory, side, errors) {
+  if (!inventory || !Array.isArray(inventory.pages)) {
+    errors.push({
+      code: 'CONTENT_INVENTORY_INPUT_INVALID',
+      side,
+      reason: 'pages must be a non-empty array',
+    });
+    return;
+  }
+  if (inventory.pages.length === 0) {
+    errors.push({
+      code: 'CONTENT_INVENTORY_INPUT_INVALID',
+      side,
+      reason: 'pages must not be empty',
+    });
+  }
+}
+
+function inputWarnings(inventory, side) {
+  return (inventory && Array.isArray(inventory.warnings) ? inventory.warnings : [])
+    .map((warning) => ({ ...warning, side }));
 }
 
 function missingByIdentity(expected, actual) {
@@ -228,7 +258,7 @@ function resourceIdentity(root, value) {
   return path.normalize(raw).replace(/^\.?[\\/]+/, '');
 }
 
-function readAssetAliases(root, seenReports = new Set()) {
+function readAssetAliases(root, seenReports = new Set(), warnings = []) {
   const reportPath = path.join(root, 'reports', 'authoring-report.json');
   if (!fs.existsSync(reportPath)) return new Map();
   const normalizedReportPath = path.normalize(reportPath);
@@ -252,7 +282,12 @@ function readAssetAliases(root, seenReports = new Set()) {
       }
     }
     return aliases;
-  } catch (_) {
+  } catch (error) {
+    warnings.push({
+      code: 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID',
+      reportPath: normalizedReportPath,
+      message: String(error && error.message || error),
+    });
     return new Map();
   }
 }
@@ -266,7 +301,7 @@ function resolveTransitiveAssetAlias(originalPath, seenReports) {
     const reportPath = path.join(current, 'reports', 'authoring-report.json');
     if (fs.existsSync(reportPath)) {
       const relativePath = path.relative(current, absolutePath);
-      const aliases = readAssetAliases(current, new Set(seenReports));
+      const aliases = readAssetAliases(current, new Set(seenReports), []);
       const alias = aliases.get(resourceIdentity(null, relativePath));
       if (alias && alias !== resourceIdentity(null, originalPath)) return alias;
     }

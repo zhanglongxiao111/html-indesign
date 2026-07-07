@@ -62,6 +62,16 @@ test('compareStructureSignatures ignores preview-only data-id-ignore nodes and w
   assert.deepEqual(diff.errors, []);
 });
 
+test('compareStructureSignatures invalid-input 必须 fail for empty or missing pages', () => {
+  const empty = { kind: 'AuthorStructureSignature', pages: [], summary: { pages: 0 } };
+  const missing = { kind: 'AuthorStructureSignature', summary: { pages: 0 } };
+
+  const diff = compareStructureSignatures(empty, missing);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'STRUCTURE_SIGNATURE_INPUT_INVALID'), true);
+});
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

@@ -29,6 +29,8 @@ function authorPackageStructureSignature(root) {
 function compareStructureSignatures(expected, actual) {
   const errors = [];
   const warnings = [];
+  validateStructureSignatureInput(expected, 'expected', errors);
+  validateStructureSignatureInput(actual, 'actual', errors);
   const actualPages = new Map((actual.pages || []).map((page) => [page.id, page]));
   for (const expectedPage of expected.pages || []) {
     const actualPage = actualPages.get(expectedPage.id);
@@ -45,6 +47,24 @@ function compareStructureSignatures(expected, actual) {
     expected: expected.summary,
     actual: actual.summary,
   };
+}
+
+function validateStructureSignatureInput(signature, side, errors) {
+  if (!signature || !Array.isArray(signature.pages)) {
+    errors.push({
+      code: 'STRUCTURE_SIGNATURE_INPUT_INVALID',
+      side,
+      reason: 'pages must be a non-empty array',
+    });
+    return;
+  }
+  if (signature.pages.length === 0) {
+    errors.push({
+      code: 'STRUCTURE_SIGNATURE_INPUT_INVALID',
+      side,
+      reason: 'pages must not be empty',
+    });
+  }
 }
 
 function comparePageNodes(expectedPage, actualPage, errors) {

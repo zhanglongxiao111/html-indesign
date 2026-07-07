@@ -251,6 +251,27 @@ test('compareContentInventories still reports real text loss after CJK whitespac
   assert.equal(diff.errors[0].code, 'CONTENT_TEXT_CHANGED');
 });
 
+test('compareContentInventories invalid-input 必须 fail for empty or missing pages', () => {
+  const empty = { kind: 'AuthorContentInventory', pages: [], summary: { pages: 0 } };
+  const missing = { kind: 'AuthorContentInventory', summary: { pages: 0 } };
+
+  const diff = compareContentInventories(empty, missing);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'CONTENT_INVENTORY_INPUT_INVALID'), true);
+});
+
+test('authorPackageContentInventory warns when asset aliases report is malformed', () => {
+  const root = path.resolve('test/workspace/content-inventory-malformed-asset-report');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(root, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(path.join(root, 'reports/authoring-report.json'), '{broken json');
+
+  const inventory = authorPackageContentInventory(root);
+
+  assert.equal(inventory.warnings.some((warning) => warning.code === 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID'), true);
+});
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

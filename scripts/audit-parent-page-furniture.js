@@ -54,7 +54,7 @@ function run(options) {
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, json, 'utf8');
     return JSON.stringify({
-      ok: true,
+      ok: report.ok,
       out: outPath,
       summary: report.summary,
       metrics: report.metrics,
@@ -82,8 +82,13 @@ function usage() {
 
 if (require.main === module) {
   try {
-    const output = run(parseArgs(process.argv.slice(2)));
+    const options = parseArgs(process.argv.slice(2));
+    const output = run(options);
     process.stdout.write(`${output}\n`);
+    if (!options.help) {
+      const parsed = JSON.parse(output);
+      if (!parsed || typeof parsed.ok !== 'boolean' || parsed.ok === false) process.exitCode = 1;
+    }
   } catch (error) {
     process.stderr.write(`${String(error && error.message || error)}\n`);
     process.exitCode = 1;

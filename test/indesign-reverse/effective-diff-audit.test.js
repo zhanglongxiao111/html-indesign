@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   auditEffectiveDiff,
@@ -139,6 +140,28 @@ test('audit-effective-diff CLI writes a gate report with baseline and stability 
   assert.equal(report.p1.budget, 1);
   assert.equal(report.p1.count, 1);
   assert.equal(report.stability.ok, true);
+});
+
+test('audit-effective-diff invalid-input 必须 fail', () => {
+  const report = auditEffectiveDiff({ pages: [] }, { pages: [] });
+  assert.equal(report.ok, false);
+  assert.equal(report.p0.issues.some((issue) => issue.code === 'REVERSE_SNAPSHOT_INPUT_INVALID'), true);
+
+  const root = path.resolve('test/workspace/effective-diff-invalid-input');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const expectedPath = path.join(root, 'expected.json');
+  const actualPath = path.join(root, 'actual.json');
+  fs.writeFileSync(expectedPath, JSON.stringify({ pages: [] }), 'utf8');
+  fs.writeFileSync(actualPath, JSON.stringify({ pages: [] }), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-effective-diff.js'),
+    '--expected', expectedPath,
+    '--actual', actualPath,
+  ], { encoding: 'utf8' });
+
+  assert.notEqual(result.status, 0, result.stdout);
 });
 
 function snapshot(items) {

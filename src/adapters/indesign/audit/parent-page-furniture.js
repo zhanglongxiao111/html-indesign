@@ -10,6 +10,10 @@ function auditParentPageFurniture(sourceSnapshot, actualSnapshot, options = {}) 
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const source = sourceSnapshot || {};
   const actual = actualSnapshot || {};
+  const errors = [
+    ...validateParentFurnitureSnapshot(source, 'source'),
+    ...validateParentFurnitureSnapshot(actual, 'actual'),
+  ];
   const candidates = sourceFurnitureCandidates(source, opts);
   const actualParentItems = parentFurnitureItems(actual, opts);
   const actualPageItems = pageFurnitureItems(actual, opts);
@@ -25,6 +29,9 @@ function auditParentPageFurniture(sourceSnapshot, actualSnapshot, options = {}) 
   return {
     kind: 'ParentPageFurnitureAudit',
     version: 1,
+    ok: errors.length === 0,
+    errors,
+    warnings: [],
     thresholds: {
       minRepeatPages: opts.minRepeatPages,
       minRepeatPageRatio: opts.minRepeatPageRatio,
@@ -58,6 +65,59 @@ function auditParentPageFurniture(sourceSnapshot, actualSnapshot, options = {}) 
     pageResidue,
     stability: parentPageStability(actual, options.secondPassSnapshot, opts),
   };
+}
+
+function validateParentFurnitureSnapshot(snapshot, side) {
+  const errors = [];
+  const pages = Array.isArray(snapshot && snapshot.pages) ? snapshot.pages : [];
+  const parentPages = Array.isArray(snapshot && snapshot.parentPages) ? snapshot.parentPages : [];
+  if (pages.length === 0 && parentPages.length === 0) {
+    errors.push({
+      code: 'PARENT_PAGE_FURNITURE_INPUT_INVALID',
+      side,
+      reason: 'pages or parentPages must contain audit evidence',
+    });
+  }
+  for (const page of pages) {
+    if (!hasValidBounds(page && page.bounds)) {
+      errors.push({
+        code: 'PARENT_PAGE_FURNITURE_INPUT_INVALID',
+        side,
+        pageId: page && (page.id || page.name || String(page.index || '')),
+        reason: 'page bounds are required',
+      });
+    }
+    validateFurnitureItems(itemList(page), side, page, errors);
+  }
+  for (const parentPage of parentPages) {
+    validateFurnitureItems(itemList(parentPage), side, parentPage, errors);
+  }
+  return errors;
+}
+
+function validateFurnitureItems(items, side, container, errors) {
+  for (const item of items || []) {
+    if (hasValidBounds(item && item.bounds)) continue;
+    errors.push({
+      code: 'PARENT_PAGE_FURNITURE_INPUT_INVALID',
+      side,
+      pageId: container && (container.id || container.name || String(container.index || '')),
+      itemId: item && item.id != null ? String(item.id) : null,
+      reason: 'item bounds are required',
+    });
+  }
+}
+
+function hasValidBounds(bounds) {
+  return Boolean(bounds)
+    && finiteNumber(bounds.x)
+    && finiteNumber(bounds.y)
+    && finiteNumber(bounds.width)
+    && finiteNumber(bounds.height);
+}
+
+function finiteNumber(value) {
+  return Number.isFinite(Number(value));
 }
 
 function sourceFurnitureCandidates(snapshot, options) {

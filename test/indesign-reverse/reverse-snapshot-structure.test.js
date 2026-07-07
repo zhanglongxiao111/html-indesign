@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   reverseSnapshotStructureSignature,
@@ -643,6 +646,55 @@ test('compareReverseSnapshotStructures still reports stroke alignment when strok
   assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_VISUAL_STYLE_CHANGED' && issue.field === 'strokeAlignment'), true);
 });
 
+test('audit-reverse-snapshot-structure invalid-input 必须 fail', () => {
+  const diff = compareReverseSnapshotStructures({ pages: [] }, { pages: [] });
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_INPUT_INVALID'), true);
+
+  const root = path.resolve('test/workspace/reverse-snapshot-structure-invalid-input');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const expectedPath = path.join(root, 'expected.json');
+  const actualPath = path.join(root, 'actual.json');
+  fs.writeFileSync(expectedPath, JSON.stringify({ pages: [] }), 'utf8');
+  fs.writeFileSync(actualPath, JSON.stringify({ pages: [] }), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-reverse-snapshot-structure.js'),
+    '--expected', expectedPath,
+    '--actual', actualPath,
+  ], { encoding: 'utf8' });
+
+  assert.notEqual(result.status, 0, result.stdout);
+});
+
+test('compareReverseSnapshotStructures fails when vector geometry is missing on both sides', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'filled-vector',
+      type: 'Rectangle',
+      bounds: { x: 100, y: 120, width: 120, height: 80 },
+      visualStyle: { fillColor: '#eeeeee', strokeColor: null, strokeWeight: null },
+      vectorGeometry: null,
+    }),
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([
+    vectorItem({
+      id: 'filled-vector',
+      type: 'Rectangle',
+      bounds: { x: 100, y: 120, width: 120, height: 80 },
+      visualStyle: { fillColor: '#eeeeee', strokeColor: null, strokeWeight: null },
+      vectorGeometry: null,
+    }),
+  ]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_VECTOR_GEOMETRY_MISSING'), true);
+});
+
 function snapshotWithItems(items) {
   return { pages: [page('1', items)] };
 }
@@ -669,7 +721,9 @@ function vectorItem(overrides = {}) {
     zIndex: overrides.zIndex || 1,
     labels: [{ kind: 'item', id: overrides.id || 'vector-1' }],
     visualStyle: overrides.visualStyle || { strokeColor: '#c8102e', strokeWeight: 2 },
-    vectorGeometry: overrides.vectorGeometry || lineGeometry(100, 120, 220, 120),
+    vectorGeometry: Object.prototype.hasOwnProperty.call(overrides, 'vectorGeometry')
+      ? overrides.vectorGeometry
+      : lineGeometry(100, 120, 220, 120),
   };
 }
 

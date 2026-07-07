@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   auditParentPageFurniture,
@@ -166,6 +169,38 @@ test('auditParentPageFurniture measures second pass parent page stability', () =
   assert.equal(report.stability.stable, false);
   assert.equal(report.stability.parentPageItemDelta, 1);
   assert.equal(report.stability.duplicateParentFurnitureCount, 1);
+});
+
+test('audit-parent-page-furniture invalid-input 必须 fail', () => {
+  const empty = auditParentPageFurniture(snapshot([]), snapshot([]));
+  assert.equal(empty.ok, false);
+  assert.equal(empty.errors.some((issue) => issue.code === 'PARENT_PAGE_FURNITURE_INPUT_INVALID'), true);
+
+  const missingBoundsItem = lineItem('rule-without-bounds');
+  delete missingBoundsItem.bounds;
+  const malformed = auditParentPageFurniture(
+    snapshot([page('1', [missingBoundsItem])]),
+    snapshot([page('1', [])]),
+  );
+
+  assert.equal(malformed.ok, false);
+  assert.equal(malformed.errors.some((issue) => issue.code === 'PARENT_PAGE_FURNITURE_INPUT_INVALID'), true);
+
+  const root = path.resolve('test/workspace/parent-page-furniture-invalid-input');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const sourcePath = path.join(root, 'source.json');
+  const actualPath = path.join(root, 'actual.json');
+  fs.writeFileSync(sourcePath, JSON.stringify(snapshot([])), 'utf8');
+  fs.writeFileSync(actualPath, JSON.stringify(snapshot([])), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-parent-page-furniture.js'),
+    '--source', sourcePath,
+    '--actual', actualPath,
+  ], { encoding: 'utf8' });
+
+  assert.notEqual(result.status, 0, result.stdout);
 });
 
 function snapshot(pages, overrides = {}) {

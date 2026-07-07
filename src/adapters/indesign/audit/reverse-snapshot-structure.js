@@ -69,6 +69,8 @@ function compareReverseSnapshotStructures(expectedInput, actualInput, options = 
   const actual = ensureSignature(actualInput, opts);
   const errors = [];
   const warnings = [];
+  validateReverseSnapshotStructureInput(expected, 'expected', errors);
+  validateReverseSnapshotStructureInput(actual, 'actual', errors);
 
   if ((expected.pages || []).length !== (actual.pages || []).length) {
     errors.push({
@@ -106,6 +108,24 @@ function compareReverseSnapshotStructures(expectedInput, actualInput, options = 
 function ensureSignature(input, options) {
   if (input && input.kind === 'ReverseSnapshotStructureSignature') return input;
   return reverseSnapshotStructureSignature(input || {}, options);
+}
+
+function validateReverseSnapshotStructureInput(signature, side, errors) {
+  if (!signature || !Array.isArray(signature.pages)) {
+    errors.push({
+      code: 'REVERSE_SNAPSHOT_INPUT_INVALID',
+      side,
+      reason: 'pages must be a non-empty array',
+    });
+    return;
+  }
+  if (signature.pages.length === 0) {
+    errors.push({
+      code: 'REVERSE_SNAPSHOT_INPUT_INVALID',
+      side,
+      reason: 'pages must not be empty',
+    });
+  }
 }
 
 function pageSignature(page, options) {
@@ -650,7 +670,25 @@ function compareItem(pageId, expected, actual, errors, options) {
       actual: actual.effects,
     });
   }
+  if (requiresVectorGeometry(expected) && requiresVectorGeometry(actual) && !expected.vectorGeometry && !actual.vectorGeometry) {
+    errors.push({
+      code: 'REVERSE_SNAPSHOT_VECTOR_GEOMETRY_MISSING',
+      pageId,
+      itemId: expected.id,
+      expected: expected.vectorGeometry,
+      actual: actual.vectorGeometry,
+    });
+    return;
+  }
   compareVectorGeometry(pageId, expected, actual, errors, options);
+}
+
+function requiresVectorGeometry(item) {
+  if (!item || item.asset || !isVectorItem(item)) return false;
+  return hasFillPaint(item)
+    || hasStrokePaint(item)
+    || Boolean(item.effects)
+    || item.type === 'GraphicLine';
 }
 
 function compareRelativeZOrder(pageId, matchedItems, errors) {
