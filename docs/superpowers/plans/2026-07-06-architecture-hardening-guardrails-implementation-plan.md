@@ -234,7 +234,7 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9c 实现已提交，复审中（执行提交 `410cb15`；InDesign adapter 将缺省 item `semantic` 改为 `null`，styleRefs 按 registry allowedKeys 过滤，`effects` / `textFrameStyle` 迁入 `extensions.indesign.*`，反向 HTML 直接消费者已切新路径；2026-07-08）。
+进度：9c 复审发现阻断问题，修复中（执行提交 `410cb15`；复审指出 reverse model 已迁入 `extensions.indesign.effects`，但 InDesign writer 仍只读旧平铺 `item.effects`，会在回写 instructions 时静默丢失 effects；需直接消费者改读新路径且不得引入旧路径 fallback；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
