@@ -321,6 +321,7 @@ function itemModelFor(item, page, layout) {
   });
   const parentPageName = attrs['data-id-parent-page-item'] || null;
   const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;
+  const extensions = itemExtensionsFor(item);
   return {
     id: item.id,
     raw: item,
@@ -347,7 +348,7 @@ function itemModelFor(item, page, layout) {
     table: item.table || null,
     vectorGeometry: item.vectorGeometry || vectorFacts.vectorGeometry || null,
     visualStyle,
-    effects: item.effects || null,
+    ...(extensions ? { extensions } : {}),
     labels: [createProtocolLabel({
       kind: 'item',
       id: item.id,
@@ -366,6 +367,15 @@ function itemModelFor(item, page, layout) {
       layout: itemLayout,
     })],
   };
+}
+
+function itemExtensionsFor(item) {
+  const indesign = {};
+  if (item.effects) {
+    indesign.effects = item.effects;
+  }
+  if (!Object.keys(indesign).length) return null;
+  return { indesign };
 }
 
 function filterItemStyleRefs(styleRefs) {

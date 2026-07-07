@@ -22,6 +22,48 @@ test('snapshotToSemanticModel builds document pages, styles, assets, and items',
   assert.equal(Array.isArray(model.assets), true);
 });
 
+test('snapshotToSemanticModel emits InDesign effects through item extensions', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'gradient-wash',
+        role: 'shape',
+        tagName: 'div',
+        classList: ['wash'],
+        attributes: { 'data-id-object': '' },
+        rectPx: { x: 10, y: 12, width: 40, height: 20 },
+        boundsMm: { x: 10, y: 12, width: 40, height: 20 },
+        computedStyle: {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backgroundImage: 'linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0))',
+          borderTopColor: 'rgba(0, 0, 0, 0)',
+          borderTopWidth: '0px',
+          borderTopStyle: 'none',
+          borderRadius: '0px',
+          opacity: '1',
+          overflow: 'visible',
+        },
+        authoredStyle: {},
+        text: '',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'print' });
+
+  const wash = model.pages[0].items[0];
+  assert.equal(Object.hasOwn(wash, 'effects'), false);
+  assert.equal(wash.extensions.indesign.effects.gradientFeather.scope, 'fill');
+});
+
 test('snapshotToSemanticModel preserves page layout and parent page metadata', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'inline.html' },
