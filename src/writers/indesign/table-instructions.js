@@ -1,6 +1,9 @@
 const { round } = require('../../shared/geometry');
 const { itemBounds } = require('../../semantic-model/layout');
 
+// Native InDesign table rows need a small per-row reserve beyond browser
+// cell geometry: presentation E2E showed row edge/baseline allocation can
+// exceed captured CSS leading + padding by about 2pt without changing layout.
 const PRESENTATION_NATIVE_TABLE_ROW_RESERVE_PT = 2;
 
 function tableRowsForInstruction(item, page, layout) {

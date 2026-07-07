@@ -339,6 +339,86 @@ test('semanticModelToInstructions emits bounded text fit for observed reverse te
   });
 });
 
+test('semanticModelToInstructions does not duplicate text for structured shape groups with child text', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'group-text-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 640,
+      height: 360,
+      items: [{
+        id: 'legend',
+        role: 'shape',
+        bounds: { x: 40, y: 80, width: 220, height: 120 },
+        styleRefs: { objectStyle: 'legend-block', frameStyle: 'legend-frame' },
+        content: { text: 'One\nTwo', runs: [] },
+        structure: { parentId: 'p1', order: 1, containerPolicy: 'group' },
+      }, {
+        id: 'legend-one',
+        role: 'text',
+        bounds: { x: 60, y: 100, width: 180, height: 14 },
+        styleRefs: { paragraphStyle: 'legend-label' },
+        content: { text: 'One', runs: [{ text: 'One', characterStyle: null }] },
+        structure: { parentId: 'legend', order: 2, containerPolicy: 'child' },
+      }, {
+        id: 'legend-two',
+        role: 'text',
+        bounds: { x: 60, y: 130, width: 180, height: 14 },
+        styleRefs: { paragraphStyle: 'legend-label' },
+        content: { text: 'Two', runs: [{ text: 'Two', characterStyle: null }] },
+        structure: { parentId: 'legend', order: 3, containerPolicy: 'child' },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const ids = instructions.pages[0].items.map((item) => item.id);
+
+  assert.equal(ids.includes('legend'), true);
+  assert.equal(ids.includes('legend-one'), true);
+  assert.equal(ids.includes('legend-two'), true);
+  assert.equal(ids.includes('legend-text'), false);
+});
+
+test('semanticModelToInstructions normalizes native table width delta only within the bounded tolerance', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'table-width-delta-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 640,
+      height: 360,
+      items: [
+        tableItem('within-rounding', { x: 40, y: 40, width: 100, height: 30 }, [33, 33, 33]),
+        tableItem('over-boundary', { x: 40, y: 90, width: 100, height: 30 }, [32.99, 33, 33]),
+        tableItem('percent-boundary', { x: 40, y: 140, width: 240, height: 30 }, [79.2, 79.2, 79.2]),
+        tableItem('percent-over-boundary', { x: 40, y: 190, width: 240, height: 30 }, [79.19, 79.2, 79.2]),
+      ],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const byId = Object.fromEntries(instructions.pages[0].items.map((item) => [item.id, item]));
+
+  assert.deepEqual(byId['within-rounding'].columnWidths, [33, 33, 34]);
+  assert.deepEqual(byId['over-boundary'].columnWidths, [32.99, 33, 33]);
+  assert.deepEqual(byId['percent-boundary'].columnWidths, [79.2, 79.2, 81.6]);
+  assert.deepEqual(byId['percent-over-boundary'].columnWidths, [79.19, 79.2, 79.2]);
+});
+
 test('semanticModelToInstructions reads InDesign effects from item extensions', () => {
   const model = {
     kind: 'DocumentModel',
@@ -1263,3 +1343,32 @@ test('semanticModelToInstructions converts manual placed content geometry to abs
   assert.deepEqual(graphic.placed.contentBounds, { x: 70, y: 60, width: 320, height: 210 });
   assert.deepEqual(graphic.contentBounds, { x: 70, y: 60, width: 320, height: 210 });
 });
+
+function tableItem(id, bounds, widths) {
+  return {
+    id,
+    role: 'table',
+    bounds,
+    styleRefs: { tableStyle: 'data-table' },
+    content: {
+      columnCount: widths.length,
+      rows: [{
+        index: 0,
+        cells: widths.map((width, index) => ({
+          index,
+          text: `C${index + 1}`,
+          bounds: {
+            x: widths.slice(0, index).reduce((sum, value) => sum + value, bounds.x),
+            y: bounds.y,
+            width,
+            height: bounds.height,
+          },
+          pointSize: 10,
+          leading: 12,
+          padding: { top: 0, right: 0, bottom: 0, left: 0 },
+          borderWeight: 0,
+        })),
+      }],
+    },
+  };
+}

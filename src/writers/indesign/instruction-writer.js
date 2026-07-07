@@ -64,7 +64,7 @@ function semanticModelToInstructions(model, options = {}) {
     const guides = guideInstructionsFor(page);
     const parentPageRef = effectiveParentPageRefForPage(page, effectiveParentPageKeys);
     const items = [
-      ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {}, report)),
+      ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {}, report, page.items)),
     ].filter(Boolean).sort((a, b) => a.zIndex - b.zIndex);
     return {
       id: page.id,
@@ -138,7 +138,7 @@ function parentPageInstructionFor(parentPage, model, layout, options, report) {
     computedStyle: {},
   };
   const items = (parentPage.items || [])
-    .flatMap((item) => instructionItemsFor(item, model.assets || [], pageContext, layout, options, model.styles || {}, report))
+    .flatMap((item) => instructionItemsFor(item, model.assets || [], pageContext, layout, options, model.styles || {}, report, parentPage.items || []))
     .filter(Boolean)
     .sort((a, b) => a.zIndex - b.zIndex);
   const guides = guideInstructionsFor({
@@ -186,12 +186,12 @@ function parentPageBounds(parentPage, model) {
   };
 }
 
-function instructionItemsFor(modelItem, assets, page, layout, options, styles, report) {
+function instructionItemsFor(modelItem, assets, page, layout, options, styles, report, siblingItems = []) {
   const baseItem = instructionItemFor(modelItem, assets, page, layout, options, styles, report);
   if (!baseItem) return [];
   return [
     baseItem,
-    ...decorationItemsFor(modelItem, baseItem, layout),
+    ...decorationItemsFor(modelItem, baseItem, layout, siblingItems),
   ].map(ensureItemLabels);
 }
 
@@ -630,10 +630,10 @@ function styleValue(item, prop) {
     || '';
 }
 
-function decorationItemsFor(item, baseItem, layout) {
+function decorationItemsFor(item, baseItem, layout, siblingItems = []) {
   if (baseItem.type !== 'SHAPE' && baseItem.type !== 'GRAPHIC') return [];
   const decorations = borderDecorationItemsFor(item, baseItem, layout);
-  const objectText = objectTextItemFor(item, baseItem, layout);
+  const objectText = objectTextItemFor(item, baseItem, layout, siblingItems);
   if (objectText) decorations.push(objectText);
   return decorations;
 }
@@ -689,9 +689,10 @@ function borderDecorationBounds(bounds, side, width) {
   return { x: bounds.x, y: bounds.y, width: safeWidth, height: bounds.height };
 }
 
-function objectTextItemFor(item, baseItem, layout) {
+function objectTextItemFor(item, baseItem, layout, siblingItems = []) {
   if (baseItem.type !== 'SHAPE') return null;
   if (!item.content || !item.content.text) return null;
+  if (hasStructuredChildItems(item, siblingItems)) return null;
   const padding = paddingForItem(item, layout);
   return {
     id: `${item.id}-text`,
@@ -706,6 +707,16 @@ function objectTextItemFor(item, baseItem, layout) {
     paragraphStyle: item.styleRefs.paragraphStyle,
     runs: item.content.runs || [{ text: item.content.text, characterStyle: null }],
   };
+}
+
+function hasStructuredChildItems(item, siblingItems = []) {
+  if (!item || !item.id || !Array.isArray(siblingItems)) return false;
+  return siblingItems.some((candidate) => (
+    candidate
+    && candidate !== item
+    && candidate.structure
+    && candidate.structure.parentId === item.id
+  ));
 }
 
 function visibleBorder(edge) {
