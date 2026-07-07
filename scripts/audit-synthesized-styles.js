@@ -10,7 +10,8 @@ function main(argv = process.argv.slice(2)) {
     throw new Error('SYNTHESIZED_STYLE_AUDIT_MODEL_REQUIRED: pass --model <semantic-model.json>');
   }
   const modelPath = path.resolve(args.model);
-  const model = JSON.parse(fs.readFileSync(modelPath, 'utf8'));
+  const model = readJson(modelPath);
+  assertDocumentModel(model, modelPath);
   const report = auditSynthesizedStyles(model);
   const json = JSON.stringify(report, null, 2);
   if (args.out) {
@@ -32,14 +33,37 @@ function parseArgs(argv) {
       continue;
     }
     if (arg === '--model') {
-      args.model = argv[++index];
+      args.model = readValue(argv, ++index, arg);
     } else if (arg === '--out') {
-      args.out = argv[++index];
+      args.out = readValue(argv, ++index, arg);
     } else {
       throw new Error(`SYNTHESIZED_STYLE_AUDIT_ARG_UNKNOWN:${arg}`);
     }
   }
   return args;
+}
+
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw invalidInput(`Invalid JSON input: ${file}: ${error.message}`);
+  }
+}
+
+function assertDocumentModel(model, file) {
+  if (!model || model.kind !== 'DocumentModel') {
+    throw invalidInput(`Expected DocumentModel semantic model: ${file}`);
+  }
+}
+
+function readValue(argv, index, arg) {
+  if (index >= argv.length || argv[index].startsWith('--')) throw new Error(`Missing value for ${arg}`);
+  return argv[index];
+}
+
+function invalidInput(message) {
+  return new Error(`SYNTHESIZED_STYLE_INVALID_INPUT: ${message}`);
 }
 
 if (require.main === module) {

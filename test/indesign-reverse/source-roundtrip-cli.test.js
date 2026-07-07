@@ -64,6 +64,26 @@ test('audit-reverse-author-roundtrip cli can fail on exact source drift', () => 
   assert.equal(report.sourceDrift.stats.filesChanged, 1);
 });
 
+test('audit-reverse-author-roundtrip invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-invalid-input');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  writePackage(reverseRoot, '<section class="page"><h1>Contents</h1></section>');
+  fs.writeFileSync(path.join(sourceRoot, 'deck.config.json'), '{ "pages": [', 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-reverse-author-roundtrip.js'),
+    '--source', sourceRoot,
+    '--reverse', reverseRoot,
+    '--json',
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ROUNDTRIP_INVALID_INPUT/);
+});
+
 function writePackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

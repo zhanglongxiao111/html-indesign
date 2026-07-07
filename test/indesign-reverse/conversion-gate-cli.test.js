@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   parseArgs,
@@ -144,6 +145,25 @@ test('audit-conversion-gate rejects malformed trusted source reports instead of 
   assert.deepEqual(summary.failures.map((failure) => failure.code), [
     'CONVERSION_GATE_TRUSTED_SOURCE_REPORT_INVALID',
   ]);
+});
+
+test('audit-conversion-gate invalid-input 必须 fail', () => {
+  const root = fixtureRoot('conversion-gate-invalid-input');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', { kind: 'not-effective-diff' });
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({
+    missing: 0,
+    mismatched: 0,
+    textMismatches: 0,
+  }));
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-conversion-gate.js'),
+    '--effective-diff', effectiveDiff,
+    '--reverse-visual', reverseVisual,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CONVERSION_GATE_INVALID_INPUT/);
 });
 
 function fixtureRoot(name) {

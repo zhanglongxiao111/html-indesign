@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const {
   capabilityFor,
@@ -107,4 +110,20 @@ test('model field scanning accepts synthesized style registry references and ove
 
   assert.equal(strict.valid, true);
   assert.deepEqual(strict.unknown, []);
+});
+
+test('audit-synthesized-styles invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/synthesized-styles-invalid-input');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const model = path.join(root, 'not-document-model.json');
+  fs.writeFileSync(model, JSON.stringify({ kind: 'ObservedModel', pages: [] }), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-synthesized-styles.js'),
+    '--model', model,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /SYNTHESIZED_STYLE_INVALID_INPUT/);
 });

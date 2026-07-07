@@ -59,7 +59,15 @@ function summaryFor(report, out) {
 }
 
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  } catch (error) {
+    throw invalidInput(`Invalid JSON input: ${file}: ${error.message}`);
+  }
+}
+
+function invalidInput(message) {
+  return new Error(`TRUSTED_SOURCE_INVALID_INPUT: ${message}`);
 }
 
 function readValue(argv, index, arg) {
@@ -81,7 +89,10 @@ if (require.main === module) {
     const parsed = JSON.parse(output);
     if (parsed && parsed.ok === false) process.exitCode = 1;
   } catch (error) {
-    process.stderr.write(`${String(error && error.message || error)}\n`);
+    const message = String(error && error.message || error);
+    process.stderr.write(`${message.startsWith('TRUSTED_SOURCE_INVALID_INPUT:')
+      ? message
+      : `TRUSTED_SOURCE_INVALID_INPUT: ${message}`}\n`);
     process.exitCode = 1;
   }
 }

@@ -131,6 +131,30 @@ test('audit-reverse-visual does not accept table height drift via stale authorin
   assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'metrics'), true);
 });
 
+test('audit-reverse-visual invalid-input 必须 fail', () => {
+  const reverseRoot = path.resolve('test/workspace/visual-audit-invalid-input');
+  fs.rmSync(reverseRoot, { recursive: true, force: true });
+  fs.mkdirSync(path.join(reverseRoot, 'author'), { recursive: true });
+  fs.writeFileSync(path.join(reverseRoot, 'deck.visual.html'), htmlWithMetricsTable({
+    height: 301,
+    sourceCsv: '../real/ref.csv',
+  }), 'utf8');
+  fs.writeFileSync(path.join(reverseRoot, 'author/deck.html'), htmlWithMetricsTable({
+    height: 301,
+    sourceCsv: '../real/ref.csv',
+  }), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-reverse-visual.js'),
+    '--reverse-html', reverseRoot,
+    '--tolerance', 'not-a-number',
+    '--json',
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /REVERSE_VISUAL_INVALID_INPUT/);
+});
+
 function htmlWithMetricsTable({ height, sourceCsv }) {
   return [
     '<!doctype html>',

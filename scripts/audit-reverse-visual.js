@@ -9,25 +9,25 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--reverse-html') {
-      options.reverseHtmlDir = argv[++index];
+      options.reverseHtmlDir = readValue(argv, ++index, arg);
     } else if (arg.startsWith('--reverse-html=')) {
       options.reverseHtmlDir = arg.slice('--reverse-html='.length);
     } else if (arg === '--reference') {
-      options.referenceHtml = argv[++index];
+      options.referenceHtml = readValue(argv, ++index, arg);
     } else if (arg.startsWith('--reference=')) {
       options.referenceHtml = arg.slice('--reference='.length);
     } else if (arg === '--candidate') {
-      options.candidateHtml = argv[++index];
+      options.candidateHtml = readValue(argv, ++index, arg);
     } else if (arg.startsWith('--candidate=')) {
       options.candidateHtml = arg.slice('--candidate='.length);
     } else if (arg === '--out') {
-      options.outFile = argv[++index];
+      options.outFile = readValue(argv, ++index, arg);
     } else if (arg.startsWith('--out=')) {
       options.outFile = arg.slice('--out='.length);
     } else if (arg === '--tolerance') {
-      options.tolerance = Number(argv[++index]);
+      options.tolerance = numberOption(readValue(argv, ++index, arg), arg);
     } else if (arg.startsWith('--tolerance=')) {
-      options.tolerance = Number(arg.slice('--tolerance='.length));
+      options.tolerance = numberOption(arg.slice('--tolerance='.length), '--tolerance');
     } else if (arg === '--json') {
       options.json = true;
     } else if (arg === '--help' || arg === '-h') {
@@ -297,9 +297,21 @@ async function main() {
 
 if (require.main === module) {
   main().catch((error) => {
-    console.error(error && error.stack ? error.stack : String(error));
+    const message = error && error.message ? error.message : String(error);
+    console.error(`REVERSE_VISUAL_INVALID_INPUT: ${message}`);
     process.exit(1);
   });
+}
+
+function readValue(argv, index, arg) {
+  if (index >= argv.length || argv[index].startsWith('--')) throw new Error(`Missing value for ${arg}`);
+  return argv[index];
+}
+
+function numberOption(value, arg) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error(`${arg} requires a numeric value`);
+  return number;
 }
 
 module.exports = {

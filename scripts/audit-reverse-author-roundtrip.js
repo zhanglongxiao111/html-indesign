@@ -99,7 +99,8 @@ if (require.main === module) {
   try {
     main();
   } catch (error) {
-    console.error(error && error.stack ? error.stack : String(error));
+    const message = error && error.message ? error.message : String(error);
+    console.error(`ROUNDTRIP_INVALID_INPUT: ${message}`);
     process.exit(1);
   }
 }

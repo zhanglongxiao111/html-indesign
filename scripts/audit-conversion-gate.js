@@ -122,6 +122,9 @@ function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath
   const reverseVisual = readJson(reverseVisualPath);
   const editability = editabilityPath ? readJson(editabilityPath) : null;
   const trustedSource = trustedSourcePath ? readJson(trustedSourcePath) : null;
+  assertEffectiveDiffReport(effectiveDiff, effectiveDiffPath);
+  assertReverseVisualReport(reverseVisual, reverseVisualPath);
+  if (editability) assertEditabilityReport(editability, editabilityPath);
   const failures = [];
   const gates = {
     effectiveDiff: effectiveDiffGate(effectiveDiff, thresholds, failures),
@@ -278,6 +281,33 @@ function trustedSourceGate(report, failures) {
   return gate;
 }
 
+function assertEffectiveDiffReport(report, file) {
+  if (!isObject(report)
+    || !isObject(report.p0)
+    || !isObject(report.p1)
+    || !Number.isFinite(Number(report.p0.count))
+    || !Number.isFinite(Number(report.p1.count))) {
+    throw invalidInput(`Effective diff report is missing numeric p0.count or p1.count: ${file}`);
+  }
+}
+
+function assertReverseVisualReport(report, file) {
+  const stats = report && report.stats;
+  if (!isObject(report)
+    || !isObject(stats)
+    || !Number.isFinite(Number(stats.missing))
+    || !Number.isFinite(Number(stats.mismatched))
+    || !Number.isFinite(Number(stats.textMismatches))) {
+    throw invalidInput(`Reverse visual report is missing numeric stats: ${file}`);
+  }
+}
+
+function assertEditabilityReport(report, file) {
+  if (!isObject(report) || !isObject(report.summary)) {
+    throw invalidInput(`Author editability report is missing summary metrics: ${file}`);
+  }
+}
+
 function metric(name, count, budget) {
   const actual = numberOr(count, 0);
   const threshold = numberOr(budget, 0);
@@ -313,7 +343,11 @@ function resolveInputPath(value, baseDir) {
 }
 
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  } catch (error) {
+    throw invalidInput(`Invalid JSON input: ${file}: ${error.message}`);
+  }
 }
 
 function definedEntries(value) {
@@ -323,6 +357,14 @@ function definedEntries(value) {
 function numberOr(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function invalidInput(message) {
+  return new Error(`CONVERSION_GATE_INVALID_INPUT: ${message}`);
 }
 
 function readValue(argv, index, arg) {

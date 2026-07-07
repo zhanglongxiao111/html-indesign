@@ -59,10 +59,15 @@ function run(options) {
   if (!options.authorRoot) throw new Error(usage());
   const authorRoot = path.resolve(options.authorRoot);
   const out = options.out ? path.resolve(options.out) : null;
-  const report = auditAuthorEditability(authorRoot, {
-    thresholds: options.thresholds,
-    baselineReport: options.baseline ? readJson(options.baseline) : null,
-  });
+  let report;
+  try {
+    report = auditAuthorEditability(authorRoot, {
+      thresholds: options.thresholds,
+      baselineReport: options.baseline ? readJson(options.baseline) : null,
+    });
+  } catch (error) {
+    throw invalidInput(error);
+  }
   if (out) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -90,7 +95,19 @@ function summaryFor(report, out) {
 }
 
 function readJson(file) {
-  return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  } catch (error) {
+    throw invalidInput(error, `Invalid JSON input: ${file}`);
+  }
+}
+
+function invalidInput(error, context = 'Invalid author editability input') {
+  const message = error && error.message ? error.message : String(error);
+  if (message.startsWith('AUTHOR_EDITABILITY_INVALID_INPUT:')) {
+    return error instanceof Error ? error : new Error(message);
+  }
+  return new Error(`AUTHOR_EDITABILITY_INVALID_INPUT: ${context}: ${message}`);
 }
 
 function readValue(argv, index, arg) {

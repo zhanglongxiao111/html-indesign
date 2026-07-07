@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   auditAuthorEditability,
@@ -73,6 +74,19 @@ test('audit-author-editability CLI writes a report and returns a compact summary
   assert.equal(summary.metrics.looseTopLevelObjects, 2);
   assert.equal(summary.metrics.semanticContainerCoverage, 0.6667);
   assert.equal(report.summary.lowLevelGeometryAttrs, 5);
+});
+
+test('audit-author-editability invalid-input 必须 fail', () => {
+  const root = fixtureRoot('author-editability-invalid-input');
+  fs.writeFileSync(path.join(root, 'deck.config.json'), '{ "pages": [', 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-author-editability.js'),
+    '--author-root', root,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /AUTHOR_EDITABILITY_INVALID_INPUT/);
 });
 
 function fixtureRoot(name) {

@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   parseArgs,
@@ -29,6 +30,23 @@ test('audit-trusted-source-preservation CLI writes a trusted source mutation rep
   assert.equal(summary.mutations, 1);
   assert.equal(report.kind, 'TrustedSourcePreservationAudit');
   assert.equal(report.failures[0].code, 'TRUSTED_SOURCE_STRUCTURE_MUTATED');
+});
+
+test('audit-trusted-source-preservation invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/trusted-source-preservation-invalid-input');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const before = writeJson(root, 'before.json', { kind: 'ObservedModel', pages: [] });
+  const after = writeJson(root, 'after.json', trustedDocumentModel('page-1'));
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-trusted-source-preservation.js'),
+    '--expected', before,
+    '--actual', after,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /TRUSTED_SOURCE_INVALID_INPUT/);
 });
 
 function trustedDocumentModel(pageId) {
