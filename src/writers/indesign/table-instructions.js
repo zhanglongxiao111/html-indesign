@@ -1,6 +1,8 @@
 const { round } = require('../../shared/geometry');
 const { itemBounds } = require('../../semantic-model/layout');
 
+const PRESENTATION_NATIVE_TABLE_ROW_RESERVE_PT = 2;
+
 function tableRowsForInstruction(item, page, layout) {
   const table = tablePayload(item);
   const rows = table.rows || [];
@@ -11,7 +13,7 @@ function tableRowsForInstruction(item, page, layout) {
       const raw = tableCellSnapshot(item, row.index, cell.index);
       return {
         ...cell,
-        bounds: raw && raw.rectPx ? itemBounds({ rectPx: raw.rectPx, boundsMm: cell.bounds }, page, layout) : scaleBounds(cell.bounds, layout),
+        bounds: tableCellBoundsForInstruction(item, page, layout, cell, raw),
       };
     }),
   }));
@@ -38,14 +40,14 @@ function tableColumnWidthsForInstruction(item, rows, layout) {
     const width = Number(cell.bounds.width || 0) / span;
     for (let index = 0; index < span; index += 1) widths.push(round(width, 2));
   }
-  return widths;
+  return normalizeTableWidths(widths, item.bounds && item.bounds.width);
 }
 
 function tableRowHeightsForInstruction(item, rows, layout) {
   const table = tablePayload(item);
   if (layout.unitMode !== 'presentation') return table.rowHeights || [];
   return (rows || []).map((row) => {
-    const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell)), 0);
+    const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell, layout)), 0);
     return round(height, 2);
   });
 }
@@ -56,11 +58,52 @@ function tablePayload(item) {
   return {};
 }
 
-function minimumTableCellHeight(cell) {
+function tableCellBoundsForInstruction(item, page, layout, cell, raw) {
+  if (raw && raw.rectPx && page && page.rectPx) {
+    return itemBounds({ rectPx: raw.rectPx, boundsMm: cell.bounds }, page, layout);
+  }
+  const sourceBounds = raw && raw.boundsMm ? raw.boundsMm : cell.bounds;
+  const projected = projectTableCellBounds(sourceBounds, item);
+  if (projected) return projected;
+  return scaleBounds(cell.bounds, layout);
+}
+
+function projectTableCellBounds(bounds, item) {
+  if (!bounds || !item || !item.bounds || !item.boundsMm) return null;
+  const tableBounds = item.bounds;
+  const sourceBounds = item.boundsMm;
+  const sourceWidth = Number(sourceBounds.width || 0);
+  const sourceHeight = Number(sourceBounds.height || 0);
+  if (sourceWidth <= 0 || sourceHeight <= 0) return null;
+  const scaleX = Number(tableBounds.width || 0) / sourceWidth;
+  const scaleY = Number(tableBounds.height || 0) / sourceHeight;
+  return {
+    x: round(Number(tableBounds.x || 0) + (Number(bounds.x || 0) - Number(sourceBounds.x || 0)) * scaleX, 2),
+    y: round(Number(tableBounds.y || 0) + (Number(bounds.y || 0) - Number(sourceBounds.y || 0)) * scaleY, 2),
+    width: round(Number(bounds.width || 0) * scaleX, 2),
+    height: round(Number(bounds.height || 0) * scaleY, 2),
+  };
+}
+
+function normalizeTableWidths(widths, tableWidth) {
+  const targetWidth = Number(tableWidth || 0);
+  if (!widths.length || targetWidth <= 0) return widths;
+  const total = widths.reduce((sum, width) => sum + Number(width || 0), 0);
+  const delta = round(targetWidth - total, 2);
+  if (Math.abs(delta) > 0 && Math.abs(delta) <= Math.max(1, targetWidth * 0.01)) {
+    widths[widths.length - 1] = round(widths[widths.length - 1] + delta, 2);
+  }
+  return widths;
+}
+
+function minimumTableCellHeight(cell, layout) {
   const padding = cell.padding || {};
   const leading = Number(cell.leading || 0) || Number(cell.pointSize || 0) * 1.2;
   const stroke = Number(cell.borderWeight || 0);
-  return Number(padding.top || 0) + Number(padding.bottom || 0) + leading + stroke * 2;
+  const nativeReserve = layout && layout.unitMode === 'presentation'
+    ? PRESENTATION_NATIVE_TABLE_ROW_RESERVE_PT
+    : 0;
+  return Number(padding.top || 0) + Number(padding.bottom || 0) + leading + stroke * 2 + nativeReserve;
 }
 
 function scaleBounds(bounds, layout) {

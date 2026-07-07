@@ -809,18 +809,34 @@ test('compileInstructions preserves table frame object styles', async () => {
 test('compileInstructions gives presentation tables enough native row height for padding and leading', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
-  const instructions = compileInstructions(snapshot, { unitMode: 'presentation', targetSize: 'qhd' });
+  const instructions = compileInstructions(snapshot, { unitMode: 'presentation', targetSize: 'same' });
   const table = instructions.pages
     .flatMap((page) => page.items)
     .find((item) => item.type === 'TABLE' && item.tableStyle === 'area-table');
   const firstCell = table.rows[0].cells[0];
+  const nativeReserve = 2;
   const minHeight = firstCell.padding.top
     + firstCell.padding.bottom
     + firstCell.leading
     + firstCell.borderWeight * 2;
+  const columnTotal = table.columnWidths.reduce((sum, width) => sum + width, 0);
   const rowTotal = table.rowHeights.reduce((sum, height) => sum + height, 0);
 
-  assert.equal(table.rowHeights[0] >= Number(minHeight.toFixed(2)), true);
+  assert.equal(Number(columnTotal.toFixed(2)), table.bounds.width);
+  assert.equal(table.rowHeights.length, 6);
+  for (let index = 0; index < table.rows.length; index += 1) {
+    const rowMinHeight = table.rows[index].cells.reduce((max, cell) => {
+      const padding = cell.padding || {};
+      const leading = Number(cell.leading || 0) || Number(cell.pointSize || 0) * 1.2;
+      const borderWeight = Number(cell.borderWeight || 0);
+      const contentHeight = Number(padding.top || 0)
+        + Number(padding.bottom || 0)
+        + leading
+        + borderWeight * 2;
+      return Math.max(max, contentHeight);
+    }, 0);
+    assert.equal(table.rowHeights[index] >= Number((rowMinHeight + nativeReserve).toFixed(2)), true);
+  }
   assert.equal(table.bounds.height >= Number((rowTotal + 24).toFixed(2)), true);
 });
 
