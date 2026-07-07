@@ -146,6 +146,7 @@ function compileItemStyles(item, styles, report, options) {
       styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     }
     compiled.content.rows = compileTableRows(item, styles, report, options);
+    compiled.content.rowCount = compiled.content.rows.length;
     compiled.content.columnCount = tableColumnCount(compiled.content.rows);
     compiled.content.columnWidths = compileTableColumnWidths(item, compiled.content.rows);
     compiled.content.rowHeights = compileTableRowHeights(compiled.content.rows);

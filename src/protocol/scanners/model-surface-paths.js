@@ -66,6 +66,7 @@ const OBSERVED_LABEL_FIELD_PATHS = Object.freeze({
   role: 'items[].observedLabel.role',
   semantic: 'items[].observedLabel.semantic',
   layout: 'items[].observedLabel.layout',
+  styleRefs: 'items[].observedLabel.styleRefs',
   sourceNode: 'items[].observedLabel.sourceNode',
   sourceAncestorNodes: 'items[].observedLabel.sourceAncestorNodes',
   sourceFile: 'items[].observedLabel.sourceFile',

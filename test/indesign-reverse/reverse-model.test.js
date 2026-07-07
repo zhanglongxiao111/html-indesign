@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
-const { validateSemanticModel } = require('../../src/semantic-model');
+const semanticModel = require('../../src/semantic-model');
+const { validateSemanticModel } = semanticModel;
 
 function captureThrow(fn) {
   try {
@@ -542,8 +543,86 @@ test('reverseSnapshotToSemanticModel throws when normalized output contains an u
   assert.match(error.message, /items\[\]\.visualStyle\.adapterGhostVisualFact/);
 });
 
-test('reverseSnapshotToSemanticModel surfaces observation label field warnings', () => {
-  const model = reverseSnapshotToSemanticModel({
+test('reverseSnapshotToSemanticModel exit rejects root, page, and item ghost fields with full strict validation', () => {
+  const error = captureThrow(() => withIndesignExitValidatorProbe((adapter) => adapter.reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'ghost-fields.indd', mode: 'observation' },
+    document: { name: 'ghost-fields.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'copy',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Observed copy',
+            labels: [],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' })));
+
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'indesign reverseSnapshotToSemanticModel');
+  for (const path of [
+    'adapterRootGhost',
+    'pages[].adapterPageGhost',
+    'pages[].items[].adapterItemGhost',
+  ]) {
+    assert.equal(
+      error.validation.errors.some((issue) => (
+        issue.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && issue.path === path
+      )),
+      true,
+      `${path} should be rejected by full strict exit validation`,
+    );
+  }
+});
+
+function withIndesignExitValidatorProbe(run) {
+  const adapterPath = require.resolve('../../src/adapters/indesign/normalizer/snapshot-to-model');
+  const semanticModelPath = require.resolve('../../src/semantic-model');
+  const previousAdapterModule = require.cache[adapterPath];
+  const previousSemanticModelModule = require.cache[semanticModelPath];
+
+  delete require.cache[adapterPath];
+  require.cache[semanticModelPath] = {
+    id: semanticModelPath,
+    filename: semanticModelPath,
+    loaded: true,
+    exports: {
+      ...semanticModel,
+      validateSemanticModel(model, options) {
+        model.adapterRootGhost = true;
+        model.pages[0].adapterPageGhost = true;
+        model.pages[0].items[0].adapterItemGhost = true;
+        return semanticModel.validateSemanticModel(model, options);
+      },
+    },
+  };
+
+  try {
+    return run(require(adapterPath));
+  } finally {
+    delete require.cache[adapterPath];
+    if (previousAdapterModule) {
+      require.cache[adapterPath] = previousAdapterModule;
+    }
+    if (previousSemanticModelModule) {
+      require.cache[semanticModelPath] = previousSemanticModelModule;
+    } else {
+      delete require.cache[semanticModelPath];
+    }
+  }
+}
+
+test('reverseSnapshotToSemanticModel rejects observation label unknown payload at the strict exit', () => {
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'observed-label.indd', mode: 'observation' },
     document: { name: 'observed-label.indd', labels: [] },
     pages: [
@@ -563,19 +642,18 @@ test('reverseSnapshotToSemanticModel surfaces observation label field warnings',
         items: [],
       },
     ],
-  }, { mode: 'observation' });
+  }, { mode: 'observation' }));
 
-  assert.equal(model.valid, true);
-  assert.equal(model.errors.length, 0);
-  assert.equal(model.report.warningCount, 1);
-  assert.equal(model.report.errorCount, 0);
-  assert.equal(model.warnings[0].code, 'LABEL_FIELD_NOT_REGISTERED');
-  assert.equal(model.warnings[0].path, 'copiedTemplateSlot');
-  assert.equal(model.warnings[0].labelKind, 'page');
-  assert.equal(model.fieldValidation.length, 1);
-  assert.equal(model.fieldValidation[0].labelKind, 'page');
-  assert.deepEqual(model.fieldValidation[0].unknown, ['copiedTemplateSlot']);
-  assert.equal(model.pages[0].observedLabel.copiedTemplateSlot, 'old-slot');
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'indesign reverseSnapshotToSemanticModel');
+  assert.equal(
+    error.validation.errors.some((issue) => (
+      issue.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'copiedTemplateSlot'
+      && issue.labelPath === 'pages[0].labels[0]'
+    )),
+    true,
+  );
 });
 
 test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => {
@@ -621,10 +699,10 @@ test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => 
     true,
   );
   assert.equal(
-    error.model.errors.some((issue) => (
+    error.validation.labelValidation.errors.some((issue) => (
       issue.code === 'LABEL_FIELD_NOT_REGISTERED'
       && issue.path === 'unknownPayload'
-      && issue.labelKind === 'item'
+      && issue.labelPath === 'pages[0].items[0].labels[0]'
     )),
     true,
   );
@@ -638,8 +716,8 @@ test('reverseSnapshotToSemanticModel surfaces strict label field errors', () => 
   );
 });
 
-test('reverseSnapshotToSemanticModel surfaces structured label field warnings by default', () => {
-  const model = reverseSnapshotToSemanticModel({
+test('reverseSnapshotToSemanticModel rejects structured label unknown payload by default', () => {
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'structured-label-warning.indd', mode: 'structured' },
     document: { name: 'structured-label-warning.indd', labels: [] },
     pages: [
@@ -670,42 +748,30 @@ test('reverseSnapshotToSemanticModel surfaces structured label field warnings by
         ],
       },
     ],
-  }, { mode: 'structured', profile: 'architecture-report' });
+  }, { mode: 'structured', profile: 'architecture-report' }));
 
-  const item = model.pages[0].items[0];
-  assert.equal(model.valid, true);
-  assert.equal(model.errors.length, 0);
-  assert.equal(model.report.warningCount, 2);
-  assert.equal(model.report.errorCount, 0);
-  assert.equal(item.semantic, 'page-title');
-  assert.equal(item.labelStatus, 'partial');
-  assert.equal(item.effectiveLabel.unknownPayload, undefined);
-  assert.equal(item.effectiveLabel.parentPageId, undefined);
-  assert.equal(item.observedLabel.unknownPayload, 'bad');
-  assert.equal(item.observedLabel.parentPageId, 'report-parent');
-  assert.equal(item.rejectedFields.unknownPayload, 'label-field-not-registered');
-  assert.equal(item.rejectedFields.parentPageId, 'label-field-kind-not-allowed');
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'indesign reverseSnapshotToSemanticModel');
   assert.equal(
-    model.warnings.some((warning) => (
-      warning.code === 'LABEL_FIELD_NOT_REGISTERED'
-      && warning.path === 'unknownPayload'
-      && warning.labelKind === 'item'
+    error.validation.errors.some((issue) => (
+      issue.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'unknownPayload'
+      && issue.labelPath === 'pages[0].items[0].labels[0]'
     )),
     true,
   );
   assert.equal(
-    model.warnings.some((warning) => (
-      warning.code === 'LABEL_FIELD_KIND_NOT_ALLOWED'
-      && warning.path === 'parentPageId'
-      && warning.labelKind === 'item'
+    error.validation.labelValidation.errors.some((issue) => (
+      issue.code === 'LABEL_FIELD_NOT_REGISTERED'
+      && issue.path === 'unknownPayload'
+      && issue.labelPath === 'pages[0].items[0].labels[0]'
     )),
     true,
   );
   assert.equal(
-    model.fieldValidation.some((validation) => (
+    error.model.fieldValidation.some((validation) => (
       validation.labelKind === 'item'
       && validation.unknown.includes('unknownPayload')
-      && validation.disallowed.some((entry) => entry.path === 'parentPageId')
     )),
     true,
   );

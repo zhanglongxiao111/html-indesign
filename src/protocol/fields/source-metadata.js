@@ -56,7 +56,7 @@ function htmlModelSourceMetadataField(canonicalPath, currentPaths, type) {
     type,
     capabilities: {
       html: { read: 'native', write: 'observe-only', persist: 'lossless' },
-      indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+      indesign: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
       pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
     },
   };

@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { renderSnapshot, snapshotToSemanticModel } = require('../../src/adapters/html');
+const semanticModel = require('../../src/semantic-model');
 
 function captureThrow(fn) {
   try {
@@ -104,6 +105,87 @@ test('snapshotToSemanticModel throws when normalized output contains an unregist
   );
   assert.match(error.message, /styles\.adapterGhostStyles/);
 });
+
+test('snapshotToSemanticModel exit rejects root, page, and item ghost fields with full strict validation', () => {
+  const error = captureThrow(() => withHtmlExitValidatorProbe((adapter) => adapter.snapshotToSemanticModel({
+    metadata: { source: 'ghost-fields.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'copy',
+        role: 'text',
+        tagName: 'p',
+        classList: ['id-object'],
+        attributes: {},
+        rectPx: { x: 10, y: 20, width: 60, height: 10 },
+        computedStyle: {},
+        text: '正文',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { unitMode: 'print' })));
+
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(error.adapter, 'html snapshotToSemanticModel');
+  for (const path of [
+    'adapterRootGhost',
+    'pages[].adapterPageGhost',
+    'pages[].items[].adapterItemGhost',
+  ]) {
+    assert.equal(
+      error.validation.errors.some((issue) => (
+        issue.code === 'MODEL_FIELD_NOT_REGISTERED'
+        && issue.path === path
+      )),
+      true,
+      `${path} should be rejected by full strict exit validation`,
+    );
+  }
+});
+
+function withHtmlExitValidatorProbe(run) {
+  const adapterPath = require.resolve('../../src/adapters/html/normalizer/snapshot-to-model');
+  const semanticModelPath = require.resolve('../../src/semantic-model');
+  const previousAdapterModule = require.cache[adapterPath];
+  const previousSemanticModelModule = require.cache[semanticModelPath];
+
+  delete require.cache[adapterPath];
+  require.cache[semanticModelPath] = {
+    id: semanticModelPath,
+    filename: semanticModelPath,
+    loaded: true,
+    exports: {
+      ...semanticModel,
+      validateSemanticModel(model, options) {
+        model.adapterRootGhost = true;
+        model.pages[0].adapterPageGhost = true;
+        model.pages[0].items[0].adapterItemGhost = true;
+        return semanticModel.validateSemanticModel(model, options);
+      },
+    },
+  };
+
+  try {
+    return run(require(adapterPath));
+  } finally {
+    delete require.cache[adapterPath];
+    if (previousAdapterModule) {
+      require.cache[adapterPath] = previousAdapterModule;
+    }
+    if (previousSemanticModelModule) {
+      require.cache[semanticModelPath] = previousSemanticModelModule;
+    } else {
+      delete require.cache[semanticModelPath];
+    }
+  }
+}
 
 test('snapshotToSemanticModel preserves page layout and parent page metadata', () => {
   const model = snapshotToSemanticModel({

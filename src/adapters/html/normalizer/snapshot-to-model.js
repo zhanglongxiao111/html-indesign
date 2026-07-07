@@ -23,14 +23,6 @@ if (!ITEM_STYLE_REFS_FIELD || !Array.isArray(ITEM_STYLE_REFS_FIELD.allowedKeys))
 const ITEM_STYLE_REF_ALLOWED_KEYS = new Set(ITEM_STYLE_REFS_FIELD.allowedKeys);
 const ADAPTER_VALIDATION_OPTIONS = Object.freeze({
   strictFields: true,
-  strictFieldDomains: [
-    'asset.placement',
-    'source.metadata',
-    'styles',
-    'styleRefs',
-    'visualStyle.vectorGeometry',
-    'table.text',
-  ],
 });
 
 function snapshotToSemanticModel(snapshot, options = {}) {

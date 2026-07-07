@@ -10,55 +10,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits document.styleLayout but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].attributes but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].authoredStyle but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].boundsMm but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].box but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].classList but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].computedStyle but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
       "detail": "html emits items[].content.runs[].characterStyle but indesign does not",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -69,13 +20,6 @@
       "detail": "html emits items[].content.runs[].text but indesign does not",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits items[].sourceSelector but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
@@ -97,13 +41,6 @@
       "detail": "html emits labels[].grid but indesign does not",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits labels[].htmlTag but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
@@ -185,44 +122,9 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits labels[].styleKind but indesign does not",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits labels[].token but indesign does not",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
       "detail": "html emits labels[].version but indesign does not",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits pages[].attributes but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits pages[].classList but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/html/normalizer/snapshot-to-model.js",
-      "detail": "html emits pages[].computedStyle but indesign does not",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
@@ -354,27 +256,6 @@
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/adapters/indesign/normalizer/snapshot-to-model.js",
       "detail": "indesign emits items[].layerName but html does not",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/indesign/normalizer/snapshot-to-model.js",
-      "detail": "indesign emits items[].observedLabel but html does not",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/indesign/normalizer/snapshot-to-model.js",
-      "detail": "indesign emits items[].observedLabel.rejectionReasons but html does not",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/adapters/indesign/normalizer/snapshot-to-model.js",
-      "detail": "indesign emits items[].observedLabel.semantic but html does not",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
     },
@@ -1102,83 +983,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.className is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.htmlTag is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.layout is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.role is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.sourceAncestorNodes is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.sourceFile is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.sourceHtml is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.sourceNode is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.sourceRuns is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.sourceText is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].observedLabel.structure is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path items[].paragraphStyle is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -1340,161 +1144,7 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.columnCount is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.columnWidths is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rowCount is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rowHeights is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].borderColor is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].borders is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].borderWeight is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].bounds is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path items[].table.rows[].cells[].cellStyle is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].colSpan is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].fillColor is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].fillOpacity is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].header is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].index is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].leading is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].padding is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].paddingUnit is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].paragraphStyle is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].pointSize is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].rowSpan is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].runs is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
     },
@@ -1530,55 +1180,6 @@
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
       "detail": "registered comparable model path items[].table.rows[].cells[].runs[].text is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].text is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].textAlign is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].cells[].textColor is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].header is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.rows[].index is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.sourceRows is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].table.tableStyle is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
     },
@@ -1655,23 +1256,9 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].visualStyle.lineEndMarker is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path items[].visualStyle.lineEndMarker.rawName is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path items[].visualStyle.lineStartMarker is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
@@ -2306,104 +1893,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.className is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.htmlTag is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.layout is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.rejectionReasons is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.role is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.semantic is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.sourceAncestorNodes is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.sourceFile is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.sourceHtml is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.sourceNode is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.sourceRuns is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.sourceText is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].items[].observedLabel.structure is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path pages[].items[].sourceNode.attributes.data-id-grid-ignore is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -2747,23 +2236,9 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path reverseModel.pages[].items[].visualStyle.lineEndMarker is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path reverseModel.pages[].items[].visualStyle.lineEndMarker.rawName is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path reverseModel.pages[].items[].visualStyle.lineStartMarker is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
@@ -3279,13 +2754,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styleLayout is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path styles.cellStyles[].css is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -3412,27 +2880,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.objectStyles[].displayName is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.objectStyles[].labels is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.objectStyles[].name is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path styles.objectStyles[].safeName is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -3443,13 +2890,6 @@
       "detail": "registered comparable model path styles.objectStyles[].source is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.objectStyles[].token is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
@@ -3524,27 +2964,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.tableStyles[].displayName is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.tableStyles[].labels is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.tableStyles[].name is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path styles.tableStyles[].safeName is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -3553,13 +2972,6 @@
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
       "detail": "registered comparable model path styles.tableStyles[].source is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.tableStyles[].token is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
     },

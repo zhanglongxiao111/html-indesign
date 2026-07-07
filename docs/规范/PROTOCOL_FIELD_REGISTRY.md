@@ -101,9 +101,9 @@
 | items[].visualStyle.cornerRadius | reverseModel.pages[].items[].visualStyle.cornerRadius | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.fillColor | reverseModel.pages[].items[].visualStyle.fillColor | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.fillOpacity | reverseModel.pages[].items[].visualStyle.fillOpacity | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
-| items[].visualStyle.lineEndMarker | reverseModel.pages[].items[].visualStyle.lineEndMarker | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
+| items[].visualStyle.lineEndMarker | n/a | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.lineEndMarker.rawName | reverseModel.pages[].items[].visualStyle.lineEndMarker.rawName, sourceNode.attributes.data-id-line-end-marker-raw-name | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
-| items[].visualStyle.lineStartMarker | reverseModel.pages[].items[].visualStyle.lineStartMarker | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
+| items[].visualStyle.lineStartMarker | n/a | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.lineStartMarker.rawName | reverseModel.pages[].items[].visualStyle.lineStartMarker.rawName, sourceNode.attributes.data-id-line-start-marker-raw-name | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.opacity | reverseModel.pages[].items[].visualStyle.opacity | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.strokeAlignment | reverseModel.pages[].items[].visualStyle.strokeAlignment, sourceNode.attributes.data-id-stroke-alignment | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
@@ -199,13 +199,17 @@
 
 | canonicalPath | currentPaths | owner | lifecycle | HTML read/write/persist | InDesign read/write/persist | PPTX read/write/persist | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| assets[].fileName | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| assets[].linked | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| assets[].placement | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| assets[].sourceSelector | n/a | asset-placement | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | document.semanticPreset.relativePath | semanticPreset.relativePath, labels[].semanticPreset.relativePath, sourcePackageInput.attributes.data-id-semantic-preset | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.source | source | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage | sourcePackage, labels[].sourcePackage | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.config | sourcePackage.config, labels[].sourcePackage.config, sourcePackageInput.attributes.data-id-source-package-config | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.parentPages | sourcePackage.parentPages, sourcePackageInput.parentPages | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.schemaVersion | sourcePackage.schemaVersion, labels[].sourcePackage.schemaVersion, sourcePackageInput.attributes.data-id-source-package-schema | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| document.styleLayout | styleLayout | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| document.styleLayout | styleLayout | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.cropped | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.graphicType | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.imageCropped | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -216,12 +220,12 @@
 | items[].asset.preview.kind | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.preview.path | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].asset.status | n/a | asset-placement | active | observe-only/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].attributes | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].authoredStyle | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].boundsMm | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].box | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].classList | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].attributes | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| items[].authoredStyle | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| items[].boundsMm | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| items[].box | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| items[].classList | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| items[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].content.runs[].attributes | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].content.runs[].classList | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].content.runs[].tagName | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -243,11 +247,11 @@
 | items[].sourceNode.attributes.data-id-source-csv | sourceNode.attributes.data-id-source-csv, labels[].sourceNode.attributes.data-id-source-csv, effectiveLabel.sourceNode.attributes.data-id-source-csv, pages[].items[].sourceNode.attributes.data-id-source-csv | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceNode.attributes.data-id-source-xml | sourceNode.attributes.data-id-source-xml, labels[].sourceNode.attributes.data-id-source-xml, effectiveLabel.sourceNode.attributes.data-id-source-xml, pages[].items[].sourceNode.attributes.data-id-source-xml | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceRuns | labels[].sourceRuns, effectiveLabel.sourceRuns, pages[].effectiveLabel.sourceRuns | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].sourceSelector | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].sourceSelector | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceText | labels[].sourceText, effectiveLabel.sourceText, pages[].effectiveLabel.sourceText | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceType | pages[].items[].sourceType | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | Observed source-format object type, not a semantic role. |
 | items[].structure | labels[].structure, effectiveLabel.structure, pages[].effectiveLabel.structure | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| items[].table.sourceRows | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].table.sourceRows | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].tagName | pages[].items[].tagName | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].displayName | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].htmlClass | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
@@ -260,9 +264,9 @@
 | labels[].token | n/a | label-protocol | active | native/observe-only/lossless | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | labels[].version | n/a | label-protocol | active | native/native/native | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | layers[].labels | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| pages[].attributes | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| pages[].classList | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
-| pages[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| pages[].attributes | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| pages[].classList | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
+| pages[].computedStyle | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].effectiveLabel | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].parentPage | labels[].parentPage, pages[].effectiveLabel.parentPage | document-page | active | observe-only/observe-only/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].parentPageName | labels[].parentPageName, pages[].effectiveLabel.parentPageName | document-page | active | observe-only/observe-only/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
@@ -411,20 +415,21 @@
 | items[].migration.isSlot | sourceNode.attributes.data-id-migration-slot | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].migration.slotName | sourceNode.attributes.data-id-slot-name | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | items[].migration.slotType | sourceNode.attributes.data-id-slot-type | reverse-model | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel | pages[].items[].observedLabel | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.className | pages[].items[].observedLabel.className | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.htmlTag | pages[].items[].observedLabel.htmlTag | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.layout | pages[].items[].observedLabel.layout | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.rejectionReasons | pages[].items[].observedLabel.rejectionReasons | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.role | pages[].items[].observedLabel.role | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.semantic | pages[].items[].observedLabel.semantic | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.sourceAncestorNodes | pages[].items[].observedLabel.sourceAncestorNodes | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.sourceFile | pages[].items[].observedLabel.sourceFile | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.sourceHtml | pages[].items[].observedLabel.sourceHtml | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.sourceNode | pages[].items[].observedLabel.sourceNode | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.sourceRuns | pages[].items[].observedLabel.sourceRuns | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.sourceText | pages[].items[].observedLabel.sourceText | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
-| items[].observedLabel.structure | pages[].items[].observedLabel.structure | label-protocol | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel | pages[].items[].observedLabel | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.className | pages[].items[].observedLabel.className | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.htmlTag | pages[].items[].observedLabel.htmlTag | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.layout | pages[].items[].observedLabel.layout | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.rejectionReasons | pages[].items[].observedLabel.rejectionReasons | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.role | pages[].items[].observedLabel.role | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.semantic | pages[].items[].observedLabel.semantic | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.sourceAncestorNodes | pages[].items[].observedLabel.sourceAncestorNodes | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.sourceFile | pages[].items[].observedLabel.sourceFile | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.sourceHtml | pages[].items[].observedLabel.sourceHtml | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.sourceNode | pages[].items[].observedLabel.sourceNode | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.sourceRuns | pages[].items[].observedLabel.sourceRuns | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.sourceText | pages[].items[].observedLabel.sourceText | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.structure | pages[].items[].observedLabel.structure | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
+| items[].observedLabel.styleRefs | pages[].items[].observedLabel.styleRefs | label-protocol | active | unsupported/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].auditItems | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].auditItems[].parent | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |
 | pages[].items[].labelStatus | n/a | reverse-diagnostics | active | observe-only/observe-only/lossless | observe-only/unsupported/lossless | observe-only/unsupported/lossless | n/a |

@@ -142,9 +142,7 @@ module.exports = [
     },
   }),
   visualStyleField('items[].visualStyle.lineStartMarker', 'object', {
-    currentPaths: [
-      'reverseModel.pages[].items[].visualStyle.lineStartMarker',
-    ],
+    currentPaths: [],
     indesign: {
       snapshotPaths: ['visualStyle.lineStartMarker'],
     },
@@ -163,9 +161,7 @@ module.exports = [
     },
   }),
   visualStyleField('items[].visualStyle.lineEndMarker', 'object', {
-    currentPaths: [
-      'reverseModel.pages[].items[].visualStyle.lineEndMarker',
-    ],
+    currentPaths: [],
     indesign: {
       snapshotPaths: ['visualStyle.lineEndMarker'],
     },

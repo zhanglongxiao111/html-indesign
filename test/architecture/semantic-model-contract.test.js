@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const { compareViolationsToBaseline } = require('./helpers/baseline-ratchet');
 const { formatGuardrailFailure } = require('./helpers/guardrail-report');
@@ -323,6 +324,19 @@ test('G3 current semantic model contract violations match the ratchet baseline',
   if (!result.passed) {
     throw new Error(formatG3Failure(result));
   }
+});
+
+test('G3 baseline does not add exemptions beyond the 9d starting point', () => {
+  const current = baselineExemptions(readJson(BASELINE_PATH));
+  const startingPoint = baselineExemptions(JSON.parse(execFileSync(
+    'git',
+    ['show', '5831054^:test/architecture/baselines/G3.json'],
+    { cwd: REPO_ROOT, encoding: 'utf8' },
+  )));
+  const startingKeys = new Set(startingPoint.map(violationKey));
+  const added = current.filter((violation) => !startingKeys.has(violationKey(violation)));
+
+  assert.deepEqual(added, []);
 });
 
 function collectG3Violations(repoRoot, options = {}) {
@@ -890,7 +904,12 @@ function sampleHtmlSnapshot() {
         attributes: { 'data-id-semantic': 'title' },
         bounds: { x: 0, y: 0, width: 10, height: 10 },
         computedStyle: {},
-        visualStyle: { strokeColor: '#999999', strokeWeight: 1 },
+        visualStyle: {
+          strokeColor: '#999999',
+          strokeWeight: 1,
+          lineStartMarker: { rawName: 'None' },
+          lineEndMarker: { rawName: 'Arrow' },
+        },
       }, {
         id: 'parent-rule-on-page',
         role: 'text',
@@ -904,6 +923,64 @@ function sampleHtmlSnapshot() {
         },
         bounds: { x: 0, y: 90, width: 100, height: 1 },
         computedStyle: {},
+      }, {
+        id: 'table-1',
+        role: 'table',
+        tagName: 'table',
+        attributes: {},
+        bounds: { x: 20, y: 20, width: 60, height: 30 },
+        computedStyle: {},
+        table: [{
+          index: 0,
+          header: true,
+          cells: [{
+            index: 0,
+            text: 'Area',
+            computedStyle: {},
+            attributes: {},
+            rowSpan: 1,
+            colSpan: 1,
+            boundsMm: { x: 20, y: 20, width: 60, height: 30 },
+            runs: [],
+          }],
+        }],
+        content: {
+          tableStyle: null,
+          rowCount: 1,
+          columnCount: 1,
+          columnWidths: [60],
+          rowHeights: [30],
+          rows: [{
+            index: 0,
+            header: true,
+            cells: [{
+              index: 0,
+              text: 'Area',
+              header: false,
+              rowSpan: 1,
+              colSpan: 1,
+              paragraphStyle: null,
+              fillColor: null,
+              fillOpacity: 80,
+              borderColor: '#cccccc',
+              borderWeight: 1,
+              textColor: null,
+              bounds: { x: 20, y: 20, width: 60, height: 30 },
+              pointSize: null,
+              leading: null,
+              textAlign: 'left',
+              padding: { top: 0, right: 0, bottom: 0, left: 0 },
+              paddingUnit: 'pt',
+              borders: {
+                top: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                right: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                bottom: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                left: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+              },
+              runs: [],
+            }],
+          }],
+        },
       }],
     }],
     styles: {},
@@ -928,8 +1005,55 @@ function sampleReverseSnapshot() {
         type: 'TextFrame',
         text: 'Hello',
         bounds: { x: 0, y: 0, width: 10, height: 10 },
-        visualStyle: { strokeColor: '#999999', strokeWeight: 1 },
-        labels: [{ kind: 'item', id: 'item-1', semantic: 'title', role: 'text' }],
+        visualStyle: {
+          strokeColor: '#999999',
+          strokeWeight: 1,
+          lineStartMarker: { rawName: 'None' },
+          lineEndMarker: { rawName: 'Arrow' },
+        },
+        labels: [{ kind: 'item', id: 'item-1', semantic: 'title', role: 'text', htmlTag: 'p' }],
+      }, {
+        id: 'table-1',
+        type: 'TextFrame',
+        text: '',
+        bounds: { x: 20, y: 20, width: 60, height: 30 },
+        table: {
+          rowCount: 1,
+          columnCount: 1,
+          columnWidths: [60],
+          rowHeights: [30],
+          rows: [{
+            index: 0,
+            header: true,
+            cells: [{
+              index: 0,
+              text: 'Area',
+              header: false,
+              rowSpan: 1,
+              colSpan: 1,
+              paragraphStyle: null,
+              fillColor: null,
+              fillOpacity: 80,
+              borderColor: '#cccccc',
+              borderWeight: 1,
+              textColor: null,
+              bounds: { x: 20, y: 20, width: 60, height: 30 },
+              pointSize: null,
+              leading: null,
+              textAlign: 'left',
+              padding: { top: 0, right: 0, bottom: 0, left: 0 },
+              paddingUnit: 'pt',
+              borders: {
+                top: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                right: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                bottom: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+                left: { color: null, widthPt: 0, widthCss: '0px', style: 'none', borderWeight: 0 },
+              },
+              runs: [],
+            }],
+          }],
+        },
+        labels: [{ kind: 'item', id: 'table-1', semantic: 'metrics-table', role: 'table' }],
       }],
     }],
     parentPages: [{
@@ -944,7 +1068,20 @@ function sampleReverseSnapshot() {
       }],
     }],
     layers: [],
-    styles: {},
+    styles: {
+      objectStyles: [
+        {
+          name: '自动对象-21251102',
+          labels: [{ kind: 'style', id: '自动对象-21251102', token: '自动对象-21251102', displayName: '自动对象-21251102', styleKind: 'objectStyles' }],
+        },
+      ],
+      tableStyles: [
+        {
+          name: 'default-table',
+          labels: [{ kind: 'style', id: 'default-table', token: 'default-table', displayName: 'default-table', styleKind: 'tableStyles' }],
+        },
+      ],
+    },
     assets: [],
   };
 }
@@ -991,6 +1128,18 @@ function dedupeViolations(violations) {
 
 function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+function violationKey(violation) {
+  return JSON.stringify({
+    rule: violation.rule,
+    file: violation.file,
+    detail: violation.detail,
+  });
+}
+
+function baselineExemptions(baseline) {
+  return Array.isArray(baseline) ? baseline : baseline.exemptions || [];
 }
 
 function formatG3Failure(result) {

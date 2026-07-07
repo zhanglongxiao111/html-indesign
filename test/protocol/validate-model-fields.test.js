@@ -12,7 +12,13 @@ test('scanModelPaths deterministically scans known model surfaces', () => {
   const model = {
     kind: 'DocumentModel',
     id: 'doc',
-    assets: [{ path: 'drawings/site.pdf' }],
+    assets: [{
+      path: 'drawings/site.pdf',
+      fileName: 'site.pdf',
+      linked: true,
+      placement: { fit: 'contain' },
+      sourceSelector: '#site-plan',
+    }],
     pages: [{
       id: 'p1',
       items: [{
@@ -26,6 +32,10 @@ test('scanModelPaths deterministically scans known model surfaces', () => {
   assert.deepEqual(scanModelPaths(model), [
     'document.id',
     'assets[].path',
+    'assets[].fileName',
+    'assets[].linked',
+    'assets[].placement',
+    'assets[].sourceSelector',
     'pages[].id',
     'items[].asset.pageNumber',
     'pages[].items[].madeUpField',
@@ -525,6 +535,31 @@ test('scanModelPaths maps effectiveLabel style refs while preserving nested unkn
     'items[].styleRefs.objectStyle',
   ]);
   assert.deepEqual(strict.unknown, ['items[].effectiveLabel.styleRefs.ghost']);
+});
+
+test('scanModelPaths maps observedLabel styleRefs as observation metadata', () => {
+  const scannedPaths = scanModelPaths({
+    pages: [{
+      items: [{
+        observedLabel: {
+          semantic: 'foreign-title',
+          styleRefs: {
+            paragraphStyle: 'missing-style',
+          },
+        },
+      }],
+    }],
+  });
+
+  assert.deepEqual(scannedPaths, [
+    'items[].observedLabel',
+    'items[].observedLabel.semantic',
+    'items[].observedLabel.styleRefs',
+  ]);
+
+  const strict = validateModelFields(fieldRegistry, scannedPaths, { strict: true });
+  assert.equal(strict.valid, true);
+  assert.deepEqual(strict.unknown, []);
 });
 
 test('validateModelFields rejects invalid model field domain names', () => {

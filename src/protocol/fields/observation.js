@@ -7,7 +7,7 @@ function observedLabelChild(canonicalPath, currentPaths, type) {
     owner: 'label-protocol',
     type,
     capabilities: {
-      html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+      html: { read: 'unsupported', write: 'observe-only', persist: 'lossless' },
       indesign: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
       pptx: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
     },
@@ -22,6 +22,7 @@ function itemObservedLabelEntries() {
     ['role', 'string'],
     ['semantic', 'string'],
     ['layout', 'object|string'],
+    ['styleRefs', 'object'],
     ['sourceNode', 'object'],
     ['sourceAncestorNodes', 'array'],
     ['sourceFile', 'string'],
@@ -94,7 +95,7 @@ module.exports = [
     owner: 'label-protocol',
     type: 'object',
     capabilities: {
-      html: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
+      html: { read: 'unsupported', write: 'observe-only', persist: 'lossless' },
       indesign: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
       pptx: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
     },

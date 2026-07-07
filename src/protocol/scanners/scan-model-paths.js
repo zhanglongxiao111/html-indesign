@@ -54,6 +54,10 @@ const ASSET_FIELD_PATHS = Object.freeze({
   path: 'assets[].path',
   src: 'assets[].src',
   resolvedPath: 'assets[].resolvedPath',
+  fileName: 'assets[].fileName',
+  linked: 'assets[].linked',
+  placement: 'assets[].placement',
+  sourceSelector: 'assets[].sourceSelector',
 });
 
 const LABEL_FIELD_PATHS = Object.freeze({

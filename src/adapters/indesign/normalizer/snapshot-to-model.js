@@ -7,14 +7,6 @@ const { createReport, addMessage } = require('../../../shared/report');
 const { validateReverseLabel } = require('./label-whitelist');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
-const STRICT_MODEL_DOMAINS = Object.freeze([
-  'asset.placement',
-  'source.metadata',
-  'styles',
-  'styleRefs',
-  'visualStyle.vectorGeometry',
-  'table.text',
-]);
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
@@ -76,9 +68,6 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
 function semanticModelValidationOptions(options = {}) {
   return {
     strictFields: true,
-    strictFieldDomains: options.strictFields === true
-      ? [...STRICT_MODEL_DOMAINS, 'labels']
-      : STRICT_MODEL_DOMAINS,
   };
 }
 
@@ -510,13 +499,20 @@ function reverseTable(table, styleMaps) {
     tableStyle: mapStyleName(styleMaps, 'tableStyles', table.tableStyle),
     rows: (table.rows || []).map((row) => ({
       ...row,
-      cells: (row.cells || []).map((cell) => ({
-        ...cell,
-        text: normalizeReverseText(cell.text || ''),
-        paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', cell.paragraphStyle),
-        cellStyle: mapStyleName(styleMaps, 'cellStyles', cell.cellStyle),
-        runs: reverseTextRuns(cell.runs || [], styleMaps),
-      })),
+      cells: (row.cells || []).map((cell) => {
+        const normalized = {
+          ...cell,
+          text: normalizeReverseText(cell.text || ''),
+          runs: reverseTextRuns(cell.runs || [], styleMaps),
+        };
+        if (Object.prototype.hasOwnProperty.call(cell, 'paragraphStyle')) {
+          normalized.paragraphStyle = mapStyleName(styleMaps, 'paragraphStyles', cell.paragraphStyle);
+        }
+        if (Object.prototype.hasOwnProperty.call(cell, 'cellStyle')) {
+          normalized.cellStyle = mapStyleName(styleMaps, 'cellStyles', cell.cellStyle);
+        }
+        return normalized;
+      }),
     })),
   };
 }
@@ -535,16 +531,17 @@ function reverseStyleCollection(items) {
   for (const item of styleItems(items)) {
     const label = firstLabel(item.labels, 'style') || {};
     const token = label.token || item.name;
-    out[token] = {
+    const style = {
       name: label.displayName || item.name,
       token,
       displayName: label.displayName || item.name,
-      safeName: item.safeName || label.safeName || null,
-      css: item.css || '',
-      source: item.source || null,
       indesignFeatures: reverseStyleIndesignFeatures(item),
       labels: item.labels || [],
     };
+    if (item.safeName || label.safeName) style.safeName = item.safeName || label.safeName;
+    if (Object.prototype.hasOwnProperty.call(item, 'css')) style.css = item.css;
+    if (Object.prototype.hasOwnProperty.call(item, 'source')) style.source = item.source;
+    out[token] = style;
   }
   return out;
 }

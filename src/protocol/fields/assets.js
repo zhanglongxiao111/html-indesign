@@ -4,6 +4,12 @@ const ASSET_SOURCE_METADATA_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
 });
 
+const HTML_ASSET_SOURCE_METADATA_CAPABILITIES = Object.freeze({
+  html: { read: 'native', write: 'observe-only', persist: 'lossless' },
+  indesign: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+});
+
 const ASSET_PLACEMENT_CANONICAL_CAPABILITIES = Object.freeze({
   html: { read: 'native', write: 'native', persist: 'native' },
   indesign: { read: 'native', write: 'native', persist: 'native' },
@@ -23,6 +29,18 @@ function assetSourceMetadata(canonicalPath, type, snapshotPath, extra = {}) {
       snapshotPaths: [snapshotPath],
     },
     ...extra,
+  };
+}
+
+function htmlAssetSourceMetadata(canonicalPath, type) {
+  return {
+    canonicalPath,
+    currentPaths: [],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'asset-placement',
+    type,
+    capabilities: HTML_ASSET_SOURCE_METADATA_CAPABILITIES,
   };
 }
 
@@ -96,6 +114,10 @@ module.exports = [
       customDataPaths: ['htmlIndesign.assets[].path'],
     },
   },
+  htmlAssetSourceMetadata('assets[].fileName', 'string'),
+  htmlAssetSourceMetadata('assets[].linked', 'boolean'),
+  htmlAssetSourceMetadata('assets[].placement', 'object'),
+  htmlAssetSourceMetadata('assets[].sourceSelector', 'string'),
   {
     canonicalPath: 'items[].asset.placement.pageNumber',
     currentPaths: [
