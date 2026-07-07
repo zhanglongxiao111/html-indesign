@@ -9,13 +9,6 @@
     },
     {
       "rule": "G6.1 shared helpers have a single implementation",
-      "file": "src/adapters/html/reader/stacking.js",
-      "detail": "defines parseZIndex",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G6.1 shared helpers have a single implementation",
       "file": "src/adapters/indesign/audit/parent-page-furniture.js",
       "detail": "defines normalizeText",
       "reason": "既有违规待收口",

@@ -2,13 +2,31 @@ if (typeof HI === "undefined") { HI = {}; }
 
 HI.runBuildFromInstructions = function (appRef, jsonPath) {
     var input = HI.readJsonFile(jsonPath);
-    if (input.data && input.data.document && input.data.styles && input.data.pages) {
-        return HI.runPagedHtmlBuildInstructions(appRef, input.data, input.baseFolder);
+    if (!HI.isCurrentBuildInstructions(input.data)) {
+        return HI.unsupportedBuildInstructionsReport(input.data);
     }
-    return HI.runLegacyBuildInstructions(appRef, input.data, input.baseFolder);
+    return HI.runBuildInstructions(appRef, input.data, input.baseFolder);
 };
 
-HI.runPagedHtmlBuildInstructions = function (appRef, instructions, baseFolder) {
+HI.isCurrentBuildInstructions = function (instructions) {
+    return Boolean(instructions
+        && instructions.document
+        && instructions.styles
+        && instructions.pages
+        && instructions.pages.length !== undefined);
+};
+
+HI.unsupportedBuildInstructionsReport = function (instructions) {
+    var report = HI.makeReport();
+    HI.addMessage(report, "error", "INSTRUCTIONS_SCHEMA_UNSUPPORTED", "Build instructions schema is unsupported. Regenerate instructions with the current semantic-model InDesign writer.", {
+        hasDocument: Boolean(instructions && instructions.document),
+        hasStyles: Boolean(instructions && instructions.styles),
+        hasPages: Boolean(instructions && instructions.pages)
+    });
+    return report;
+};
+
+HI.runBuildInstructions = function (appRef, instructions, baseFolder) {
     var report = HI.makeReport();
     var context = null;
     try {
@@ -43,11 +61,5 @@ HI.runPagedHtmlBuildInstructions = function (appRef, instructions, baseFolder) {
             HI.restoreDocumentPreferences(context.doc, context);
         }
     }
-    return report;
-};
-
-HI.runLegacyBuildInstructions = function (appRef, instructions, baseFolder) {
-    var report = HI.makeReport();
-    HI.addMessage(report, "error", "LEGACY_SCHEMA_UNSUPPORTED_IN_MODULAR_EXECUTOR", "Current executor received legacy template instructions. Regenerate instructions through pagedHtml.compileInstructions or restore the legacy script from git history for old template runs.", {});
     return report;
 };

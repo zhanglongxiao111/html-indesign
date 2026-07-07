@@ -60,7 +60,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
     'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'HI.applyTextFitNudge', 'TEXT_FIT_APPLIED', 'TEXT_FIT_NUDGE_APPLIED', 'TEXT_FIT_UNRESOLVED'],
     'hi_items.jsxinc': ['HI.buildInstructionItems', 'HI.createTextFrame', 'HI.createGraphicFrame'],
-    'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.buildParentPageItems', 'HI.runLegacyBuildInstructions'],
+    'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.runBuildInstructions'],
   };
 
   for (const [fileName, apiNames] of Object.entries(expectations)) {
@@ -69,6 +69,10 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     const source = fs.readFileSync(filePath, 'utf8');
     for (const apiName of apiNames) {
       assert.match(source, new RegExp(apiName.replace('.', '\\.')));
+    }
+    if (fileName === 'hi_executor.jsxinc') {
+      assert.equal(source.includes(['HI', 'run' + 'LegacyBuildInstructions'].join('.')), false);
+      assert.equal(source.includes(['HI', 'run' + 'Paged' + 'HtmlBuildInstructions'].join('.')), false);
     }
     assert.ok(source.split(/\r?\n/).length <= 340, `${fileName} should stay small`);
   }
@@ -79,6 +83,44 @@ test('executor label helpers report key label write failures', () => {
   assert.match(source, /HI\.writeProtocolLabels/);
   assert.match(source, /LABEL_WRITE_FAILED/);
   assert.match(source, /critical/);
+});
+
+test('executor fails closed for non-current instruction schemas', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_executor.jsxinc'), 'utf8');
+  let buildCalled = false;
+  const context = {
+    HI: {
+      readJsonFile() {
+        return {
+          data: { template: { items: [] } },
+          baseFolder: 'base',
+        };
+      },
+      makeReport() {
+        return { ok: true, messages: [], errors: [], warnings: [], counts: {} };
+      },
+      addMessage(report, level, code, message, details) {
+        const entry = { level, code, message, details: details || {} };
+        report.messages.push(entry);
+        if (level === 'error') {
+          report.ok = false;
+          report.errors.push(entry);
+        }
+        return entry;
+      },
+    },
+  };
+  vm.runInNewContext(source, context);
+  context.HI.runBuildInstructions = () => {
+    buildCalled = true;
+    throw new Error('build should not run');
+  };
+
+  const report = context.HI.runBuildFromInstructions({}, 'instructions.json');
+
+  assert.equal(buildCalled, false);
+  assert.equal(report.ok, false);
+  assert.equal(report.errors[0].code, 'INSTRUCTIONS_SCHEMA_UNSUPPORTED');
 });
 
 test('document helper configures page geometry layers and unit restoration', () => {

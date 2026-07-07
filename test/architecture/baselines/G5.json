@@ -2,34 +2,6 @@
   "exemptions": [
     {
       "rule": "G5.1 retired naming is blocked",
-      "file": "_indesign_scripts/lib/hi_executor.jsxinc",
-      "detail": "line 11 contains PagedHtml",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G5.1 retired naming is blocked",
-      "file": "_indesign_scripts/lib/hi_executor.jsxinc",
-      "detail": "line 51 contains legacy",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G5.1 retired naming is blocked",
-      "file": "_indesign_scripts/lib/hi_executor.jsxinc",
-      "detail": "line 51 contains pagedHtml",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G5.1 retired naming is blocked",
-      "file": "_indesign_scripts/lib/hi_executor.jsxinc",
-      "detail": "line 6 contains PagedHtml",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G5.1 retired naming is blocked",
       "file": "test/fixtures/paged-html",
       "detail": "path contains paged-html",
       "reason": "既有违规待收口",
