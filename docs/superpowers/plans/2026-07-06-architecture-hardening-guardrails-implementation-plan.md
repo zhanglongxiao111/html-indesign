@@ -180,7 +180,7 @@ npm test
 
 ### 5. W0-1 门禁反假成功修复
 
-进度：实现已提交，复审中（提交 `090782b` 修复 W0-1 invalid-input 假通过路径；G4 baseline 9 条收缩到 6 条，等待复审，2026-07-07）。
+进度：复审发现阻断问题，修复中（提交 `090782b` 仍存在 `reverse-snapshot-structure` bounds 双缺失假通过、transitive asset alias 解析失败静默吞掉，以及 null/undefined corrupt input 未稳定返回原因码的问题；等待修复提交，2026-07-07）。
 
 - [ ] `content-inventory.js`：空/缺失 `pages` 显式 fail（原因码 `CONTENT_INVENTORY_INPUT_INVALID`）；`readAssetAliases` 解析失败记 warning。
 - [ ] `structure-signature.js`、`reverse-snapshot-structure.js`（矢量双侧缺失）、`parent-page-furniture.js`（bounds 缺失）同模式逐一排查修复；裁定基准：空输入永远是错误，不存在"两边都空所以相等"。
