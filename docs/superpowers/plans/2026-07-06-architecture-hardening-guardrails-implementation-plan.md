@@ -234,14 +234,14 @@ node --test test/architecture/docs-sync.test.js
 
 ### 9. W1 模型方言统一
 
-进度：9d 修复已提交，复审中（实现提交 `5831054`，full strict 修复 `f6f54d8`，G3 added 豁免修复 `f923aaa`；两个 normalizer 出口已改为 full strict fail-closed，labels 也进入 strict；G3 baseline 相对 9d 起点 547→428，addedCount=0，removedCount=119；G3 11/11 通过，HTML from-snapshot 24/24 通过，InDesign reverse-model 33/33 通过，协议测试 155/155 通过，`npm test` 874/874 通过，`git diff --check` 通过；2026-07-08）。
+进度：9e G3 同构豁免归零实现中（9d 已完成：实现提交 `5831054`，full strict 修复 `f6f54d8`，G3 added 豁免修复 `f923aaa`；最终复审未发现 P0/P1/P2；两个 normalizer 出口已改为 full strict fail-closed，labels 也进入 strict；G3 baseline 相对 9d 起点 547→428，addedCount=0，removedCount=119；`npm test` 874/874 通过；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
 - [x] **9a registry 裁定登记**：`items[].role` + `items[].sourceType` 双字段定案（HTML 侧未登记 `type` 判退役）；`semantic` 缺省 canonical 为 `null`；`styleRefs` 允许键枚举登记；`bounds` 契约（绝对页面坐标、pt）写入字段描述；format 专有字段 canonical path 迁移方案登记（`items[].extensions.indesign.*`）。重新生成 `PROTOCOL_FIELD_REGISTRY.md`。
 - [x] **9b HTML adapter 对齐**：列出全部 `items[].type` 读取点后删除该字段产出；styleRefs 键收敛进枚举。
 - [x] **9c InDesign adapter 对齐**：`semantic` 的 `'unknown'` 哨兵改 `null`，下游（`reconstruct.js:129-133` 等）判空收敛；styleRefs 键收敛；`effects`/`textFrameStyle` 迁入 `extensions.indesign.*`（工作量过大时允许作为 9f 独立提交，不得停在半途）。
-- [ ] **9d 出口强制校验**：两个 normalizer 出口接入 `validateSemanticModel`（strict，失败即抛）；G3 静态与行为断言豁免收口。
+- [x] **9d 出口强制校验**：两个 normalizer 出口接入 `validateSemanticModel`（strict，失败即抛）；G3 静态与行为断言豁免收口。
 - [ ] **9e 收 G3 同构豁免**：`baselines/G3.json` 归零。
 - [ ] **9f 剥兜底**：消灭 `role || type || sourceType` 三选一读取（`node-facts.js:21`、`author-audit.js:162` 及全量搜索所得）；writers 中因方言存在的双路径读取逐点剥除，每剥一处配测试。
 - [ ] **9g 真实 E2E 回归**：`npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 无退化（内容库存、结构签名、二轮稳定全过）。
