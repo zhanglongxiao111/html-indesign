@@ -25,15 +25,11 @@ test('audit-conversion-gate passes when effective diff and HTML visual budgets a
     mismatched: 19,
     textMismatches: 0,
   }));
-  const editability = writeJson(root, 'editability.json', {
-    ok: true,
-    summary: {
-      looseTopLevelObjects: 537,
-      semanticContainerCoverage: { ratio: 0.22 },
-      inlineStyleElements: 638,
-    },
-    failures: [],
-  });
+  const editability = writeJson(root, 'editability.json', editabilityReport({
+    looseTopLevelObjects: 537,
+    coverageRatio: 0.22,
+    inlineStyleElements: 638,
+  }));
   const caseFile = writeJson(root, 'case.json', {
     effectiveDiff,
     reverseVisual,
@@ -166,6 +162,27 @@ test('audit-conversion-gate invalid-input 必须 fail', () => {
   assert.match(result.stderr, /CONVERSION_GATE_INVALID_INPUT/);
 });
 
+test('audit-conversion-gate rejects parseable editability report with missing metrics', () => {
+  const root = fixtureRoot('conversion-gate-invalid-editability');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({
+    missing: 0,
+    mismatched: 0,
+    textMismatches: 0,
+  }));
+  const editability = writeJson(root, 'editability.json', { ok: true, summary: {} });
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-conversion-gate.js'),
+    '--effective-diff', effectiveDiff,
+    '--reverse-visual', reverseVisual,
+    '--editability', editability,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CONVERSION_GATE_INVALID_INPUT/);
+});
+
 function fixtureRoot(name) {
   const root = path.resolve('test/workspace', name);
   fs.rmSync(root, { recursive: true, force: true });
@@ -202,6 +219,36 @@ function reverseVisualReport({ missing, mismatched, textMismatches }) {
       accepted: 0,
     },
     errors: [],
+    warnings: [],
+  };
+}
+
+function editabilityReport({ looseTopLevelObjects, coverageRatio, inlineStyleElements }) {
+  return {
+    kind: 'AuthorEditabilityAudit',
+    ok: true,
+    summary: {
+      pages: 1,
+      sourcePageFiles: 1,
+      idElements: 537,
+      objectIdElements: 537,
+      semanticContainerElements: 118,
+      coveredObjectIdElements: Math.round(537 * coverageRatio),
+      looseTopLevelObjects,
+      inlineStyleElements,
+      lowLevelGeometryAttrs: 0,
+      vectorSvgElements: 0,
+      figureCaptionPairs: 0,
+      textElements: 100,
+      characterStyleSpans: 0,
+      semanticContainerCoverage: {
+        covered: Math.round(537 * coverageRatio),
+        total: 537,
+        ratio: coverageRatio,
+      },
+    },
+    pages: [],
+    failures: [],
     warnings: [],
   };
 }

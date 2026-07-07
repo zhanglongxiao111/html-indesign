@@ -286,6 +286,7 @@ async function main() {
   const evidence = loadReverseHtmlEvidence(inputs.reverseHtmlDir);
   enrichCaptureWithReverseModelSourceMetadata(reference, evidence.reverseModel);
   const report = compareVisualGeometry({ reference, candidate, tolerance: inputs.tolerance });
+  assertComparableReport(report, inputs);
   if (inputs.outFile) {
     fs.mkdirSync(path.dirname(inputs.outFile), { recursive: true });
     fs.writeFileSync(inputs.outFile, JSON.stringify(report, null, 2), 'utf8');
@@ -293,6 +294,16 @@ async function main() {
   if (inputs.json) console.log(JSON.stringify(report, null, 2));
   else printHuman(report, inputs);
   if (!report.ok) process.exitCode = 1;
+}
+
+function assertComparableReport(report, inputs) {
+  const stats = report && report.stats || {};
+  if (stats.referencePages <= 0 || stats.candidatePages <= 0) {
+    throw new Error(`No .page roots found in reference or candidate HTML: ${inputs.referenceHtml}, ${inputs.candidateHtml}`);
+  }
+  if (stats.compared <= 0) {
+    throw new Error(`No comparable visual elements found in reference and candidate HTML: ${inputs.referenceHtml}, ${inputs.candidateHtml}`);
+  }
 }
 
 if (require.main === module) {

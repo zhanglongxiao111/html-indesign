@@ -89,6 +89,23 @@ test('audit-author-editability invalid-input 必须 fail', () => {
   assert.match(result.stderr, /AUTHOR_EDITABILITY_INVALID_INPUT/);
 });
 
+test('audit-author-editability rejects parseable config without pages', () => {
+  const root = fixtureRoot('author-editability-config-without-pages');
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'missing-pages',
+    entry: 'deck.html',
+  }, null, 2), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-author-editability.js'),
+    '--author-root', root,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /AUTHOR_EDITABILITY_INVALID_INPUT/);
+});
+
 function fixtureRoot(name) {
   const root = path.resolve('test/workspace', name);
   fs.rmSync(root, { recursive: true, force: true });

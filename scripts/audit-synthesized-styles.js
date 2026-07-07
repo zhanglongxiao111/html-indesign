@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { auditSynthesizedStyles } = require('../src/adapters/indesign/audit/synthesized-style-audit');
+const { validateSemanticModel } = require('../src/semantic-model');
 
 function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
@@ -54,6 +55,11 @@ function readJson(file) {
 function assertDocumentModel(model, file) {
   if (!model || model.kind !== 'DocumentModel') {
     throw invalidInput(`Expected DocumentModel semantic model: ${file}`);
+  }
+  const validation = validateSemanticModel(model, { strictFields: true });
+  if (!validation.valid) {
+    const codes = validation.errors.map((error) => error.code).join(', ');
+    throw invalidInput(`Invalid DocumentModel semantic model: ${file}: ${codes}`);
   }
 }
 

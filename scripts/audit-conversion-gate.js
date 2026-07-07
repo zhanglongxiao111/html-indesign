@@ -303,8 +303,38 @@ function assertReverseVisualReport(report, file) {
 }
 
 function assertEditabilityReport(report, file) {
-  if (!isObject(report) || !isObject(report.summary)) {
+  if (!isObject(report) || report.kind !== 'AuthorEditabilityAudit' || !isObject(report.summary)) {
     throw invalidInput(`Author editability report is missing summary metrics: ${file}`);
+  }
+  const summary = report.summary;
+  const numericFields = [
+    'pages',
+    'sourcePageFiles',
+    'idElements',
+    'objectIdElements',
+    'semanticContainerElements',
+    'coveredObjectIdElements',
+    'looseTopLevelObjects',
+    'inlineStyleElements',
+    'lowLevelGeometryAttrs',
+    'vectorSvgElements',
+    'figureCaptionPairs',
+    'textElements',
+    'characterStyleSpans',
+  ];
+  for (const field of numericFields) {
+    if (!hasFiniteNumber(summary, field)) {
+      throw invalidInput(`Author editability report is missing numeric summary.${field}: ${file}`);
+    }
+  }
+  if (!isObject(summary.semanticContainerCoverage)
+    || !hasFiniteNumber(summary.semanticContainerCoverage, 'covered')
+    || !hasFiniteNumber(summary.semanticContainerCoverage, 'total')
+    || !hasFiniteNumber(summary.semanticContainerCoverage, 'ratio')) {
+    throw invalidInput(`Author editability report is missing numeric semanticContainerCoverage metrics: ${file}`);
+  }
+  if (!Array.isArray(report.failures)) {
+    throw invalidInput(`Author editability report is missing failures array: ${file}`);
   }
 }
 
@@ -361,6 +391,10 @@ function numberOr(value, fallback) {
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasFiniteNumber(object, field) {
+  return Object.prototype.hasOwnProperty.call(object, field) && Number.isFinite(Number(object[field]));
 }
 
 function invalidInput(message) {

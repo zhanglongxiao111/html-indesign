@@ -127,3 +127,19 @@ test('audit-synthesized-styles invalid-input 必须 fail', () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /SYNTHESIZED_STYLE_INVALID_INPUT/);
 });
+
+test('audit-synthesized-styles rejects parseable incomplete DocumentModel', () => {
+  const root = path.resolve('test/workspace/synthesized-styles-incomplete-model');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const model = path.join(root, 'incomplete-document-model.json');
+  fs.writeFileSync(model, JSON.stringify({ kind: 'DocumentModel' }), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-synthesized-styles.js'),
+    '--model', model,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /SYNTHESIZED_STYLE_INVALID_INPUT/);
+});

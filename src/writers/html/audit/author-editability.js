@@ -25,7 +25,7 @@ function auditAuthorEditability(root, options = {}) {
   }
 
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const pageFiles = Array.isArray(config.pages) ? config.pages : [];
+  const pageFiles = validatePageList(config, configPath);
   const totals = emptyTotals();
   for (const page of pageFiles) {
     const pageMetrics = scanPage(packageRoot, page);
@@ -40,6 +40,18 @@ function auditAuthorEditability(root, options = {}) {
   const thresholds = thresholdsFor(options);
   failures.push(...thresholdFailures(summary, thresholds));
   return report(failures.length === 0, packageRoot, summary, pages, failures, warnings, thresholds);
+}
+
+function validatePageList(config, configPath) {
+  if (!Array.isArray(config && config.pages) || config.pages.length === 0) {
+    throw new Error(`Author package requires a non-empty pages array: ${configPath}`);
+  }
+  return config.pages.map((page, index) => {
+    if (!page || typeof page !== 'object' || !page.file) {
+      throw new Error(`Author package page ${index} is missing file: ${configPath}`);
+    }
+    return page;
+  });
 }
 
 function scanPage(packageRoot, page) {

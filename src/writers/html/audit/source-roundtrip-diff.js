@@ -42,6 +42,9 @@ function auditAuthorSourceRoundtrip(options = {}) {
     pagesCompared += 1;
     comparePage(sourcePage, reversePage, addIssue);
   }
+  if (pagesCompared === 0) {
+    throw new Error('No comparable pages found between source and reverse author packages.');
+  }
 
   const report = result(errors, warnings, {
     pagesCompared,
@@ -168,11 +171,12 @@ function compareResources(sourcePage, reversePage, addIssue) {
 function readAuthorPackage(root) {
   const configPath = path.join(root, 'deck.config.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const pages = (config.pages || []).map((page) => {
+  const pageList = validateAuthorPages(config, configPath);
+  const pages = pageList.map((page, index) => {
     const pageFile = path.join(root, page.file);
     const html = fs.existsSync(pageFile) ? fs.readFileSync(pageFile, 'utf8') : '';
     return {
-      id: page.id || page.file,
+      id: page.id || page.file || `page-${index + 1}`,
       file: page.file,
       root,
       html,
@@ -183,6 +187,18 @@ function readAuthorPackage(root) {
     };
   });
   return { config, pages };
+}
+
+function validateAuthorPages(config, configPath) {
+  if (!Array.isArray(config && config.pages) || config.pages.length === 0) {
+    throw new Error(`Author package requires a non-empty pages array: ${configPath}`);
+  }
+  return config.pages.map((page, index) => {
+    if (!page || typeof page !== 'object' || !page.file) {
+      throw new Error(`Author package page ${index} is missing file: ${configPath}`);
+    }
+    return page;
+  });
 }
 
 function collectComparableSourceFiles(sourceConfig, reverseConfig, sourceRoot, reverseRoot) {

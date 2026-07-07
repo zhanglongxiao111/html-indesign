@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { auditTrustedSourcePreservation } = require('../src/semantic-reconstruction');
+const { validateSemanticModel } = require('../src/semantic-model');
 
 function parseArgs(argv) {
   const options = {
@@ -39,7 +40,11 @@ function run(options) {
   const expectedPath = path.resolve(options.expected);
   const actualPath = path.resolve(options.actual);
   const out = options.out ? path.resolve(options.out) : null;
-  const report = auditTrustedSourcePreservation(readJson(expectedPath), readJson(actualPath));
+  const expected = readJson(expectedPath);
+  const actual = readJson(actualPath);
+  assertSemanticModel(expected, expectedPath);
+  assertSemanticModel(actual, actualPath);
+  const report = auditTrustedSourcePreservation(expected, actual);
   if (out) {
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -68,6 +73,14 @@ function readJson(file) {
 
 function invalidInput(message) {
   return new Error(`TRUSTED_SOURCE_INVALID_INPUT: ${message}`);
+}
+
+function assertSemanticModel(model, file) {
+  const validation = validateSemanticModel(model, { strictFields: true });
+  if (!validation.valid) {
+    const codes = validation.errors.map((error) => error.code).join(', ');
+    throw invalidInput(`Invalid DocumentModel semantic model: ${file}: ${codes}`);
+  }
 }
 
 function readValue(argv, index, arg) {

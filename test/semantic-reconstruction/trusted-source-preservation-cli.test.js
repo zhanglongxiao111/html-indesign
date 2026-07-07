@@ -49,13 +49,32 @@ test('audit-trusted-source-preservation invalid-input 必须 fail', () => {
   assert.match(result.stderr, /TRUSTED_SOURCE_INVALID_INPUT/);
 });
 
+test('audit-trusted-source-preservation rejects parseable incomplete DocumentModel', () => {
+  const root = path.resolve('test/workspace/trusted-source-preservation-incomplete-model');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(root, { recursive: true });
+  const before = writeJson(root, 'before.json', { kind: 'DocumentModel' });
+  const after = writeJson(root, 'after.json', trustedDocumentModel('page-1'));
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-trusted-source-preservation.js'),
+    '--expected', before,
+    '--actual', after,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /TRUSTED_SOURCE_INVALID_INPUT/);
+});
+
 function trustedDocumentModel(pageId) {
   return {
     kind: 'DocumentModel',
     id: 'trusted-deck',
+    labels: [{ kind: 'document', id: 'trusted-deck' }],
     pages: [
       {
         id: pageId,
+        labels: [{ kind: 'page', id: pageId }],
         labelStatus: 'accepted',
         sourceNode: { tagName: 'section', id: pageId, classList: ['page'], attributes: {} },
         items: [
@@ -65,6 +84,7 @@ function trustedDocumentModel(pageId) {
             semantic: 'body-copy',
             labelStatus: 'accepted',
             tagName: 'p',
+            labels: [{ kind: 'item', id: 'copy-1' }],
             sourceNode: {
               tagName: 'p',
               id: 'copy-1',

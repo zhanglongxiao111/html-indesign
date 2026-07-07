@@ -84,6 +84,30 @@ test('audit-reverse-author-roundtrip invalid-input 必须 fail', () => {
   assert.match(result.stderr, /ROUNDTRIP_INVALID_INPUT/);
 });
 
+test('audit-reverse-author-roundtrip rejects parseable source package without pages', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-no-pages');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  writePackage(reverseRoot, '<section class="page"><h1>Contents</h1></section>');
+  fs.writeFileSync(path.join(sourceRoot, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'roundtrip-fixture',
+    entry: 'deck.html',
+  }, null, 2), 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-reverse-author-roundtrip.js'),
+    '--source', sourceRoot,
+    '--reverse', reverseRoot,
+    '--json',
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /ROUNDTRIP_INVALID_INPUT/);
+});
+
 function writePackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

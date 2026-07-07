@@ -155,6 +155,23 @@ test('audit-reverse-visual invalid-input 必须 fail', () => {
   assert.match(result.stderr, /REVERSE_VISUAL_INVALID_INPUT/);
 });
 
+test('audit-reverse-visual rejects comparable HTML with no pages', () => {
+  const reverseRoot = path.resolve('test/workspace/visual-audit-no-pages');
+  fs.rmSync(reverseRoot, { recursive: true, force: true });
+  fs.mkdirSync(path.join(reverseRoot, 'author'), { recursive: true });
+  fs.writeFileSync(path.join(reverseRoot, 'deck.visual.html'), '<main><h1>No page roots</h1></main>', 'utf8');
+  fs.writeFileSync(path.join(reverseRoot, 'author/deck.html'), '<main><h1>No page roots</h1></main>', 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-reverse-visual.js'),
+    '--reverse-html', reverseRoot,
+    '--json',
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /REVERSE_VISUAL_INVALID_INPUT/);
+});
+
 function htmlWithMetricsTable({ height, sourceCsv }) {
   return [
     '<!doctype html>',
