@@ -71,6 +71,77 @@ test('G3 catches an adapter exit that omits validateSemanticModel and reports th
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
 });
 
+test('G3 catches exported adapter exits even when unrelated helpers call validateSemanticModel', () => {
+  const root = makeSampleProject({
+    'src/adapters/html/normalizer/snapshot-to-model.js': [
+      'const { validateSemanticModel } = require("../../../semantic-model");',
+      'function helper(model) { return validateSemanticModel(model); }',
+      'function snapshotToSemanticModel() { return { kind: "DocumentModel" }; }',
+      'module.exports = { snapshotToSemanticModel };',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG3Violations(root, {
+    adapterExits: [{
+      name: 'html snapshotToSemanticModel',
+      file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+      exportName: 'snapshotToSemanticModel',
+    }],
+    skipRuntimeChecks: true,
+  });
+
+  assert.deepEqual(violations, [{
+    rule: 'G3.1 semantic exports validate model',
+    file: 'src/adapters/html/normalizer/snapshot-to-model.js',
+    detail: 'html snapshotToSemanticModel does not call validateSemanticModel',
+  }]);
+});
+
+test('G3 reports registry comparable paths missing from both adapter sample collectors', () => {
+  const root = makeSampleProject({
+    'src/protocol/index.js': [
+      'const fieldEntries = [{',
+      '  fieldClass: "canonical",',
+      '  allPaths: ["document.id", "document.uncoveredRegistryPath"],',
+      '  capabilities: { html: { read: "full" }, indesign: { read: "full" } },',
+      '}];',
+      'const fieldRegistry = { getByPath: (modelPath) => fieldEntries.flatMap((entry) => entry.allPaths).includes(modelPath) };',
+      'function scanModelPaths(model) { return model.paths; }',
+      'module.exports = { fieldEntries, fieldRegistry, scanModelPaths };',
+      '',
+    ].join('\n'),
+    'src/adapters/html/index.js': [
+      'function snapshotToSemanticModel(input) {',
+      '  if (input === null) throw new Error("invalid input");',
+      '  return { paths: ["document.id"] };',
+      '}',
+      'module.exports = { snapshotToSemanticModel };',
+      '',
+    ].join('\n'),
+    'src/adapters/indesign/index.js': [
+      'function reverseSnapshotToSemanticModel(input) {',
+      '  if (input === null) throw new Error("invalid input");',
+      '  return { paths: ["document.id"] };',
+      '}',
+      'function blueprintMigrationToSemanticModel(input) {',
+      '  if (input === null) throw new Error("invalid input");',
+      '  return { paths: ["document.id"] };',
+      '}',
+      'module.exports = { reverseSnapshotToSemanticModel, blueprintMigrationToSemanticModel };',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG3Violations(root, { adapterExits: [] });
+
+  assert.deepEqual(violations, [{
+    rule: 'G3.3 registry-backed adapter isomorphism',
+    file: 'src/protocol/index.js',
+    detail: 'registered comparable model path document.uncoveredRegistryPath is not covered by html or indesign adapter samples',
+  }]);
+});
+
 test('G3 current semantic model contract violations match the ratchet baseline', () => {
   const actualViolations = collectG3Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -109,7 +180,15 @@ function validateAdapterExitStaticContract(repoRoot, adapterExit) {
   }
 
   const source = fs.readFileSync(file, 'utf8');
-  if (/\bvalidateSemanticModel\s*\(/.test(source)) {
+  const functionBody = exportedFunctionBody(source, adapterExit.exportName);
+  if (!functionBody) {
+    return [{
+      rule: 'G3.1 semantic exports validate model',
+      file: adapterExit.file,
+      detail: `${adapterExit.name} export body could not be statically resolved`,
+    }];
+  }
+  if (/\bvalidateSemanticModel\s*\(/.test(stripCommentsAndStrings(functionBody))) {
     return [];
   }
 
@@ -190,9 +269,15 @@ function validateAdapterSurfaceIsomorphism(repoRoot) {
     }
   }
 
-  const observedComparablePaths = [...new Set([...surfaces.html, ...surfaces.indesign])]
-    .filter((modelPath) => comparablePaths.has(modelPath));
-  for (const modelPath of observedComparablePaths) {
+  for (const modelPath of [...comparablePaths].sort()) {
+    if (!surfaces.html.has(modelPath) && !surfaces.indesign.has(modelPath)) {
+      violations.push({
+        rule: 'G3.3 registry-backed adapter isomorphism',
+        file: 'src/protocol/index.js',
+        detail: `registered comparable model path ${modelPath} is not covered by html or indesign adapter samples`,
+      });
+      continue;
+    }
     if (surfaces.html.has(modelPath) && !surfaces.indesign.has(modelPath)) {
       violations.push({
         rule: 'G3.3 registry-backed adapter isomorphism',
@@ -210,6 +295,234 @@ function validateAdapterSurfaceIsomorphism(repoRoot) {
   }
 
   return violations;
+}
+
+function exportedFunctionBody(source, exportName) {
+  const directFunctionIndex = source.indexOf(`function ${exportName}`);
+  if (directFunctionIndex !== -1) {
+    const bodyStart = functionBodyOpenBrace(source, directFunctionIndex);
+    if (bodyStart !== -1) {
+      const bodyEnd = matchingBraceIndex(source, bodyStart);
+      if (bodyEnd !== -1) return source.slice(bodyStart + 1, bodyEnd);
+      return source.slice(bodyStart + 1, nextTopLevelBoundary(source, bodyStart));
+    }
+  }
+
+  const declarations = [
+    new RegExp(`\\bfunction\\s+${escapeRegExp(exportName)}\\s*\\(`, 'm'),
+    new RegExp(`\\b(?:const|let|var)\\s+${escapeRegExp(exportName)}\\s*=\\s*(?:async\\s*)?(?:function\\s*)?\\(`, 'm'),
+    new RegExp(`\\b(?:const|let|var)\\s+${escapeRegExp(exportName)}\\s*=\\s*(?:async\\s*)?[^=;\\n]+=>\\s*\\{`, 'm'),
+  ];
+
+  for (const declaration of declarations) {
+    const match = declaration.exec(source);
+    if (!match) continue;
+    const bodyStart = functionBodyOpenBrace(source, match.index);
+    if (bodyStart === -1) continue;
+    const bodyEnd = matchingBraceIndex(source, bodyStart);
+    if (bodyEnd !== -1) return source.slice(bodyStart + 1, bodyEnd);
+    return source.slice(bodyStart + 1, nextTopLevelBoundary(source, bodyStart));
+  }
+
+  const propertyExport = new RegExp(`\\b(?:module\\.)?exports\\.${escapeRegExp(exportName)}\\s*=\\s*(?:async\\s*)?function\\s*\\(`, 'm');
+  const propertyMatch = propertyExport.exec(source);
+  if (propertyMatch) {
+    const bodyStart = functionBodyOpenBrace(source, propertyMatch.index);
+    const bodyEnd = bodyStart === -1 ? -1 : matchingBraceIndex(source, bodyStart);
+    if (bodyEnd !== -1) return source.slice(bodyStart + 1, bodyEnd);
+    if (bodyStart !== -1) return source.slice(bodyStart + 1, nextTopLevelBoundary(source, bodyStart));
+  }
+
+  return null;
+}
+
+function functionBodyOpenBrace(source, declarationIndex) {
+  const openParenIndex = source.indexOf('(', declarationIndex);
+  if (openParenIndex === -1) return source.indexOf('{', declarationIndex);
+  const closeParenIndex = matchingParenIndex(source, openParenIndex);
+  if (closeParenIndex === -1) return -1;
+  let cursor = closeParenIndex + 1;
+  while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+  if (source.slice(cursor, cursor + 2) === '=>') {
+    cursor += 2;
+    while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
+  }
+  return source[cursor] === '{' ? cursor : -1;
+}
+
+function matchingParenIndex(source, openParenIndex) {
+  let depth = 1;
+  let index = openParenIndex + 1;
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index);
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index);
+    } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
+      index = skipRegexLiteral(source, index);
+    } else if (source[index] === '(') {
+      depth += 1;
+      index += 1;
+    } else if (source[index] === ')') {
+      depth -= 1;
+      if (depth === 0) return index;
+      index += 1;
+    } else {
+      index += 1;
+    }
+  }
+  return -1;
+}
+
+function nextTopLevelBoundary(source, startIndex) {
+  const boundary = /\n(?:function\s+\w+\s*\(|(?:const|let|var)\s+\w+\s*=|module\.exports\s*=|exports\.\w+\s*=)/g;
+  boundary.lastIndex = startIndex + 1;
+  const match = boundary.exec(source);
+  return match ? match.index : source.length;
+}
+
+function matchingBraceIndex(source, openBraceIndex) {
+  let depth = 1;
+  let index = openBraceIndex + 1;
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index);
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index);
+    } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
+      index = skipRegexLiteral(source, index);
+    } else if (source[index] === '{') {
+      depth += 1;
+      index += 1;
+    } else if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return index;
+      index += 1;
+    } else {
+      index += 1;
+    }
+  }
+  return -1;
+}
+
+function stripCommentsAndStrings(source) {
+  let output = '';
+  let index = 0;
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      output += ' ';
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      output += ' ';
+      index = skipBlockComment(source, index);
+    } else if (source[index] === '"' || source[index] === "'") {
+      output += ' ';
+      index = skipQuotedString(source, index);
+    } else if (source[index] === '`') {
+      output += ' ';
+      index = skipTemplateLiteral(source, index);
+    } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
+      output += ' ';
+      index = skipRegexLiteral(source, index);
+    } else {
+      output += source[index];
+      index += 1;
+    }
+  }
+  return output;
+}
+
+function skipLineComment(source, index) {
+  const newlineIndex = source.indexOf('\n', index + 2);
+  return newlineIndex === -1 ? source.length : newlineIndex + 1;
+}
+
+function skipBlockComment(source, index) {
+  const closeIndex = source.indexOf('*/', index + 2);
+  return closeIndex === -1 ? source.length : closeIndex + 2;
+}
+
+function skipQuotedString(source, index) {
+  const quote = source[index];
+  let cursor = index + 1;
+  while (cursor < source.length) {
+    if (source[cursor] === '\\') {
+      cursor += 2;
+    } else if (source[cursor] === quote) {
+      return cursor + 1;
+    } else {
+      cursor += 1;
+    }
+  }
+  return source.length;
+}
+
+function skipTemplateLiteral(source, index) {
+  let cursor = index + 1;
+  while (cursor < source.length) {
+    if (source[cursor] === '\\') {
+      cursor += 2;
+    } else if (source[cursor] === '`') {
+      return cursor + 1;
+    } else {
+      cursor += 1;
+    }
+  }
+  return source.length;
+}
+
+function startsRegexLiteral(source, index) {
+  const previousIndex = previousSignificantIndex(source, index);
+  if (previousIndex === -1) return true;
+  const previous = source[previousIndex];
+  if (/[[({=,:;!&|?+\-*~^<>%]/.test(previous)) return true;
+  const token = previousIdentifierToken(source, previousIndex);
+  return ['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'yield', 'await'].includes(token);
+}
+
+function previousSignificantIndex(source, index) {
+  let cursor = index - 1;
+  while (cursor >= 0 && /\s/.test(source[cursor])) cursor -= 1;
+  return cursor;
+}
+
+function previousIdentifierToken(source, index) {
+  if (!/[$\w]/.test(source[index])) return '';
+  let start = index;
+  while (start > 0 && /[$\w]/.test(source[start - 1])) start -= 1;
+  return source.slice(start, index + 1);
+}
+
+function skipRegexLiteral(source, index) {
+  let cursor = index + 1;
+  let inCharacterClass = false;
+  while (cursor < source.length) {
+    const character = source[cursor];
+    if (character === '\\') {
+      cursor += 2;
+    } else if (character === '[') {
+      inCharacterClass = true;
+      cursor += 1;
+    } else if (character === ']') {
+      inCharacterClass = false;
+      cursor += 1;
+    } else if (character === '/' && !inCharacterClass) {
+      cursor += 1;
+      while (cursor < source.length && /[A-Za-z]/.test(source[cursor])) cursor += 1;
+      return cursor;
+    } else {
+      cursor += 1;
+    }
+  }
+  return source.length;
 }
 
 function sampleHtmlSnapshot() {

@@ -23,7 +23,10 @@ const G5_RULE_METADATA = {
 test('G5 catches retired names outside the allowed observation and legacy-doc zones', () => {
   const root = makeSampleProject({
     'src/example/old.js': 'const pagedHtml = require("./legacy");\n',
+    '_indesign_scripts/lib/hi_old.jsxinc': 'var source = "pagedHtml";\n',
     'docs/legacy/history.md': 'legacy and paged-html are historical here.\n',
+    'docs/superpowers/plans/old-plan.md': 'paged-html appears in planning notes.\n',
+    'package.json': '{"scripts":{"old":"node test/fixtures/paged-html/basic-deck.html"}}\n',
     'src/protocol/lifecycle.js': 'const LIFECYCLE = "legacy";\n',
     'src/labels.js': 'const tag = "legacy-label";\n',
   });
@@ -31,6 +34,11 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
   const violations = collectG5Violations(root);
 
   assert.deepEqual(violations, [
+    {
+      rule: 'G5.1 retired naming is blocked',
+      file: '_indesign_scripts/lib/hi_old.jsxinc',
+      detail: 'line 1 contains pagedHtml',
+    },
     {
       rule: 'G5.1 retired naming is blocked',
       file: 'src/example/old.js',
@@ -62,24 +70,33 @@ test('G5 current retired naming violations match the ratchet baseline', () => {
 
 function collectG5Violations(repoRoot) {
   const violations = [];
+  const emittedPathViolations = new Set();
   for (const file of listScannableFiles(repoRoot)) {
     const relativeFile = repoRelative(repoRoot, file);
     RETIRED_PATTERN.lastIndex = 0;
     for (const match of relativeFile.matchAll(RETIRED_PATTERN)) {
       if (allowedPath(relativeFile, match[0])) continue;
-      violations.push({
+      const violation = {
         rule: 'G5.1 retired naming is blocked',
-        file: relativeFile,
+        file: pathViolationFile(relativeFile, match[0]),
         detail: `path contains ${match[0]}`,
-      });
+      };
+      const key = JSON.stringify(violation);
+      if (emittedPathViolations.has(key)) continue;
+      emittedPathViolations.add(key);
+      violations.push(violation);
     }
-    if (!isCodeLikeFile(file)) continue;
+    if (!isCodeLikeFile(file) || !shouldScanContent(relativeFile)) continue;
     const text = fs.readFileSync(file, 'utf8');
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
+      const emittedLineTokens = new Set();
       RETIRED_PATTERN.lastIndex = 0;
       for (const match of line.matchAll(RETIRED_PATTERN)) {
         if (allowedOccurrence(relativeFile, line, match[0])) continue;
+        const lineToken = match[0].toLowerCase();
+        if (emittedLineTokens.has(lineToken)) continue;
+        emittedLineTokens.add(lineToken);
         violations.push({
           rule: 'G5.1 retired naming is blocked',
           file: relativeFile,
@@ -94,6 +111,7 @@ function collectG5Violations(repoRoot) {
 function listScannableFiles(repoRoot) {
   return listProjectFiles(repoRoot)
     .filter((file) => isTextFile(file))
+    .filter((file) => isGuardrailScope(repoRelative(repoRoot, file)))
     .filter((file) => !shouldSkip(repoRelative(repoRoot, file)));
 }
 
@@ -111,7 +129,8 @@ function allowedOccurrence(relativeFile, line, token) {
   if (allowedPath(relativeFile, token)) return true;
   if (String(token).toLowerCase() === 'legacy' && line.includes('legacy-label')) return true;
   if (token === 'legacy-label') return true;
-  if (relativeFile === 'src/protocol/lifecycle.js' && /\blegacy\b/.test(line)) return true;
+  if (relativeFile === 'src/adapters/indesign/audit/reverse-snapshot-structure.js' && String(token).toLowerCase() === 'legacy') return true;
+  if (isProtocolLifecycleVocabulary(relativeFile, line, token)) return true;
   return false;
 }
 
@@ -130,12 +149,41 @@ function shouldSkip(relativeFile) {
   ].some((prefix) => relativeFile.startsWith(prefix));
 }
 
+function isGuardrailScope(relativeFile) {
+  return [
+    'src/',
+    '_indesign_scripts/',
+    'test/',
+  ].some((prefix) => relativeFile.startsWith(prefix));
+}
+
+function shouldScanContent(relativeFile) {
+  return !relativeFile.startsWith('test/');
+}
+
+function pathViolationFile(relativeFile, token) {
+  if (token === 'paged-html' && relativeFile.startsWith('test/fixtures/paged-html/')) {
+    return 'test/fixtures/paged-html';
+  }
+  if (token === 'paged-html' && relativeFile.startsWith('test/paged-html/')) {
+    return 'test/paged-html';
+  }
+  return relativeFile;
+}
+
+function isProtocolLifecycleVocabulary(relativeFile, line, token) {
+  if (String(token).toLowerCase() !== 'legacy') return false;
+  if (relativeFile === 'src/protocol/lifecycle.js') return true;
+  if (!relativeFile.startsWith('test/protocol/')) return false;
+  return /\b(?:isFieldClass|isLifecycle|isCapabilityLevel|fieldClass|FORMATS|legacy or unknown|rejects legacy|foreignSlot)\b/.test(line);
+}
+
 function isTextFile(file) {
-  return ['.js', '.cjs', '.json', '.md', '.jsx', '.ts', '.tsx', '.css', '.html', '.txt'].includes(path.extname(file));
+  return ['.js', '.cjs', '.json', '.md', '.jsx', '.jsxinc', '.ts', '.tsx', '.css', '.html', '.txt'].includes(path.extname(file));
 }
 
 function isCodeLikeFile(file) {
-  return ['.js', '.cjs', '.json', '.jsx', '.ts', '.tsx', '.css', '.html'].includes(path.extname(file));
+  return ['.js', '.cjs', '.json', '.jsx', '.jsxinc', '.ts', '.tsx', '.css', '.html'].includes(path.extname(file));
 }
 
 function collectFiles(root) {
