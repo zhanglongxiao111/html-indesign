@@ -72,6 +72,22 @@ test('compareStructureSignatures invalid-input 必须 fail for empty or missing 
   assert.equal(diff.errors.some((issue) => issue.code === 'STRUCTURE_SIGNATURE_INPUT_INVALID'), true);
 });
 
+test('compareStructureSignatures returns invalid input errors for null and undefined roots', () => {
+  const valid = { kind: 'AuthorStructureSignature', pages: [{ id: 'page-1', nodes: [] }], summary: { pages: 1, nodes: 0 } };
+
+  const nullDiff = compareStructureSignatures(null, valid);
+  const undefinedDiff = compareStructureSignatures(valid, undefined);
+
+  assert.equal(nullDiff.ok, false);
+  assert.equal(nullDiff.errors.some((issue) => (
+    issue.code === 'STRUCTURE_SIGNATURE_INPUT_INVALID' && issue.side === 'expected'
+  )), true);
+  assert.equal(undefinedDiff.ok, false);
+  assert.equal(undefinedDiff.errors.some((issue) => (
+    issue.code === 'STRUCTURE_SIGNATURE_INPUT_INVALID' && issue.side === 'actual'
+  )), true);
+});
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

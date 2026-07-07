@@ -157,7 +157,11 @@ test('compareReverseSnapshotStructures treats placed rectangles and graphic fram
       strokeColor: null,
       strokeWeight: null,
     },
-    placedAsset: { path: '\\\\nas\\share\\plan.pdf', placement: { pageNumber: 3 } },
+    placedAsset: {
+      path: '\\\\nas\\share\\plan.pdf',
+      bounds: { x: 120, y: 80, width: 200, height: 120 },
+      placement: { pageNumber: 3 },
+    },
   }]));
   const actual = reverseSnapshotStructureSignature(snapshotWithItems([{
     id: 'pdf-frame',
@@ -169,7 +173,11 @@ test('compareReverseSnapshotStructures treats placed rectangles and graphic fram
       strokeColor: null,
       strokeWeight: 0,
     },
-    placedAsset: { path: '\\\\nas\\share\\plan.pdf', placement: { pageNumber: 3 } },
+    placedAsset: {
+      path: '\\\\nas\\share\\plan.pdf',
+      bounds: { x: 120, y: 80, width: 200, height: 120 },
+      placement: { pageNumber: 3 },
+    },
   }]));
 
   const diff = compareReverseSnapshotStructures(expected, actual);
@@ -695,6 +703,74 @@ test('compareReverseSnapshotStructures fails when vector geometry is missing on 
   assert.equal(diff.errors.some((issue) => issue.code === 'REVERSE_SNAPSHOT_VECTOR_GEOMETRY_MISSING'), true);
 });
 
+test('compareReverseSnapshotStructures fails closed when text item bounds are missing on both sides', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'copy',
+    type: 'TextFrame',
+    text: '项目说明',
+    visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+  }]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'copy',
+    type: 'TextFrame',
+    text: '项目说明',
+    visualStyle: { fillColor: null, strokeColor: null, strokeWeight: null },
+  }]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => (
+    issue.code === 'REVERSE_SNAPSHOT_INPUT_INVALID'
+    && issue.itemId === 'copy'
+    && issue.field === 'bounds'
+  )), true);
+});
+
+test('compareReverseSnapshotStructures fails closed when filled vector bounds are missing on both sides', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'filled-vector-without-bounds',
+    type: 'Rectangle',
+    labels: [{ kind: 'item', id: 'filled-vector-without-bounds' }],
+    visualStyle: { fillColor: '#eeeeee', strokeColor: null, strokeWeight: null },
+    vectorGeometry: rectangleGeometry(100, 120, 120, 80),
+  }]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([{
+    id: 'filled-vector-without-bounds',
+    type: 'Rectangle',
+    labels: [{ kind: 'item', id: 'filled-vector-without-bounds' }],
+    visualStyle: { fillColor: '#eeeeee', strokeColor: null, strokeWeight: null },
+    vectorGeometry: rectangleGeometry(100, 120, 120, 80),
+  }]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => (
+    issue.code === 'REVERSE_SNAPSHOT_INPUT_INVALID'
+    && issue.itemId === 'filled-vector-without-bounds'
+    && issue.field === 'bounds'
+  )), true);
+});
+
+test('compareReverseSnapshotStructures fails closed when placed asset bounds are missing on both sides', () => {
+  const expected = reverseSnapshotStructureSignature(snapshotWithItems([
+    placedAssetItem({ id: 'asset-without-bounds', assetBounds: null }),
+  ]));
+  const actual = reverseSnapshotStructureSignature(snapshotWithItems([
+    placedAssetItem({ id: 'asset-without-bounds', assetBounds: null }),
+  ]));
+
+  const diff = compareReverseSnapshotStructures(expected, actual);
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => (
+    issue.code === 'REVERSE_SNAPSHOT_INPUT_INVALID'
+    && issue.itemId === 'asset-without-bounds'
+    && issue.field === 'asset.bounds'
+  )), true);
+});
+
 function snapshotWithItems(items) {
   return { pages: [page('1', items)] };
 }
@@ -742,7 +818,9 @@ function placedAssetItem(overrides = {}) {
       status: 'NORMAL',
       graphicType: overrides.graphicType || 'PDF',
       imageTypeName: overrides.imageTypeName || 'Adobe PDF',
-      bounds: overrides.assetBounds || { x: -15, y: -25, width: 360, height: 220 },
+      bounds: Object.prototype.hasOwnProperty.call(overrides, 'assetBounds')
+        ? overrides.assetBounds
+        : { x: -15, y: -25, width: 360, height: 220 },
       cropped: true,
       placement: overrides.placement || {},
     },

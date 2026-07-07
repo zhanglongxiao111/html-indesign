@@ -50,8 +50,9 @@ function compareContentInventories(expected, actual, options = {}) {
   validateInventoryInput(expected, 'expected', errors);
   validateInventoryInput(actual, 'actual', errors);
   comparePageCounts(expected, actual, errors);
-  const actualPages = new Map((actual.pages || []).map((page) => [page.id, page]));
-  for (const expectedPage of expected.pages || []) {
+  const expectedPages = inventoryPages(expected);
+  const actualPages = new Map(inventoryPages(actual).map((page) => [page.id, page]));
+  for (const expectedPage of expectedPages) {
     const actualPage = actualPages.get(expectedPage.id);
     if (!actualPage) {
       errors.push({ code: 'CONTENT_PAGE_MISSING', pageId: expectedPage.id });
@@ -81,8 +82,8 @@ function compareContentInventories(expected, actual, options = {}) {
     ok: errors.length === 0,
     errors,
     warnings,
-    expected: expected.summary,
-    actual: actual.summary,
+    expected: expected && expected.summary || null,
+    actual: actual && actual.summary || null,
   };
 }
 
@@ -187,13 +188,19 @@ function inventoryResult(pages, warnings = []) {
 }
 
 function comparePageCounts(expected, actual, errors) {
-  if ((expected.pages || []).length !== (actual.pages || []).length) {
+  const expectedPages = inventoryPages(expected);
+  const actualPages = inventoryPages(actual);
+  if (expectedPages.length !== actualPages.length) {
     errors.push({
       code: 'CONTENT_PAGE_COUNT_CHANGED',
-      expected: (expected.pages || []).length,
-      actual: (actual.pages || []).length,
+      expected: expectedPages.length,
+      actual: actualPages.length,
     });
   }
+}
+
+function inventoryPages(inventory) {
+  return inventory && Array.isArray(inventory.pages) ? inventory.pages : [];
 }
 
 function validateInventoryInput(inventory, side, errors) {
@@ -275,7 +282,7 @@ function readAssetAliases(root, seenReports = new Set(), warnings = []) {
       const originalPath = entry && entry.originalPath;
       if (!htmlPath || !originalPath) continue;
       const key = resourceIdentity(null, htmlPath);
-      const transitiveOriginalPath = resolveTransitiveAssetAlias(originalPath, seenReports);
+      const transitiveOriginalPath = resolveTransitiveAssetAlias(originalPath, seenReports, warnings);
       const value = resourceIdentity(null, transitiveOriginalPath || originalPath);
       if (!aliases.has(key) || isAbsoluteHostPath(originalPath)) {
         aliases.set(key, value);
@@ -292,7 +299,7 @@ function readAssetAliases(root, seenReports = new Set(), warnings = []) {
   }
 }
 
-function resolveTransitiveAssetAlias(originalPath, seenReports) {
+function resolveTransitiveAssetAlias(originalPath, seenReports, warnings) {
   if (!/^[a-zA-Z]:[\\/]/.test(String(originalPath || ''))) return null;
   const absolutePath = path.normalize(originalPath);
   let current = path.dirname(absolutePath);
@@ -301,7 +308,7 @@ function resolveTransitiveAssetAlias(originalPath, seenReports) {
     const reportPath = path.join(current, 'reports', 'authoring-report.json');
     if (fs.existsSync(reportPath)) {
       const relativePath = path.relative(current, absolutePath);
-      const aliases = readAssetAliases(current, new Set(seenReports), []);
+      const aliases = readAssetAliases(current, new Set(seenReports), warnings);
       const alias = aliases.get(resourceIdentity(null, relativePath));
       if (alias && alias !== resourceIdentity(null, originalPath)) return alias;
     }

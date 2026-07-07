@@ -126,6 +126,52 @@ function validateReverseSnapshotStructureInput(signature, side, errors) {
       reason: 'pages must not be empty',
     });
   }
+  for (const page of signature.pages) {
+    validateBounds(page && page.bounds, {
+      side,
+      pageId: page && page.id,
+      field: 'bounds',
+      reason: 'page bounds are required',
+    }, errors);
+    for (const item of page && page.items || []) {
+      validateBounds(item && item.bounds, {
+        side,
+        pageId: page && page.id,
+        itemId: item && (item.rawId || item.id),
+        field: 'bounds',
+        reason: 'item bounds are required',
+      }, errors);
+      if (item && item.asset && !isEmbeddedPreviewAssetSignature(item.asset)) {
+        validateBounds(item.asset.bounds, {
+          side,
+          pageId: page && page.id,
+          itemId: item.rawId || item.id,
+          field: 'asset.bounds',
+          reason: 'asset bounds are required',
+        }, errors);
+      }
+    }
+  }
+}
+
+function validateBounds(bounds, context, errors) {
+  if (hasValidBounds(bounds)) return;
+  errors.push({
+    code: 'REVERSE_SNAPSHOT_INPUT_INVALID',
+    ...context,
+  });
+}
+
+function hasValidBounds(bounds) {
+  return Boolean(bounds)
+    && finiteNumber(bounds.x)
+    && finiteNumber(bounds.y)
+    && finiteNumber(bounds.width)
+    && finiteNumber(bounds.height);
+}
+
+function isEmbeddedPreviewAssetSignature(asset) {
+  return asset && asset.path === 'embedded-image-preview';
 }
 
 function pageSignature(page, options) {
@@ -383,7 +429,7 @@ function normalizePoint(point = {}) {
 }
 
 function normalizeBounds(bounds) {
-  if (!bounds) return null;
+  if (!hasValidBounds(bounds)) return null;
   return {
     x: numberOrZero(bounds.x),
     y: numberOrZero(bounds.y),

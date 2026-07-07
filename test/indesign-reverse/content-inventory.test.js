@@ -261,6 +261,22 @@ test('compareContentInventories invalid-input 必须 fail for empty or missing p
   assert.equal(diff.errors.some((issue) => issue.code === 'CONTENT_INVENTORY_INPUT_INVALID'), true);
 });
 
+test('compareContentInventories returns invalid input errors for null and undefined roots', () => {
+  const valid = inventoryWithText(['正文']);
+
+  const nullDiff = compareContentInventories(null, valid);
+  const undefinedDiff = compareContentInventories(valid, undefined);
+
+  assert.equal(nullDiff.ok, false);
+  assert.equal(nullDiff.errors.some((issue) => (
+    issue.code === 'CONTENT_INVENTORY_INPUT_INVALID' && issue.side === 'expected'
+  )), true);
+  assert.equal(undefinedDiff.ok, false);
+  assert.equal(undefinedDiff.errors.some((issue) => (
+    issue.code === 'CONTENT_INVENTORY_INPUT_INVALID' && issue.side === 'actual'
+  )), true);
+});
+
 test('authorPackageContentInventory warns when asset aliases report is malformed', () => {
   const root = path.resolve('test/workspace/content-inventory-malformed-asset-report');
   fs.rmSync(root, { recursive: true, force: true });
@@ -270,6 +286,34 @@ test('authorPackageContentInventory warns when asset aliases report is malformed
   const inventory = authorPackageContentInventory(root);
 
   assert.equal(inventory.warnings.some((warning) => warning.code === 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID'), true);
+});
+
+test('authorPackageContentInventory warns when a transitive ancestor asset report is malformed', () => {
+  const root = path.resolve('test/workspace/content-inventory-malformed-transitive-asset-report');
+  const firstRoot = path.join(root, 'first-reverse');
+  const secondRoot = path.join(root, 'second-reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(firstRoot, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(path.join(firstRoot, 'assets/diagram.svg'), '<svg/>');
+  writeFile(path.join(firstRoot, 'reports/authoring-report.json'), '{broken json');
+  writeAuthorPackage(secondRoot, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(path.join(secondRoot, 'assets/diagram.svg'), '<svg/>');
+  writeFile(path.join(secondRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [{
+        originalPath: path.join(firstRoot, 'assets/diagram.svg'),
+        htmlPath: 'assets/diagram.svg',
+        reason: 'local-copy-for-preview',
+      }],
+    },
+  }, null, 2));
+
+  const inventory = authorPackageContentInventory(secondRoot);
+
+  assert.equal(inventory.warnings.some((warning) => (
+    warning.code === 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID'
+    && path.normalize(warning.reportPath) === path.join(firstRoot, 'reports', 'authoring-report.json')
+  )), true);
 });
 
 function writeAuthorPackage(root, pageHtml) {
