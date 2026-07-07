@@ -19,11 +19,31 @@ function collectRequireGraph(rootDirs) {
     return resolved;
   });
 
-  const files = roots.flatMap((root) => collectJavaScriptFiles(root)).sort();
+  const files = roots.flatMap((root) => collectJavaScriptFiles(root));
+  return collectRequireGraphFromFiles(files);
+}
+
+function collectRequireGraphFromFiles(files) {
+  if (!Array.isArray(files)) {
+    throw new Error('files must be an array');
+  }
+
+  const resolvedFiles = files.map((file, index) => {
+    if (typeof file !== 'string' || file.trim() === '') {
+      throw new Error(`files[${index}] must be a non-empty string`);
+    }
+    const resolved = path.resolve(file);
+    const stat = fs.statSync(resolved);
+    if (!stat.isFile()) {
+      throw new Error(`files[${index}] must be a file: ${resolved}`);
+    }
+    return resolved;
+  });
+
   const edges = [];
   const observations = [];
 
-  for (const file of files) {
+  for (const file of resolvedFiles.sort()) {
     const source = fs.readFileSync(file, 'utf8');
     for (const expression of extractRequireExpressions(source, file)) {
       const staticRequest = staticRequireRequest(expression);
@@ -327,4 +347,5 @@ function resolveRelativeRequire(fromFile, request) {
 
 module.exports = {
   collectRequireGraph,
+  collectRequireGraphFromFiles,
 };

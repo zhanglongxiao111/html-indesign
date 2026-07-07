@@ -3,11 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { createRequire } = require('node:module');
 
 const { compareViolationsToBaseline } = require('./helpers/baseline-ratchet');
 const { formatGuardrailFailure } = require('./helpers/guardrail-report');
-const { collectRequireGraph } = require('./helpers/require-graph');
+const { collectRequireGraph, collectRequireGraphFromFiles } = require('./helpers/require-graph');
 
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G1';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -131,6 +130,37 @@ test('G1.6 catches dependency cycles through local root public entries', () => {
   assert.match(message, /Rule: G1\.6 no dependency cycles/);
   assert.match(message, /Reason: The local architecture dependency graph must remain acyclic\./);
   assert.doesNotMatch(message, /Move cross-format orchestration into semantic-model/);
+});
+
+test('G1.6 scans comment-wrapped root entrypoint requires with shared require graph semantics', () => {
+  const root = makeSampleProject({
+    'index.js': "module.exports = require(/* keep */ './src/semantic-model/model');\n",
+    'src/semantic-model/model.js': "module.exports = require('../../index.js');\n",
+  });
+
+  const violations = collectG1Violations(root);
+
+  assert.deepEqual(violations, [
+    {
+      rule: 'G1.6 no dependency cycles',
+      file: 'index.js',
+      detail: 'cycle index.js -> src/semantic-model/model.js -> index.js',
+    },
+  ]);
+});
+
+test('G1.6 ignores require-looking text in root entrypoint string literals', () => {
+  const root = makeSampleProject({
+    'index.js': `
+      const example = "require('./src/semantic-model/model')";
+      module.exports = {};
+    `,
+    'src/semantic-model/model.js': "module.exports = require('../../index.js');\n",
+  });
+
+  const violations = collectG1Violations(root);
+
+  assert.deepEqual(violations, []);
 });
 
 test('G1 failure reports describe every failing subrule family', () => {
@@ -355,42 +385,17 @@ function findCycles(edges, repoRoot) {
 
 function collectLocalRequireGraph(repoRoot, rootDirs) {
   const graph = collectRequireGraph(rootDirs);
-  const rootEntrypointEdges = collectRootEntrypointEdges(repoRoot);
+  const rootEntrypointFiles = ROOT_PUBLIC_ENTRYPOINTS
+    .map((relativePath) => path.join(repoRoot, relativePath))
+    .filter((file) => fs.existsSync(file));
+  const rootEntrypointGraph =
+    rootEntrypointFiles.length === 0
+      ? { edges: [], observations: [] }
+      : collectRequireGraphFromFiles(rootEntrypointFiles);
   return {
-    edges: graph.edges.concat(rootEntrypointEdges),
-    observations: graph.observations,
+    edges: graph.edges.concat(rootEntrypointGraph.edges),
+    observations: graph.observations.concat(rootEntrypointGraph.observations),
   };
-}
-
-function collectRootEntrypointEdges(repoRoot) {
-  const edges = [];
-  for (const relativePath of ROOT_PUBLIC_ENTRYPOINTS) {
-    const file = path.join(repoRoot, relativePath);
-    if (!fs.existsSync(file)) {
-      continue;
-    }
-    const source = fs.readFileSync(file, 'utf8');
-    for (const request of extractStaticRootEntrypointRequireRequests(source)) {
-      if (!request.startsWith('.')) {
-        continue;
-      }
-      edges.push({ from: file, to: createRequire(file).resolve(request) });
-    }
-  }
-  return edges;
-}
-
-function extractStaticRootEntrypointRequireRequests(source) {
-  const requests = [];
-  const requirePattern = /\brequire\s*\(\s*(["'`])([^"'`]*?)\1\s*\)/g;
-  for (const match of source.matchAll(requirePattern)) {
-    const [, quote, request] = match;
-    if (quote === '`' && request.includes('${')) {
-      continue;
-    }
-    requests.push(request);
-  }
-  return requests;
 }
 
 function canonicalCycle(cycle) {
