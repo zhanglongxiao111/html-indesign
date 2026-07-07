@@ -113,6 +113,24 @@ test('registry contains effectiveLabel and observedLabel observation boundaries'
   assert.equal(fieldRegistry.getByPath('items[].observedLabel.styleRefs').validation.mayDriveStructuredCompilation, false);
 });
 
+test('registry keeps reverse effective-label htmlTag surfaces out of HTML adapter comparability', () => {
+  const rawLabel = fieldRegistry.getByPath('labels[].htmlTag');
+  const itemEffective = fieldRegistry.getByPath('effectiveLabel.htmlTag');
+  const pageEffective = fieldRegistry.getByPath('pages[].effectiveLabel.htmlTag');
+
+  assert.equal(rawLabel.canonicalPath, 'items[].sourceHtmlTag');
+  assert.equal(rawLabel.capabilities.html.read, 'native');
+  assert.equal(rawLabel.capabilities.indesign.read, 'lossless');
+
+  for (const field of [itemEffective, pageEffective]) {
+    assert.ok(field);
+    assert.equal(field.fieldClass, 'sourceMetadata');
+    assert.equal(field.owner, 'reverse-model');
+    assert.equal(field.capabilities.html.read, 'unsupported');
+    assert.equal(field.capabilities.indesign.read, 'lossless');
+  }
+});
+
 test('registry adjudicates role plus sourceType and retires the old item type dialect', () => {
   const role = fieldRegistry.getByPath('items[].role');
   const sourceType = fieldRegistry.getByPath('items[].sourceType');

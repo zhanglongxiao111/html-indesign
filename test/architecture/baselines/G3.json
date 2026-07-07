@@ -535,13 +535,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path effectiveLabel.htmlTag is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path effectiveLabel.sourceAncestorNodes is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -1704,13 +1697,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path pages[].effectiveLabel.htmlTag is not covered by html or indesign adapter samples",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path pages[].effectiveLabel.margins is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -2831,27 +2817,6 @@
     {
       "rule": "G3.3 registry-backed adapter isomorphism",
       "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.frameStyles[].displayName is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.frameStyles[].labels is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.frameStyles[].name is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
       "detail": "registered comparable model path styles.frameStyles[].safeName is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
@@ -2862,13 +2827,6 @@
       "detail": "registered comparable model path styles.frameStyles[].source is not covered by html or indesign adapter samples",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G3.3 registry-backed adapter isomorphism",
-      "file": "src/protocol/index.js",
-      "detail": "registered comparable model path styles.frameStyles[].token is not covered by html or indesign adapter samples",
-      "reason": "既有方言差异待后续同构收口",
-      "cleanupRef": "Task 9e"
     },
     {
       "rule": "G3.3 registry-backed adapter isomorphism",

@@ -4,6 +4,12 @@ const SOURCE_METADATA_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
 });
 
+const REVERSE_ONLY_SOURCE_METADATA_CAPABILITIES = Object.freeze({
+  html: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+  indesign: { read: 'lossless', write: 'observe-only', persist: 'lossless' },
+  pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+});
+
 const FORMAT_EXTENSION_CAPABILITIES = Object.freeze({
   html: { read: 'observe-only', write: 'unsupported', persist: 'lossless' },
   indesign: { read: 'native', write: 'native', persist: 'native' },
@@ -56,6 +62,12 @@ function canonical(canonicalPath, currentPaths, type) {
 
 module.exports = [
   sourceMetadata('pages[].effectiveLabel', [], 'object'),
+  sourceMetadata('pages[].effectiveLabel.htmlTag', [], 'string', {
+    capabilities: REVERSE_ONLY_SOURCE_METADATA_CAPABILITIES,
+  }),
+  sourceMetadata('effectiveLabel.htmlTag', [], 'string', {
+    capabilities: REVERSE_ONLY_SOURCE_METADATA_CAPABILITIES,
+  }),
   sourceMetadata('items[].sourceType', ['pages[].items[].sourceType'], 'string', {
     description: 'Observed source-format object type, not a semantic role.',
   }),

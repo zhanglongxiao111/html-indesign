@@ -215,7 +215,7 @@ module.exports = [
   },
   {
     canonicalPath: 'items[].sourceHtmlTag',
-    currentPaths: ['labels[].htmlTag', 'effectiveLabel.htmlTag', 'pages[].effectiveLabel.htmlTag'],
+    currentPaths: ['labels[].htmlTag'],
     fieldClass: 'sourceMetadata',
     lifecycle: 'active',
     owner: 'source-metadata',

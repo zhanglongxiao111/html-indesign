@@ -901,9 +901,21 @@ function sampleHtmlSnapshot() {
         role: 'text',
         tagName: 'p',
         text: 'Hello',
-        attributes: { 'data-id-semantic': 'title' },
+        attributes: {
+          'data-id-semantic': 'title',
+          'data-id-frame-style': 'callout-frame',
+          'data-id-frame-style-name': 'Callout Frame',
+        },
         bounds: { x: 0, y: 0, width: 10, height: 10 },
-        computedStyle: {},
+        computedStyle: {
+          objectFit: 'contain',
+          objectPosition: '50% 50%',
+          paddingTop: '1px',
+          paddingRight: '1px',
+          paddingBottom: '1px',
+          paddingLeft: '1px',
+          overflow: 'hidden',
+        },
         visualStyle: {
           strokeColor: '#999999',
           strokeWeight: 1,
@@ -1079,6 +1091,16 @@ function sampleReverseSnapshot() {
         {
           name: 'default-table',
           labels: [{ kind: 'style', id: 'default-table', token: 'default-table', displayName: 'default-table', styleKind: 'tableStyles' }],
+        },
+      ],
+      frameStyles: [
+        {
+          name: 'Callout Frame',
+          fit: 'contain',
+          position: '50% 50%',
+          inset: { top: 1, right: 1, bottom: 1, left: 1 },
+          overflow: 'hidden',
+          labels: [{ kind: 'style', id: 'callout-frame', token: 'callout-frame', displayName: 'Callout Frame', styleKind: 'frameStyles' }],
         },
       ],
     },
