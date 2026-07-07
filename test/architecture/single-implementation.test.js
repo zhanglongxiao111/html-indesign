@@ -93,6 +93,31 @@ test('G6 ratchet reports new duplicate helper definitions and expired baseline e
   assert.deepEqual(result.expiredExemptions, baseline.exemptions);
 });
 
+test('G6 collector scans definitions after regex literals with quotes', () => {
+  const root = makeSampleProject({
+    'src/writers/html/regex-before-definitions.js': `
+      const quotedPattern = /['"]/g;
+      function safeClass(value) { return String(value); }
+      const normalizeText = (value) => String(value).trim();
+    `,
+  });
+
+  const violations = collectG6Violations(root);
+
+  assert.deepEqual(violations, [
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/regex-before-definitions.js',
+      detail: 'defines normalizeText',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/regex-before-definitions.js',
+      detail: 'defines safeClass',
+    },
+  ]);
+});
+
 test('G6 current duplicate helper definitions match the ratchet baseline', () => {
   const actualViolations = collectG6Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -108,7 +133,7 @@ function collectG6Violations(repoRoot) {
   for (const file of listProjectFiles(repoRoot)) {
     const relativeFile = repoRelative(repoRoot, file);
     if (!isG6Scope(relativeFile) || isSkipped(relativeFile) || !isCodeFile(file)) continue;
-    const text = stripCommentsPreservingDefinitions(fs.readFileSync(file, 'utf8'));
+    const text = stripCommentsPreservingDefinitions(fs.readFileSync(file, 'utf8'), relativeFile);
     const seen = new Set();
     for (const match of text.matchAll(DEFINITION_PATTERN)) {
       const name = match[1] || match[2];
@@ -143,7 +168,7 @@ function isCodeFile(file) {
   return ['.js', '.cjs', '.mjs', '.jsx', '.jsxinc', '.ts', '.tsx'].includes(path.extname(file));
 }
 
-function stripCommentsPreservingDefinitions(text) {
+function stripCommentsPreservingDefinitions(text, file = 'source') {
   let out = '';
   let state = 'code';
   let quote = '';
@@ -197,9 +222,73 @@ function stripCommentsPreservingDefinitions(text) {
       out += ' ';
       continue;
     }
+    if (current === '/' && startsRegexLiteral(text, index)) {
+      const endIndex = findRegexLiteralEnd(text, index, file);
+      out += blankPreservingNewlines(text.slice(index, endIndex));
+      index = endIndex - 1;
+      continue;
+    }
     out += current;
   }
   return out;
+}
+
+function startsRegexLiteral(source, index) {
+  const previousIndex = previousSignificantIndex(source, index);
+  if (previousIndex === -1) return true;
+
+  const previous = source[previousIndex];
+  if (/[[({=,:;!&|?+\-*~^<>%]/.test(previous)) return true;
+
+  const token = previousIdentifierToken(source, previousIndex);
+  return ['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'yield', 'await'].includes(token);
+}
+
+function previousSignificantIndex(source, index) {
+  let cursor = index - 1;
+  while (cursor >= 0 && /\s/.test(source[cursor])) cursor -= 1;
+  return cursor;
+}
+
+function previousIdentifierToken(source, index) {
+  if (!isIdentifierCharacter(source[index])) return '';
+  let start = index;
+  while (start > 0 && isIdentifierCharacter(source[start - 1])) start -= 1;
+  return source.slice(start, index + 1);
+}
+
+function isIdentifierCharacter(character) {
+  return typeof character === 'string' && /[$\w]/.test(character);
+}
+
+function findRegexLiteralEnd(source, index, file) {
+  let cursor = index + 1;
+  let inCharacterClass = false;
+
+  while (cursor < source.length) {
+    const character = source[cursor];
+    if (character === '\\') {
+      cursor += 2;
+    } else if (character === '[') {
+      inCharacterClass = true;
+      cursor += 1;
+    } else if (character === ']') {
+      inCharacterClass = false;
+      cursor += 1;
+    } else if (character === '/' && !inCharacterClass) {
+      cursor += 1;
+      while (cursor < source.length && /[A-Za-z]/.test(source[cursor])) cursor += 1;
+      return cursor;
+    } else {
+      cursor += 1;
+    }
+  }
+
+  throw new Error(`Unclosed regular expression literal in ${file}`);
+}
+
+function blankPreservingNewlines(value) {
+  return value.replace(/[^\n\r]/g, ' ');
 }
 
 function listProjectFiles(repoRoot) {

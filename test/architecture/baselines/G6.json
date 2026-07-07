@@ -65,6 +65,13 @@
     },
     {
       "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/audit/source-roundtrip-diff.js",
+      "detail": "defines normalizeText",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
       "file": "src/writers/html/audit/structure-signature.js",
       "detail": "defines normalizeText",
       "reason": "既有违规待收口",
@@ -72,8 +79,22 @@
     },
     {
       "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/author-css-writer.js",
+      "detail": "defines safeClass",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
       "file": "src/writers/html/author-style-attrs.js",
       "detail": "defines safeClass",
+      "reason": "既有违规待收口",
+      "cleanupRef": "Task 4"
+    },
+    {
+      "rule": "G6.1 shared helpers have a single implementation",
+      "file": "src/writers/html/visual-html-utils.js",
+      "detail": "defines safeClassToken",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 4"
     },
