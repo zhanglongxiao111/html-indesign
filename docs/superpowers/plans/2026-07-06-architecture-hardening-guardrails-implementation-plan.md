@@ -163,7 +163,7 @@ npm test
 
 ### 4. G2 / G6 护栏（先立规则 + 全量豁免）
 
-进度：审核退回修复中（Task 4 review 要求 G6 收回到 spec 当前 8 个函数清单，并取消 `src/protocol/` 额外豁免；G2 未发现阻断问题，2026-07-07）。
+进度：修复已提交，复审中（提交 `a026c0b` 将 G6 收回 spec 当前 8 个函数清单并取消 `src/protocol/` 额外豁免；G6 baseline 13 条，等待复审，2026-07-07）。
 
 - [ ] G2 协议字面量：扫描 src（protocol 除外）与 scripts 中裸 `data-id-` 字面量；当前 47 个文件（以实扫为准）全量入 `baselines/G2.json`。
 - [ ] G6 单一实现：spec §3 G6 函数名清单在 `src/shared/` 之外的重复定义扫描；现状全量入 `baselines/G6.json`。
