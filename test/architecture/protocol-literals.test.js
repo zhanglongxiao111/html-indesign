@@ -27,6 +27,8 @@ test('G2 catches bare data-id literals outside src/protocol and reports the requ
       '// data-id-comment-only is not a literal.',
       '',
     ].join('\n'),
+    'src/adapters/html/regex.js': 'const pattern = /data-id-role/gi;\n',
+    'src/adapters/html/template.js': 'const field = `data-id-template`;\n',
     'src/protocol/fields.js': "const allowed = 'data-id-layout';\n",
     'scripts/check.js': 'const attr = "data-id-grid";\n',
     'docs/spec.md': 'data-id-docs is not scanned.\n',
@@ -45,6 +47,11 @@ test('G2 catches bare data-id literals outside src/protocol and reports the requ
       rule: 'G2.1 protocol literals use registry constants',
       file: 'src/adapters/html/example.js',
       detail: 'field data-id-role',
+    },
+    {
+      rule: 'G2.1 protocol literals use registry constants',
+      file: 'src/adapters/html/template.js',
+      detail: 'field data-id-template',
     },
   ]);
 
@@ -71,9 +78,8 @@ function collectG2Violations(repoRoot) {
     const relativeFile = repoRelative(repoRoot, file);
     if (!isG2Scope(relativeFile) || isSkipped(relativeFile) || !isTextFile(file)) continue;
     const fields = new Set();
-    const text = stripCommentsPreservingStrings(fs.readFileSync(file, 'utf8'));
-    for (const match of text.matchAll(DATA_ID_LITERAL_PATTERN)) {
-      fields.add(match[0].toLowerCase());
+    for (const field of collectDataIdStringLiteralFields(fs.readFileSync(file, 'utf8'))) {
+      fields.add(field);
     }
     for (const field of fields) {
       violations.push({
@@ -105,61 +111,69 @@ function isTextFile(file) {
   return ['.js', '.cjs', '.mjs', '.json', '.jsx', '.jsxinc', '.ts', '.tsx', '.css', '.html'].includes(path.extname(file));
 }
 
-function stripCommentsPreservingStrings(text) {
-  let out = '';
+function collectDataIdStringLiteralFields(text) {
+  const fields = new Set();
   let state = 'code';
-  let quote = '';
   for (let index = 0; index < text.length; index += 1) {
     const current = text[index];
     const next = text[index + 1] || '';
     if (state === 'line-comment') {
       if (current === '\n') {
         state = 'code';
-        out += current;
-      } else {
-        out += ' ';
       }
       continue;
     }
     if (state === 'block-comment') {
       if (current === '*' && next === '/') {
-        out += '  ';
         index += 1;
-        state = 'code';
-      } else {
-        out += current === '\n' ? current : ' ';
-      }
-      continue;
-    }
-    if (state === 'string') {
-      out += current;
-      if (current === '\\') {
-        index += 1;
-        out += text[index] || '';
-      } else if (current === quote) {
         state = 'code';
       }
       continue;
     }
     if (current === '/' && next === '/') {
-      out += '  ';
       index += 1;
       state = 'line-comment';
       continue;
     }
     if (current === '/' && next === '*') {
-      out += '  ';
       index += 1;
       state = 'block-comment';
       continue;
     }
     if (current === '"' || current === "'" || current === '`') {
-      quote = current;
-      state = 'string';
+      const result = readStringLiteral(text, index, current);
+      if (result.closed) addDataIdFields(fields, result.value);
+      index = result.endIndex;
     }
-    out += current;
   }
-  return out;
+  return fields;
+}
+
+function readStringLiteral(text, startIndex, quote) {
+  let value = '';
+  for (let index = startIndex + 1; index < text.length; index += 1) {
+    const current = text[index];
+    if (current === '\\') {
+      value += current;
+      index += 1;
+      value += text[index] || '';
+      continue;
+    }
+    if (current === quote) {
+      return { value, endIndex: index, closed: true };
+    }
+    if (quote !== '`' && (current === '\n' || current === '\r')) {
+      return { value: '', endIndex: startIndex, closed: false };
+    }
+    value += current;
+  }
+  return { value: '', endIndex: startIndex, closed: false };
+}
+
+function addDataIdFields(fields, value) {
+  for (const match of value.matchAll(DATA_ID_LITERAL_PATTERN)) {
+    fields.add(match[0].toLowerCase());
+  }
 }
 
 function listProjectFiles(repoRoot) {

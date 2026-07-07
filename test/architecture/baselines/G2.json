@@ -1214,13 +1214,6 @@
     {
       "rule": "G2.1 protocol literals use registry constants",
       "file": "src/writers/html/audit/author-editability.js",
-      "detail": "field data-id-content-",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 4"
-    },
-    {
-      "rule": "G2.1 protocol literals use registry constants",
-      "file": "src/writers/html/audit/author-editability.js",
       "detail": "field data-id-vector-points",
       "reason": "既有违规待收口",
       "cleanupRef": "Task 4"
