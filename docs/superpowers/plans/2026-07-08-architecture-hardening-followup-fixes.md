@@ -563,7 +563,9 @@ git diff --check has no output
 
 Completed in `a16a4a9` plus controller verification: `git ls-files .superpowers` had no output; `node --test test/architecture/` passed `76/76`; `node --test test/protocol/*.test.js` passed `170/170` because `node --test test/protocol/` is not a valid recursive directory invocation on this Windows/Node setup; reverse/plugin/E2E focused tests passed `59/59`; shared/instructions focused tests passed `75/75`; `npm test` passed `965/965`; `git diff --check` had no output.
 
-- [ ] **Step 5: Final review**
+Final review then found one remaining false-green path: standalone `scripts/indesign-reverse-export.js` still exited `0` when the shared reverse author audit returned `ok:false`. Fixed in `cf2506c`; post-fix controller verification passed CLI/source roundtrip focused tests `17/17`, plugin/E2E focused tests `41/41`, `npm test` `966/966`, and `git diff --check` with no output.
+
+- [x] **Step 5: Final review**
 
 Request final code review with the full branch diff after Tasks 1-7. The reviewer must explicitly check:
 
@@ -575,12 +577,16 @@ G4/G6/baseline guardrails cannot false-green through names or exemptions
 shared helper duplicates were removed rather than renamed
 ```
 
-- [ ] **Step 6: Commit**
+Completed: final re-review approved with no Critical, Important, or Minor findings. The reviewer explicitly confirmed the previous Critical is closed: standalone reverse export CLI now exits non-zero on shared author audit `ok:false` while preserving JSON/report output, and plugin/E2E fail-visible paths remain intact.
+
+- [x] **Step 6: Commit**
 
 ```powershell
 git add docs test src scripts .gitignore
 git commit -m "docs: close architecture hardening follow-up fixes"
 ```
+
+Final closeout commit records the post-review plan state after `cf2506c`.
 
 ## Completion Criteria
 
