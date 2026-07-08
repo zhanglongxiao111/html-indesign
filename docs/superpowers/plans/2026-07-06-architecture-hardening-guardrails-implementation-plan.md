@@ -298,7 +298,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 - [x] 测试目录已改为 `test/html-to-indesign/`、`test/indesign-to-html/`，fixtures 已改为 `test/fixtures/fixed-html/`；G5 baseline 已归零；审核 agent `Fermat` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `423340b`、`5b17c23`、`e256ed2`，2026-07-08）。
 - [x] `instructionItemFor` 已按 text / graphic / table / line / shape 拆函数；`compareVisualGeometry` 已拆为页面与元素比较层；重复 `bordersAreUniform` / same-border 逻辑已上提 `src/style-synthesis/box-model.js` 单实现，G6 已补全域回归；审核 agent `Dewey` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `54935d9`、`724423f`，2026-07-08）。
-- [ ] `SEMANTIC_CONTAINER_CLASSES` 与语义 preset 对齐（单一来源）。
+- [x] 语义容器 class 已迁入 semantic preset `tokens.semanticContainers` 单一来源；`author-editability` 不再维护本地 `SEMANTIC_CONTAINER_CLASSES` allowlist，且 `styleNameMap.semanticContainers` 旁路已拒绝；审核 agent `Hegel` 最终判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `28b6718`、`53451a0`、`dc4ebdc`、`c5b609d`，2026-07-08）。
 - [ ] `extract_blueprint.jsx` 列入 blueprint 退役观察清单（docs 记录，不删代码）。
 - [ ] spec 状态行"提案"→"已实施"，补记实施偏差；本计划在 plans README 保持登记；AGENTS.md 边界描述与 W3 后的实际结构核对一遍。
 - [ ] 全基线归零终检：`test/architecture/baselines/*.json` 除注释性空壳外无条目。
