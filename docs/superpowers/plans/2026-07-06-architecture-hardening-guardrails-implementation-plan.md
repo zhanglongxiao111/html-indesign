@@ -258,7 +258,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10c 准备中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c`，修复提交 `3c559a4` 已把 paragraph-style 判定收进 `htmlItemRoleFromElementFacts()`，让 reader/audit 传入同源 asset facts，并补 content inventory sourced SVG、annotation grid skip 和 role helper 回归测试；控制器验证 98/98、G2/G6 6/6、`npm test` 903/903、`git diff --check` 通过；审核 agent `Pauli` 复审判定 `SPEC: PASS` / `QUALITY: PASS`，无 P0/P1/P2；准备调度 10c 共享工具收敛；2026-07-08）。
+进度：10c 实施中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；已创建 `.superpowers/sdd/task-10c-brief.md`，当前 G6 baseline 仍有 15 个 exemption，10c 将按 text/style-utils/unit conversion/NAS path 四组取证收敛，不做 10d 机械字面量迁移；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
