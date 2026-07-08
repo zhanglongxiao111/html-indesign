@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const { writeAuthorPackageEntry } = require('../../authoring');
-const { fieldRegistry } = require('../../protocol');
+const {
+  fieldRegistry,
+  HTML_DATA_ID_ATTRIBUTES,
+} = require('../../protocol');
 const { writeAuthorCssFiles } = require('./author-css-writer');
 const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
@@ -252,7 +255,7 @@ function sourceConfigParseFailed(configPath, cause) {
 function pageEntries(model, sourceConfig = null) {
   const sourcePages = sourcePagesByFile(sourceConfig, model.sourcePackage);
   return (model.pages || []).map((page, index) => {
-    const sourceFile = slash(page.sourceFile || sourceNodeAttribute(page, 'data-id-source-file') || '');
+    const sourceFile = slash(page.sourceFile || sourceNodeAttribute(page, HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE) || '');
     const sourcePage = sourceFile ? sourcePages.get(sourceFile) : null;
     const pageToken = page.pageToken || (sourcePage && sourcePage.id) || sourceNodeAttribute(page, 'data-page') || null;
     const pageId = pageToken || page.semantic || page.id || `page-${index + 1}`;
@@ -392,30 +395,30 @@ function sourcePageAttrs(page, sourceFile, options) {
   attrs.id = sourceNode.id || page.id;
   attrs['data-page'] = page.pageToken || sourceNodeAttribute(page, 'data-page') || page.semantic || page.id;
   if (!attrs[SEMANTIC_ATTR] && isUsefulSemantic(page.semantic)) attrs[SEMANTIC_ATTR] = page.semantic;
-  attrs['data-id-source-file'] = sourceFile;
+  attrs[HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE] = sourceFile;
   if (shouldWritePageParentAttrs(page, options)) {
-    if (page.parentPageId) attrs['data-id-parent-page'] = attrs['data-id-parent-page'] || page.parentPageId;
-    if (page.parentPageName) attrs['data-id-parent-page-name'] = attrs['data-id-parent-page-name'] || page.parentPageName;
+    if (page.parentPageId) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE] = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE] || page.parentPageId;
+    if (page.parentPageName) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME] = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME] || page.parentPageName;
   } else {
-    delete attrs['data-id-parent-page'];
-    delete attrs['data-id-parent-page-name'];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME];
   }
   const preserveTrustedSource = options.preserveTrustedSource && sourceNode.attributes;
-  if (!attrs['data-id-margin']) {
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN]) {
     const marginAttr = pageMarginAttrValue(page.margins);
-    if (marginAttr) attrs['data-id-margin'] = marginAttr;
+    if (marginAttr) attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN] = marginAttr;
   }
-  if (!attrs['data-id-guides']) {
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.GUIDES]) {
     const guidesAttr = pageGuidesAttrValue(page.guides);
-    if (guidesAttr) attrs['data-id-guides'] = guidesAttr;
+    if (guidesAttr) attrs[HTML_DATA_ID_ATTRIBUTES.GUIDES] = guidesAttr;
   }
-  if (options.mode === 'observation') attrs['data-id-observed'] = 'true';
-  if (options.mode && options.mode !== 'structured') attrs['data-id-reverse-mode'] = options.mode;
+  if (options.mode === 'observation') attrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED] = 'true';
+  if (options.mode && options.mode !== 'structured') attrs[HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE] = options.mode;
   if (page.grid) {
-    attrs['data-id-grid'] = attrs['data-id-grid'] || `${page.grid.columns}x${page.grid.rows}`;
-    if (page.grid.columnGutter != null) attrs['data-id-column-gutter'] = attrs['data-id-column-gutter'] || `${page.grid.columnGutter}px`;
-    if (page.grid.rowGutter != null) attrs['data-id-row-gutter'] = attrs['data-id-row-gutter'] || `${page.grid.rowGutter}px`;
-    if (page.grid.baseline != null) attrs['data-id-baseline'] = attrs['data-id-baseline'] || `${page.grid.baseline}px`;
+    attrs[HTML_DATA_ID_ATTRIBUTES.GRID] = attrs[HTML_DATA_ID_ATTRIBUTES.GRID] || `${page.grid.columns}x${page.grid.rows}`;
+    if (page.grid.columnGutter != null) attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] = attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] || `${page.grid.columnGutter}px`;
+    if (page.grid.rowGutter != null) attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] = attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] || `${page.grid.rowGutter}px`;
+    if (page.grid.baseline != null) attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] = attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] || `${page.grid.baseline}px`;
   }
   const style = preserveTrustedSource
     ? attrs.style || ''
@@ -434,17 +437,17 @@ function pageStyleVars(page) {
   if (page.grid) {
     pairs.push(['--id-grid-columns', page.grid.columns]);
     pairs.push(['--id-grid-rows', page.grid.rows]);
-    if (page.grid.columnGutter != null || attrs['data-id-column-gutter']) {
-      pairs.push(['--id-column-gutter', attrs['data-id-column-gutter'] || `${page.grid.columnGutter}px`]);
+    if (page.grid.columnGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER]) {
+      pairs.push(['--id-column-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] || `${page.grid.columnGutter}px`]);
     }
-    if (page.grid.rowGutter != null || attrs['data-id-row-gutter']) {
-      pairs.push(['--id-row-gutter', attrs['data-id-row-gutter'] || `${page.grid.rowGutter}px`]);
+    if (page.grid.rowGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER]) {
+      pairs.push(['--id-row-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] || `${page.grid.rowGutter}px`]);
     }
-    if (page.grid.baseline != null || attrs['data-id-baseline']) {
-      pairs.push(['--id-baseline', attrs['data-id-baseline'] || `${page.grid.baseline}px`]);
+    if (page.grid.baseline != null || attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE]) {
+      pairs.push(['--id-baseline', attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] || `${page.grid.baseline}px`]);
     }
   }
-  const marginTokens = marginTokensFor(attrs['data-id-margin']);
+  const marginTokens = marginTokensFor(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN]);
   if (marginTokens) {
     pairs.push(['--id-margin-top', marginTokens.top]);
     pairs.push(['--id-margin-right', marginTokens.right]);
@@ -559,7 +562,7 @@ function slash(value) {
 
 function orderPageAttrs(attrs) {
   const out = {};
-  for (const key of ['class', 'id', 'data-page', 'data-id-source-file', 'data-id-parent-page', 'data-id-parent-page-name', 'data-id-layout', 'data-id-grid', 'data-id-column-gutter', 'data-id-row-gutter', 'data-id-baseline', 'data-id-margin', 'data-id-guides', 'data-id-observed', 'data-id-reverse-mode', 'style']) {
+  for (const key of ['class', 'id', 'data-page', HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE, HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE, HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME, HTML_DATA_ID_ATTRIBUTES.LAYOUT, HTML_DATA_ID_ATTRIBUTES.GRID, HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER, HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER, HTML_DATA_ID_ATTRIBUTES.BASELINE, HTML_DATA_ID_ATTRIBUTES.MARGIN, HTML_DATA_ID_ATTRIBUTES.GUIDES, HTML_DATA_ID_ATTRIBUTES.OBSERVED, HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE, 'style']) {
     if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
   }
   for (const key of Object.keys(attrs).sort()) {

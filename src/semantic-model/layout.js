@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const {
   parseCssLength,
   cssLengthStringToMmOrZero,
@@ -76,14 +77,14 @@ function pageDimensions(page, layout) {
 
 function pageMargins(page, layout) {
   const attrs = page.attributes || {};
-  const semantic = boxLengths(attrs['data-id-margin'], layout);
+  const semantic = boxLengths(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN], layout);
   if (semantic) return semantic;
   const style = page.computedStyle || {};
   return {
-    top: pageStyleLength(attrs['data-id-margin-top'] || style.paddingTop, layout),
-    right: pageStyleLength(attrs['data-id-margin-right'] || style.paddingRight, layout),
-    bottom: pageStyleLength(attrs['data-id-margin-bottom'] || style.paddingBottom, layout),
-    left: pageStyleLength(attrs['data-id-margin-left'] || style.paddingLeft, layout),
+    top: pageStyleLength(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN_TOP] || style.paddingTop, layout),
+    right: pageStyleLength(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN_RIGHT] || style.paddingRight, layout),
+    bottom: pageStyleLength(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN_BOTTOM] || style.paddingBottom, layout),
+    left: pageStyleLength(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN_LEFT] || style.paddingLeft, layout),
   };
 }
 
@@ -124,7 +125,7 @@ function pageGuides(page, dimensions, margins, layout) {
 }
 
 function usesUsedSnapGuides(attrs) {
-  const mode = String(attrs['data-id-guide-mode'] || '').trim().toLowerCase();
+  const mode = String(attrs[HTML_DATA_ID_ATTRIBUTES.GUIDE_MODE] || '').trim().toLowerCase();
   return mode === 'used-snap' || mode === 'snap-used' || mode === 'used';
 }
 
@@ -152,13 +153,13 @@ function usedSnapGuides(page, dimensions, margins, layout) {
 function usedSnapGuideCandidate(item, page, layout) {
   if (!item || !item.boundsMm) return false;
   const attrs = item.attributes || {};
-  if (attrs['data-id-guide-ignore'] != null) return false;
-  if (attrs['data-id-role'] === 'annotation') return false;
-  if (attrs['data-id-paragraph-style'] === 'folio') return false;
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.GUIDE_IGNORE] != null) return false;
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.ROLE] === 'annotation') return false;
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE] === 'folio') return false;
   if ((item.ancestorCandidateIndexes || []).length) return false;
   const bounds = itemBounds(item, page, layout);
   if (!bounds || coversWholePage(bounds, page, layout)) return false;
-  if (attrs['data-id-object'] != null) return true;
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.OBJECT] != null) return true;
   if (item.role === 'graphic' || item.role === 'table') return true;
   return item.role === 'text';
 }
@@ -172,7 +173,7 @@ function coversWholePage(bounds, page, layout) {
 }
 
 function semanticGridSpec(attrs) {
-  const raw = attrs['data-id-grid'];
+  const raw = attrs[HTML_DATA_ID_ATTRIBUTES.GRID];
   if (!raw) return null;
   const match = String(raw).trim().match(/^(\d+)(?:\s*[xX*]\s*(\d+))?$/);
   if (!match) return null;
@@ -184,17 +185,17 @@ function semanticGridSpec(attrs) {
 
 function semanticGridGuides(spec, attrs, style, dimensions, margins, layout) {
   const columnGap = pageStyleLength(
-    attrs['data-id-column-gutter']
+    attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER]
       || style.columnGap,
     layout
   );
   const rowGap = pageStyleLength(
-    attrs['data-id-row-gutter']
+    attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER]
       || style.rowGap,
     layout
   );
-  const baseline = pageStyleLength(attrs['data-id-baseline'], layout);
-  const baselineGuides = String(attrs['data-id-baseline-guides'] || '').trim().toLowerCase();
+  const baseline = pageStyleLength(attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE], layout);
+  const baselineGuides = String(attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE_GUIDES] || '').trim().toLowerCase();
   const horizontal = baseline > 0 && baselineGuides === 'all'
     ? baselineGridGuides(margins.top, dimensions.height - margins.bottom, baseline)
     : evenGridGuides('horizontal', margins.top, dimensions.height - margins.top - margins.bottom, spec.rows, rowGap);
@@ -314,8 +315,8 @@ function observedAuthoredBounds(item, page, layout) {
 function isObservedReverseItem(item, page) {
   const pageAttrs = page && page.attributes || {};
   const itemAttrs = item && item.attributes || {};
-  if (pageAttrs['data-id-observed'] === 'true' || pageAttrs['data-id-reverse-mode'] === 'observation') return true;
-  if (itemAttrs['data-id-observed'] === 'true' || itemAttrs['data-id-reverse-mode'] === 'observation') return true;
+  if (pageAttrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED] === 'true' || pageAttrs[HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE] === 'observation') return true;
+  if (itemAttrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED] === 'true' || itemAttrs[HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE] === 'observation') return true;
   const classList = item && item.classList || [];
   return classList.includes('observed-text');
 }

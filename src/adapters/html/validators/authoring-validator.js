@@ -22,12 +22,12 @@ function validateAuthoringRules(snapshot, options = {}) {
     const pageId = pageIdFor(page, pageIndex);
     const margin = resolvePageMargins(page);
     if (!margin.present) {
-      errors.push(message('error', PAGE_MARGIN_RULE_MISSING, pageId, null, 'Page must declare authoring margins with data-id-margin, data-id-margin-* or page padding.'));
+      errors.push(message('error', PAGE_MARGIN_RULE_MISSING, pageId, null, `Page must declare authoring margins with ${HTML_DATA_ID_ATTRIBUTES.MARGIN}, ${HTML_DATA_ID_ATTRIBUTES.MARGIN}-* or page padding.`));
     }
 
     const grid = resolvePageGrid(page, margin.margins);
     if (!grid.present) {
-      errors.push(message('error', PAGE_GRID_RULE_MISSING, pageId, null, 'Page must declare an authoring grid with data-id-grid or CSS Grid.'));
+      errors.push(message('error', PAGE_GRID_RULE_MISSING, pageId, null, `Page must declare an authoring grid with ${HTML_DATA_ID_ATTRIBUTES.GRID} or CSS Grid.`));
     } else if (!grid.valid) {
       errors.push(message('error', PAGE_GRID_RULE_INVALID, pageId, null, grid.reason || 'Page grid declaration could not be parsed.'));
     }
@@ -79,7 +79,7 @@ function itemIdFor(item, index) {
 
 function resolvePageMargins(page) {
   const attrs = attributesFor(page);
-  const semantic = attributeValue(attrs, 'data-id-margin');
+  const semantic = attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.MARGIN);
   if (semantic != null) {
     const margins = boxLengths(semantic, page);
     return {
@@ -89,10 +89,10 @@ function resolvePageMargins(page) {
   }
 
   const sideAttrs = {
-    top: attributeValue(attrs, 'data-id-margin-top'),
-    right: attributeValue(attrs, 'data-id-margin-right'),
-    bottom: attributeValue(attrs, 'data-id-margin-bottom'),
-    left: attributeValue(attrs, 'data-id-margin-left'),
+    top: attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.MARGIN_TOP),
+    right: attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.MARGIN_RIGHT),
+    bottom: attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.MARGIN_BOTTOM),
+    left: attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.MARGIN_LEFT),
   };
   if (Object.values(sideAttrs).some((value) => value != null)) {
     return {
@@ -135,7 +135,7 @@ function resolvePageMargins(page) {
 function resolvePageGrid(page, margins) {
   const attrs = attributesFor(page);
   const style = page && page.computedStyle || {};
-  const semantic = attributeValue(attrs, 'data-id-grid');
+  const semantic = attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.GRID);
   const snap = snapGridSpec(page, margins, attrs);
   if (snap.present && !snap.valid) {
     return {
@@ -154,21 +154,21 @@ function resolvePageGrid(page, margins) {
       };
     }
     const columnGap = lengthToMm(
-      attributeValue(attrs, 'data-id-column-gutter')
+      attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER)
         || style.columnGap
         || style.gap,
       page,
       'x'
     );
     const rowGap = lengthToMm(
-      attributeValue(attrs, 'data-id-row-gutter')
+      attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER)
         || style.rowGap
         || style.gap,
       page,
       'y'
     );
     const baseline = lengthToMm(
-      attributeValue(attrs, 'data-id-baseline'),
+      attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.BASELINE),
       page,
       'y'
     );
@@ -213,9 +213,9 @@ function resolvePageGrid(page, margins) {
 }
 
 function snapGridSpec(page, margins, attrs) {
-  const raw = attributeValue(attrs, 'data-id-snap-grid');
-  const rawX = attributeValue(attrs, 'data-id-snap-grid-x') || raw;
-  const rawY = attributeValue(attrs, 'data-id-snap-grid-y') || raw;
+  const raw = attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.SNAP_GRID);
+  const rawX = attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.SNAP_GRID_X) || raw;
+  const rawY = attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.SNAP_GRID_Y) || raw;
   if (rawX == null && rawY == null) {
     return {
       present: false,
@@ -378,10 +378,10 @@ function pageHeight(page) {
 function shouldCheckGrid(item, page) {
   if (!isMappableItem(item)) return false;
   const attrs = attributesFor(item);
-  if (attributeValue(attrs, 'data-id-grid-ignore') != null) return false;
+  if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
-  if (attributeValue(attrs, 'data-id-paragraph-style') === 'folio') return false;
+  if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) === 'folio') return false;
   const bounds = item && item.boundsMm;
   return bounds
     && Number.isFinite(Number(bounds.x))
@@ -443,21 +443,21 @@ function hasStableSemanticToken(item) {
   }
   const attrs = attributesFor(item);
   return [
-    'data-id-paragraph-style',
-    'data-id-character-style',
-    'data-id-object-style',
-    'data-id-frame-style',
-    'data-id-table-style',
-    'data-id-cell-style',
-    'data-id-asset-kind',
-    'data-id-object',
+    HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE,
+    HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE,
+    HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE,
+    HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE,
+    HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE,
+    HTML_DATA_ID_ATTRIBUTES.CELL_STYLE,
+    HTML_DATA_ID_ATTRIBUTES.ASSET_KIND,
+    HTML_DATA_ID_ATTRIBUTES.OBJECT,
     HTML_DATA_ID_ATTRIBUTES.ROLE,
-    'data-id-semantic',
-    'data-id-layer',
-    'data-id-placement',
-    'data-id-fit',
-    'data-id-pdf-page',
-    'data-id-artboard',
+    HTML_DATA_ID_ATTRIBUTES.SEMANTIC,
+    HTML_DATA_ID_ATTRIBUTES.LAYER,
+    HTML_DATA_ID_ATTRIBUTES.PLACEMENT,
+    HTML_DATA_ID_ATTRIBUTES.FIT,
+    HTML_DATA_ID_ATTRIBUTES.PDF_PAGE,
+    HTML_DATA_ID_ATTRIBUTES.ARTBOARD,
   ].some((name) => {
     const value = attributeValue(attrs, name);
     return value != null && String(value).trim() !== '';

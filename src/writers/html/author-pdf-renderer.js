@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const {
   assetAttributes,
@@ -64,7 +65,7 @@ function wrapperAttrsForPdf(item, sourceNode) {
     .filter((name) => PDF_WRAPPER_CLASSES.has(String(name || '').trim()) || String(name || '').trim() === 'grid-item');
   const attrs = {
     class: classes.length ? classes.join(' ') : 'drawing-frame grid-item grid-frame',
-    'data-id-ignore': '',
+    [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '',
   };
   const sourceStyle = item.layout && item.layout.cssVars ? cssVarsStyle(item.layout.cssVars) : '';
   const mergedStyle = authorInlineStyleForItem(item, sourceStyle);
@@ -77,7 +78,7 @@ function previewAttrsForPdf(item, sourceNode, options = {}) {
   sanitizeRetiredAssetAttrs(attrs, item);
   rewriteResourceAttrs(attrs, options);
   const pdfPath = attrs.data || attrs.src || (item.asset && item.asset.path) || '';
-  const page = positiveIntegerOrNull(attrs['data-id-pdf-page'] ?? assetPdfPageNumber(item.asset));
+  const page = positiveIntegerOrNull(attrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE] ?? assetPdfPageNumber(item.asset));
   if (sourceNode.previewNode) {
     const previewAttrs = mergeAttributes(sourceNode.previewNode.attributes);
     rewriteResourceAttrs(previewAttrs, options);
@@ -85,7 +86,7 @@ function previewAttrsForPdf(item, sourceNode, options = {}) {
     if (previewClasses.size) previewAttrs.class = Array.from(previewClasses).join(' ');
     if (!previewAttrs.src) previewAttrs.src = pdfPreviewPath(pdfPath, page);
     if (!previewAttrs.alt) previewAttrs.alt = attrs.alt || `${fileStem(pdfPath)} preview`;
-    if (!hasDataIdIgnore(previewAttrs)) previewAttrs['data-id-ignore'] = '';
+    if (!hasDataIdIgnore(previewAttrs)) previewAttrs[HTML_DATA_ID_ATTRIBUTES.IGNORE] = '';
     return attrsToHtml(orderAttrs(previewAttrs));
   }
   const preview = pdfPreviewPath(pdfPath, page);
@@ -94,7 +95,7 @@ function previewAttrsForPdf(item, sourceNode, options = {}) {
     class: 'pdf-preview',
     src: preview,
     alt: attrs.alt || `${fileStem(pdfPath)} preview`,
-    'data-id-ignore': '',
+    [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '',
   }));
 }
 

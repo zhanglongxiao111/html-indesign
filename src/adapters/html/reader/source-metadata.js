@@ -1,13 +1,14 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const STABLE_ATTRIBUTE_RE = /^(data-|aria-|role$|href$|src$|srcset$|sizes$|alt$|title$|data$|type$|width$|height$|loading$|decoding$|crossorigin$|referrerpolicy$|media$|poster$)/i;
 const GRID_VAR_NAMES = ['--grid-col', '--grid-span', '--grid-row', '--grid-row-span'];
 
 function sourcePackageFromDocument(input = {}) {
   const attributes = input.attributes || {};
-  const config = attributes['data-id-source-package-config'] || null;
+  const config = attributes[HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_CONFIG] || null;
   if (!config) return null;
   const parentPages = sourceParentPages(input.parentPages || []);
   const out = {
-    schemaVersion: Number(attributes['data-id-source-package-schema'] || 1),
+    schemaVersion: Number(attributes[HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_SCHEMA] || 1),
     config,
     entry: input.entry || 'deck.html',
     styleFiles: (input.styleFiles || []).map(slash),
@@ -18,14 +19,14 @@ function sourcePackageFromDocument(input = {}) {
   if (Array.isArray(input.synthesizedStyles) && input.synthesizedStyles.length) {
     out.synthesizedStyles = input.synthesizedStyles.map(synthesizedStyleForSourcePackage).filter(Boolean);
   }
-  if (attributes['data-id-document']) out.id = attributes['data-id-document'];
+  if (attributes[HTML_DATA_ID_ATTRIBUTES.DOCUMENT]) out.id = attributes[HTML_DATA_ID_ATTRIBUTES.DOCUMENT];
   if (input.title) out.title = input.title;
-  if (attributes['data-id-profile']) out.profile = attributes['data-id-profile'];
-  if (attributes['data-id-semantic-preset']) {
+  if (attributes[HTML_DATA_ID_ATTRIBUTES.PROFILE]) out.profile = attributes[HTML_DATA_ID_ATTRIBUTES.PROFILE];
+  if (attributes[HTML_DATA_ID_ATTRIBUTES.SEMANTIC_PRESET]) {
     out.semanticPreset = {
       source: 'project',
-      id: attributes['data-id-profile'] || attributes['data-id-document'] || out.profile || out.id || null,
-      relativePath: slash(attributes['data-id-semantic-preset']),
+      id: attributes[HTML_DATA_ID_ATTRIBUTES.PROFILE] || attributes[HTML_DATA_ID_ATTRIBUTES.DOCUMENT] || out.profile || out.id || null,
+      relativePath: slash(attributes[HTML_DATA_ID_ATTRIBUTES.SEMANTIC_PRESET]),
     };
   }
   return out;
@@ -81,7 +82,7 @@ function sourceNodeForSnapshotItem(item = {}) {
   const attributes = {};
   for (const [name, value] of Object.entries(item.attributes || {})) {
     if (name === 'id' || name === 'class' || name === 'style') continue;
-    if (name === 'data-id-ignore') continue;
+    if (name === HTML_DATA_ID_ATTRIBUTES.IGNORE) continue;
     if (STABLE_ATTRIBUTE_RE.test(name)) attributes[name] = value;
   }
   return {

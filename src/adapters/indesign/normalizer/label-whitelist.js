@@ -1,6 +1,10 @@
 'use strict';
 
-const { fieldRegistry, validateLabelFields } = require('../../../protocol');
+const {
+  HTML_DATA_ID_ATTRIBUTES,
+  fieldRegistry,
+  validateLabelFields,
+} = require('../../../protocol');
 
 const STYLE_REF_TOKEN_VALIDATION = Object.freeze({
   paragraphStyle: Object.freeze({
@@ -292,13 +296,13 @@ function hasAnyEffectiveProtocolField(effective) {
 
 function styleRefsFromLabel(label) {
   return {
-    paragraphStyle: label.paragraphStyle || label.paragraphStyleToken || dataAttr(label.sourceNode, 'data-id-paragraph-style'),
-    characterStyle: label.characterStyle || label.characterStyleToken || dataAttr(label.sourceNode, 'data-id-character-style'),
-    objectStyle: label.objectStyle || label.objectStyleToken || dataAttr(label.sourceNode, 'data-id-object-style'),
-    frameStyle: label.frameStyle || label.frameStyleToken || dataAttr(label.sourceNode, 'data-id-frame-style'),
-    tableStyle: label.tableStyle || label.tableStyleToken || dataAttr(label.sourceNode, 'data-id-table-style'),
-    cellStyle: label.cellStyle || label.cellStyleToken || dataAttr(label.sourceNode, 'data-id-cell-style'),
-    layer: label.layer || label.layerToken || dataAttr(label.sourceNode, 'data-id-layer'),
+    paragraphStyle: label.paragraphStyle || label.paragraphStyleToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE),
+    characterStyle: label.characterStyle || label.characterStyleToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE),
+    objectStyle: label.objectStyle || label.objectStyleToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE),
+    frameStyle: label.frameStyle || label.frameStyleToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE),
+    tableStyle: label.tableStyle || label.tableStyleToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE),
+    cellStyle: label.cellStyle || label.cellStyleToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.CELL_STYLE),
+    layer: label.layer || label.layerToken || dataAttr(label.sourceNode, HTML_DATA_ID_ATTRIBUTES.LAYER),
   };
 }
 

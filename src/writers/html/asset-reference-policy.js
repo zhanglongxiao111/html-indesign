@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 'use strict';
 
 const fs = require('fs');
@@ -271,7 +272,7 @@ function collectAssetReferencesForItem(item, records, seen) {
   const asset = item.sourceAsset || item.asset || item.placedAsset || {};
   const assetPath = asset.path || '';
   const pdfPageNumber = pdfPageNumberForAsset(asset, attrs);
-  for (const name of ['src', 'data', 'href', 'data-id-source-csv', 'data-id-source-xml']) {
+  for (const name of ['src', 'data', 'href', HTML_DATA_ID_ATTRIBUTES.SOURCE_CSV, HTML_DATA_ID_ATTRIBUTES.SOURCE_XML]) {
     if (!attrs[name]) continue;
     pushAssetRecord(records, seen, {
       value: attrs[name],
@@ -286,8 +287,8 @@ function collectAssetReferencesForItem(item, records, seen) {
       fallback: sourceNode.previewNode.attributes.src,
     });
   }
-  const sourcePreview = attrs['data-id-preview-src'] || attrs['data-id-preview-asset-path'] || '';
-  if (sourcePreview && !attrs['data-id-asset-path'] && assetPath) {
+  const sourcePreview = attrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] || attrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH] || '';
+  if (sourcePreview && !attrs[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH] && assetPath) {
     pushAssetRecord(records, seen, {
       kind: 'generated-preview',
       value: assetPath,
@@ -373,7 +374,7 @@ function unique(values) {
 
 function pdfPageNumberForAsset(asset = {}, attrs = {}) {
   return normalizePositiveInteger(
-    attrs['data-id-pdf-page']
+    attrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE]
       ?? (asset.placement && asset.placement.pageNumber)
       ?? asset.pageNumber
   );

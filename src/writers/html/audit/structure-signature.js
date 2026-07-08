@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
@@ -182,7 +183,7 @@ function classList(value) {
 }
 
 function isIgnoredStructureElement($, element) {
-  return $(element).attr('data-id-ignore') != null;
+  return $(element).attr(HTML_DATA_ID_ATTRIBUTES.IGNORE) != null;
 }
 
 module.exports = {

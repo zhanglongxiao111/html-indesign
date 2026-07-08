@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const { authorClassesForItem, blendModeCss, mergeCss } = require('./author-style-attrs');
 const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-svg');
@@ -41,8 +42,8 @@ function vectorAttrsForItem(item, sourceNode, options) {
   delete attrs.preserveaspectratio;
   attrs.viewBox = vectorViewBox(item);
   attrs.preserveAspectRatio = 'none';
-  attrs['data-id-vector'] = item.vectorGeometry && item.vectorGeometry.kind || 'path';
-  if (!attrs['data-id-role'] && item.role) attrs['data-id-role'] = item.role;
+  attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR] = item.vectorGeometry && item.vectorGeometry.kind || 'path';
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.ROLE] && item.role) attrs[HTML_DATA_ID_ATTRIBUTES.ROLE] = item.role;
   addStyleProtocolAttrs(attrs, item, options);
   const classes = new Set(authorClassesForItem(item, sourceNode.classList || [], attrs));
   if (!hasSourceNode(sourceNode) && item.role !== 'text' && !item.virtual) classes.add('id-object');
@@ -51,8 +52,8 @@ function vectorAttrsForItem(item, sourceNode, options) {
     classes.add('id-parent-page-object');
     addParentPageAttrs(attrs, item);
   }
-  if (options.mode === 'observation') attrs['data-id-object'] = '';
-  if (isUsefulSemantic(item.semantic)) attrs['data-id-semantic'] = item.semantic;
+  if (options.mode === 'observation') attrs[HTML_DATA_ID_ATTRIBUTES.OBJECT] = '';
+  if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   addObservedLabelAttrs(attrs, item);
   const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
   const style = mergeCss([sourceStyle, 'overflow:visible', blendModeCss(item.visualStyle && item.visualStyle.blendMode), zIndexStyle(item.zIndex)]);

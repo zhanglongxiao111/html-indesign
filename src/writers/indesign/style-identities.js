@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { createProtocolLabel } = require('../../shared/labels');
 const {
   explicitName,
@@ -70,22 +71,22 @@ function mappedStyleName(token, kind, options) {
 
 function styleDisplayAttributes(kind) {
   const byKind = {
-    paragraphStyles: ['data-id-paragraph-style-name', 'data-id-style-name'],
-    characterStyles: ['data-id-character-style-name', 'data-id-style-name'],
-    objectStyles: ['data-id-object-style-name', 'data-id-style-name'],
-    frameStyles: ['data-id-frame-style-name', 'data-id-style-name'],
-    tableStyles: ['data-id-table-style-name', 'data-id-style-name'],
+    paragraphStyles: [HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE_NAME, HTML_DATA_ID_ATTRIBUTES.STYLE_NAME],
+    characterStyles: [HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE_NAME, HTML_DATA_ID_ATTRIBUTES.STYLE_NAME],
+    objectStyles: [HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE_NAME, HTML_DATA_ID_ATTRIBUTES.STYLE_NAME],
+    frameStyles: [HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE_NAME, HTML_DATA_ID_ATTRIBUTES.STYLE_NAME],
+    tableStyles: [HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE_NAME, HTML_DATA_ID_ATTRIBUTES.STYLE_NAME],
   };
   return byKind[kind] || [];
 }
 
 function styleTokenAttributes(kind) {
   const byKind = {
-    paragraphStyles: ['data-id-paragraph-style', 'data-id-style'],
-    characterStyles: ['data-id-character-style', 'data-id-style'],
-    objectStyles: ['data-id-object-style', 'data-id-style'],
-    frameStyles: ['data-id-frame-style'],
-    tableStyles: ['data-id-table-style'],
+    paragraphStyles: [HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE, HTML_DATA_ID_ATTRIBUTES.STYLE],
+    characterStyles: [HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE, HTML_DATA_ID_ATTRIBUTES.STYLE],
+    objectStyles: [HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE, HTML_DATA_ID_ATTRIBUTES.STYLE],
+    frameStyles: [HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE],
+    tableStyles: [HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE],
   };
   return byKind[kind] || [];
 }

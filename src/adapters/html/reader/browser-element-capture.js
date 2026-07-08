@@ -1,4 +1,10 @@
 (function installBrowserElementCapture(globalObject) {
+  function dataIdAttributes() {
+    const attrs = globalObject && globalObject.htmlIndesignDataIdAttributes;
+    if (!attrs) throw new Error('htmlIndesignDataIdAttributes is not installed');
+    return attrs;
+  }
+
   function styleApi() {
     const api = globalObject && globalObject.htmlIndesignBrowserStyleCapture;
     if (!api) throw new Error('htmlIndesignBrowserStyleCapture is not installed');
@@ -42,10 +48,11 @@
   }
 
   function sourcePreviewNodeFor(el, frameEl, pageEl) {
+    const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     if (tagName !== 'object' && tagName !== 'embed') return null;
     if (!frameEl || frameEl === el) return null;
-    const preview = frameEl.querySelector('img[data-id-ignore]');
+    const preview = frameEl.querySelector(`img[${dataId.IGNORE}]`);
     return preview ? sourceNodeFor(preview, pageEl) : null;
   }
 
@@ -66,17 +73,19 @@
   }
 
   function visualFrameFor(el) {
+    const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     if (!['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return el;
     const parent = el.parentElement;
-    if (!parent || !parent.hasAttribute('data-id-ignore')) return el;
+    if (!parent || !parent.hasAttribute(dataId.IGNORE)) return el;
     return parent;
   }
 
   function mergeFrameAttributes(itemAttrs, frameAttrs) {
+    const dataId = dataIdAttributes();
     if (!frameAttrs || frameAttrs === itemAttrs) return itemAttrs;
     const out = Object.assign({}, frameAttrs, itemAttrs);
-    delete out['data-id-ignore'];
+    delete out[dataId.IGNORE];
     return out;
   }
 
@@ -113,8 +122,9 @@
   }
 
   function collectCandidateElements(pageEl) {
-    return Array.from(pageEl.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,figcaption,img,object,embed,svg,canvas,table,div,span,[data-id-object],[data-id-paragraph-style]'))
-      .filter((el) => !el.hasAttribute('data-id-ignore'))
+    const dataId = dataIdAttributes();
+    return Array.from(pageEl.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,figcaption,img,object,embed,svg,canvas,table,div,span,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`))
+      .filter((el) => !el.hasAttribute(dataId.IGNORE))
       .filter(isCandidateElement)
       .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'));
   }
@@ -208,7 +218,8 @@
   }
 
   function inlineRunsFor(el) {
-    const inlineSelector = 'span,strong,b,em,i,mark,sup,sub,[data-id-character-style]';
+    const dataId = dataIdAttributes();
+    const inlineSelector = `span,strong,b,em,i,mark,sup,sub,[${dataId.CHARACTER_STYLE}]`;
     const inlineEls = Array.from(el.querySelectorAll(inlineSelector));
     return inlineEls.map((runEl) => ({
       text: sourceText(runEl).trim(),
@@ -224,11 +235,12 @@
   }
 
   function isSemanticCandidate(el) {
+    const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     return isTextTag(tagName)
       || ['img', 'object', 'embed', 'svg', 'canvas', 'table'].includes(tagName)
-      || el.hasAttribute('data-id-object')
-      || el.hasAttribute('data-id-paragraph-style');
+      || el.hasAttribute(dataId.OBJECT)
+      || el.hasAttribute(dataId.PARAGRAPH_STYLE);
   }
 
   function isPaintOnlyCandidate(el) {

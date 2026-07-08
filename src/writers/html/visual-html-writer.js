@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
 const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-svg');
 const { assetHtml, assetPlacementAttrs } = require('./asset-html');
@@ -29,9 +30,9 @@ function semanticModelToHtml(model, options = {}) {
   const reverseMode = model.reverseMode || 'structured';
   const mainAttrs = [
     'class="deck"',
-    `data-id-document="${attr(model.id)}"`,
-    `data-id-profile="${attr(model.profile || '')}"`,
-    reverseMode !== 'structured' ? `data-id-reverse-mode="${attr(reverseMode)}"` : null,
+    `${HTML_DATA_ID_ATTRIBUTES.DOCUMENT}="${attr(model.id)}"`,
+    `${HTML_DATA_ID_ATTRIBUTES.PROFILE}="${attr(model.profile || '')}"`,
+    reverseMode !== 'structured' ? `${HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE}="${attr(reverseMode)}"` : null,
   ].filter(Boolean);
 
   return [
@@ -60,12 +61,12 @@ function pageToHtml(page, model, options) {
     `class="page"`,
     `id="${attr(pageId)}"`,
     `data-page="${attr(pageId)}"`,
-    writableSemantic(page.semantic) ? `data-id-semantic="${attr(writableSemantic(page.semantic))}"` : null,
-    page.parentPageId ? `data-id-parent-page="${attr(page.parentPageId)}"` : null,
-    page.parentPageName ? `data-id-parent-page-name="${attr(page.parentPageName)}"` : null,
-    page.layout ? `data-id-layout="${attr(page.layout)}"` : null,
-    page.margins ? `data-id-margin="${attr(marginValue(page.margins))}"` : null,
-    page.source ? `data-id-source="${attr(page.source)}"` : null,
+    writableSemantic(page.semantic) ? `${HTML_DATA_ID_ATTRIBUTES.SEMANTIC}="${attr(writableSemantic(page.semantic))}"` : null,
+    page.parentPageId ? `${HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE}="${attr(page.parentPageId)}"` : null,
+    page.parentPageName ? `${HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME}="${attr(page.parentPageName)}"` : null,
+    page.layout ? `${HTML_DATA_ID_ATTRIBUTES.LAYOUT}="${attr(page.layout)}"` : null,
+    page.margins ? `${HTML_DATA_ID_ATTRIBUTES.MARGIN}="${attr(marginValue(page.margins))}"` : null,
+    page.source ? `${HTML_DATA_ID_ATTRIBUTES.SOURCE}="${attr(page.source)}"` : null,
     `style="${attr(pageStyle(page))}"`,
   ].filter(Boolean);
 
@@ -82,27 +83,27 @@ function itemToHtml(item, model, options) {
   const attrs = [
     `id="${attr(itemId)}"`,
     `class="${attr(classes)}"`,
-    `data-id-object="${attr(itemId)}"`,
-    item.source ? `data-id-source="${attr(item.source)}"` : null,
-    item.role ? `data-id-role="${attr(item.role)}"` : null,
-    writableSemantic(item.semantic) ? `data-id-semantic="${attr(writableSemantic(item.semantic))}"` : null,
-    item.layerName ? `data-id-layer="${attr(item.layerName)}"` : null,
+    `${HTML_DATA_ID_ATTRIBUTES.OBJECT}="${attr(itemId)}"`,
+    item.source ? `${HTML_DATA_ID_ATTRIBUTES.SOURCE}="${attr(item.source)}"` : null,
+    item.role ? `${HTML_DATA_ID_ATTRIBUTES.ROLE}="${attr(item.role)}"` : null,
+    writableSemantic(item.semantic) ? `${HTML_DATA_ID_ATTRIBUTES.SEMANTIC}="${attr(writableSemantic(item.semantic))}"` : null,
+    item.layerName ? `${HTML_DATA_ID_ATTRIBUTES.LAYER}="${attr(item.layerName)}"` : null,
     item.styleRefs && item.styleRefs.paragraphStyle
-      ? `data-id-paragraph-style="${attr(item.styleRefs.paragraphStyle)}"`
+      ? `${HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE}="${attr(item.styleRefs.paragraphStyle)}"`
       : null,
     item.styleRefs && item.styleRefs.objectStyle
-      ? `data-id-object-style="${attr(item.styleRefs.objectStyle)}"`
+      ? `${HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE}="${attr(item.styleRefs.objectStyle)}"`
       : null,
     item.styleRefs && item.styleRefs.frameStyle
-      ? `data-id-frame-style="${attr(item.styleRefs.frameStyle)}"`
+      ? `${HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE}="${attr(item.styleRefs.frameStyle)}"`
       : null,
-    tableStyleName(item) ? `data-id-table-style="${attr(tableStyleName(item))}"` : null,
-    item.migration && item.migration.isSlot ? 'data-id-migration-slot="true"' : null,
-    item.migration && item.migration.slotName ? `data-id-slot-name="${attr(item.migration.slotName)}"` : null,
-    item.migration && item.migration.slotType ? `data-id-slot-type="${attr(item.migration.slotType)}"` : null,
-    item.migration && item.migration.confidence != null ? `data-id-confidence="${attr(item.migration.confidence)}"` : null,
-    item.asset && item.asset.path ? `data-id-asset-path="${attr(item.asset.path)}"` : null,
-    item.asset && item.asset.cropped ? 'data-id-image-cropped="true"' : null,
+    tableStyleName(item) ? `${HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE}="${attr(tableStyleName(item))}"` : null,
+    item.migration && item.migration.isSlot ? `${HTML_DATA_ID_ATTRIBUTES.MIGRATION_SLOT}="true"` : null,
+    item.migration && item.migration.slotName ? `${HTML_DATA_ID_ATTRIBUTES.SLOT_NAME}="${attr(item.migration.slotName)}"` : null,
+    item.migration && item.migration.slotType ? `${HTML_DATA_ID_ATTRIBUTES.SLOT_TYPE}="${attr(item.migration.slotType)}"` : null,
+    item.migration && item.migration.confidence != null ? `${HTML_DATA_ID_ATTRIBUTES.CONFIDENCE}="${attr(item.migration.confidence)}"` : null,
+    item.asset && item.asset.path ? `${HTML_DATA_ID_ATTRIBUTES.ASSET_PATH}="${attr(item.asset.path)}"` : null,
+    item.asset && item.asset.cropped ? `${HTML_DATA_ID_ATTRIBUTES.IMAGE_CROPPED}="true"` : null,
     ...assetPlacementAttrs(item.asset),
     `style="${attr(boundsStyle(itemId, item.bounds, inlineStyle))}"`,
   ].filter(Boolean);
@@ -130,14 +131,14 @@ function vectorItemToHtml(item, model) {
   const attrs = [
     `id="${attr(itemId)}"`,
     `class="${attr(classes)}"`,
-    `data-id-object="${attr(itemId)}"`,
-    item.role ? `data-id-role="${attr(item.role)}"` : null,
-    writableSemantic(item.semantic) ? `data-id-semantic="${attr(writableSemantic(item.semantic))}"` : null,
-    item.layerName ? `data-id-layer="${attr(item.layerName)}"` : null,
+    `${HTML_DATA_ID_ATTRIBUTES.OBJECT}="${attr(itemId)}"`,
+    item.role ? `${HTML_DATA_ID_ATTRIBUTES.ROLE}="${attr(item.role)}"` : null,
+    writableSemantic(item.semantic) ? `${HTML_DATA_ID_ATTRIBUTES.SEMANTIC}="${attr(writableSemantic(item.semantic))}"` : null,
+    item.layerName ? `${HTML_DATA_ID_ATTRIBUTES.LAYER}="${attr(item.layerName)}"` : null,
     item.styleRefs && item.styleRefs.objectStyle
-      ? `data-id-object-style="${attr(item.styleRefs.objectStyle)}"`
+      ? `${HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE}="${attr(item.styleRefs.objectStyle)}"`
       : null,
-    `data-id-vector="${attr(item.vectorGeometry && item.vectorGeometry.kind || 'path')}"`,
+    `${HTML_DATA_ID_ATTRIBUTES.VECTOR}="${attr(item.vectorGeometry && item.vectorGeometry.kind || 'path')}"`,
     `preserveAspectRatio="none"`,
     `viewBox="${attr(vectorViewBox(item))}"`,
     `style="${attr(boundsStyle(itemId, item.bounds, vectorInlineStyle(item)))}"`,

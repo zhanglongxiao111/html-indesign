@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
 const {
   requiredNumber,
@@ -23,11 +24,11 @@ function baseCss(model) {
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; isolation: isolate; }`,
     '    .id-object { position: absolute; margin: 0; overflow: hidden; }',
-    '    .id-object[data-id-role="text"] { overflow: visible; }',
-    '    .id-object[data-id-role="table"] { border-collapse: collapse; table-layout: fixed; }',
-    '    .id-object[data-id-role="table"] th, .id-object[data-id-role="table"] td { overflow: hidden; vertical-align: top; }',
+    `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="text"] { overflow: visible; }`,
+    `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] { border-collapse: collapse; table-layout: fixed; }`,
+    `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] th, .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] td { overflow: hidden; vertical-align: top; }`,
     '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; }',
-    '    .id-object > img[data-id-preview-kind="pdf"] { border: 0; outline: 0; }',
+    `    .id-object > img[${HTML_DATA_ID_ATTRIBUTES.PREVIEW_KIND}="pdf"] { border: 0; outline: 0; }`,
     '    .list-item { display: block; padding: 0; }',
     '    .list-item.has-bullet::before { content: "•"; margin-right: 0.5em; }',
     '    .list-item.has-number::before { content: attr(data-circle); margin-right: 0.5em; }',

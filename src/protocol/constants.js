@@ -12,6 +12,7 @@ function deriveProtocolConstants(registry) {
   }
 
   const htmlDataIdAttributeNames = htmlDataIdAttributesFor(registry);
+  const retiredHtmlDataIdAttributeNames = retiredHtmlDataIdAttributesFor(registry);
   const itemRoleField = requiredField(registry, REQUIRED_VALUE_FIELDS.ITEM_ROLE_VALUES);
   const itemRoleValues = allowedValuesForField(itemRoleField, REQUIRED_VALUE_FIELDS.ITEM_ROLE_VALUES);
   const styleKindValues = allowedValuesFor(registry, REQUIRED_VALUE_FIELDS.STYLE_KIND_VALUES);
@@ -35,6 +36,8 @@ function deriveProtocolConstants(registry) {
   return deepFreeze({
     HTML_DATA_ID_ATTRIBUTES: enumObjectForValues(htmlDataIdAttributeNames, 'data-id-'),
     HTML_DATA_ID_ATTRIBUTE_NAMES: htmlDataIdAttributeNames,
+    RETIRED_HTML_DATA_ID_ATTRIBUTES: enumObjectForValues(retiredHtmlDataIdAttributeNames, 'data-id-'),
+    RETIRED_HTML_DATA_ID_ATTRIBUTE_NAMES: retiredHtmlDataIdAttributeNames,
     ITEM_ROLE: enumObjectForValues(itemRoleValues),
     ITEM_ROLE_VALUES: itemRoleValues,
     AUTHORING_MAPPABLE_ITEM_ROLE_VALUES: authoringMappableItemRoleValues,
@@ -59,6 +62,21 @@ function htmlDataIdAttributesFor(registry) {
     ]) {
       if (typeof attr !== 'string' || !attr.startsWith('data-id-')) continue;
       attrs.add(attr);
+    }
+  }
+
+  return Object.freeze(Array.from(attrs).sort());
+}
+
+function retiredHtmlDataIdAttributesFor(registry) {
+  const attrs = new Set();
+
+  for (const entry of registry.entries) {
+    const retired = entry && entry.retired || {};
+    for (const attr of arrayOrEmpty(retired.htmlAttrs)) {
+      const name = attr && attr.name;
+      if (typeof name !== 'string' || !name.startsWith('data-id-')) continue;
+      attrs.add(name);
     }
   }
 

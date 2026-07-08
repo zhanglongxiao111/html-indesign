@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 'use strict';
 
 const { blendModeCss } = require('./css-blend-mode');
@@ -18,13 +19,13 @@ function authorInlineStyleForItem(item, sourceStyle) {
 function authorClassesForItem(item, sourceClasses, sourceAttrs = {}) {
   const classes = new Set(sourceClasses || []);
   const refs = item && item.styleRefs || {};
-  const paragraphStyle = sourceAttrs['data-id-paragraph-style'] || refs.paragraphStyle;
-  const characterStyle = sourceAttrs['data-id-character-style'] || refs.characterStyle;
-  const objectStyle = sourceAttrs['data-id-object-style'] || refs.objectStyle;
-  const frameStyle = sourceAttrs['data-id-frame-style'] || refs.frameStyle;
-  const tableStyle = sourceAttrs['data-id-table-style'] || refs.tableStyle;
-  const cellStyle = sourceAttrs['data-id-cell-style'] || refs.cellStyle;
-  const synthesizedToken = sourceAttrs['data-id-style-token'] || refs.synthesizedToken;
+  const paragraphStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE] || refs.paragraphStyle;
+  const characterStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE] || refs.characterStyle;
+  const objectStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE] || refs.objectStyle;
+  const frameStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE] || refs.frameStyle;
+  const tableStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE] || refs.tableStyle;
+  const cellStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.CELL_STYLE] || refs.cellStyle;
+  const synthesizedToken = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] || refs.synthesizedToken;
   if (paragraphStyle) classes.add(`pstyle-${safeAuthorClassToken(paragraphStyle)}`);
   if (characterStyle) classes.add(`cstyle-${safeAuthorClassToken(characterStyle)}`);
   if (objectStyle) classes.add(`ostyle-${safeAuthorClassToken(objectStyle)}`);

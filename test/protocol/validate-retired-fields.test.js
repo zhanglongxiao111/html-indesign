@@ -122,10 +122,13 @@ test('source code does not read data-id-page as PDF page number fallback', () =>
   }
 
   assert.deepEqual(violations, []);
-  assert.deepEqual(
-    occurrences.map((occurrence) => `${occurrence.file}:${occurrence.source}`),
-    ["src/writers/html/author-asset-attrs.js:if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];"],
+  assert.deepEqual(occurrences, []);
+
+  const authorAssetAttrsSource = fs.readFileSync(
+    path.join(__dirname, '../../src/writers/html/author-asset-attrs.js'),
+    'utf8',
   );
+  assert.match(authorAssetAttrsSource, /RETIRED_HTML_DATA_ID_ATTRIBUTES\.PAGE/);
 });
 
 function collectRuntimeFiles(relativeRoots) {

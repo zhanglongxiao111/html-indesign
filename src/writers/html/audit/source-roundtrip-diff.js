@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -106,19 +107,21 @@ function compareConfigMetadata(sourcePackage, reversePackage, addIssue) {
 }
 
 function auditReverseSourceQuality(reversePackage, addIssue) {
+  const structuredReverseModePattern = new RegExp(`\\s${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE)}\\s*=\\s*["']structured["']`, 'i');
+  const unknownSemanticPattern = new RegExp(`\\s${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.SEMANTIC)}\\s*=\\s*["']unknown["']`, 'i');
   for (const page of reversePackage.pages) {
-    if (/\sdata-id-reverse-mode\s*=\s*["']structured["']/i.test(page.html)) {
+    if (structuredReverseModePattern.test(page.html)) {
       addIssue('ROUNDTRIP_REVERSE_MODE_LEAKED', 'Structured reverse bookkeeping leaked into editable author source.', {
         page: page.id,
         file: page.file,
-        attribute: 'data-id-reverse-mode',
+        attribute: HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE,
       });
     }
-    if (/\sdata-id-semantic\s*=\s*["']unknown["']/i.test(page.html)) {
+    if (unknownSemanticPattern.test(page.html)) {
       addIssue('ROUNDTRIP_UNKNOWN_SEMANTIC_LEAKED', 'Unknown semantic marker leaked into editable author source.', {
         page: page.id,
         file: page.file,
-        attribute: 'data-id-semantic',
+        attribute: HTML_DATA_ID_ATTRIBUTES.SEMANTIC,
       });
     }
     const serializedEmpty = emptyProjectBooleanAttributes(page.html);
@@ -130,6 +133,10 @@ function auditReverseSourceQuality(reversePackage, addIssue) {
       });
     }
   }
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function comparePage(sourcePage, reversePage, addIssue) {
@@ -335,12 +342,12 @@ function pageText($) {
 }
 
 function characterStyleEntries($) {
-  return $('[data-id-character-style]').map((_, element) => {
+  return $(`[${HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE}]`).map((_, element) => {
     const node = $(element);
     return {
       tag: element.name.toLowerCase(),
       className: normalizeClass(node.attr('class')),
-      style: node.attr('data-id-character-style') || '',
+      style: node.attr(HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE) || '',
       text: collapseWhitespace(node.text()),
     };
   }).get();
@@ -365,7 +372,7 @@ function tableCellStyleEntries($) {
     const node = $(element);
     return {
       tag: element.name.toLowerCase(),
-      paragraphStyle: node.attr('data-id-paragraph-style') || '',
+      paragraphStyle: node.attr(HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) || '',
       text: collapseWhitespace(node.text()),
     };
   }).get();
@@ -389,9 +396,9 @@ function resourceEntries($) {
       className: normalizeClass(node.attr('class')),
       data: node.attr('data') || '',
       type: node.attr('type') || '',
-      page: node.attr('data-id-pdf-page') || '',
-      crop: node.attr('data-id-crop') || '',
-      fit: node.attr('data-id-fit') || '',
+      page: node.attr(HTML_DATA_ID_ATTRIBUTES.PDF_PAGE) || '',
+      crop: node.attr(HTML_DATA_ID_ATTRIBUTES.CROP) || '',
+      fit: node.attr(HTML_DATA_ID_ATTRIBUTES.FIT) || '',
     });
   });
   return entries;

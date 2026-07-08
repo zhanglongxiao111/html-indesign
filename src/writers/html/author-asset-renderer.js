@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const {
   assetAttributes,
@@ -63,7 +64,7 @@ function figureAssetContentAttrs(item, tag, sourceNode, options) {
   const asset = item.sourceAsset || item.asset || item.placedAsset || {};
   const attrs = mergeAttributes(assetAttributes(item, tag));
   attrs.class = [attrs.class, usesGeneratedFramePreview(asset, item) ? 'placed-asset-preview' : 'placed-asset-content'].filter(Boolean).join(' ');
-  attrs['data-id-ignore'] = '';
+  attrs[HTML_DATA_ID_ATTRIBUTES.IGNORE] = '';
   const style = figureAssetContentStyle(item, asset);
   if (style) attrs.style = style;
   if (tag === 'img' && !attrs.alt) {
@@ -113,7 +114,7 @@ function placedAssetContentAttrs(item, sourceNode, options) {
     class: usesGeneratedFramePreview(asset, item) ? 'placed-asset-preview' : 'placed-asset-content',
     src,
     alt: (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path || src),
-    'data-id-ignore': '',
+    [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '',
     style: placedAssetContentStyle(item, asset),
   };
   rewriteResourceAttrs(attrs, options);

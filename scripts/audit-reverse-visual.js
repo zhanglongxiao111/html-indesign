@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+const {
+  HTML_DATA_ID_ATTRIBUTES,
+  HTML_DATA_ID_ATTRIBUTE_NAMES,
+} = require('../src/protocol');
 
 const fs = require('fs');
 const path = require('path');
@@ -80,7 +84,8 @@ async function captureHtmlGeometry(htmlFile) {
       if (document.fonts && document.fonts.ready) await document.fonts.ready.catch(() => {});
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     });
-    const capture = await page.evaluate(() => {
+    const capture = await page.evaluate(({ dataId, dataIdAttributeNames }) => {
+      const dataIdAttributeNameSet = new Set(dataIdAttributeNames);
       function round(value) {
         return Math.round(Number(value || 0) * 1000) / 1000;
       }
@@ -99,16 +104,16 @@ async function captureHtmlGeometry(htmlFile) {
       function metadataFor(element, pageElement) {
         const dataIdAttrs = Array.from(element.attributes || [])
           .map((attribute) => attribute.name)
-          .filter((name) => name.startsWith('data-id-'));
+          .filter((name) => dataIdAttributeNameSet.has(name));
         return {
           pageId: pageElement.id || '',
-          role: element.getAttribute('data-id-role') || '',
-          vector: element.getAttribute('data-id-vector') || '',
-          objectStyle: element.getAttribute('data-id-object-style') || '',
-          paragraphStyle: element.getAttribute('data-id-paragraph-style') || '',
-          tableStyle: element.getAttribute('data-id-table-style') || '',
-          sourceCsv: element.getAttribute('data-id-source-csv') || '',
-          sourceXml: element.getAttribute('data-id-source-xml') || '',
+          role: element.getAttribute(dataId.ROLE) || '',
+          vector: element.getAttribute(dataId.VECTOR) || '',
+          objectStyle: element.getAttribute(dataId.OBJECT_STYLE) || '',
+          paragraphStyle: element.getAttribute(dataId.PARAGRAPH_STYLE) || '',
+          tableStyle: element.getAttribute(dataId.TABLE_STYLE) || '',
+          sourceCsv: element.getAttribute(dataId.SOURCE_CSV) || '',
+          sourceXml: element.getAttribute(dataId.SOURCE_XML) || '',
           textContent: normalizedText(element.textContent),
           innerText: normalizedText(element.innerText),
           ownTextContent: ownTextContent(element),
@@ -152,6 +157,9 @@ async function captureHtmlGeometry(htmlFile) {
         }
       });
       return { pages, elements };
+    }, {
+      dataId: HTML_DATA_ID_ATTRIBUTES,
+      dataIdAttributeNames: HTML_DATA_ID_ATTRIBUTE_NAMES,
     });
     return capture;
   } finally {
@@ -219,15 +227,15 @@ function sourceMetadataFromItem(item) {
   const sourceNode = item && (item.sourceNode || (item.effectiveLabel && item.effectiveLabel.sourceNode)) || {};
   const attrs = sourceNode.attributes || {};
   return {
-    sourceCsv: attrs['data-id-source-csv'] || '',
-    sourceXml: attrs['data-id-source-xml'] || '',
+    sourceCsv: attrs[HTML_DATA_ID_ATTRIBUTES.SOURCE_CSV] || '',
+    sourceXml: attrs[HTML_DATA_ID_ATTRIBUTES.SOURCE_XML] || '',
   };
 }
 
 function sourceMetadataAttrs() {
   return [
-    { attr: 'data-id-source-csv', prop: 'sourceCsv' },
-    { attr: 'data-id-source-xml', prop: 'sourceXml' },
+    { attr: HTML_DATA_ID_ATTRIBUTES.SOURCE_CSV, prop: 'sourceCsv' },
+    { attr: HTML_DATA_ID_ATTRIBUTES.SOURCE_XML, prop: 'sourceXml' },
   ];
 }
 

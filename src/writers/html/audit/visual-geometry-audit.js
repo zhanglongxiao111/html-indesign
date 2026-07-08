@@ -272,8 +272,8 @@ function isReverseAuthorTableNormalization(reference, candidate) {
     refTableStyle
       && candidateTableStyle
       && refTableStyle === candidateTableStyle
-      && hasRegisteredDataIdAttr(reference, 'data-id-table-style', 'canonical')
-      && hasRegisteredDataIdAttr(candidate, 'data-id-table-style', 'canonical')
+      && hasRegisteredDataIdAttr(reference, HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE, 'canonical')
+      && hasRegisteredDataIdAttr(candidate, HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE, 'canonical')
       && hasMatchingRegisteredTableSourceMetadata(reference, candidate),
   );
 }
@@ -310,13 +310,13 @@ function isRegisteredVectorRectangle(element) {
 function hasRegisteredObjectStyle(element, objectStyle) {
   return (
     String(element && element.objectStyle || '').trim().toLowerCase() === objectStyle
-    && hasRegisteredDataIdAttr(element, 'data-id-object-style', 'canonical')
+    && hasRegisteredDataIdAttr(element, HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE, 'canonical')
   );
 }
 
 function hasRegisteredParagraphStyle(element, paragraphStyle) {
   return Boolean(
-    hasRegisteredDataIdAttr(element, 'data-id-paragraph-style', 'canonical')
+    hasRegisteredDataIdAttr(element, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE, 'canonical')
       && String(element && element.paragraphStyle || '').trim().toLowerCase() === paragraphStyle,
   );
 }
@@ -332,8 +332,8 @@ function hasMatchingRegisteredTableSourceMetadata(reference, candidate) {
 function registeredTableSourceMetadata(element) {
   const sources = [];
   for (const [attr, prop] of [
-    ['data-id-source-csv', 'sourceCsv'],
-    ['data-id-source-xml', 'sourceXml'],
+    [HTML_DATA_ID_ATTRIBUTES.SOURCE_CSV, 'sourceCsv'],
+    [HTML_DATA_ID_ATTRIBUTES.SOURCE_XML, 'sourceXml'],
   ]) {
     const value = registeredSourceMetadataValue(element && element[prop]);
     if (value && hasRegisteredDataIdAttr(element, attr, 'sourceMetadata')) {
@@ -375,7 +375,7 @@ function normalizeDataIdAttrs(value) {
   const attrs = [];
   for (const item of value) {
     const attr = String(item || '').trim();
-    if (!attr.startsWith('data-id-') || seen.has(attr)) continue;
+    if (!attr.startsWith(`data-id-`) || seen.has(attr)) continue;
     seen.add(attr);
     attrs.push(attr);
   }

@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const path = require('path');
 const {
   inferAssetKind,
@@ -78,7 +79,7 @@ function placementFromAttributes(attributes, computedStyle) {
   attributes = attributes || {};
   computedStyle = computedStyle || {};
   const hasElementSource = Boolean(attributes.src || attributes.href || attributes.data);
-  const previewOnly = Boolean(attributes['data-id-preview-src'] && !attributes['data-id-asset-path']);
+  const previewOnly = Boolean(attributes[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] && !attributes[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH]);
   const hasBackgroundSource = !hasElementSource && assetSourceFromElementLike({
     tagName: 'div',
     attributes,
@@ -86,26 +87,26 @@ function placementFromAttributes(attributes, computedStyle) {
   }).src;
   const contentBox = previewOnly ? undefined : contentBoxFromAttributes(attributes);
   return {
-    fit: previewOnly ? 'fill' : attributes['data-id-fit'] || (contentBox ? 'manual' : null) || (hasBackgroundSource ? fitFromBackgroundSize(computedStyle.backgroundSize) : computedStyle.objectFit) || 'fill',
+    fit: previewOnly ? 'fill' : attributes[HTML_DATA_ID_ATTRIBUTES.FIT] || (contentBox ? 'manual' : null) || (hasBackgroundSource ? fitFromBackgroundSize(computedStyle.backgroundSize) : computedStyle.objectFit) || 'fill',
     position: hasBackgroundSource
       ? normalizePosition(computedStyle.backgroundPosition)
       : normalizePosition(computedStyle.objectPosition) || '50% 50%',
-    pageNumber: positiveIntegerOrUndefined(attributes['data-id-pdf-page']),
-    crop: attributes['data-id-crop'] || undefined,
-    artboard: attributes['data-id-artboard'] || undefined,
-    layerComp: attributes['data-id-layer-comp'] || undefined,
-    visibleLayers: layerListFromAttribute(attributes['data-id-visible-layers'] || attributes['data-id-pdf-visible-layers']),
-    hiddenLayers: layerListFromAttribute(attributes['data-id-hidden-layers'] || attributes['data-id-pdf-hidden-layers']),
-    preserveVector: attributes['data-id-preserve-vector'] === 'true',
+    pageNumber: positiveIntegerOrUndefined(attributes[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE]),
+    crop: attributes[HTML_DATA_ID_ATTRIBUTES.CROP] || undefined,
+    artboard: attributes[HTML_DATA_ID_ATTRIBUTES.ARTBOARD] || undefined,
+    layerComp: attributes[HTML_DATA_ID_ATTRIBUTES.LAYER_COMP] || undefined,
+    visibleLayers: layerListFromAttribute(attributes[HTML_DATA_ID_ATTRIBUTES.VISIBLE_LAYERS] || attributes[HTML_DATA_ID_ATTRIBUTES.PDF_VISIBLE_LAYERS]),
+    hiddenLayers: layerListFromAttribute(attributes[HTML_DATA_ID_ATTRIBUTES.HIDDEN_LAYERS] || attributes[HTML_DATA_ID_ATTRIBUTES.PDF_HIDDEN_LAYERS]),
+    preserveVector: attributes[HTML_DATA_ID_ATTRIBUTES.PRESERVE_VECTOR] === 'true',
     contentBox,
   };
 }
 
 function contentBoxFromAttributes(attributes) {
-  const x = attributes['data-id-content-x'];
-  const y = attributes['data-id-content-y'];
-  const width = attributes['data-id-content-width'];
-  const height = attributes['data-id-content-height'];
+  const x = attributes[HTML_DATA_ID_ATTRIBUTES.CONTENT_X];
+  const y = attributes[HTML_DATA_ID_ATTRIBUTES.CONTENT_Y];
+  const width = attributes[HTML_DATA_ID_ATTRIBUTES.CONTENT_WIDTH];
+  const height = attributes[HTML_DATA_ID_ATTRIBUTES.CONTENT_HEIGHT];
   if (x == null && y == null && width == null && height == null) return undefined;
   if (x == null || y == null || width == null || height == null) return undefined;
   return {
@@ -113,8 +114,8 @@ function contentBoxFromAttributes(attributes) {
     y,
     width,
     height,
-    scaleX: numberOrUndefined(attributes['data-id-content-scale-x']),
-    scaleY: numberOrUndefined(attributes['data-id-content-scale-y']),
+    scaleX: numberOrUndefined(attributes[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_X]),
+    scaleY: numberOrUndefined(attributes[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_Y]),
   };
 }
 

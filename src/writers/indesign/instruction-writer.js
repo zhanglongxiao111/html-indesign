@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { createReport, addMessage } = require('../../shared/report');
 const { parseCssLength, round } = require('../../shared/geometry');
 const { normalizeCssColor } = require('../../shared/style-utils');
@@ -336,7 +337,7 @@ function nativeLineFor(item, baseBounds, layout, styles, vectorGeometry = null, 
   const explicitLine = item.role === 'line'
     || classNames.includes('line')
     || /(^|-)line($|-)/.test(String(objectStyle || ''))
-    || sourceNodeAttribute(item, 'data-id-vector') === 'line'
+    || sourceNodeAttribute(item, HTML_DATA_ID_ATTRIBUTES.VECTOR) === 'line'
     || vectorLineCandidate(vectorGeometry, baseBounds);
   const thinVectorLine = (sourceLine || objectStyleStroke) && lineLikeBounds(baseBounds);
   const edge = item.box && item.box.borders && item.box.borders.top;

@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const path = require('node:path');
 const fs = require('node:fs');
 const { fileURLToPath, pathToFileURL } = require('node:url');
@@ -24,7 +25,7 @@ function assetHtml(item, options) {
   const geometryAttrs = assetGeometryAttrs(asset, geometry, framePreview);
   const fallbackFitStyle = geometryAttrs ? '' : ` style="object-fit:${fit}"`;
   if (previewPath && ['pdf', 'ai', 'psd'].includes(kind)) {
-    return `<img src="${attr(assetUrl(previewPath, options))}"${geometryAttrs} alt="${attr(label)}" data-id-preview-kind="${attr(kind)}" data-id-preview-asset-path="${attr(previewPath)}"${fallbackFitStyle}>`;
+    return `<img src="${attr(assetUrl(previewPath, options))}"${geometryAttrs} alt="${attr(label)}" ${HTML_DATA_ID_ATTRIBUTES.PREVIEW_KIND}="${attr(kind)}" ${HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH}="${attr(previewPath)}"${fallbackFitStyle}>`;
   }
   if (kind === 'image' || kind === 'raster' || /\.(png|jpe?g|jfif|gif|webp|svg|bmp|tiff?)$/.test(extension)) {
     return `<img src="${attr(url)}"${geometryAttrs} alt="${attr(label)}"${fallbackFitStyle}>`;
@@ -35,7 +36,7 @@ function assetHtml(item, options) {
       const pdfFramePreview = usesGeneratedFramePreview(asset);
       const pdfGeometryAttrs = assetGeometryAttrs(asset, geometry, pdfFramePreview);
       const pdfFallbackFitStyle = pdfGeometryAttrs ? '' : ` style="object-fit:${fit}"`;
-      return `<img src="${attr(assetUrl(previewPath, options))}"${pdfGeometryAttrs} alt="${attr(label)}" data-id-preview-kind="pdf" data-id-preview-asset-path="${attr(previewPath)}"${pdfFallbackFitStyle}>`;
+      return `<img src="${attr(assetUrl(previewPath, options))}"${pdfGeometryAttrs} alt="${attr(label)}" ${HTML_DATA_ID_ATTRIBUTES.PREVIEW_KIND}="pdf" ${HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH}="${attr(previewPath)}"${pdfFallbackFitStyle}>`;
     }
     return `<object data="${attr(url)}" type="application/pdf" aria-label="${attr(label)}"${geometry ? ` style="${attr(placedAssetContentStyle(geometry))}"` : ` style="object-fit:${fit}"`}></object>`;
   }
@@ -53,22 +54,22 @@ function assetPlacementAttrs(asset = {}) {
   const geometry = assetContentGeometry(asset);
   const out = [];
   const pdfPageNumber = assetPdfPageNumber(asset);
-  if (pdfPageNumber != null) out.push(`data-id-pdf-page="${attr(pdfPageNumber)}"`);
+  if (pdfPageNumber != null) out.push(`${HTML_DATA_ID_ATTRIBUTES.PDF_PAGE}="${attr(pdfPageNumber)}"`);
   if (assetKind(asset) === 'ai') {
     const placement = asset.placement || {};
     const artboard = placement.artboard || asset.artboard || placement.pageNumber || asset.pageNumber || null;
-    if (artboard != null) out.push(`data-id-artboard="${attr(artboard)}"`);
+    if (artboard != null) out.push(`${HTML_DATA_ID_ATTRIBUTES.ARTBOARD}="${attr(artboard)}"`);
   }
   if (geometry) {
     out.push(
-      'data-id-fit="manual"',
-      `data-id-content-x="${attr(formatPx(geometry.x))}"`,
-      `data-id-content-y="${attr(formatPx(geometry.y))}"`,
-      `data-id-content-width="${attr(formatPx(geometry.width))}"`,
-      `data-id-content-height="${attr(formatPx(geometry.height))}"`,
+      `${HTML_DATA_ID_ATTRIBUTES.FIT}="manual"`,
+      `${HTML_DATA_ID_ATTRIBUTES.CONTENT_X}="${attr(formatPx(geometry.x))}"`,
+      `${HTML_DATA_ID_ATTRIBUTES.CONTENT_Y}="${attr(formatPx(geometry.y))}"`,
+      `${HTML_DATA_ID_ATTRIBUTES.CONTENT_WIDTH}="${attr(formatPx(geometry.width))}"`,
+      `${HTML_DATA_ID_ATTRIBUTES.CONTENT_HEIGHT}="${attr(formatPx(geometry.height))}"`,
     );
-    if (geometry.scaleX != null) out.push(`data-id-content-scale-x="${attr(formatNumber(geometry.scaleX))}"`);
-    if (geometry.scaleY != null) out.push(`data-id-content-scale-y="${attr(formatNumber(geometry.scaleY))}"`);
+    if (geometry.scaleX != null) out.push(`${HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_X}="${attr(formatNumber(geometry.scaleX))}"`);
+    if (geometry.scaleY != null) out.push(`${HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_Y}="${attr(formatNumber(geometry.scaleY))}"`);
   }
   return out;
 }

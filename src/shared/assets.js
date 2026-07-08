@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const path = require('path');
 
 const RASTER_EXTENSIONS = new Set(['.jpg', '.jpeg', '.jfif', '.png', '.tif', '.tiff', '.webp', '.bmp']);
@@ -25,9 +26,9 @@ function assetSourceFromElementLike(element) {
   const attrs = element.attributes || {};
   const style = element.computedStyle || {};
   const authoredStyle = element.authoredStyle || {};
-  const explicitKind = cleanKind(attrs['data-id-asset-kind']);
-  const protocolAssetPath = attrs['data-id-asset-path'] || null;
-  const previewSrc = attrs['data-id-preview-src'] || attrs['data-id-preview-asset-path'] || null;
+  const explicitKind = cleanKind(attrs[HTML_DATA_ID_ATTRIBUTES.ASSET_KIND]);
+  const protocolAssetPath = attrs[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH] || null;
+  const previewSrc = attrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] || attrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH] || null;
   if (protocolAssetPath) return { src: protocolAssetPath, explicitKind };
   if (previewSrc) return { src: previewSrc, explicitKind };
   if (tagName === 'IMG') return { src: attrs.src || null, explicitKind };

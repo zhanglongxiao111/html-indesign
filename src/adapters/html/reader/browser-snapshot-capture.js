@@ -1,4 +1,10 @@
 (function installBrowserSnapshotCapture(globalObject) {
+  function dataIdAttributes() {
+    const attrs = globalObject && globalObject.htmlIndesignDataIdAttributes;
+    if (!attrs) throw new Error('htmlIndesignDataIdAttributes is not installed');
+    return attrs;
+  }
+
   function styleApi() {
     const api = globalObject && globalObject.htmlIndesignBrowserStyleCapture;
     if (!api) throw new Error('htmlIndesignBrowserStyleCapture is not installed');
@@ -24,13 +30,14 @@
   }
 
   function collectSourcePackageInput(pageEls) {
+    const dataId = dataIdAttributes();
     const deckEl = document.querySelector('main.deck') || document.body;
     const styleFiles = Array.from(document.querySelectorAll('style[data-source-file]'))
       .map((el) => el.getAttribute('data-source-file'))
       .filter(Boolean);
     const pageFiles = pageEls.map((pageEl) => ({
       id: pageEl.getAttribute('data-page') || pageEl.id || '',
-      file: pageEl.getAttribute('data-id-source-file') || '',
+      file: pageEl.getAttribute(dataId.SOURCE_FILE) || '',
     })).filter((page) => page.id && page.file);
     return {
       attributes: elementApi().attrs(deckEl),
@@ -43,7 +50,8 @@
   }
 
   function collectSourcePackageParentPages() {
-    const el = document.querySelector('script[type="application/json"][data-id-source-package-parent-pages]');
+    const dataId = dataIdAttributes();
+    const el = document.querySelector(`script[type="application/json"][${dataId.SOURCE_PACKAGE_PARENT_PAGES}]`);
     if (!el) return [];
     try {
       const value = JSON.parse(el.textContent || '[]');
@@ -55,6 +63,7 @@
   }
 
   function collectPageSnapshot(pageEl, pageIndex, styleRules) {
+    const dataId = dataIdAttributes();
     const elements = elementApi();
     const styles = styleApi();
     const pageRect = elements.rectObject(pageEl.getBoundingClientRect());
@@ -65,7 +74,7 @@
       index: pageIndex,
       classList: elements.classList(pageEl),
       attributes: elements.attrs(pageEl),
-      sourceFile: pageEl.getAttribute('data-id-source-file') || null,
+      sourceFile: pageEl.getAttribute(dataId.SOURCE_FILE) || null,
       sourceNode: {
         tagName: pageEl.tagName.toLowerCase(),
         id: pageEl.id || null,

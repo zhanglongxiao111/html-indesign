@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../src/protocol');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -330,13 +331,15 @@ function assertPanelNameAuditOk(result, options = {}) {
 
 function observedPanelNamesForHtml(htmlPath) {
   const html = readTextIfExists(htmlPath);
-  if (!/\bdata-id-reverse-mode\s*=\s*["']observation["']/i.test(html)
-    && !/\bdata-id-observed\s*=\s*["']true["']/i.test(html)) {
+  const reverseModePattern = new RegExp(`\\b${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE)}\\s*=\\s*["']observation["']`, 'i');
+  const observedPattern = new RegExp(`\\b${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.OBSERVED)}\\s*=\\s*["']true["']`, 'i');
+  if (!reverseModePattern.test(html)
+    && !observedPattern.test(html)) {
     return [];
   }
   const names = [];
   const seen = new Set();
-  const pattern = /\bdata-id-layer\s*=\s*(["'])(.*?)\1/gi;
+  const pattern = new RegExp(`\\b${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.LAYER)}\\s*=\\s*(["'])(.*?)\\1`, 'gi');
   let match;
   while ((match = pattern.exec(html))) {
     const name = htmlAttrText(match[2]);
@@ -347,6 +350,10 @@ function observedPanelNamesForHtml(htmlPath) {
     names.push({ kind: 'layers', name });
   }
   return names;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function panelNameSet(entries) {
@@ -406,15 +413,15 @@ function auditReverseHtmlSemantics(html) {
   const text = String(html || '');
   const counts = {
     dataPage: attributeCount(text, 'data-page'),
-    parentPage: attributeCount(text, 'data-id-parent-page'),
-    layout: attributeCount(text, 'data-id-layout'),
-    semantic: attributeCount(text, 'data-id-semantic'),
+    parentPage: attributeCount(text, HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE),
+    layout: attributeCount(text, HTML_DATA_ID_ATTRIBUTES.LAYOUT),
+    semantic: attributeCount(text, HTML_DATA_ID_ATTRIBUTES.SEMANTIC),
   };
   const missing = [];
   if (counts.dataPage === 0) missing.push('data-page');
-  if (counts.parentPage === 0) missing.push('data-id-parent-page');
-  if (counts.layout === 0) missing.push('data-id-layout');
-  if (counts.semantic === 0) missing.push('data-id-semantic');
+  if (counts.parentPage === 0) missing.push(HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE);
+  if (counts.layout === 0) missing.push(HTML_DATA_ID_ATTRIBUTES.LAYOUT);
+  if (counts.semantic === 0) missing.push(HTML_DATA_ID_ATTRIBUTES.SEMANTIC);
   return {
     ok: missing.length === 0,
     counts,

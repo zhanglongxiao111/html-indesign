@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
@@ -12,6 +13,15 @@ const SEMANTIC_CONTAINER_CLASSES = new Set([
   'diagram',
   'callout',
   'content-grid',
+]);
+const LOW_LEVEL_GEOMETRY_ATTRIBUTES = new Set([
+  HTML_DATA_ID_ATTRIBUTES.CONTENT_X,
+  HTML_DATA_ID_ATTRIBUTES.CONTENT_Y,
+  HTML_DATA_ID_ATTRIBUTES.CONTENT_WIDTH,
+  HTML_DATA_ID_ATTRIBUTES.CONTENT_HEIGHT,
+  HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_X,
+  HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_Y,
+  HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS,
 ]);
 
 function auditAuthorEditability(root, options = {}) {
@@ -88,7 +98,7 @@ function scanPage(packageRoot, page) {
     vectorSvgElements: $('svg[id]').length,
     figureCaptionPairs: $('figure').toArray().filter((element) => $(element).find('figcaption').length > 0).length,
     textElements: $(TEXT_SELECTOR).toArray().filter((element) => collapseWhitespace($(element).text())).length,
-    characterStyleSpans: $('[data-id-character-style]').length,
+    characterStyleSpans: $(`[${HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE}]`).length,
   };
 }
 
@@ -113,7 +123,7 @@ function countLowLevelGeometryAttrs($) {
   $('*').each((_, element) => {
     const attrs = element.attribs || {};
     for (const name of Object.keys(attrs)) {
-      if (/^data-id-content-/i.test(name) || name === 'data-id-vector-points') count += 1;
+      if (LOW_LEVEL_GEOMETRY_ATTRIBUTES.has(name)) count += 1;
     }
   });
   return count;

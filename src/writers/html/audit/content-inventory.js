@@ -118,9 +118,9 @@ function resourceDigest($, root, assetAliases = new Map()) {
   $('img[src],object[data]').each((_, element) => {
     if (isPageFurnitureElement($, element)) return;
     const node = $(element);
-    if (node.attr('data-id-ignore') != null) return;
+    if (node.attr(HTML_DATA_ID_ATTRIBUTES.IGNORE) != null) return;
     const htmlValue = node.attr('src') || node.attr('data') || '';
-    const explicitAssetPath = node.attr('data-id-asset-path') || '';
+    const explicitAssetPath = node.attr(HTML_DATA_ID_ATTRIBUTES.ASSET_PATH) || '';
     const value = explicitAssetPath || htmlValue;
     const alias = explicitAssetPath ? null : assetAliases.get(resourceIdentity(null, htmlValue));
     out.push({
@@ -342,7 +342,7 @@ function resolveTransitiveAssetAlias(originalPath, seenReports, warnings) {
 
 function isPageFurnitureElement($, element) {
   const node = $(element);
-  return node.closest('[data-id-placement="parent-page-furniture"],[data-id-parent-page-item]').length > 0;
+  return node.closest(`[${HTML_DATA_ID_ATTRIBUTES.PLACEMENT}="parent-page-furniture"],[${HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM}]`).length > 0;
 }
 
 function escapesPackageRoot(value) {

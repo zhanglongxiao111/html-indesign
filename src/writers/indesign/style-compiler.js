@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { createReport, addMessage } = require('../../shared/report');
 const { round } = require('../../shared/geometry');
 const {
@@ -217,7 +218,7 @@ function isWholeItemTextRun(item) {
   const runs = item.runs || [];
   if (runs.length !== 1) return false;
   const run = runs[0];
-  if (run.attributes && run.attributes['data-id-character-style']) return false;
+  if (run.attributes && run.attributes[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE]) return false;
   return String(run.text || '').trim() === String(item.text || '').trim()
     && String(run.tagName || '') === String(item.tagName || '');
 }
@@ -226,7 +227,7 @@ function shouldCompileObjectText(item) {
   return Boolean(
     item
     && item.attributes
-    && item.attributes['data-id-role'] === 'annotation'
+    && item.attributes[HTML_DATA_ID_ATTRIBUTES.ROLE] === 'annotation'
     && String(item.text || '').trim()
   );
 }
@@ -286,7 +287,7 @@ function ensureParagraphStyle(styles, item, report, options) {
 
 function paragraphComposerFor(item) {
   const attributes = item && item.attributes || {};
-  return attributes['data-id-paragraph-composer'] || item && item.textStyle && item.textStyle.composer || null;
+  return attributes[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] || item && item.textStyle && item.textStyle.composer || null;
 }
 
 function ensureCharacterStyle(styles, run, report, options) {
@@ -346,7 +347,7 @@ function ensureObjectStyle(styles, item, report, options) {
 
 function shouldCompileTextFrameObjectStyle(item) {
   const attributes = item.attributes || {};
-  if (attributes['data-id-object-style'] || attributes['data-id-frame-style']) return true;
+  if (attributes[HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE] || attributes[HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE]) return true;
   const style = item.computedStyle || {};
   return Boolean(
     ensureFillPreview(style)
@@ -366,7 +367,7 @@ function ensureFillPreview(style) {
 
 function isNativeLineCandidate(item) {
   const classNames = item.classList || [];
-  const objectStyle = item.attributes && item.attributes['data-id-object-style'];
+  const objectStyle = item.attributes && item.attributes[HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE];
   return item.role === 'shape'
     && (classNames.includes('line') || /(^|-)line($|-)/.test(String(objectStyle || '')));
 }
@@ -681,7 +682,7 @@ function effectiveObjectOpacity(item, fill) {
   if (parseCssLinearGradient(style.backgroundImage)) {
     return cssOpacity;
   }
-  if (item.role === 'graphic' && item.attributes && item.attributes['data-id-asset-kind'] && cssOpacity === 0) {
+  if (item.role === 'graphic' && item.attributes && item.attributes[HTML_DATA_ID_ATTRIBUTES.ASSET_KIND] && cssOpacity === 0) {
     return 1;
   }
   return cssOpacity;
@@ -702,28 +703,28 @@ function protocolStrokeForObject(item, styles, options) {
   const attrs = item && item.attributes || {};
   if (!hasProtocolStrokeFact(attrs)) return null;
   const widthPt = protocolStrokeWeight(attrs, options);
-  const color = widthPt > 0 ? ensureSwatch(styles, attrs['data-id-stroke-color']) : null;
+  const color = widthPt > 0 ? ensureSwatch(styles, attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_COLOR]) : null;
   const style = widthPt > 0
-    ? (attrs['data-id-stroke-style'] || cssBorderStyle(item) || 'solid')
+    ? (attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE] || cssBorderStyle(item) || 'solid')
     : 'none';
   return {
     color,
     widthPt,
     style,
-    alignment: normalizedStrokeAlignment(attrs['data-id-stroke-alignment']),
+    alignment: normalizedStrokeAlignment(attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_ALIGNMENT]),
   };
 }
 
 function hasProtocolStrokeFact(attrs) {
-  return Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-weight')
-    || Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-color')
-    || Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-style')
-    || Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-alignment');
+  return Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_WEIGHT)
+    || Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_COLOR)
+    || Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE)
+    || Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_ALIGNMENT);
 }
 
 function protocolStrokeWeight(attrs, options) {
-  if (!Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-weight')) return 0;
-  const value = attrs['data-id-stroke-weight'];
+  if (!Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_WEIGHT)) return 0;
+  const value = attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_WEIGHT];
   const text = String(value == null ? '' : value).trim();
   if (!text) return 0;
   if (/[a-z%]/i.test(text)) {

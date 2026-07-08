@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml, escapeHtml } = require('./author-attribute-writer');
 const {
   indent,
@@ -30,7 +31,7 @@ function tableRow(row, depth) {
 function tableCell(cell, depth) {
   const tag = cell.header ? 'th' : 'td';
   const attrs = {};
-  if (cell.paragraphStyle) attrs['data-id-paragraph-style'] = cell.paragraphStyle;
+  if (cell.paragraphStyle) attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE] = cell.paragraphStyle;
   const rowSpan = tableCellSpan(cell.rowSpan, 'rowSpan');
   const colSpan = tableCellSpan(cell.colSpan, 'colSpan');
   if (rowSpan) attrs.rowspan = rowSpan;
@@ -87,8 +88,8 @@ function renderInlineRun(run) {
   if (!hasRichRunMarkup(run)) return plainTextContent(run.text);
   const tag = safeInlineTag(run.tagName);
   const attrs = mergeAttributes(run.attributes);
-  if (isUsefulCharacterStyle(run.characterStyle) && !attrs['data-id-character-style']) {
-    attrs['data-id-character-style'] = run.characterStyle;
+  if (isUsefulCharacterStyle(run.characterStyle) && !attrs[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE]) {
+    attrs[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE] = run.characterStyle;
   }
   const classes = new Set(run.classList || []);
   if (classes.size) attrs.class = Array.from(classes).join(' ');

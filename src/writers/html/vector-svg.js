@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 'use strict';
 
 function hasVectorPaths(item) {
@@ -52,16 +53,16 @@ function vectorPathElement(item, path, depth) {
     fill: path.closed ? (visualStyle.fillColor || 'none') : 'none',
     stroke: visualStyle.strokeColor || 'none',
   };
-  if (!path.closed && visualStyle.fillColor) attrs['data-id-fill-color'] = visualStyle.fillColor;
+  if (!path.closed && visualStyle.fillColor) attrs[HTML_DATA_ID_ATTRIBUTES.FILL_COLOR] = visualStyle.fillColor;
   const pointTypes = pointTypesAttr(path.points);
-  if (pointTypes) attrs['data-id-point-types'] = pointTypes;
+  if (pointTypes) attrs[HTML_DATA_ID_ATTRIBUTES.POINT_TYPES] = pointTypes;
   const vectorPoints = vectorPointsAttr(path, item);
-  if (vectorPoints) attrs['data-id-vector-points'] = vectorPoints;
+  if (vectorPoints) attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS] = vectorPoints;
   const strokeWeight = Number(visualStyle.strokeWeight);
   if (Number.isFinite(strokeWeight) && strokeWeight > 0) attrs['stroke-width'] = formatNumber(strokeWeight);
   const fillOpacity = opacityValue(visualStyle.fillOpacity);
   if (fillOpacity != null && attrs.fill !== 'none') attrs['fill-opacity'] = fillOpacity;
-  if (fillOpacity != null && attrs.fill === 'none' && visualStyle.fillColor) attrs['data-id-fill-opacity'] = fillOpacity;
+  if (fillOpacity != null && attrs.fill === 'none' && visualStyle.fillColor) attrs[HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY] = fillOpacity;
   const strokeOpacity = opacityValue(visualStyle.strokeOpacity);
   if (strokeOpacity != null && attrs.stroke !== 'none') attrs['stroke-opacity'] = strokeOpacity;
   const opacity = opacityValue(visualStyle.opacity);
@@ -73,7 +74,7 @@ function vectorPathElement(item, path, depth) {
   const miterLimit = positiveNumber(visualStyle.strokeMiterLimit);
   if (miterLimit != null) attrs['stroke-miterlimit'] = formatNumber(miterLimit);
   const strokeStyle = stringValue(visualStyle.strokeStyle);
-  if (strokeStyle) attrs['data-id-stroke-style'] = strokeStyle;
+  if (strokeStyle) attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE] = strokeStyle;
   const dash = strokeDashArray(strokeStyle, strokeWeight);
   if (dash) attrs['stroke-dasharray'] = dash;
   if (dash && /dot|点/i.test(strokeStyle)) attrs['stroke-linecap'] = 'round';
@@ -81,8 +82,8 @@ function vectorPathElement(item, path, depth) {
   const endMarker = visualStyle.lineEndMarker;
   const startRawName = markerRawName(startMarker);
   const endRawName = markerRawName(endMarker);
-  if (startRawName) attrs['data-id-line-start-marker-raw-name'] = startRawName;
-  if (endRawName) attrs['data-id-line-end-marker-raw-name'] = endRawName;
+  if (startRawName) attrs[HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME] = startRawName;
+  if (endRawName) attrs[HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME] = endRawName;
   if (markerType(startMarker)) attrs['marker-start'] = `url(#${markerId(item, 'start')})`;
   if (markerType(endMarker)) attrs['marker-end'] = `url(#${markerId(item, 'end')})`;
   return `${indent(depth)}<path ${attrsToHtml(orderVectorPathAttrs(attrs))}></path>`;
@@ -276,7 +277,7 @@ function paintedStrokeExtent(item) {
 
 function orderVectorPathAttrs(attrs) {
   const out = {};
-  for (const key of ['d', 'data-id-point-types', 'data-id-vector-points', 'fill', 'data-id-fill-color', 'fill-opacity', 'data-id-fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'data-id-stroke-style', 'stroke-dasharray', 'data-id-line-start-marker-raw-name', 'data-id-line-end-marker-raw-name', 'marker-start', 'marker-end', 'opacity']) {
+  for (const key of ['d', HTML_DATA_ID_ATTRIBUTES.POINT_TYPES, HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS, 'fill', HTML_DATA_ID_ATTRIBUTES.FILL_COLOR, 'fill-opacity', HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY, 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE, 'stroke-dasharray', HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME, HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME, 'marker-start', 'marker-end', 'opacity']) {
     if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
   }
   return out;

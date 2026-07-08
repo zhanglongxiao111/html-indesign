@@ -1,13 +1,16 @@
 const { compileStyles } = require('../../../writers/indesign/style-compiler');
 const {
   resolveLayout,
-  pageDimensions,
-  pageMargins,
-  pageGuides,
   itemBounds,
+  pageDimensions,
+  pageGuides,
+  pageMargins,
 } = require('../../../semantic-model/layout');
 const { createProtocolLabel } = require('../../../shared/labels');
-const { fieldRegistry } = require('../../../protocol');
+const {
+  fieldRegistry,
+  HTML_DATA_ID_ATTRIBUTES,
+} = require('../../../protocol');
 const {
   sourcePackageFromDocument,
   sourceNodeForSnapshotItem,
@@ -109,11 +112,11 @@ function pageModelFor(page, layout) {
   const margins = pageMargins(page, layout);
   const attrs = page.attributes || {};
   const pageId = page.id || attrs['data-page'] || `page-${Number(page.index || 0) + 1}`;
-  const semantic = attrs['data-id-semantic'] || null;
-  const parentPageId = attrs['data-id-parent-page'] || null;
-  const parentPageName = attrs['data-id-parent-page-name'] || null;
-  const layoutToken = attrs['data-id-layout'] || null;
-  const sourceFile = attrs['data-id-source-file'] || page.sourceFile || null;
+  const semantic = attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] || null;
+  const parentPageId = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE] || null;
+  const parentPageName = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME] || null;
+  const layoutToken = attrs[HTML_DATA_ID_ATTRIBUTES.LAYOUT] || null;
+  const sourceFile = attrs[HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE] || page.sourceFile || null;
   const sourceNode = page.sourceNode || sourceNodeForSnapshotItem(Object.assign({}, page, { tagName: 'section' }));
   const grid = pageGridFromAttributes(attrs);
   const allItems = (page.items || []).map((item) => itemModelFor(item, page, layout));
@@ -165,19 +168,19 @@ function pageGuidesForModel(page, dimensions, margins, layout) {
 }
 
 function pageGuidesFromAttr(attrs = {}) {
-  const raw = attrs['data-id-guides'];
+  const raw = attrs[HTML_DATA_ID_ATTRIBUTES.GUIDES];
   if (!raw) return null;
   let parsed;
   try {
     parsed = JSON.parse(String(raw));
   } catch (error) {
-    const out = new Error(`PAGE_GUIDES_ATTR_INVALID: data-id-guides must be a JSON array: ${error.message}`);
+    const out = new Error(`PAGE_GUIDES_ATTR_INVALID: ${HTML_DATA_ID_ATTRIBUTES.GUIDES} must be a JSON array: ${error.message}`);
     out.code = 'PAGE_GUIDES_ATTR_INVALID';
     out.cause = error;
     throw out;
   }
   if (!Array.isArray(parsed)) {
-    const out = new Error('PAGE_GUIDES_ATTR_INVALID: data-id-guides must be a JSON array');
+    const out = new Error(`PAGE_GUIDES_ATTR_INVALID: ${HTML_DATA_ID_ATTRIBUTES.GUIDES} must be a JSON array`);
     out.code = 'PAGE_GUIDES_ATTR_INVALID';
     throw out;
   }
@@ -198,9 +201,9 @@ function pageGuidesFromAttr(attrs = {}) {
 }
 
 function isObservationPageWithoutGuideContract(attrs = {}) {
-  const mode = String(attrs['data-id-reverse-mode'] || '').trim().toLowerCase();
-  const observed = String(attrs['data-id-observed'] || '').trim().toLowerCase() === 'true';
-  const hasGuideContract = attrs['data-id-guide-mode'] || attrs['data-id-grid'] || attrs['data-id-baseline-guides'];
+  const mode = String(attrs[HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE] || '').trim().toLowerCase();
+  const observed = String(attrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED] || '').trim().toLowerCase() === 'true';
+  const hasGuideContract = attrs[HTML_DATA_ID_ATTRIBUTES.GUIDE_MODE] || attrs[HTML_DATA_ID_ATTRIBUTES.GRID] || attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE_GUIDES];
   return !hasGuideContract && (observed || mode === 'observation');
 }
 
@@ -313,7 +316,7 @@ function parentPageModelItemFor(item, parentPage) {
 
 function itemModelFor(item, page, layout) {
   const attrs = item.attributes || {};
-  const semantic = attrs['data-id-semantic'] || null;
+  const semantic = attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] || null;
   const bounds = itemBounds(item, page, layout);
   const vectorFacts = vectorFactsFromSvgItem(item, bounds) || {};
   const visualStyle = mergeVisualStyleFacts(
@@ -321,9 +324,9 @@ function itemModelFor(item, page, layout) {
     item.visualStyle || vectorFacts.visualStyle || null,
     visualStyleFromProtocolAttrs(attrs),
   );
-  const sourceFile = attrs['data-id-source-file']
+  const sourceFile = attrs[HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE]
     || page.sourceFile
-    || (page.attributes && page.attributes['data-id-source-file'])
+    || (page.attributes && page.attributes[HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE])
     || null;
   const sourceNode = item.sourceNode || sourceNodeForSnapshotItem(item);
   const sourceAncestorNodes = sourceAncestorNodesForItem(item);
@@ -340,9 +343,9 @@ function itemModelFor(item, page, layout) {
     ...(attrs[ITEM_STYLE_REF_ATTRS.frameStyle] ? { frameStyle: attrs[ITEM_STYLE_REF_ATTRS.frameStyle] } : {}),
     ...(attrs[ITEM_STYLE_REF_ATTRS.tableStyle] ? { tableStyle: attrs[ITEM_STYLE_REF_ATTRS.tableStyle] } : {}),
     ...(attrs[ITEM_STYLE_REF_ATTRS.cellStyle] ? { cellStyle: attrs[ITEM_STYLE_REF_ATTRS.cellStyle] } : {}),
-    ...(attrs['data-id-layer'] ? { layer: attrs['data-id-layer'] } : {}),
-    ...(attrs['data-id-style-token'] ? { synthesizedToken: attrs['data-id-style-token'] } : {}),
-    ...(attrs['data-id-style-name'] ? { synthesizedName: attrs['data-id-style-name'] } : {}),
+    ...(attrs[HTML_DATA_ID_ATTRIBUTES.LAYER] ? { layer: attrs[HTML_DATA_ID_ATTRIBUTES.LAYER] } : {}),
+    ...(attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] ? { synthesizedToken: attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] } : {}),
+    ...(attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_NAME] ? { synthesizedName: attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_NAME] } : {}),
     ...(attrs[ITEM_STYLE_REF_ATTRS.genericStyle] ? { genericStyle: attrs[ITEM_STYLE_REF_ATTRS.genericStyle] } : {}),
     ...(attrs[ITEM_STYLE_REF_ATTRS.paragraphStyleDisplayName] ? { paragraphStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.paragraphStyleDisplayName] } : {}),
     ...(attrs[ITEM_STYLE_REF_ATTRS.characterStyleDisplayName] ? { characterStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.characterStyleDisplayName] } : {}),
@@ -351,8 +354,8 @@ function itemModelFor(item, page, layout) {
     ...(attrs[ITEM_STYLE_REF_ATTRS.tableStyleDisplayName] ? { tableStyleDisplayName: attrs[ITEM_STYLE_REF_ATTRS.tableStyleDisplayName] } : {}),
     ...(item.styleRefs || {}),
   });
-  const parentPageName = attrs['data-id-parent-page-item'] || null;
-  const parentPageSourceId = attrs['data-id-parent-page-source-id'] || null;
+  const parentPageName = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM] || null;
+  const parentPageSourceId = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_SOURCE_ID] || null;
   const extensions = itemExtensionsFor(item);
   const modelItem = {
     id: item.id,
@@ -368,7 +371,7 @@ function itemModelFor(item, page, layout) {
     boundsMm: item.boundsMm || null,
     box: item.box || null,
     zIndex: item.zIndex || 0,
-    layer: attrs['data-id-layer'] || null,
+    layer: attrs[HTML_DATA_ID_ATTRIBUTES.LAYER] || null,
     sourceFile,
     sourceNode,
     sourceAncestorNodes,
@@ -449,14 +452,14 @@ function visualStyleFromComputedStyle(item) {
 
 function visualStyleFromProtocolAttrs(attrs = {}) {
   const out = {};
-  if (attrs['data-id-stroke-color']) out.strokeColor = attrs['data-id-stroke-color'];
-  if (Object.prototype.hasOwnProperty.call(attrs, 'data-id-stroke-weight')) {
-    out.strokeWeight = numberOrZero(attrs['data-id-stroke-weight']);
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_COLOR]) out.strokeColor = attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_COLOR];
+  if (Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_WEIGHT)) {
+    out.strokeWeight = numberOrZero(attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_WEIGHT]);
   }
-  if (attrs['data-id-stroke-style']) out.strokeStyle = attrs['data-id-stroke-style'];
-  if (attrs['data-id-stroke-alignment']) out.strokeAlignment = attrs['data-id-stroke-alignment'];
-  const startRawName = attrs['data-id-line-start-marker-raw-name'];
-  const endRawName = attrs['data-id-line-end-marker-raw-name'];
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE]) out.strokeStyle = attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE];
+  if (attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_ALIGNMENT]) out.strokeAlignment = attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_ALIGNMENT];
+  const startRawName = attrs[HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME];
+  const endRawName = attrs[HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME];
   if (startRawName) out.lineStartMarker = { type: null, rawName: startRawName };
   if (endRawName) out.lineEndMarker = { type: null, rawName: endRawName };
   return Object.keys(out).length ? out : null;
@@ -484,14 +487,14 @@ function nearestSourceParentId(item, page) {
 }
 
 function pageGridFromAttributes(attrs = {}) {
-  const grid = String(attrs['data-id-grid'] || '').match(/^(\d+)x(\d+)$/);
+  const grid = String(attrs[HTML_DATA_ID_ATTRIBUTES.GRID] || '').match(/^(\d+)x(\d+)$/);
   if (!grid) return null;
   return {
     columns: Number(grid[1]),
     rows: Number(grid[2]),
-    columnGutter: lengthNumber(attrs['data-id-column-gutter']),
-    rowGutter: lengthNumber(attrs['data-id-row-gutter']),
-    baseline: lengthNumber(attrs['data-id-baseline']),
+    columnGutter: lengthNumber(attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER]),
+    rowGutter: lengthNumber(attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER]),
+    baseline: lengthNumber(attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE]),
   };
 }
 

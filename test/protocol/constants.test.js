@@ -12,6 +12,8 @@ const {
   HTML_DATA_ID_ATTRIBUTE_NAMES,
   ITEM_ROLE,
   ITEM_ROLE_VALUES,
+  RETIRED_HTML_DATA_ID_ATTRIBUTES,
+  RETIRED_HTML_DATA_ID_ATTRIBUTE_NAMES,
   STYLE_KIND,
   STYLE_KIND_VALUES,
   SYNTHESIZED_STYLE_KIND,
@@ -143,10 +145,22 @@ test('default protocol constants expose current registry data-id attributes and 
   }
 });
 
+test('protocol constants expose retired HTML data-id attributes separately from active attributes', () => {
+  const retiredAttrs = [...new Set(fieldRegistry.entries.flatMap((entry) => {
+    const retired = entry.retired || {};
+    return (retired.htmlAttrs || []).map((attr) => attr.name);
+  }).filter((attr) => attr.startsWith('data-id-')))].sort();
+
+  assert.deepEqual(RETIRED_HTML_DATA_ID_ATTRIBUTE_NAMES, retiredAttrs);
+  assert.equal(RETIRED_HTML_DATA_ID_ATTRIBUTES.PAGE, 'data-id-page');
+  assert.equal(HTML_DATA_ID_ATTRIBUTES.PAGE, undefined);
+});
+
 test('protocol index exports the derived constants surface', () => {
   const protocol = require('../../src/protocol');
 
   assert.equal(protocol.HTML_DATA_ID_ATTRIBUTES, HTML_DATA_ID_ATTRIBUTES);
+  assert.equal(protocol.RETIRED_HTML_DATA_ID_ATTRIBUTES, RETIRED_HTML_DATA_ID_ATTRIBUTES);
   assert.equal(protocol.ITEM_ROLE, ITEM_ROLE);
   assert.equal(protocol.STYLE_KIND, STYLE_KIND);
   assert.equal(protocol.SYNTHESIZED_STYLE_KIND, SYNTHESIZED_STYLE_KIND);

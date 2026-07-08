@@ -1,5 +1,6 @@
 const path = require('path');
 const { chromium } = require('playwright');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const { rectPxToMm, round } = require('../../../shared/geometry');
 const { createReport, addMessage } = require('../../../shared/report');
 const { detectAssetsFromItems } = require('./asset-detector');
@@ -89,6 +90,9 @@ async function waitForPageAssets(page) {
 }
 
 async function installBrowserSnapshotScripts(page) {
+  await page.evaluate((attributes) => {
+    window.htmlIndesignDataIdAttributes = attributes;
+  }, HTML_DATA_ID_ATTRIBUTES);
   for (const scriptPath of browserSnapshotScriptPaths) {
     await page.addScriptTag({ path: scriptPath });
   }

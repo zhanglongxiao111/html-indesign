@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const {
   safeAuthorHtmlTag,
   safeAuthorInlineHtmlTag,
@@ -71,11 +72,11 @@ function orderInlineAttrs(attrs) {
 }
 
 function hasDataIdObject(attrs) {
-  return Object.prototype.hasOwnProperty.call(attrs, 'data-id-object');
+  return Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.OBJECT);
 }
 
 function hasDataIdIgnore(attrs) {
-  return Object.prototype.hasOwnProperty.call(attrs, 'data-id-ignore');
+  return Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.IGNORE);
 }
 
 function safeTag(value) {

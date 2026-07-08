@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
 const BOOLEAN_ATTRIBUTES = new Set([
   'allowfullscreen',
@@ -16,8 +17,8 @@ const BOOLEAN_ATTRIBUTES = new Set([
   'readonly',
   'required',
   'selected',
-  'data-id-object',
-  'data-id-ignore',
+  HTML_DATA_ID_ATTRIBUTES.OBJECT,
+  HTML_DATA_ID_ATTRIBUTES.IGNORE,
 ]);
 const BLOCKED_ATTRIBUTES = new Set(['style']);
 

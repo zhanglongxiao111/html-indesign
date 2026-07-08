@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { createProtocolLabel } = require('../../shared/labels');
 
 function layerForModelItem(modelItem, options) {
@@ -11,7 +12,7 @@ function layerForModelItem(modelItem, options) {
 
 function layerForItem(item, options) {
   let token = 'content';
-  if (item.attributes && item.attributes['data-id-layer']) token = item.attributes['data-id-layer'];
+  if (item.attributes && item.attributes[HTML_DATA_ID_ATTRIBUTES.LAYER]) token = item.attributes[HTML_DATA_ID_ATTRIBUTES.LAYER];
   else if (item.role === 'text') token = 'text';
   else if (item.role === 'graphic') token = 'graphics';
   else if (item.role === 'table') token = 'tables';

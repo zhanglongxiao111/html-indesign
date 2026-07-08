@@ -1,9 +1,10 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 'use strict';
 
 function vectorFactsFromSvgItem(item, bounds) {
   const attrs = item && item.attributes || {};
   const tagName = String(item && item.tagName || '').toLowerCase();
-  const vectorKind = String(attrs['data-id-vector'] || '').trim();
+  const vectorKind = String(attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR] || '').trim();
   if (tagName !== 'svg' && !vectorKind) return null;
   const sourceHtml = sourceHtmlForItem(item);
   const pathTags = pathTagsFromHtml(sourceHtml);
@@ -48,10 +49,10 @@ function parseAttributes(tag) {
 }
 
 function pathFromPathTag(attrs, bounds, viewBox) {
-  const points = parseVectorPointsAttr(attrs['data-id-vector-points'], bounds, viewBox)
+  const points = parseVectorPointsAttr(attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS], bounds, viewBox)
     || parsePathPoints(attrs.d || '', bounds, viewBox);
   if (!points.length) return null;
-  applyPointTypes(points, attrs['data-id-point-types']);
+  applyPointTypes(points, attrs[HTML_DATA_ID_ATTRIBUTES.POINT_TYPES]);
   return {
     closed: /\b[zZ]\b|[zZ]\s*$/.test(String(attrs.d || '').trim()),
     points,
@@ -210,10 +211,10 @@ function parseViewBox(value, bounds = {}) {
 
 function visualStyleFromPath(attrs, sourceHtml) {
   const style = {};
-  if (visiblePaint(attrs['data-id-fill-color'])) style.fillColor = normalizeHexColor(attrs['data-id-fill-color']);
+  if (visiblePaint(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_COLOR])) style.fillColor = normalizeHexColor(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_COLOR]);
   else if (visiblePaint(attrs.fill)) style.fillColor = normalizeHexColor(attrs.fill);
   else style.fillColor = null;
-  style.fillOpacity = opacityPercent(attrs['data-id-fill-opacity'] || attrs['fill-opacity']);
+  style.fillOpacity = opacityPercent(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY] || attrs['fill-opacity']);
   if (visiblePaint(attrs.stroke)) style.strokeColor = normalizeHexColor(attrs.stroke);
   else style.strokeColor = null;
   const strokeWeight = positiveNumber(attrs['stroke-width']);
@@ -225,12 +226,12 @@ function visualStyleFromPath(attrs, sourceHtml) {
   if (attrs['stroke-linejoin']) style.strokeLineJoin = attrs['stroke-linejoin'];
   const miter = positiveNumber(attrs['stroke-miterlimit']);
   if (miter !== null) style.strokeMiterLimit = miter;
-  const rawStrokeStyle = String(attrs['data-id-stroke-style'] || '').trim();
+  const rawStrokeStyle = String(attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE] || '').trim();
   const dash = String(attrs['stroke-dasharray'] || '').trim();
   if (rawStrokeStyle) style.strokeStyle = rawStrokeStyle;
   else if (dash) style.strokeStyle = dash;
-  const start = markerFromUrl(attrs['marker-start'], sourceHtml, attrs['data-id-line-start-marker-raw-name']);
-  const end = markerFromUrl(attrs['marker-end'], sourceHtml, attrs['data-id-line-end-marker-raw-name']);
+  const start = markerFromUrl(attrs['marker-start'], sourceHtml, attrs[HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME]);
+  const end = markerFromUrl(attrs['marker-end'], sourceHtml, attrs[HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME]);
   if (start) style.lineStartMarker = start;
   if (end) style.lineEndMarker = end;
   return style;

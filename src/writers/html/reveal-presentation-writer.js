@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const fs = require('fs');
 const path = require('path');
 const { readAuthorPackage } = require('../../authoring');
@@ -33,7 +34,7 @@ function writeRevealPresentation(configPath, options = {}) {
     presentationChromeCss(width, height),
     '</head>',
     '<body>',
-    '  <div class="reveal hi-reveal" data-id-ignore="true">',
+    `  <div class="reveal hi-reveal" ${HTML_DATA_ID_ATTRIBUTES.IGNORE}="true">`,
     '    <div class="slides">',
     indent(pages, 6),
     '    </div>',
@@ -86,9 +87,13 @@ function presentationChromeCss(width, height) {
 
 function addSourceFileAttribute(fragment, sourceFile) {
   return fragment.replace(/<section\b([^>]*)>/i, (match, rest) => {
-    if (/data-id-source-file\s*=/.test(rest)) return match;
-    return `<section${rest} data-id-source-file="${attr(sourceFile)}">`;
+    if (new RegExp(`${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE)}\\s*=`).test(rest)) return match;
+    return `<section${rest} ${HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE}="${attr(sourceFile)}">`;
   }).trimEnd();
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function positiveNumber(value) {

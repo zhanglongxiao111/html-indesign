@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 'use strict';
 
 const fs = require('fs');
@@ -5,17 +6,17 @@ const cheerio = require('cheerio');
 const { collectKnownSemanticTokens } = require('./maps');
 
 const ATTRIBUTE_RULES = [
-  ['data-id-paragraph-style', 'paragraphStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-character-style', 'characterStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-object-style', 'objectStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-frame-style', 'frameStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-table-style', 'tableStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-cell-style', 'cellStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-layer', 'layers', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-semantic', 'semantic', 'SEMANTIC_TOKEN_UNKNOWN'],
-  ['data-id-asset-kind', 'assets', 'SEMANTIC_ASSET_KIND_UNKNOWN'],
-  ['data-id-fit', 'fits', 'SEMANTIC_ASSET_FIT_UNKNOWN'],
-  ['data-id-crop', 'crops', 'SEMANTIC_ASSET_CROP_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE, 'paragraphStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE, 'characterStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE, 'objectStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE, 'frameStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE, 'tableStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.CELL_STYLE, 'cellStyles', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.LAYER, 'layers', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.SEMANTIC, 'semantic', 'SEMANTIC_TOKEN_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.ASSET_KIND, 'assets', 'SEMANTIC_ASSET_KIND_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.FIT, 'fits', 'SEMANTIC_ASSET_FIT_UNKNOWN'],
+  [HTML_DATA_ID_ATTRIBUTES.CROP, 'crops', 'SEMANTIC_ASSET_CROP_UNKNOWN'],
 ];
 
 function auditAuthoringSemanticTokens(options = {}) {

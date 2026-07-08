@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
@@ -102,14 +103,14 @@ function assembleAuthorPackage(configPath) {
 
   const title = sourcePackage.config.title || sourcePackage.config.id;
   const parentPagesMetadata = sourcePackage.config.parentPages && sourcePackage.config.parentPages.length
-    ? `  <script type="application/json" data-id-source-package-parent-pages>${jsonScript(sourcePackage.config.parentPages)}</script>`
+    ? `  <script type="application/json" ${HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_PARENT_PAGES}>${jsonScript(sourcePackage.config.parentPages)}</script>`
     : null;
   const packageAttrs = [
-    `data-id-document="${attr(sourcePackage.config.id)}"`,
-    sourcePackage.config.profile ? `data-id-profile="${attr(sourcePackage.config.profile)}"` : null,
-    `data-id-source-package-config="${attr(path.relative(sourcePackage.rootDir, sourcePackage.configPath).replace(/\\/g, '/'))}"`,
-    `data-id-source-package-schema="${attr(sourcePackage.config.schemaVersion)}"`,
-    sourcePackage.semanticPreset ? `data-id-semantic-preset="${attr(sourcePackage.semanticPreset.relativePath)}"` : null,
+    `${HTML_DATA_ID_ATTRIBUTES.DOCUMENT}="${attr(sourcePackage.config.id)}"`,
+    sourcePackage.config.profile ? `${HTML_DATA_ID_ATTRIBUTES.PROFILE}="${attr(sourcePackage.config.profile)}"` : null,
+    `${HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_CONFIG}="${attr(path.relative(sourcePackage.rootDir, sourcePackage.configPath).replace(/\\/g, '/'))}"`,
+    `${HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_SCHEMA}="${attr(sourcePackage.config.schemaVersion)}"`,
+    sourcePackage.semanticPreset ? `${HTML_DATA_ID_ATTRIBUTES.SEMANTIC_PRESET}="${attr(sourcePackage.semanticPreset.relativePath)}"` : null,
   ].filter(Boolean).join(' ');
   const html = [
     '<!doctype html>',
@@ -215,7 +216,7 @@ function auditPageFragment(page, html, errors, warnings) {
   }
 
   const section = pageSections.first();
-  for (const attrName of ['data-page', 'data-id-layout', 'data-id-margin', 'data-id-grid']) {
+  for (const attrName of ['data-page', HTML_DATA_ID_ATTRIBUTES.LAYOUT, HTML_DATA_ID_ATTRIBUTES.MARGIN, HTML_DATA_ID_ATTRIBUTES.GRID]) {
     if (!hasNonEmptyAttribute(section, attrName)) {
       warnings.push(sourceIssue(
         'warning',
@@ -249,8 +250,8 @@ function auditPageFragment(page, html, errors, warnings) {
 
 function addSourceFileAttribute(fragment, sourceFile) {
   return fragment.replace(/<section\b([^>]*)>/i, (match, rest) => {
-    if (/data-id-source-file\s*=/.test(rest)) return match;
-    return `<section${rest} data-id-source-file="${attr(sourceFile)}">`;
+    if (new RegExp(`${escapeRegExp(HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE)}\\s*=`).test(rest)) return match;
+    return `<section${rest} ${HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE}="${attr(sourceFile)}">`;
   }).trimEnd();
 }
 

@@ -1,7 +1,10 @@
 const { loadStandardSemanticPreset } = require('../../../semantic-preset');
 const { normalizeSynthesizedStyles } = require('../../../semantic-model/synthesized-styles');
 const { validateSemanticModel } = require('../../../semantic-model');
-const { fieldRegistry } = require('../../../protocol');
+const {
+  fieldRegistry,
+  HTML_DATA_ID_ATTRIBUTES,
+} = require('../../../protocol');
 const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
 const { normalizeLineEndings } = require('../../../shared/text');
@@ -520,9 +523,9 @@ function sourceRunsFromLabel(label, styleMaps) {
   const runs = Array.isArray(label.sourceRuns) ? label.sourceRuns : [];
   return runs.map((run) => {
     const attributes = { ...(run.attributes || {}) };
-    const characterStyle = mapStyleName(styleMaps, 'characterStyles', run.characterStyle || attributes['data-id-character-style']);
-    if (characterStyle && !attributes['data-id-character-style']) {
-      attributes['data-id-character-style'] = characterStyle;
+    const characterStyle = mapStyleName(styleMaps, 'characterStyles', run.characterStyle || attributes[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE]);
+    if (characterStyle && !attributes[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE]) {
+      attributes[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE] = characterStyle;
     }
     return {
       text: String(run.text || ''),

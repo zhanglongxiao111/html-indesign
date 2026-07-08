@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES, RETIRED_HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const {
   finiteOrNull,
   fileExtension,
@@ -22,9 +23,9 @@ function assetAttributes(item, tagName) {
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.data && asset.path) out.data = asset.path;
   const kind = assetKind(asset);
   if ((tag === 'object' || tag === 'embed') && !nodeAttrs.type && kind === 'pdf') out.type = 'application/pdf';
-  if (asset.path && !previewOnly && !nodeAttrs['data-id-asset-path']) out['data-id-asset-path'] = asset.path;
-  if (kind && !nodeAttrs['data-id-asset-kind']) out['data-id-asset-kind'] = kind;
-  if (previewPath && !nodeAttrs['data-id-preview-src']) out['data-id-preview-src'] = previewPath;
+  if (asset.path && !previewOnly && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH]) out[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH] = asset.path;
+  if (kind && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.ASSET_KIND]) out[HTML_DATA_ID_ATTRIBUTES.ASSET_KIND] = kind;
+  if (previewPath && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC]) out[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] = previewPath;
   addAssetPlacementAttrs(out, nodeAttrs, asset, item);
   if (tag === 'img' && !nodeAttrs.alt && renderPath) out.alt = fileStem(asset.path || renderPath);
   return out;
@@ -72,7 +73,7 @@ function usesGeneratedFramePreview(asset, item = null) {
 function assetPreviewPath(asset, item = null) {
   const preview = asset && asset.preview;
   const nodeAttrs = sourceNodeAttrsForItem(item);
-  const sourcePreview = nodeAttrs['data-id-preview-src'] || nodeAttrs['data-id-preview-asset-path'] || '';
+  const sourcePreview = nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] || nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH] || '';
   if (!preview) return sourcePreview;
   if (typeof preview === 'string') return preview;
   return preview.path || preview.htmlPath || preview.relativePath || sourcePreview;
@@ -83,26 +84,26 @@ function addAssetPlacementAttrs(out, nodeAttrs, asset, item) {
   const placement = asset && asset.placement || {};
   const kind = assetKind(asset);
   const pageNumber = kind === 'pdf' ? assetPdfPageNumber(asset) : (placement.pageNumber || asset.pageNumber || null);
-  if (kind === 'pdf' && pageNumber != null && !nodeAttrs['data-id-pdf-page']) out['data-id-pdf-page'] = String(pageNumber);
+  if (kind === 'pdf' && pageNumber != null && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE]) out[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE] = String(pageNumber);
   if (kind === 'ai') {
     const artboard = placement.artboard || asset.artboard || placement.pageNumber || asset.pageNumber || null;
-    if (artboard != null && !nodeAttrs['data-id-artboard']) out['data-id-artboard'] = String(artboard);
+    if (artboard != null && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.ARTBOARD]) out[HTML_DATA_ID_ATTRIBUTES.ARTBOARD] = String(artboard);
   }
   const crop = placement.crop || placement.pdfCropName || asset.crop || null;
-  if (crop && !nodeAttrs['data-id-crop']) out['data-id-crop'] = normalizeCropToken(crop);
+  if (crop && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CROP]) out[HTML_DATA_ID_ATTRIBUTES.CROP] = normalizeCropToken(crop);
   const visibleLayers = layerListAttr(placement.visibleLayers);
-  if (visibleLayers && !nodeAttrs['data-id-visible-layers']) out['data-id-visible-layers'] = visibleLayers;
+  if (visibleLayers && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.VISIBLE_LAYERS]) out[HTML_DATA_ID_ATTRIBUTES.VISIBLE_LAYERS] = visibleLayers;
   const hiddenLayers = layerListAttr(placement.hiddenLayers);
-  if (hiddenLayers && !nodeAttrs['data-id-hidden-layers']) out['data-id-hidden-layers'] = hiddenLayers;
+  if (hiddenLayers && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.HIDDEN_LAYERS]) out[HTML_DATA_ID_ATTRIBUTES.HIDDEN_LAYERS] = hiddenLayers;
   const geometry = assetContentGeometry(item || { asset });
   if (geometry) {
-    if (!nodeAttrs['data-id-fit']) out['data-id-fit'] = 'manual';
-    if (!nodeAttrs['data-id-content-x']) out['data-id-content-x'] = px(geometry.x);
-    if (!nodeAttrs['data-id-content-y']) out['data-id-content-y'] = px(geometry.y);
-    if (!nodeAttrs['data-id-content-width']) out['data-id-content-width'] = px(geometry.width);
-    if (!nodeAttrs['data-id-content-height']) out['data-id-content-height'] = px(geometry.height);
-    if (geometry.scaleX != null && !nodeAttrs['data-id-content-scale-x']) out['data-id-content-scale-x'] = formatNumber(geometry.scaleX);
-    if (geometry.scaleY != null && !nodeAttrs['data-id-content-scale-y']) out['data-id-content-scale-y'] = formatNumber(geometry.scaleY);
+    if (!nodeAttrs[HTML_DATA_ID_ATTRIBUTES.FIT]) out[HTML_DATA_ID_ATTRIBUTES.FIT] = 'manual';
+    if (!nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_X]) out[HTML_DATA_ID_ATTRIBUTES.CONTENT_X] = px(geometry.x);
+    if (!nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_Y]) out[HTML_DATA_ID_ATTRIBUTES.CONTENT_Y] = px(geometry.y);
+    if (!nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_WIDTH]) out[HTML_DATA_ID_ATTRIBUTES.CONTENT_WIDTH] = px(geometry.width);
+    if (!nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_HEIGHT]) out[HTML_DATA_ID_ATTRIBUTES.CONTENT_HEIGHT] = px(geometry.height);
+    if (geometry.scaleX != null && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_X]) out[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_X] = formatNumber(geometry.scaleX);
+    if (geometry.scaleY != null && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_Y]) out[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_Y] = formatNumber(geometry.scaleY);
   }
 }
 
@@ -110,18 +111,18 @@ function sanitizeRetiredAssetAttrs(attrs, item) {
   const asset = item && (item.sourceAsset || item.asset || item.placedAsset) || {};
   const kind = assetKind(asset);
   if (isPreviewOnlyAsset(item, asset)) {
-    delete attrs['data-id-asset-path'];
-    delete attrs['data-id-fit'];
-    delete attrs['data-id-content-x'];
-    delete attrs['data-id-content-y'];
-    delete attrs['data-id-content-width'];
-    delete attrs['data-id-content-height'];
-    delete attrs['data-id-content-scale-x'];
-    delete attrs['data-id-content-scale-y'];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.FIT];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_X];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_Y];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_WIDTH];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_HEIGHT];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_X];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.CONTENT_SCALE_Y];
   }
-  if (kind === 'pdf' || kind === 'ai') delete attrs['data-id-page'];
-  if (kind === 'pdf' && attrs['data-id-pdf-page'] != null && positiveIntegerOrNull(attrs['data-id-pdf-page']) == null) {
-    delete attrs['data-id-pdf-page'];
+  if (kind === 'pdf' || kind === 'ai') delete attrs[RETIRED_HTML_DATA_ID_ATTRIBUTES.PAGE];
+  if (kind === 'pdf' && attrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE] != null && positiveIntegerOrNull(attrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE]) == null) {
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE];
   }
 }
 
@@ -166,8 +167,8 @@ function assetContentGeometry(item) {
 
 function isPreviewOnlyAsset(item, asset = {}) {
   const nodeAttrs = sourceNodeAttrsForItem(item);
-  const hasPreview = Boolean(nodeAttrs['data-id-preview-src'] || nodeAttrs['data-id-preview-asset-path'] || assetPreviewPath(asset));
-  const hasOriginalPath = Boolean(nodeAttrs['data-id-asset-path']);
+  const hasPreview = Boolean(nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] || nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH] || assetPreviewPath(asset));
+  const hasOriginalPath = Boolean(nodeAttrs[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH]);
   const kind = assetKind(asset);
   return hasPreview && !hasOriginalPath && (!asset.path || ['image', 'raster'].includes(kind));
 }

@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { round } = require('../../shared/geometry');
 const { cssLengthToTarget } = require('../../semantic-model/layout');
 
@@ -123,7 +124,7 @@ function decodeBasicEntities(value) {
 function sourceNodeIsObserved(sourceNode) {
   if (!sourceNode) return false;
   const attributes = sourceNode.attributes || {};
-  if (attributes['data-id-observed'] === 'true' || attributes['data-id-reverse-mode'] === 'observation') return true;
+  if (attributes[HTML_DATA_ID_ATTRIBUTES.OBSERVED] === 'true' || attributes[HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE] === 'observation') return true;
   const classList = Array.isArray(sourceNode.classList)
     ? sourceNode.classList
     : String(attributes.class || '').split(/\s+/);

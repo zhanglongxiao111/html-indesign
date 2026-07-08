@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { attr, formatPx, formatNumber, cssForHtml } = require('./visual-html-utils');
 const { textStyleCss } = require('./visual-style-css');
 const { renderRichTextRuns, renderTextWithBreaks } = require('./rich-text-html');
@@ -33,8 +34,8 @@ function renderTableCell(cell, model) {
   const tag = cell.header ? 'th' : 'td';
   const style = tableCellCss(cell);
   const attrs = [
-    cell.paragraphStyle ? `data-id-paragraph-style="${attr(cell.paragraphStyle)}"` : null,
-    cell.cellStyle ? `data-id-cell-style="${attr(cell.cellStyle)}"` : null,
+    cell.paragraphStyle ? `${HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE}="${attr(cell.paragraphStyle)}"` : null,
+    cell.cellStyle ? `${HTML_DATA_ID_ATTRIBUTES.CELL_STYLE}="${attr(cell.cellStyle)}"` : null,
     Number(cell.rowSpan) > 1 ? `rowspan="${attr(cell.rowSpan)}"` : null,
     Number(cell.colSpan) > 1 ? `colspan="${attr(cell.colSpan)}"` : null,
     style ? `style="${attr(style)}"` : null,

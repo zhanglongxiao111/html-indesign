@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const { buildDocumentObjectGraph } = require('./object-graph');
 const { isTrustedSourceEntity } = require('./trusted-source-preservation');
 
@@ -76,7 +77,7 @@ function structureCaption({ page, figure, caption }) {
   const childOrder = nextChildOrder(page, figure.id);
   figure.tagName = figure.tagName || 'figure';
   if (figure.labelStatus !== 'accepted') {
-    figure.sourceNode = sourceNodeForReconstructedTag(figure, 'figure', { 'data-id-object': '' });
+    figure.sourceNode = sourceNodeForReconstructedTag(figure, 'figure', { [HTML_DATA_ID_ATTRIBUTES.OBJECT]: '' });
   }
   caption.tagName = 'figcaption';
   caption.structure = {

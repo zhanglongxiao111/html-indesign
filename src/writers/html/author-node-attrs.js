@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const { assetAttributes, sanitizeRetiredAssetAttrs, tagForAsset } = require('./author-asset-attrs');
 const { authorInlineStyleForItem, authorClassesForItem, mergeCss } = require('./author-style-attrs');
@@ -42,9 +43,9 @@ function attrsForItem(item, sourceNode, options) {
   if (mergedStyle) attrs.style = mergedStyle;
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   if (!hasDataIdObject(attrs) && item.role !== 'text' && !item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
-    attrs['data-id-object'] = '';
+    attrs[HTML_DATA_ID_ATTRIBUTES.OBJECT] = '';
   }
-  if (isUsefulSemantic(item.semantic)) attrs['data-id-semantic'] = item.semantic;
+  if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   if (!preserveTrustedSource) addObservedLabelAttrs(attrs, item);
   return attrsToHtml(orderAttrs(attrs));
 }
@@ -74,68 +75,68 @@ function cssVarsStyle(cssVars) {
 
 function addParentPageAttrs(attrs, item) {
   const parentName = item.parentPageName || item.parentPageId || '';
-  if (parentName) attrs['data-id-parent-page-item'] = parentName;
-  if (item.parentPageSourceId) attrs['data-id-parent-page-source-id'] = item.parentPageSourceId;
+  if (parentName) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM] = parentName;
+  if (item.parentPageSourceId) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_SOURCE_ID] = item.parentPageSourceId;
 }
 
 function addObservedLabelAttrs(attrs, item) {
   const status = item && item.labelStatus;
   if (!status || status === 'accepted') return;
-  attrs['data-id-observed-label-status'] = status;
+  attrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED_LABEL_STATUS] = status;
   const reasons = item.rejectionReasons || item.observedLabel && item.observedLabel.rejectionReasons || [];
-  if (reasons.length) attrs['data-id-observed-reasons'] = reasons.join(' ');
+  if (reasons.length) attrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED_REASONS] = reasons.join(' ');
 }
 
 function addStyleProtocolAttrs(attrs, item, options = {}) {
   const refs = item && item.styleRefs || {};
   const textStyle = item && item.textStyle || {};
   const pairs = [
-    ['paragraphStyle', 'data-id-paragraph-style'],
-    ['characterStyle', 'data-id-character-style'],
-    ['objectStyle', 'data-id-object-style'],
-    ['frameStyle', 'data-id-frame-style'],
-    ['tableStyle', 'data-id-table-style'],
-    ['cellStyle', 'data-id-cell-style'],
-    ['layer', 'data-id-layer'],
+    ['paragraphStyle', HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE],
+    ['characterStyle', HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE],
+    ['objectStyle', HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE],
+    ['frameStyle', HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE],
+    ['tableStyle', HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE],
+    ['cellStyle', HTML_DATA_ID_ATTRIBUTES.CELL_STYLE],
+    ['layer', HTML_DATA_ID_ATTRIBUTES.LAYER],
   ];
   for (const [key, attr] of pairs) {
     if (!attrs[attr] && refs[key]) attrs[attr] = refs[key];
   }
   addVisualStyleProtocolAttrs(attrs, item && item.visualStyle);
-  if (!attrs['data-id-style-token'] && refs.synthesizedToken) {
-    attrs['data-id-style-token'] = refs.synthesizedToken;
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] && refs.synthesizedToken) {
+    attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] = refs.synthesizedToken;
   }
   const displayPairs = [
-    ['displayName', 'data-id-style-name'],
-    ['paragraphStyleDisplayName', 'data-id-paragraph-style-name'],
-    ['characterStyleDisplayName', 'data-id-character-style-name'],
-    ['objectStyleDisplayName', 'data-id-object-style-name'],
-    ['frameStyleDisplayName', 'data-id-frame-style-name'],
-    ['tableStyleDisplayName', 'data-id-table-style-name'],
+    ['displayName', HTML_DATA_ID_ATTRIBUTES.STYLE_NAME],
+    ['paragraphStyleDisplayName', HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE_NAME],
+    ['characterStyleDisplayName', HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE_NAME],
+    ['objectStyleDisplayName', HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE_NAME],
+    ['frameStyleDisplayName', HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE_NAME],
+    ['tableStyleDisplayName', HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE_NAME],
   ];
   for (const [key, attr] of displayPairs) {
     if (refs[key] && (!attrs[attr] || options.mode === 'observation')) attrs[attr] = refs[key];
   }
-  if (refs.synthesizedName && (!attrs['data-id-style-name'] || options.mode === 'observation')) {
-    attrs['data-id-style-name'] = refs.synthesizedName;
+  if (refs.synthesizedName && (!attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_NAME] || options.mode === 'observation')) {
+    attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_NAME] = refs.synthesizedName;
   }
-  if (!attrs['data-id-paragraph-composer'] && textStyle.composer) {
-    attrs['data-id-paragraph-composer'] = textStyle.composer;
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] && textStyle.composer) {
+    attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] = textStyle.composer;
   }
 }
 
 function addVisualStyleProtocolAttrs(attrs, visualStyle) {
   if (!visualStyle || typeof visualStyle !== 'object' || Array.isArray(visualStyle)) return;
-  setAttrIfMissing(attrs, 'data-id-stroke-color', visualStyle.strokeColor);
+  setAttrIfMissing(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_COLOR, visualStyle.strokeColor);
   if (Object.prototype.hasOwnProperty.call(visualStyle, 'strokeWeight')) {
-    setAttrIfMissing(attrs, 'data-id-stroke-weight', visualStyle.strokeWeight == null ? 0 : visualStyle.strokeWeight);
+    setAttrIfMissing(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_WEIGHT, visualStyle.strokeWeight == null ? 0 : visualStyle.strokeWeight);
   }
-  setAttrIfMissing(attrs, 'data-id-stroke-style', visualStyle.strokeStyle);
-  setAttrIfMissing(attrs, 'data-id-stroke-alignment', visualStyle.strokeAlignment);
+  setAttrIfMissing(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE, visualStyle.strokeStyle);
+  setAttrIfMissing(attrs, HTML_DATA_ID_ATTRIBUTES.STROKE_ALIGNMENT, visualStyle.strokeAlignment);
   const startRawName = markerRawName(visualStyle.lineStartMarker);
   const endRawName = markerRawName(visualStyle.lineEndMarker);
-  setAttrIfMissing(attrs, 'data-id-line-start-marker-raw-name', startRawName);
-  setAttrIfMissing(attrs, 'data-id-line-end-marker-raw-name', endRawName);
+  setAttrIfMissing(attrs, HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME, startRawName);
+  setAttrIfMissing(attrs, HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME, endRawName);
 }
 
 function setAttrIfMissing(attrs, name, value) {
