@@ -258,10 +258,10 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10b 复审中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，新增 registry-derived protocol constants；10b 实施子 agent `Erdos` 已提交 `7fa270c`，控制器验证 85/85、`npm test` 900/900、`git diff --check` 通过；审核 agent `Pauli` 判定 `SPEC: FAIL` / `QUALITY: FAIL`，P1 为 sourced SVG 在 audit 调用 helper 时缺少 asset source 事实导致仍判 `shape`，以及 `data-id-paragraph-style => text` 仍在 `candidate-elements.js` 局部实现；修复提交 `3c559a4` 已把 paragraph-style 判定收进 `htmlItemRoleFromElementFacts()`，让 reader/audit 传入同源 asset facts，并补 content inventory sourced SVG、annotation grid skip 和 role helper 回归测试；控制器验证 `node --test test/paged-html/candidate-elements.test.js test/paged-html/authoring-validator.test.js test/indesign-reverse/content-inventory.test.js test/indesign-reverse/html-writer.test.js test/indesign-reverse/author-html-tree.test.js` 98/98、`node --test test/architecture/protocol-literals.test.js test/architecture/single-implementation.test.js` 6/6、`npm test` 903/903、`git diff --check HEAD~1..HEAD` 通过；复审待回；2026-07-08）。
+进度：10c 准备中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c`，修复提交 `3c559a4` 已把 paragraph-style 判定收进 `htmlItemRoleFromElementFacts()`，让 reader/audit 传入同源 asset facts，并补 content inventory sourced SVG、annotation grid skip 和 role helper 回归测试；控制器验证 98/98、G2/G6 6/6、`npm test` 903/903、`git diff --check` 通过；审核 agent `Pauli` 复审判定 `SPEC: PASS` / `QUALITY: PASS`，无 P0/P1/P2；准备调度 10c 共享工具收敛；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
-- [ ] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
+- [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
 - [ ] **10c 共享工具收敛**：`src/shared/text.js` 按语义拆分命名（如 `normalizeLineEndings` / `collapseWhitespace` / NBSP 变体）；`safeClass` 族收敛到 `shared/style-utils.js`（合并前先确认 synth token → CSS class 链路行为不变，有差异的实现先取证再定统一行为）；单位换算收敛（`authoring-validator.js` 的动态换算属不同概念，命名区分不强并）；NAS 路径逻辑复用 `shared/nas-paths.js`。逐点替换引用并收 `baselines/G6.json`。
 - [ ] **10d 字面量迁移**：47 个文件的 `data-id-` 字面量机械替换为常量引用；每迁移一批收 `baselines/G2.json` 对应条目，直至归零。
 
