@@ -258,7 +258,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10c 审核中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 实施子 agent `Sagan` 已提交 `a4ccfb9`，新增 `src/shared/text.js`，扩展 `src/shared/style-utils.js` / `src/shared/geometry.js` / `src/shared/nas-paths.js`，按行为命名收敛 text/style/CSS length/NAS helper，删除对应本地重复 helper；G6 baseline 从 15 收到 1，剩余 `parseZIndex` 不属 10c；控制器验证 `node --test test/architecture/single-implementation.test.js` 4/4、10c focused suite 102/102、`npm test` 910/910、`git diff --check HEAD~1..HEAD` 通过；10c 任务审核待回；2026-07-08）。
+进度：10c 修复中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 实施子 agent `Sagan` 已提交 `a4ccfb9`，控制器验证 G6 4/4、10c focused suite 102/102、`npm test` 910/910；审核 agent `Galileo` 判定 `SPEC: FAIL` / `QUALITY: FAIL`，P1 为 G6 只扫描旧 helper 名，新增 `normalizeLineEndings` / `collapseWhitespace` / `safeAuthorClassToken` 等共享 helper 名未进护栏，且 `src/adapters/indesign/normalizer/snapshot-to-model.js` 仍有本地 `normalizeLineEndings` 双路径，导致 G6 假绿；准备派修复子 agent 扩展护栏并清理重复实现，不通过 baseline 掩盖；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
