@@ -1,7 +1,7 @@
 module.exports = [
   {
     canonicalPath: 'retired.model.itemsType',
-    currentPaths: ['items[].type'],
+    currentPaths: [],
     fieldClass: 'observation',
     lifecycle: 'retired',
     owner: 'document-model',
@@ -25,7 +25,7 @@ module.exports = [
   },
   {
     canonicalPath: 'retired.model.itemsEffects',
-    currentPaths: ['items[].effects'],
+    currentPaths: [],
     fieldClass: 'observation',
     lifecycle: 'retired',
     owner: 'reverse-model',
@@ -49,7 +49,7 @@ module.exports = [
   },
   {
     canonicalPath: 'retired.model.itemsTextFrameStyle',
-    currentPaths: ['items[].textFrameStyle'],
+    currentPaths: [],
     fieldClass: 'observation',
     lifecycle: 'retired',
     owner: 'reverse-model',

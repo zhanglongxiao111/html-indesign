@@ -144,6 +144,7 @@ test('registry adjudicates role plus sourceType and retires the old item type di
   assert.equal(sourceType.lifecycle, 'active');
   assert.equal(sourceType.description, 'Observed source-format object type, not a semantic role.');
 
+  assert.deepEqual(retiredType.currentPaths, []);
   assert.equal(retiredType.lifecycle, 'retired');
   assert.equal(retiredType.fieldClass, 'observation');
   assert.equal(retiredType.retired.modelPaths[0].path, 'items[].type');
@@ -235,6 +236,7 @@ test('registry keeps reverse item effects as an InDesign format extension', () =
   assert.equal(retiredEffects.path, 'items[].effects');
   assert.equal(retiredEffects.replacedBy, 'items[].extensions.indesign.effects');
   assert.equal(fieldRegistry.getByPath('items[].effects'), retiredEffects.entry);
+  assert.deepEqual(retiredEffects.entry.currentPaths, []);
 });
 
 test('registry records textFrameStyle as an InDesign extension migration target', () => {
@@ -250,6 +252,7 @@ test('registry records textFrameStyle as an InDesign extension migration target'
   assert.equal(retiredTextFrameStyle.path, 'items[].textFrameStyle');
   assert.equal(retiredTextFrameStyle.replacedBy, 'items[].extensions.indesign.textFrameStyle');
   assert.equal(fieldRegistry.getByPath('items[].textFrameStyle'), retiredTextFrameStyle.entry);
+  assert.deepEqual(retiredTextFrameStyle.entry.currentPaths, []);
 });
 
 test('registry does not declare reverse visualStyle fields as native InDesign write fields', () => {

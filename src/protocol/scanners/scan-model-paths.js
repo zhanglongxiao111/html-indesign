@@ -119,6 +119,8 @@ const LABEL_FIELD_PATHS = Object.freeze({
 const ITEM_FIELD_PATHS = Object.freeze({
   type: 'items[].type',
   sourceType: 'items[].sourceType',
+  effects: 'items[].effects',
+  textFrameStyle: 'items[].textFrameStyle',
   tagName: 'items[].tagName',
   htmlClass: 'items[].htmlClass',
   attributes: 'items[].attributes',

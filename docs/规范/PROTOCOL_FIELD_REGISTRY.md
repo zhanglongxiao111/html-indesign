@@ -501,9 +501,9 @@
 | retired.htmlAttrs.dataIdMargins | n/a | document-page | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | n/a |
 | retired.htmlAttrs.dataIdPage | n/a | asset-placement | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | n/a |
 | retired.htmlAttrs.dataIdParentPageDisplayName | n/a | document-page | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | n/a |
-| retired.model.itemsEffects | items[].effects | reverse-model | retired | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired flat InDesign effects surface. Use the InDesign format extension path instead. |
-| retired.model.itemsTextFrameStyle | items[].textFrameStyle | reverse-model | retired | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired flat InDesign text frame style surface. Use the InDesign format extension path instead. |
-| retired.model.itemsType | items[].type | document-model | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired item dialect field. Use items[].role for semantic role and items[].sourceType for source-format observation. |
+| retired.model.itemsEffects | n/a | reverse-model | retired | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired flat InDesign effects surface. Use the InDesign format extension path instead. |
+| retired.model.itemsTextFrameStyle | n/a | reverse-model | retired | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired flat InDesign text frame style surface. Use the InDesign format extension path instead. |
+| retired.model.itemsType | n/a | document-model | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired item dialect field. Use items[].role for semantic role and items[].sourceType for source-format observation. |
 
 退役 HTML 属性：
 - retiredHtmlAttr=data-id-authoring-grid; readPolicy=observe-only; writePolicy=forbidden; replacedBy=data-id-snap-grid; reason=snap-grid-has-a-single-current-carrier

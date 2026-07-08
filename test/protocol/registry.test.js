@@ -45,6 +45,28 @@ function retiredHtmlAttrEntry(overrides = {}) {
   };
 }
 
+function retiredModelPathEntry(overrides = {}) {
+  return {
+    canonicalPath: 'retired.model.itemsEffects',
+    currentPaths: [],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'reverse-model',
+    capabilities: {
+      html: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      modelPaths: [{
+        path: 'items[].effects',
+        replacedBy: 'items[].extensions.indesign.effects',
+        readPolicy: 'retired',
+        reason: 'flat-indesign-effects-moved-to-format-extension',
+      }],
+    },
+    ...overrides,
+  };
+}
+
 test('registry finds field by canonicalPath currentPath and html attr', () => {
   const registry = createFieldRegistry([
     fieldEntry({
@@ -83,6 +105,32 @@ test('registry exposes retired HTML attrs only through retired lookup metadata',
   assert.equal(retired.writePolicy, 'forbidden');
   assert.equal(retired.replacedBy, 'data-id-pdf-page');
   assert.equal(retired.entry, registry.getByPath('retired.htmlAttrs.dataIdPage'));
+});
+
+test('registry owns retired model paths from retired.modelPaths without currentPaths duplication', () => {
+  const registry = createFieldRegistry([
+    retiredModelPathEntry(),
+  ]);
+
+  const retiredPath = registry.getRetiredModelPath('items[].effects');
+
+  assert.equal(registry.getByPath('items[].effects').canonicalPath, 'retired.model.itemsEffects');
+  assert.equal(registry.getByPath('items[].effects'), retiredPath.entry);
+  assert.deepEqual(registry.getByPath('items[].effects').currentPaths, []);
+  assert.equal(retiredPath.canonicalPath, 'retired.model.itemsEffects');
+  assert.equal(retiredPath.path, 'items[].effects');
+  assert.equal(retiredPath.replacedBy, 'items[].extensions.indesign.effects');
+});
+
+test('registry rejects retired model paths that duplicate active path ownership', () => {
+  assert.throws(() => createFieldRegistry([
+    fieldEntry({
+      canonicalPath: 'items[].effects',
+      currentPaths: [],
+      owner: 'active-owner',
+    }),
+    retiredModelPathEntry(),
+  ]), /FIELD_PATH_DUPLICATED:items\[\]\.effects/);
 });
 
 test('registry does not source retired HTML attrs from active field metadata', () => {

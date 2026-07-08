@@ -1114,25 +1114,30 @@ test('strict DocumentModel validation rejects retired flat InDesign surface path
   });
 
   const scannedPaths = scanModelPaths(model);
-  assert.equal(scannedPaths.includes('pages[].items[].effects'), true);
-  assert.equal(scannedPaths.includes('pages[].items[].textFrameStyle'), true);
-  assert.equal(scannedPaths.includes('items[].effects'), false);
-  assert.equal(scannedPaths.includes('items[].textFrameStyle'), false);
+  assert.equal(scannedPaths.includes('items[].effects'), true);
+  assert.equal(scannedPaths.includes('items[].textFrameStyle'), true);
+  assert.equal(scannedPaths.includes('pages[].items[].effects'), false);
+  assert.equal(scannedPaths.includes('pages[].items[].textFrameStyle'), false);
 
   const result = validateSemanticModel(model, { strictFields: true });
 
   assert.equal(result.valid, false);
+  assert.deepEqual(result.fieldValidation.unknown, []);
+  assert.deepEqual(
+    result.fieldValidation.retired.map((item) => item.path),
+    ['items[].effects', 'items[].textFrameStyle'],
+  );
   assert.equal(
     result.fieldValidation.errors.some((error) => (
-      error.code === 'MODEL_FIELD_NOT_REGISTERED'
-      && error.path === 'pages[].items[].effects'
+      error.code === 'MODEL_FIELD_RETIRED'
+      && error.path === 'items[].effects'
     )),
     true,
   );
   assert.equal(
     result.fieldValidation.errors.some((error) => (
-      error.code === 'MODEL_FIELD_NOT_REGISTERED'
-      && error.path === 'pages[].items[].textFrameStyle'
+      error.code === 'MODEL_FIELD_RETIRED'
+      && error.path === 'items[].textFrameStyle'
     )),
     true,
   );

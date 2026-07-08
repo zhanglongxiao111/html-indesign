@@ -172,7 +172,7 @@ test('field entry rejects malformed retired html attr policy declarations', () =
 test('field entry reports invalid retired model path policy with model path diagnostics', () => {
   const result = validateFieldEntry({
     canonicalPath: 'retired.model.itemsType',
-    currentPaths: ['items[].type'],
+    currentPaths: [],
     fieldClass: 'observation',
     lifecycle: 'retired',
     owner: 'document-model',

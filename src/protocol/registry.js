@@ -21,10 +21,7 @@ function createFieldRegistry(entries = []) {
 
   for (const entry of normalizedEntries) {
     for (const fieldPath of entry.allPaths) {
-      if (byPath.has(fieldPath)) {
-        throw new Error(`FIELD_PATH_DUPLICATED:${fieldPath}`);
-      }
-      byPath.set(fieldPath, entry);
+      registerPathOwner(byPath, fieldPath, entry);
     }
 
     for (const attr of htmlAttrsFor(entry)) {
@@ -49,6 +46,7 @@ function createFieldRegistry(entries = []) {
       if (byRetiredModelPath.has(modelPath)) {
         throw new Error(`RETIRED_MODEL_PATH_DUPLICATED:${modelPath}`);
       }
+      registerPathOwner(byPath, modelPath, entry);
       byRetiredModelPath.set(modelPath, retiredModelPathRecord(entry, retiredPath));
     }
   }
@@ -77,6 +75,13 @@ function createFieldRegistry(entries = []) {
       return normalizedEntries.filter((entry) => entry.lifecycle === lifecycle);
     },
   });
+}
+
+function registerPathOwner(byPath, fieldPath, entry) {
+  if (byPath.has(fieldPath)) {
+    throw new Error(`FIELD_PATH_DUPLICATED:${fieldPath}`);
+  }
+  byPath.set(fieldPath, entry);
 }
 
 function htmlAttrsFor(entry) {
