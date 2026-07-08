@@ -258,11 +258,11 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10c 复审中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 实施子 agent `Sagan` 已提交 `a4ccfb9`，控制器验证 G6 4/4、10c focused suite 102/102、`npm test` 910/910；审核 agent `Galileo` 判定 `SPEC: FAIL` / `QUALITY: FAIL`，P1 为 G6 只扫描旧 helper 名且 `src/adapters/indesign/normalizer/snapshot-to-model.js` 仍有本地 `normalizeLineEndings` 双路径；修复提交 `de4ac73` 已把 10c 新 shared helper 名加入 G6 扫描，并删除 `snapshot-to-model.js` 本地 `normalizeLineEndings` 改用 `src/shared/text.js`；控制器验证 `node --test test/architecture/single-implementation.test.js` 4/4、`node --test test/shared/text.test.js test/shared/style-utils.test.js test/indesign-reverse/reverse-snapshot-structure.test.js test/indesign-reverse/parent-page-furniture-audit.test.js test/indesign-reverse/blueprint-migration.test.js` 40/40、`npm test` 910/910、`git diff --check HEAD~1..HEAD` 通过；复审待回；2026-07-08）。
+进度：10d 准备中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，把 text/style/CSS length/NAS helper 收敛到 shared，G6 baseline 从 15 收到 1 并扩展护栏覆盖 10c 新 helper 名；控制器验证 G6 4/4、focused 40/40、`npm test` 910/910；审核 agent `Galileo` 复审判定 `SPEC: PASS` / `QUALITY: PASS`，无 P0/P1/P2；准备调度 10d `data-id-*` 字面量迁移；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
-- [ ] **10c 共享工具收敛**：`src/shared/text.js` 按语义拆分命名（如 `normalizeLineEndings` / `collapseWhitespace` / NBSP 变体）；`safeClass` 族收敛到 `shared/style-utils.js`（合并前先确认 synth token → CSS class 链路行为不变，有差异的实现先取证再定统一行为）；单位换算收敛（`authoring-validator.js` 的动态换算属不同概念，命名区分不强并）；NAS 路径逻辑复用 `shared/nas-paths.js`。逐点替换引用并收 `baselines/G6.json`。
+- [x] **10c 共享工具收敛**：`src/shared/text.js` 按语义拆分命名（如 `normalizeLineEndings` / `collapseWhitespace` / NBSP 变体）；`safeClass` 族收敛到 `shared/style-utils.js`（合并前先确认 synth token → CSS class 链路行为不变，有差异的实现先取证再定统一行为）；单位换算收敛（`authoring-validator.js` 的动态换算属不同概念，命名区分不强并）；NAS 路径逻辑复用 `shared/nas-paths.js`。逐点替换引用并收 `baselines/G6.json`。
 - [ ] **10d 字面量迁移**：47 个文件的 `data-id-` 字面量机械替换为常量引用；每迁移一批收 `baselines/G2.json` 对应条目，直至归零。
 
 验收命令：
