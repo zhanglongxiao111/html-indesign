@@ -177,7 +177,8 @@ PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 | ---- | ---- | -------- |
 | HTML Adapter | 加载 HTML，等待资源，读取浏览器布局，抽取 `data-id-*`、CSS、资源 | `src/adapters/html/*` |
 | Semantic Model | 保存双向共享事实：页面、母版、样式、图层、对象、资源、标签、网格 | `src/semantic-model/*` |
-| InDesign Adapter / Writer | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/adapters/indesign/*`、`src/writers/indesign/instructions-compiler.js` |
+| InDesign Adapter / Writer | 从 InDesign 标签和对象生成模型；把模型转为执行指令和标签 | `src/adapters/indesign/*`、`src/writers/indesign/*` |
+| HTML to InDesign Pipeline | 串接 HTML snapshot、语义模型归一化、样式合成和 InDesign writer，生成可执行 instructions | `src/indesign-pipeline/*`、`src/style-synthesis/*` |
 | Semantic Reconstruction | 从观察模型重建可编辑作者语义模型，输出证据、置信度和 unresolved 报告 | `src/semantic-reconstruction/*` |
 | HTML Writer | 从模型生成固定语义 HTML 或 observation HTML | `src/writers/html/*` |
 | InDesign Executor | 只执行已验证 instructions，创建 InDesign 原生对象 | `_indesign_scripts/*` |
@@ -1101,7 +1102,8 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | 当前文件 | 当前角色 |
 | -------- | ------ |
 | `src/adapters/html/` | HTML Adapter：浏览器快照、样式读取、资源发现、HTML snapshot -> semantic model |
-| `src/writers/indesign/` | InDesign Writer：semantic model -> instructions、样式编译、instructions 校验 |
+| `src/style-synthesis/` | Style Synthesis：HTML snapshot 样式事实 -> semantic model styles |
+| `src/writers/indesign/` | InDesign Writer：semantic model -> instructions、instructions 校验 |
 | `src/adapters/indesign/` | InDesign Adapter：reverse snapshot -> semantic model、标签白名单、历史 blueprint 迁移 |
 | `src/semantic-reconstruction/` | Semantic Reconstruction：observed model -> reconstructed author model、证据、置信度和 unresolved 报告 |
 | `src/writers/html/` | HTML Writer：reverse author package、visual HTML、source/visual audit |
@@ -1110,7 +1112,7 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
-旧根层 blueprint 模板脚本和 `historicalTemplate` 公共出口已经退役。旧 blueprint 只能作为迁移输入进入 `src/adapters/indesign/normalizer/blueprint-migration.js`，再通过统一语义模型和 writer 输出；不得恢复旧模板 HTML 生成、旧槽位 validator、旧 builder 或公共 wrapper。新的浏览器驱动转换代码放在 `src/adapters/html/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`。
+旧根层 blueprint 模板脚本和 `historicalTemplate` 公共出口已经退役。旧 blueprint 只能作为迁移输入进入 `src/adapters/indesign/normalizer/blueprint-migration.js`，再通过统一语义模型和 writer 输出；不得恢复旧模板 HTML 生成、旧槽位 validator、旧 builder 或公共 wrapper。新的浏览器驱动转换代码放在 `src/adapters/html/*`，HTML snapshot 到 InDesign instructions 的高层编排放在 `src/indesign-pipeline/*`，样式合成放在 `src/style-synthesis/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`。
 
 当前模块布局：
 
@@ -1123,6 +1125,14 @@ src/
   semantic-reconstruction/
     index.js
     reconstruct.js
+  indesign-pipeline/
+    index.js
+  style-synthesis/
+    index.js
+    box-model.js
+    effect-style-mapping.js
+    style-identities.js
+    text-style-mapping.js
   adapters/
     html/
       reader/browser-snapshot.js
@@ -1137,8 +1147,7 @@ src/
       capabilities.js
   writers/
     indesign/
-      style-compiler.js
-      instructions-compiler.js
+      instruction-writer.js
       instructions-validator.js
     html/
       visual-html-writer.js
@@ -1160,7 +1169,7 @@ src/
     assets.js
 ```
 
-`instructions-compiler.js` 位于 InDesign writer 边界，负责把 Semantic Model 派生为 InDesign instructions。新增双向能力必须围绕 Semantic Model、Semantic Reconstruction、协议字段注册表和标签协议实现，不得重新引入旧目录 facade 或绕过 adapter/writer 边界。
+`src/indesign-pipeline/index.js` 是 HTML snapshot 到 InDesign instructions 的高层编排入口，可以串接 HTML adapter、统一语义模型、`src/style-synthesis/` 和 InDesign writer。`src/writers/indesign/` 只负责把 Semantic Model 派生为 InDesign instructions 并校验 instructions，不得反向读取 HTML adapter。新增双向能力必须围绕 Semantic Model、Semantic Reconstruction、协议字段注册表和标签协议实现，不得重新引入旧目录 facade 或绕过 adapter/writer 边界。
 
 ## 17. 非目标
 
