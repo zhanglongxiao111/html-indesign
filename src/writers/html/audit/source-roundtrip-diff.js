@@ -5,6 +5,15 @@ const crypto = require('crypto');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
 
+const EMPTY_PROJECT_BOOLEAN_ATTRIBUTES = Object.freeze([
+  HTML_DATA_ID_ATTRIBUTES.OBJECT,
+  HTML_DATA_ID_ATTRIBUTES.IGNORE,
+]);
+const EMPTY_PROJECT_BOOLEAN_ATTRIBUTES_PATTERN = new RegExp(
+  `\\s(${EMPTY_PROJECT_BOOLEAN_ATTRIBUTES.map(escapeRegExp).join('|')})\\s*=\\s*["']{2}`,
+  'gi',
+);
+
 function auditAuthorSourceRoundtrip(options = {}) {
   const sourceRoot = options.sourceRoot && path.resolve(options.sourceRoot);
   const reverseRoot = options.reverseRoot && path.resolve(options.reverseRoot);
@@ -279,9 +288,9 @@ function driftResult(errors, files) {
 
 function emptyProjectBooleanAttributes(html) {
   const names = new Set();
-  const re = /\s(data-id-(?:object|ignore))\s*=\s*["']{2}/gi;
   let match;
-  while ((match = re.exec(html))) {
+  EMPTY_PROJECT_BOOLEAN_ATTRIBUTES_PATTERN.lastIndex = 0;
+  while ((match = EMPTY_PROJECT_BOOLEAN_ATTRIBUTES_PATTERN.exec(html))) {
     names.add(match[1].toLowerCase());
   }
   return Array.from(names).sort();

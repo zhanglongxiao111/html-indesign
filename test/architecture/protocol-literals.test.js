@@ -28,6 +28,7 @@ test('G2 catches bare data-id literals outside src/protocol and reports the requ
       '',
     ].join('\n'),
     'src/adapters/html/regex.js': 'const pattern = /data-id-role/gi;\n',
+    'src/adapters/html/prefix.js': 'const prefix = `data-id-`;\n',
     'src/adapters/html/template.js': 'const field = `data-id-template`;\n',
     'src/protocol/fields.js': "const allowed = 'data-id-layout';\n",
     'scripts/check.js': 'const attr = "data-id-grid";\n',
@@ -46,6 +47,16 @@ test('G2 catches bare data-id literals outside src/protocol and reports the requ
     {
       rule: 'G2.1 protocol literals use registry constants',
       file: 'src/adapters/html/example.js',
+      detail: 'field data-id-role',
+    },
+    {
+      rule: 'G2.1 protocol literals use registry constants',
+      file: 'src/adapters/html/prefix.js',
+      detail: 'field data-id- prefix',
+    },
+    {
+      rule: 'G2.1 protocol literals use registry constants',
+      file: 'src/adapters/html/regex.js',
       detail: 'field data-id-role',
     },
     {
@@ -144,6 +155,12 @@ function collectDataIdStringLiteralFields(text) {
       const result = readStringLiteral(text, index, current);
       if (result.closed) addDataIdFields(fields, result.value);
       index = result.endIndex;
+      continue;
+    }
+    if (current === '/') {
+      const result = readRegexLiteral(text, index);
+      if (result.closed) addDataIdFields(fields, result.value);
+      index = result.endIndex;
     }
   }
   return fields;
@@ -170,7 +187,45 @@ function readStringLiteral(text, startIndex, quote) {
   return { value: '', endIndex: startIndex, closed: false };
 }
 
+function readRegexLiteral(text, startIndex) {
+  let value = '';
+  let inCharacterClass = false;
+  for (let index = startIndex + 1; index < text.length; index += 1) {
+    const current = text[index];
+    if (current === '\\') {
+      value += current;
+      index += 1;
+      value += text[index] || '';
+      continue;
+    }
+    if (current === '[') inCharacterClass = true;
+    if (current === ']') inCharacterClass = false;
+    if (current === '/' && !inCharacterClass) {
+      return { value, endIndex: readRegexFlags(text, index + 1), closed: true };
+    }
+    if (current === '\n' || current === '\r') {
+      return { value: '', endIndex: startIndex, closed: false };
+    }
+    value += current;
+  }
+  return { value: '', endIndex: startIndex, closed: false };
+}
+
+function readRegexFlags(text, startIndex) {
+  let index = startIndex;
+  while (/[a-z]/i.test(text[index] || '')) index += 1;
+  return index - 1;
+}
+
 function addDataIdFields(fields, value) {
+  if (/\bdata-id-(?![a-z0-9])/i.test(value)) {
+    fields.add('data-id- prefix');
+  }
+  for (const match of value.matchAll(/\bdata-id-\(\?:([a-z0-9][a-z0-9-]*(?:\|[a-z0-9][a-z0-9-]*)+)\)/gi)) {
+    for (const suffix of match[1].split('|')) {
+      fields.add(`data-id-${suffix.toLowerCase()}`);
+    }
+  }
   for (const match of value.matchAll(DATA_ID_LITERAL_PATTERN)) {
     fields.add(match[0].toLowerCase());
   }

@@ -122,3 +122,42 @@
 
 - No open implementation concerns.
 - Real InDesign E2E was not run because Task 10d only changes protocol literal indirection and the brief minimum verification did not require true InDesign execution.
+
+## 2026-07-08 Review Fix
+
+### Review Failure
+
+- Reviewer: Anscombe.
+- Verdict: SPEC FAIL / QUALITY FAIL.
+- P1: `src/writers/html/audit/source-roundtrip-diff.js` still had active bare protocol regex literal `/\s(data-id-(?:object|ignore))\s*=\s*["']{2}/gi`.
+- P2: `src/writers/html/audit/visual-geometry-audit.js` still had runtime protocol prefix knowledge via `attr.startsWith(`data-id-`)`.
+
+### RED Evidence
+
+- Command: `node --test test/architecture/protocol-literals.test.js`
+- Result: failed after expanding G2 to scan regex literals and bare `data-id-` prefix literals.
+- Representative failure:
+  - `src/writers/html/audit/source-roundtrip-diff.js` / `field data-id-object`
+  - `src/writers/html/audit/source-roundtrip-diff.js` / `field data-id-ignore`
+  - `src/writers/html/audit/source-roundtrip-diff.js` / `field data-id- prefix`
+  - `src/writers/html/audit/visual-geometry-audit.js` / `field data-id- prefix`
+
+### Fix
+
+- `test/architecture/protocol-literals.test.js`: G2 now scans regex literals, expands simple `data-id-(?:a|b)` regex alternatives into concrete fields, and reports bare `data-id-` prefix literals.
+- `src/writers/html/audit/source-roundtrip-diff.js`: empty project boolean attribute regex is now built from `HTML_DATA_ID_ATTRIBUTES.OBJECT` and `HTML_DATA_ID_ATTRIBUTES.IGNORE` with `escapeRegExp`.
+- `src/writers/html/audit/visual-geometry-audit.js`: data-id attribute normalization now filters with `HTML_DATA_ID_ATTRIBUTE_NAMES` instead of hard-coded prefix checks.
+- `test/architecture/baselines/G2.json` remains `{"exemptions": []}`.
+
+### GREEN Evidence / Verification
+
+- `node --test test/architecture/protocol-literals.test.js` -> pass, 2/2.
+- `node --test test/indesign-reverse/source-roundtrip-diff.test.js test/indesign-reverse/visual-geometry-audit.test.js` -> pass, 28/28.
+- `node --test test/protocol/constants.test.js` -> pass, 6/6.
+- `rg -n "data-id-" src scripts | rg -v "^src[\\/]protocol[\\/]"` -> no output, exit 1, meaning no non-protocol matches.
+- `npm test` -> pass, 911/911.
+
+### Concerns
+
+- No open implementation concerns.
+- Real InDesign E2E was not run; this review fix stays within G2 literal guardrail coverage and protocol constant indirection.

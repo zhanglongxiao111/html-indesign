@@ -1,9 +1,12 @@
 const {
   HTML_DATA_ID_ATTRIBUTES,
+  HTML_DATA_ID_ATTRIBUTE_NAMES,
   ITEM_ROLE,
   fieldRegistry,
   registeredItemRole,
 } = require('../../../protocol');
+
+const ACTIVE_HTML_DATA_ID_ATTRIBUTE_NAMES = new Set(HTML_DATA_ID_ATTRIBUTE_NAMES);
 
 function compareVisualGeometry(options = {}) {
   const reference = normalizeCapture(options.reference);
@@ -375,7 +378,7 @@ function normalizeDataIdAttrs(value) {
   const attrs = [];
   for (const item of value) {
     const attr = String(item || '').trim();
-    if (!attr.startsWith(`data-id-`) || seen.has(attr)) continue;
+    if (!ACTIVE_HTML_DATA_ID_ATTRIBUTE_NAMES.has(attr) || seen.has(attr)) continue;
     seen.add(attr);
     attrs.push(attr);
   }
