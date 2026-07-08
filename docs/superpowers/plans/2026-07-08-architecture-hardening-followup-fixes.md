@@ -423,7 +423,7 @@ Completed in `508a2be` and follow-up fix `9817b2b`: controller verification pass
 - Consumes: current path normalization, remote detection, table width normalization, border visibility, text normalization behavior
 - Produces: single executable helper per semantic family and a G6 guardrail that detects renamed duplicates
 
-- [ ] **Step 1: Add failing behavior tests for canonical helper semantics**
+- [x] **Step 1: Add failing behavior tests for canonical helper semantics**
 
 Add tests for:
 
@@ -443,13 +443,13 @@ node --test test/shared/assets.test.js test/shared/text.test.js test/indesign-to
 
 Expected: at least one new test fails before consolidation.
 
-- [ ] **Step 2: Consolidate HTML asset path helpers**
+- [x] **Step 2: Consolidate HTML asset path helpers**
 
 Move `normalizePathKey`, `sourceFileKey`, `sanitizeRelative`, and remote-reference detection to one module. Prefer `src/shared/assets.js` if the helpers are format-neutral; otherwise use `src/writers/html/asset-path-helpers.js` and document that it is the HTML writer source of truth.
 
 Delete local copies from writer/audit modules.
 
-- [ ] **Step 3: Consolidate table width semantics**
+- [x] **Step 3: Consolidate table width semantics**
 
 Resolve the difference between:
 
@@ -460,13 +460,13 @@ src/writers/indesign/table-instructions.js normalizeTableWidths
 
 If both semantics are needed, rename one to describe its distinct contract and add tests. If not, delete one implementation and import the canonical helper.
 
-- [ ] **Step 4: Consolidate border and text helpers**
+- [x] **Step 4: Consolidate border and text helpers**
 
 Export `visibleBorder` from `src/style-synthesis/box-model.js` if writer needs it. Replace local `visibleBorder` in `instruction-writer.js`.
 
 Replace `normalizeInstructionText` with shared text helpers, or move a clearly named helper to `src/shared/text.js` and use it from writer code.
 
-- [ ] **Step 5: Expand G6 semantic families**
+- [x] **Step 5: Expand G6 semantic families**
 
 Update `test/architecture/single-implementation.test.js` so G6 checks semantic families, not only exact function names. Required families:
 
@@ -479,7 +479,7 @@ border visibility/uniformity
 
 Add fixtures proving renamed duplicates fail.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run:
 
@@ -489,12 +489,14 @@ node --test test/architecture/single-implementation.test.js test/shared/assets.t
 
 Expected: all pass; `rg` should show no duplicated helper definitions in the audited semantic families.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src test
 git commit -m "refactor: consolidate shared helper semantics"
 ```
+
+Completed in `9c43e86` and follow-up fix `af364cd`: controller verification passed Task 6 focused suites `30/30`, `96/96`, and source roundtrip diff `11/11`; task re-review approved with no Critical, Important, or Minor findings.
 
 ### Task 7: Document the Closed Boundaries and Final Verification
 
