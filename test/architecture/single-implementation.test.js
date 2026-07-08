@@ -13,8 +13,13 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G6.json');
 const SINGLE_IMPLEMENTATION_NAMES = [
   'normalizeText',
+  'normalizeLineEndings',
+  'collapseWhitespace',
   'safeClass',
   'safeClassToken',
+  'safeAuthorClassToken',
+  'safeMigrationClassToken',
+  'safeVisualClassToken',
   'sanitizeStyleName',
   'cssLengthToMm',
   'cssLengthToPx',
@@ -40,6 +45,8 @@ test('G6 catches duplicate helper definitions outside src/shared and reports the
     'src/adapters/html/b.js': 'const safeCssIdentifier = (value) => String(value);\n',
     'scripts/build.js': 'var parseZIndex = function parseZIndex(value) { return Number(value) || 0; };\n',
     'src/protocol/fields.js': 'function safeClass(value) { return value; }\n',
+    'src/writers/html/new-text.js': 'function collapseWhitespace(value) { return String(value).trim(); }\n',
+    'src/writers/html/new-style.js': 'const safeVisualClassToken = (value) => String(value);\n',
     'src/writers/html/path-key.js': 'function normalizePathKey(value) { return String(value); }\n',
   });
 
@@ -60,6 +67,16 @@ test('G6 catches duplicate helper definitions outside src/shared and reports the
       rule: 'G6.1 shared helpers have a single implementation',
       file: 'src/writers/html/a.js',
       detail: 'defines normalizeText',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/new-style.js',
+      detail: 'defines safeVisualClassToken',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/new-text.js',
+      detail: 'defines collapseWhitespace',
     },
   ]);
 

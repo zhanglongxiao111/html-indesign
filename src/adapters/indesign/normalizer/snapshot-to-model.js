@@ -4,6 +4,7 @@ const { validateSemanticModel } = require('../../../semantic-model');
 const { fieldRegistry } = require('../../../protocol');
 const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
+const { normalizeLineEndings } = require('../../../shared/text');
 const { validateReverseLabel } = require('./label-whitelist');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
@@ -513,10 +514,6 @@ function contentForReverseItem(role, item, label, styleMaps) {
 
 function sourceTextMatchesCurrentText(sourceText, currentText) {
   return normalizeLineEndings(sourceText) === normalizeLineEndings(currentText);
-}
-
-function normalizeLineEndings(value) {
-  return String(value || '').replace(/\r\n|\r/g, '\n');
 }
 
 function sourceRunsFromLabel(label, styleMaps) {

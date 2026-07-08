@@ -124,3 +124,70 @@ git diff --check
 
 - No blocking concerns.
 - G6 is not fully zero because the remaining `parseZIndex` exemption is outside W2 Task 10c.
+
+## Galileo Review Fix 2026-07-08
+
+Status: fixed P1 review failure for false-green G6 coverage.
+
+Changed files:
+
+- `test/architecture/single-implementation.test.js`
+- `src/adapters/indesign/normalizer/snapshot-to-model.js`
+- `.superpowers/sdd/task-10c-report.md`
+
+G6 baseline before/after counts:
+
+- Before fix: 1 exemption.
+- After fix: 1 exemption.
+- Remaining exemption: `src/adapters/html/reader/browser-snapshot.js` defines `parseZIndex`.
+- No new baseline exemptions were added.
+
+RED evidence:
+
+```powershell
+node --test test/architecture/single-implementation.test.js
+```
+
+- Exit code: 1 after extending `SINGLE_IMPLEMENTATION_NAMES` but before production cleanup.
+- Expected review failure surfaced:
+  - `New violations:`
+  - `rule=G6.1 shared helpers have a single implementation file=src/adapters/indesign/normalizer/snapshot-to-model.js detail=defines normalizeLineEndings`
+- This confirmed G6 was previously false-green for the new shared helper name.
+
+GREEN evidence:
+
+```powershell
+node --test test/architecture/single-implementation.test.js
+```
+
+- Exit code: 0.
+- 4/4 passing.
+
+Focused review suite:
+
+```powershell
+node --test test/shared/text.test.js test/shared/style-utils.test.js test/indesign-reverse/reverse-snapshot-structure.test.js test/indesign-reverse/parent-page-furniture-audit.test.js test/indesign-reverse/blueprint-migration.test.js
+```
+
+- Exit code: 0.
+- 40/40 passing.
+
+Full validation:
+
+```powershell
+npm test
+```
+
+- Exit code: 0.
+- 910/910 passing.
+
+Implementation notes:
+
+- G6 now scans the 10c shared helper names: `normalizeLineEndings`, `collapseWhitespace`, `safeAuthorClassToken`, `safeMigrationClassToken`, and `safeVisualClassToken`.
+- `src/adapters/indesign/normalizer/snapshot-to-model.js` imports `normalizeLineEndings` from `src/shared/text.js`.
+- The local duplicate `normalizeLineEndings` implementation in `snapshot-to-model.js` was deleted.
+
+Concerns:
+
+- No blocking concerns.
+- G6 still intentionally has the pre-existing `parseZIndex` baseline exemption, outside W2 Task 10c.
