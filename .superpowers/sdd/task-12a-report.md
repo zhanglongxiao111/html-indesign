@@ -15,7 +15,8 @@ Implemented W4 Task 12a only:
 
 ## Commit
 
-- `64a3f732971ad1334b2e8c99e0bc22522d2e9a49`
+- Implementation/report commit: `423340bd656176920df5f6bc9d4a84e5711c3292`
+- Final report hash-sync commit: recorded in final response.
 
 ## Files Changed
 
