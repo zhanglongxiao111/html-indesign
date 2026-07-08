@@ -171,6 +171,8 @@ PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 
 格式能力差异必须进入能力矩阵表达为 `native`、`lossless`、`approximate`、`fallback`、`observe-only` 或 `unsupported`。不得因为 InDesign 或 PPTX 某个格式缺能力，就把 canonical 字段改名、拆散或静默丢弃。
 
+退役模型路径必须由 registry lifecycle 管理。`migration.from` 只记录当前字段从哪个旧路径迁移而来，不能替代 retired lifecycle；任何文档、描述或测试中称为 retired 的 model path，都必须在 `src/protocol/fields/retired.js` 有正式 retired entry，并能通过 registry 查询、生成文档和测试验证。
+
 ### 3.2 模块职责
 
 | 层级 | 职责 | 典型模块 |
@@ -185,6 +187,8 @@ PPTX Adapter -> Semantic Model -> HTML/InDesign/PPTX Writers
 
 ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推理。
 
+共享 helper 语义必须有一个可执行事实源。资产路径、表格宽度归一化、边框可见性、instruction 文本归一化等跨层语义只能在 `src/shared/`、`src/style-synthesis/` 或明确归属的 `src/writers/*` 模块中保留一个 canonical 实现；其他层只能调用它，不能通过改名、局部复制或脚本端兜底保留第二套可运行语义。
+
 ### 3.3 InDesign CLI 插件边界
 
 `src/indesign-cli-plugin/` 是面向 `indesign-cli` 的正式使用入口，只做协议适配、参数校验、产物登记和 host action 编排。插件工具以 `html.*` 命名，第一版只暴露作者包检查、编译指令、构建 InDesign 文件、反向导出 HTML 作者包。
@@ -192,6 +196,14 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 内部质量门禁不进入插件工具目录。`audit:roundtrip`、`audit:effective-diff`、`audit:conversion-gate`、二次回环和视觉/结构诊断继续作为本仓库测试命令使用，用来验证插件和转换链路可靠性，但不面向最终使用者。
 
 插件不得直接调用 InDesign COM。所有真实 InDesign 执行通过 `script.run` host action 交给 `indesign-cli`；插件只生成位于项目输出目录内的 JSX、instructions 和报告。
+
+反向导出、插件反向导出和真实 E2E 必须共享同一组 `src/writers/html/audit/` 作者包审核门禁。脚本和插件只负责参数、路径、输出登记和退出码，不得在脚本端或插件端保留一套更弱或更强的 author audit 逻辑。
+
+### 3.4 架构护栏和过程材料
+
+`.superpowers/` 只能作为本地 scratch 和临时执行上下文，不属于版本库长期过程材料。需要保留的审计报告、外部咨询、实施计划或用户反馈必须进入 `docs/AI协作/`、`docs/review/`、`docs/bugfix/` 或 `docs/superpowers/` 的对应目录；`.superpowers/` 下文件不得被 Git 跟踪。
+
+架构 guardrail baseline 只能记录经明确批准的历史债务。G1/G2/G4/G5/G6/G7/G8 等 baseline 不能通过新增 exemption、改名或扩大扫描跳过范围静默变绿；新增违规必须让测试失败，直到修复代码或在同一轮给出明确批准、证据和可审计原因。
 
 ## 4. 建筑汇报映射范围
 
@@ -1060,6 +1072,9 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 - text run 到 character style。
 - element filtering。
 - fallback decision。
+- retired model path lifecycle、`migration.from` 与 retired registry 的分工。
+- reverse export、plugin reverse export 和 E2E 对同一作者包审核门禁的共享调用。
+- 架构 baseline ratchet，确保新增 exemption 或同义 helper 重复不会静默通过。
 
 ### 15.2 浏览器快照测试
 

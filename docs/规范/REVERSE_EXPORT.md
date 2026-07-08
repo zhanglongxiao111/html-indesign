@@ -403,6 +403,10 @@ src/writers/html/
   visual-html-writer.js
   author-package-writer.js
   audit/author-audit.js
+  audit/reverse-roundtrip.js
+  audit/content-inventory.js
+  audit/structure-signature.js
+  audit/reverse-visual-evidence.js
 ```
 
 职责：
@@ -415,6 +419,10 @@ src/writers/html/
 - 生成 `reverse-model.json`。
 - 生成 `reconstruction-report.json`。
 - 生成 `report.json`。
+
+反向作者包审核门禁必须在 `src/writers/html/audit/` 统一实现和复用。独立 reverse export、`src/indesign-cli-plugin/` 暴露的 plugin reverse export，以及 `scripts/indesign-e2e.js` 的 reverse roundtrip 都调用同一组 source roundtrip、content inventory、structure signature、visual evidence 和二次稳定性审核模块；脚本层只能编排输入输出和退出码，不能保留另一套强弱不同的判定。
+
+反向证据补全也属于 `src` 级审核能力。会影响 accepted/missing/mismatched/errors 结论的 reverse model 证据、visual geometry 证据和 author package 证据，必须在 `src/writers/html/audit/` 或同级库模块中生成，不能只存在于一次性脚本。
 
 ### 5.3 CLI 封装
 
@@ -540,6 +548,8 @@ HTML -> InDesign -> HTML
 - 表格结构。
 
 视觉比较已进入反向作者包审核链路。交付前或作为规范样例时，应运行 `npm run audit:reverse-visual`；允许的 accepted 差异必须有结构化证据和报告说明，missing、mismatched 和 errors 必须为 0。
+
+回环验证的门禁口径以 `src/writers/html/audit/` 为准。CLI、plugin 和 E2E 可以选择不同输入、输出目录或严格度参数，但不能绕过内容库存、结构签名和反向视觉证据这些共享审核语义；否则同一作者包会在不同入口产生相互矛盾的通过/失败结论。
 
 ## 10. 实施顺序
 
