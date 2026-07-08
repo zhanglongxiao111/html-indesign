@@ -4,10 +4,26 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
+const cli = require('../../scripts/audit-conversion-gate');
 const {
-  parseArgs,
-  run,
-} = require('../../scripts/audit-conversion-gate');
+  buildGateReport,
+  DEFAULT_THRESHOLDS,
+  summaryFor,
+} = require('../../src/writers/html/audit/conversion-gate');
+const { parseArgs, run } = cli;
+
+test('audit-conversion-gate CLI reuses the src conversion gate module', () => {
+  assert.equal(cli.buildGateReport, buildGateReport);
+  assert.equal(cli.summaryFor, summaryFor);
+  assert.deepEqual(DEFAULT_THRESHOLDS, {
+    p0: 0,
+    p1: 0,
+    htmlMissing: 0,
+    htmlGeometry: 0,
+    htmlText: 0,
+    htmlPageMismatches: 0,
+  });
+});
 
 test('package exposes conversion gate and author editability audit commands', () => {
   const pkg = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8'));
@@ -81,6 +97,32 @@ test('audit-conversion-gate fails with concrete reasons when hard budgets regres
     'CONVERSION_GATE_HTML_GEOMETRY_OVER_BUDGET',
     'CONVERSION_GATE_HTML_TEXT_OVER_BUDGET',
   ]);
+});
+
+test('src conversion gate module builds report and summary directly', () => {
+  const root = fixtureRoot('conversion-gate-src-direct');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 3 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({
+    missing: 0,
+    mismatched: 2,
+    textMismatches: 0,
+  }));
+
+  const report = buildGateReport({
+    effectiveDiffPath: effectiveDiff,
+    reverseVisualPath: reverseVisual,
+    thresholds: {
+      ...DEFAULT_THRESHOLDS,
+      htmlGeometry: 2,
+    },
+  });
+  const summary = summaryFor(report);
+
+  assert.equal(report.kind, 'ConversionGateReport');
+  assert.equal(report.ok, true);
+  assert.equal(report.inputs.effectiveDiff, effectiveDiff);
+  assert.equal(summary.ok, true);
+  assert.equal(summary.gates.reverseVisual.geometry.count, 2);
 });
 
 test('audit-conversion-gate fails when trusted source preservation regresses', () => {
