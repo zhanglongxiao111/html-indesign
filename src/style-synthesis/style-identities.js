@@ -1,9 +1,9 @@
-const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
-const { createProtocolLabel } = require('../../shared/labels');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
+const { createProtocolLabel } = require('../shared/labels');
 const {
   explicitName,
   sanitizeStyleName,
-} = require('../../shared/style-utils');
+} = require('../shared/style-utils');
 
 function explicitFrameStyleName(item, options) {
   const attributes = item.attributes || {};

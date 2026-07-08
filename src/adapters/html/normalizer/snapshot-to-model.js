@@ -1,4 +1,4 @@
-const { compileStyles } = require('../../../writers/indesign/style-compiler');
+const { compileStyles } = require('../../../style-synthesis');
 const {
   resolveLayout,
   itemBounds,

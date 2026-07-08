@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { renderSnapshot } = require('../../src/adapters/html');
-const { compileStyles, compileInstructions } = require('../../src/writers/indesign');
+const { compileStyles } = require('../../src/writers/indesign');
+const { compileInstructions } = require('../../src/indesign-pipeline');
 const { detectAssetsFromItems } = require('../../src/adapters/html/reader/asset-detector');
 
 test('compileInstructions emits document styles pages and text items', async () => {

@@ -68,14 +68,16 @@
 | 路径 | 作用 |
 | ---- | ---- |
 | `src/adapters/html/` | HTML 适配器：浏览器快照、样式/资源读取、HTML snapshot 到语义模型归一化 |
-| `src/writers/indesign/` | InDesign 写出器：语义模型到构建指令、样式编译和 instructions 校验 |
+| `src/writers/indesign/` | InDesign 写出器：语义模型到构建指令和 instructions 校验；不得反向读取 HTML adapter |
 | `src/adapters/indesign/` | InDesign 适配器：反向 snapshot 读取、标签白名单、历史 blueprint 迁移 |
 | `src/writers/html/` | HTML 写出器：语义模型到固定语义 HTML、视觉 HTML、作者包和审核报告 |
 | `src/authoring/` | 作者源码包工具：组装、检查和维护分页作者包；不得承担格式适配或写出职责 |
+| `src/indesign-pipeline/` | HTML snapshot 到 InDesign instructions 的高层编排入口：串接 HTML adapter、语义模型和 InDesign writer |
 | `src/reverse-pipeline/` | 反向导出编排入口：读取 InDesign snapshot 或历史 blueprint，经语义重建后调用 HTML writer 输出视觉 HTML、作者包和报告 |
 | `src/semantic-model/` | 统一语义模型层，承接 HTML 与 InDesign 双向事实 |
 | `src/semantic-preset/` | 项目语义库预设：初始化和管理白名单语义 token；不得替代协议字段注册表 |
 | `src/semantic-reconstruction/` | 语义重建层：Observed Model 到可编辑作者语义模型的算法脚手架和报告 |
+| `src/style-synthesis/` | HTML snapshot 样式事实到统一 style model 的上游样式合成逻辑，供 adapter normalizer 与 writer 共享 |
 | `src/protocol/` | 协议字段注册表、能力矩阵和字段生命周期管理 |
 | `src/shared/` | 跨适配器和写出器共享工具：只放无格式所有权的通用能力；不得形成新的业务入口 |
 | `src/types/` | 共享类型声明：维护跨模块类型契约；不得承载运行时逻辑或格式专用字段 |

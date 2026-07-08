@@ -14,9 +14,14 @@ const adapters = {
 };
 const semanticModel = require('./src/semantic-model');
 const semanticReconstruction = require('./src/semantic-reconstruction');
+const indesignPipeline = require('./src/indesign-pipeline');
+const indesignWriters = require('./src/writers/indesign');
 const writers = {
   html: require('./src/writers/html'),
-  indesign: require('./src/writers/indesign'),
+  indesign: {
+    ...indesignWriters,
+    compileInstructions: indesignPipeline.compileInstructions,
+  },
 };
 
 module.exports = {

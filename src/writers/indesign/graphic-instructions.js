@@ -1,6 +1,5 @@
 const { round } = require('../../shared/geometry');
-const { placementFromAttributes } = require('../../adapters/html/reader/asset-detector');
-const { assetSourceFromElementLike } = require('../../shared/assets');
+const { assetSourceFromElementLike, placementFromAttributes } = require('../../shared/assets');
 const {
   cssLengthToTarget,
   cssLengthToMm,

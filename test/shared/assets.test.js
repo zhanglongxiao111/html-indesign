@@ -4,6 +4,7 @@ const {
   inferAssetKind,
   assetSourceFromElementLike,
   createAssetId,
+  placementFromAttributes,
 } = require('../../src/shared/assets');
 
 test('inferAssetKind maps architecture presentation asset extensions', () => {
@@ -53,4 +54,39 @@ test('assetSourceFromElementLike uses generated preview when no original asset p
 test('createAssetId is stable and filename based', () => {
   assert.equal(createAssetId('./assets/site-plan.pdf'), 'asset-site-plan-pdf');
   assert.equal(createAssetId('C:/Project/Renders/Lobby View.PNG'), 'asset-lobby-view-png');
+});
+
+test('placementFromAttributes preserves protocol placement fields', () => {
+  assert.deepEqual(placementFromAttributes({
+    'data-id-fit': 'manual',
+    'data-id-pdf-page': '3',
+    'data-id-crop': 'trim',
+    'data-id-visible-layers': 'Layer 1|Layer 2',
+    'data-id-content-x': '10px',
+    'data-id-content-y': '20px',
+    'data-id-content-width': '300px',
+    'data-id-content-height': '200px',
+    'data-id-content-scale-x': '1.25',
+    'data-id-content-scale-y': '0.75',
+  }, {
+    objectPosition: 'left top',
+  }), {
+    fit: 'manual',
+    position: '0% 0%',
+    pageNumber: 3,
+    crop: 'trim',
+    artboard: undefined,
+    layerComp: undefined,
+    visibleLayers: ['Layer 1', 'Layer 2'],
+    hiddenLayers: undefined,
+    preserveVector: false,
+    contentBox: {
+      x: '10px',
+      y: '20px',
+      width: '300px',
+      height: '200px',
+      scaleX: 1.25,
+      scaleY: 0.75,
+    },
+  });
 });

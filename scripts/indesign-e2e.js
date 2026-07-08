@@ -6,10 +6,8 @@ const { pathToFileURL } = require('url');
 
 const { renderSnapshot } = require('../src/adapters/html');
 const hostJsx = require('../src/indesign-cli-plugin/host-jsx');
-const {
-  compileInstructions,
-  validateInstructions,
-} = require('../src/writers/indesign');
+const { compileInstructions } = require('../src/indesign-pipeline');
+const { validateInstructions } = require('../src/writers/indesign');
 const { readAuthorPackage } = require('../src/authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../src/semantic-preset');
 

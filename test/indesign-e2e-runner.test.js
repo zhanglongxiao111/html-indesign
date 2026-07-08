@@ -24,7 +24,7 @@ const {
   parseTargetSize,
 } = require('../scripts/indesign-e2e');
 const { renderSnapshot } = require('../src/adapters/html');
-const { compileInstructions } = require('../src/writers/indesign');
+const { compileInstructions } = require('../src/indesign-pipeline');
 
 test('createRunContext creates stable default paths under test/workspace', () => {
   const repoRoot = path.resolve('D:/AI/html-indesign');

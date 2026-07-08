@@ -3,8 +3,8 @@ const {
   cssLengthStringToPx,
   cssLengthStringToVisualMm,
   round,
-} = require('../../shared/geometry');
-const { cssLengthToPt } = require('../../shared/style-utils');
+} = require('../shared/geometry');
+const { cssLengthToPt } = require('../shared/style-utils');
 
 function styleLengthToPt(style, prop, options) {
   const value = style && style[prop];

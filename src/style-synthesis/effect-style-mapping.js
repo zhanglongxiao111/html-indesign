@@ -1,5 +1,5 @@
-const { round } = require('../../shared/geometry');
-const { parseCssLinearGradient } = require('../../shared/style-utils');
+const { round } = require('../shared/geometry');
+const { parseCssLinearGradient } = require('../shared/style-utils');
 
 function compileEffects(item, report, addMessage) {
   const style = item.computedStyle || {};

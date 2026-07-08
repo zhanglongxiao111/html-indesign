@@ -1,13 +1,13 @@
-const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
-const { createReport, addMessage } = require('../../shared/report');
-const { round } = require('../../shared/geometry');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
+const { createReport, addMessage } = require('../shared/report');
+const { round } = require('../shared/geometry');
 const {
   normalizeCssColor,
   normalizeCssColorFromBackgroundImage,
   parseCssLinearGradient,
   stableAutoName,
-} = require('../../shared/style-utils');
-const { normalizeBlendMode } = require('../../shared/blend-mode');
+} = require('../shared/style-utils');
+const { normalizeBlendMode } = require('../shared/blend-mode');
 const {
   styleLengthToPt,
   trackingValue,

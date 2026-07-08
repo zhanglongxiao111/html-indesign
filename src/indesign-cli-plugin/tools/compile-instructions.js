@@ -1,7 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { renderSnapshot } = require('../../adapters/html');
-const { compileInstructions, validateInstructions } = require('../../writers/indesign');
+const { compileInstructions } = require('../../indesign-pipeline');
+const { validateInstructions } = require('../../writers/indesign');
 const { checkAuthorPackageEntry, readAuthorPackage } = require('../../authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../../semantic-preset');
 const { resolveProjectPath, ensureOutputDir } = require('../path-policy');
