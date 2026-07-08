@@ -21,11 +21,11 @@ const PDF_WRAPPER_CLASSES = new Set(['drawing-frame', 'grid-frame', 'figure-fram
 const PDF_OBJECT_OMITTED_CLASSES = new Set(['drawing-frame', 'grid-frame', 'figure-frame', 'asset-frame', 'grid-item']);
 
 function renderPdfObjectNode(node, options, depth, renderNode) {
-  if (hasSourcePdfWrapper(node.item)) {
-    return renderPdfObjectContents(node, options, depth, renderNode);
-  }
   const item = node.item;
   const sourceNode = item.sourceNode || {};
+  if (hasSourcePdfWrapper(item) || shouldPreserveUnwrappedSourcePdf(item, sourceNode, options)) {
+    return renderPdfObjectContents(node, options, depth, renderNode);
+  }
   const wrapperAttrs = wrapperAttrsForPdf(item, sourceNode);
   const body = renderPdfObjectContents(node, options, depth + 2, renderNode);
   return `${indent(depth)}<div ${wrapperAttrs}>\n${body}\n${indent(depth)}</div>`;
@@ -107,6 +107,14 @@ function hasSourcePdfWrapper(item) {
   });
 }
 
+function shouldPreserveUnwrappedSourcePdf(item, sourceNode, options = {}) {
+  if (!options.preserveTrustedSource || options.mode === 'observation') return false;
+  if (!sourceNode || !sourceNode.attributes) return false;
+  if (item && item.virtual) return false;
+  const classes = new Set(sourceNode.classList || []);
+  return !Array.from(classes).some((name) => PDF_WRAPPER_CLASSES.has(String(name || '').trim()));
+}
+
 module.exports = {
   renderPdfObjectNode,
   renderPdfObjectContents,
@@ -115,4 +123,5 @@ module.exports = {
   wrapperAttrsForPdf,
   previewAttrsForPdf,
   hasSourcePdfWrapper,
+  shouldPreserveUnwrappedSourcePdf,
 };

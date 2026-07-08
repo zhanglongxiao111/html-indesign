@@ -351,6 +351,29 @@ test('renderSnapshot keeps PDF source node separate from its preview wrapper', a
   assert.equal(pdf.sourceAncestorNodes[0].classList[0], 'drawing-frame');
 });
 
+test('renderSnapshot attaches ignored sibling PDF previews to the source node', async () => {
+  const outDir = path.resolve('test/workspace/browser-pdf-sibling-preview-node');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+  .pdf-preview, .pdf-source { width: 400px; height: 240px; }
+</style>
+<section class="page" id="page-1">
+  <img class="pdf-preview" src="../reference-pdfs/drawing-page1.png" alt="drawing preview" data-id-ignore>
+  <object class="pdf-source" data="../reference-pdfs/drawing.pdf" type="application/pdf" data-id-object data-id-object-style="drawing-frame-object"></object>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const pdf = snapshot.pages[0].items.find((item) => item.tagName === 'object');
+
+  assert.equal(pdf.sourceNode.previewNode.attributes.src, '../reference-pdfs/drawing-page1.png');
+  assert.equal(pdf.sourceNode.previewNode.attributes.alt, 'drawing preview');
+  assert.deepEqual(pdf.sourceAncestorNodes, []);
+});
+
 test('renderSnapshot captures page padding and grid semantics for InDesign guides', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/grid-guide-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

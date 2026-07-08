@@ -1134,6 +1134,46 @@ test('pageItemsToAuthorHtml reuses existing source PDF wrapper instead of nestin
   assert.match(html, /<object class="pdf-source" data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
 });
 
+test('pageItemsToAuthorHtml does not invent a PDF wrapper when trusted source has none', () => {
+  const page = {
+    id: 'drawing-page',
+    items: [
+      {
+        id: 'pdf-source',
+        role: 'graphic',
+        semantic: 'drawing-pdf',
+        sourceNode: {
+          tagName: 'object',
+          id: 'pdf-source',
+          classList: ['pdf-source'],
+          attributes: {
+            data: '../reference-pdfs/ice-rink-layout-reference.pdf',
+            type: 'application/pdf',
+            'data-id-object': '',
+            'data-id-pdf-page': '1',
+          },
+          previewNode: {
+            tagName: 'img',
+            classList: ['pdf-preview'],
+            attributes: {
+              src: '../reference-pdfs/ice-rink-layout-reference-page1.png',
+              alt: 'ice rink layout preview',
+              'data-id-ignore': '',
+            },
+          },
+        },
+        structure: { parentId: 'drawing-page', order: 1 },
+        asset: { path: '../reference-pdfs/ice-rink-layout-reference.pdf', graphicType: 'pdf' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
+
+  assert.doesNotMatch(html, /class="drawing-frame grid-item grid-frame"/);
+  assert.match(html, /^<img class="pdf-preview" src="\.\.\/reference-pdfs\/ice-rink-layout-reference-page1\.png" alt="ice rink layout preview" data-id-ignore>\n<object id="pdf-source" class="pdf-source" data="\.\.\/reference-pdfs\/ice-rink-layout-reference\.pdf"/);
+});
+
 test('pageItemsToAuthorHtml writes PDF page numbers only through data-id-pdf-page', () => {
   const page = {
     id: 'observed-page',
@@ -1284,6 +1324,45 @@ test('pageItemsToAuthorHtml preserves merged table cells and inline cell markup'
   assert.match(html, /<td[^>]*colspan="3"[^>]*>/);
   assert.match(html, /<td[^>]*data-id-paragraph-style="body"[^>]*>/);
   assert.match(html, /<span data-id-character-style="cell-emphasis">Merged<\/span> <strong class="value" data-id-character-style="value">Cells<\/strong>/);
+});
+
+test('pageItemsToAuthorHtml preserves trusted source table markup without observed style attrs', () => {
+  const sourceHtml = '\n    <thead>\n      <tr><th>来源指标</th><th>来源数值</th></tr>\n    </thead>\n    <tbody>\n      <tr><td>结构跨度</td><td>243.75m</td></tr>\n    </tbody>\n  ';
+  const page = {
+    id: 'table-page',
+    items: [
+      {
+        id: 'metrics-table',
+        role: 'table',
+        sourceNode: {
+          tagName: 'table',
+          id: 'metrics-table',
+          classList: ['metrics-table'],
+          attributes: { 'data-id-table': 'metrics' },
+        },
+        structure: { parentId: 'table-page', order: 1 },
+        styleRefs: {
+          synthesizedToken: 'synth_text_008',
+          synthesizedName: '文字样式 08',
+          tableStyle: '观察表格样式',
+        },
+        content: { sourceHtml },
+        table: {
+          rows: [
+            { header: true, cells: [{ header: true, text: '重算指标' }, { header: true, text: '重算数值' }] },
+          ],
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
+
+  assert.match(html, new RegExp(`<table id="metrics-table" class="metrics-table" data-id-table="metrics">${sourceHtml.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</table>`));
+  assert.doesNotMatch(html, /重算指标/);
+  assert.doesNotMatch(html, /data-id-style-token=/);
+  assert.doesNotMatch(html, /data-id-style-name=/);
+  assert.doesNotMatch(html, /data-id-table-style=/);
 });
 
 test('pageItemsToAuthorHtml folds generated text companions back into sourced annotation objects', () => {

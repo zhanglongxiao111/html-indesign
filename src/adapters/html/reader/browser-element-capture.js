@@ -51,9 +51,22 @@
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     if (tagName !== 'object' && tagName !== 'embed') return null;
-    if (!frameEl || frameEl === el) return null;
+    if (!frameEl) return null;
+    if (frameEl === el) {
+      const previous = el.previousElementSibling;
+      return isIgnoredImagePreview(previous, dataId)
+        ? sourceNodeFor(previous, pageEl)
+        : null;
+    }
     const preview = frameEl.querySelector(`img[${dataId.IGNORE}]`);
     return preview ? sourceNodeFor(preview, pageEl) : null;
+  }
+
+  function isIgnoredImagePreview(el, dataId) {
+    return Boolean(el
+      && el.tagName
+      && el.tagName.toLowerCase() === 'img'
+      && el.hasAttribute(dataId.IGNORE));
   }
 
   function sourceHtmlFor(el) {

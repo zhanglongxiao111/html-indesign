@@ -789,6 +789,14 @@ test('writeReverseAuthorPackage preserves source package config metadata', () =>
   const sourceRoot = path.join(root, 'source');
   const outDir = path.join(root, 'author');
   fs.rmSync(root, { recursive: true, force: true });
+  const sourceSynthesizedStyles = [{
+    token: 'source_text_001',
+    displayName: '来源文字样式',
+    kind: 'text',
+    fingerprint: 'source-fingerprint',
+    source: 'reverse',
+    properties: { pointSize: 18, fillColor: '#123456' },
+  }];
   writeFixtureFile(path.join(sourceRoot, 'deck.config.json'), JSON.stringify({
     schemaVersion: 1,
     id: 'architecture-report',
@@ -800,15 +808,38 @@ test('writeReverseAuthorPackage preserves source package config metadata', () =>
     styles: ['styles/tokens.css'],
     pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
     assets: { root: 'assets' },
+    synthesizedStyles: sourceSynthesizedStyles,
   }, null, 2));
   writeFixtureFile(path.join(sourceRoot, 'styles/tokens.css'), ':root { --ink: #123456; }');
+  const model = taggedModel();
+  model.parentPages = [{
+    id: 'generated-parent',
+    name: '生成母版',
+    guides: [{ orientation: 'vertical', position: 42, source: 'parent-page' }],
+  }];
+  model.pages[0].parentPageId = 'generated-parent';
+  model.pages[0].parentPageName = '生成母版';
+  model.styles.synthesized = [{
+    token: 'generated_text_999',
+    displayName: '生成文字样式',
+    kind: 'text',
+    fingerprint: 'generated-fingerprint',
+    source: 'roundtrip',
+    properties: { pointSize: 99, fillColor: '#abcdef' },
+  }];
 
-  writeReverseAuthorPackage(taggedModel(), { outDir, sourceRoot, mode: 'structured' });
+  writeReverseAuthorPackage(model, { outDir, sourceRoot, mode: 'structured' });
 
   const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
   assert.equal(config.id, 'architecture-report');
   assert.equal(config.title, '冰球场首层平面排布汇报');
   assert.equal(config.profile, 'architecture-report');
+  assert.deepEqual(config.synthesizedStyles, sourceSynthesizedStyles);
+  assert.equal(Object.prototype.hasOwnProperty.call(config, 'parentPages'), false);
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  assert.doesNotMatch(pageHtml, /data-id-parent-page=/);
+  assert.doesNotMatch(pageHtml, /data-id-parent-page-name=/);
 });
 
 test('writeReverseAuthorPackage fails visibly when source deck config is invalid JSON', () => {

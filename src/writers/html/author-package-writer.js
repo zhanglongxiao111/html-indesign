@@ -159,7 +159,15 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   const title = sourceConfig && sourceConfig.title || sourcePackage.title || model.title || id;
   const hasSourceProfile = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'profile');
   const hasPackageProfile = sourcePackage && Object.prototype.hasOwnProperty.call(sourcePackage, 'profile');
-  const parentPages = parentPagesConfigFor(model.parentPages || []);
+  const hasSourceConfig = Boolean(sourceConfig);
+  const hasSourceParentPages = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'parentPages');
+  const hasSourceSynthesizedStyles = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'synthesizedStyles');
+  const parentPages = hasSourceConfig
+    ? sourceConfig.parentPages
+    : parentPagesConfigFor(model.parentPages || []);
+  const synthesizedStyles = hasSourceConfig
+    ? sourceConfig.synthesizedStyles
+    : synthesizedStylesConfigFor(model.styles && model.styles.synthesized);
   const config = {
     schemaVersion: sourceConfig && sourceConfig.schemaVersion || sourcePackage.schemaVersion || 1,
     id,
@@ -172,9 +180,16 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     pages: pages.map((page) => ({ id: page.id, file: page.file })),
     assets: { root: sourceConfig && sourceConfig.assets && sourceConfig.assets.root || sourcePackage.assetRoot || 'assets' },
   };
-  const synthesizedStyles = synthesizedStylesConfigFor(model.styles && model.styles.synthesized);
-  if (synthesizedStyles.length) config.synthesizedStyles = synthesizedStyles;
-  if (parentPages.length) config.parentPages = parentPages;
+  if (hasSourceSynthesizedStyles) {
+    config.synthesizedStyles = synthesizedStyles;
+  } else if (Array.isArray(synthesizedStyles) && synthesizedStyles.length) {
+    config.synthesizedStyles = synthesizedStyles;
+  }
+  if (hasSourceParentPages) {
+    config.parentPages = parentPages;
+  } else if (Array.isArray(parentPages) && parentPages.length) {
+    config.parentPages = parentPages;
+  }
   return config;
 }
 
@@ -391,19 +406,19 @@ function pageHtml(page, sourceFile, options) {
 function sourcePageAttrs(page, sourceFile, options) {
   const sourceNode = page.sourceNode || {};
   const attrs = mergeAttributes(sourceNode.attributes);
+  const preserveTrustedSource = options.preserveTrustedSource && sourceNode.attributes;
   attrs.class = sourceNode.classList && sourceNode.classList.length ? sourceNode.classList.join(' ') : 'page';
   attrs.id = sourceNode.id || page.id;
   attrs['data-page'] = page.pageToken || sourceNodeAttribute(page, 'data-page') || page.semantic || page.id;
   if (!attrs[SEMANTIC_ATTR] && isUsefulSemantic(page.semantic)) attrs[SEMANTIC_ATTR] = page.semantic;
   attrs[HTML_DATA_ID_ATTRIBUTES.SOURCE_FILE] = sourceFile;
-  if (shouldWritePageParentAttrs(page, options)) {
+  if (!preserveTrustedSource && shouldWritePageParentAttrs(page, options)) {
     if (page.parentPageId) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE] = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE] || page.parentPageId;
     if (page.parentPageName) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME] = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME] || page.parentPageName;
-  } else {
+  } else if (!preserveTrustedSource) {
     delete attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE];
     delete attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_NAME];
   }
-  const preserveTrustedSource = options.preserveTrustedSource && sourceNode.attributes;
   if (!attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN]) {
     const marginAttr = pageMarginAttrValue(page.margins);
     if (marginAttr) attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN] = marginAttr;

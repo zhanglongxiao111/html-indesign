@@ -155,17 +155,18 @@ function auditSecondPassAuthorStability({ sourceRoot, reverseRoot, reportDir }) 
   fs.writeFileSync(path.join(outDir, 'canonical-source-drift-report.json'), JSON.stringify(sourceDrift, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'canonical-content-inventory-report.json'), JSON.stringify(contentInventory, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'canonical-structure-signature-report.json'), JSON.stringify(structureSignature, null, 2), 'utf8');
-  const sourceDriftWarning = sourceDrift && sourceDrift.stable === false
+  const sourceDriftErrors = sourceDrift && sourceDrift.stable === false
     ? [{
-      code: 'CANONICAL_SOURCE_DRIFT_ADVISORY',
-      severity: 'warning',
-      message: 'Second-pass author package has exact source formatting drift; content inventory and structure signature are the hard stability gates.',
+      code: 'CANONICAL_SOURCE_DRIFT_UNSTABLE',
+      severity: 'error',
+      message: 'Second-pass author package must be byte-stable; source drift is a hard stability failure.',
       filesChanged: sourceDrift.stats && sourceDrift.stats.filesChanged,
       normalizedFilesChanged: sourceDrift.stats && sourceDrift.stats.normalizedFilesChanged,
       report: 'reports/canonical-source-drift-report.json',
     }]
     : [];
   const errors = [
+    ...sourceDriftErrors,
     ...(contentInventory && !contentInventory.ok ? contentInventory.errors : []),
     ...(structureSignature && !structureSignature.ok ? structureSignature.errors : []),
   ];
@@ -175,7 +176,7 @@ function auditSecondPassAuthorStability({ sourceRoot, reverseRoot, reportDir }) 
     contentInventory,
     structureSignature,
     errors,
-    warnings: sourceDriftWarning,
+    warnings: [],
   };
 }
 

@@ -18,8 +18,8 @@ function attrsForItem(item, sourceNode, options) {
   const attrs = mergeAttributes(sourceNode.attributes, assetAttributes(item, tag));
   sanitizeRetiredAssetAttrs(attrs, item);
   rewriteResourceAttrs(attrs, options);
-  addStyleProtocolAttrs(attrs, item, options);
   const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
+  if (!preserveTrustedSource) addStyleProtocolAttrs(attrs, item, options);
   if (sourceNode.id) {
     attrs.id = sourceNode.id;
   } else if (preserveTrustedSource && item.id) {

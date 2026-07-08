@@ -7,7 +7,10 @@ const {
   safeInlineTag,
 } = require('./author-render-utils');
 
-function ownContent(item, depth) {
+function ownContent(item, depth, options = {}) {
+  if (options.preserveTrustedSource && item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== '') {
+    return item.content.sourceHtml;
+  }
   if (item.role === 'table' && item.table) return `\n${tableContent(item.table, depth + 2)}\n${' '.repeat(depth)}`;
   if (item.authorTextCompanion && item.authorTextCompanion.content) {
     return plainTextContent(item.authorTextCompanion.content.text || '');

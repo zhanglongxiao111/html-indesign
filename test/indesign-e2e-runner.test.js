@@ -463,7 +463,7 @@ test('auditReverseAuthorPackage keeps source structure diffs advisory unless str
   assert.equal(strictAudit.errors.some((error) => error.code === 'STRUCTURE_NODE_PARENT_CHANGED'), true);
 });
 
-test('auditSecondPassAuthorStability allows exact source drift when content and structure are stable', () => {
+test('auditSecondPassAuthorStability fails when the second-pass author package drifts by bytes', () => {
   const root = path.resolve('test/workspace/e2e-second-pass-stability');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
@@ -477,12 +477,12 @@ test('auditSecondPassAuthorStability allows exact source drift when content and 
     reportDir: path.join(reverseRoot, 'reports'),
   });
 
-  assert.equal(audit.ok, true);
+  assert.equal(audit.ok, false);
   assert.equal(audit.sourceDrift.stable, false);
   assert.equal(audit.contentInventory.ok, true);
   assert.equal(audit.structureSignature.ok, true);
-  assert.deepEqual(audit.errors, []);
-  assert.equal(audit.warnings.some((warning) => warning.code === 'CANONICAL_SOURCE_DRIFT_ADVISORY'), true);
+  assert.equal(audit.errors.some((error) => error.code === 'CANONICAL_SOURCE_DRIFT_UNSTABLE'), true);
+  assert.deepEqual(audit.warnings, []);
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/canonical-source-drift-report.json')), true);
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/canonical-content-inventory-report.json')), true);
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/canonical-structure-signature-report.json')), true);

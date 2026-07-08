@@ -408,7 +408,7 @@ async function runReverseRoundtrip(context, options = {}) {
     });
     canonicalDrift = canonicalStability.sourceDrift;
     if (!canonicalStability.ok) {
-      throw new Error(`Second-pass reverse author package lost content or structure: ${JSON.stringify(canonicalStability, null, 2)}`);
+      throw new Error(`Second-pass reverse author package is not byte-stable or lost content/structure: ${JSON.stringify(canonicalStability, null, 2)}`);
     }
   }
 
