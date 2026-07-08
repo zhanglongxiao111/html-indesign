@@ -33,6 +33,34 @@ test('retired data-id-page is accepted only as observe-only read', () => {
   assert.equal(result.observations[0].replacedBy, 'data-id-pdf-page');
 });
 
+test('retired model paths are reported from retired policy instead of unknown fields', () => {
+  const result = validateRetiredFields(fieldRegistry, {
+    modelPaths: ['items[].effects'],
+    direction: 'read',
+  });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.observations.length, 1);
+  assert.equal(result.observations[0].field, 'items[].effects');
+  assert.equal(result.observations[0].canonicalPath, 'retired.model.itemsEffects');
+  assert.equal(result.observations[0].readPolicy, 'retired');
+  assert.equal(result.observations[0].writePolicy, 'forbidden');
+  assert.equal(result.observations[0].replacedBy, 'items[].extensions.indesign.effects');
+});
+
+test('retired field validation rejects unknown retired model paths visibly', () => {
+  const result = validateRetiredFields(fieldRegistry, {
+    modelPaths: ['items[].madeUpRetiredField'],
+    direction: 'read',
+  });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.errors.map((error) => error.code), ['RETIRED_MODEL_PATH_UNKNOWN']);
+  assert.equal(result.errors[0].field, 'items[].madeUpRetiredField');
+  assert.deepEqual(result.observations, []);
+});
+
 test('retired field validation rejects explicit invalid directions', () => {
   for (const direction of ['', false, 0]) {
     assert.throws(

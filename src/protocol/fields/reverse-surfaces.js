@@ -89,7 +89,7 @@ module.exports = [
     [],
     'object',
     {
-      description: 'InDesign-specific reverse-export effects payload; current structured DocumentModel output uses extensions.indesign.effects. Flat items[].effects is retired from current model paths and retained only as migration metadata.',
+      description: 'InDesign-specific reverse-export effects payload; current structured DocumentModel output uses extensions.indesign.effects. Adapter migration metadata records the old flat source path, while retired lifecycle facts live in retired registry entries.',
       migration: {
         from: 'items[].effects',
         to: 'items[].extensions.indesign.effects',
@@ -102,7 +102,7 @@ module.exports = [
     [],
     'object',
     {
-      description: 'InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Flat items[].textFrameStyle is retired from current model paths and retained only as migration metadata.',
+      description: 'InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Adapter migration metadata records the old flat source path, while retired lifecycle facts live in retired registry entries.',
       migration: {
         from: 'items[].textFrameStyle',
         to: 'items[].extensions.indesign.textFrameStyle',

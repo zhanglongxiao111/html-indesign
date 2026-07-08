@@ -51,6 +51,25 @@ test('lifecyclePolicyFor returns retired html attr policy from the retired regis
   assert.notEqual(policy.canonicalPath, 'items[].asset.placement.pageNumber');
 });
 
+test('lifecyclePolicyFor returns retired model path policies from retired registry entries', () => {
+  const expectations = [
+    ['items[].type', 'items[].sourceType'],
+    ['items[].effects', 'items[].extensions.indesign.effects'],
+    ['items[].textFrameStyle', 'items[].extensions.indesign.textFrameStyle'],
+  ];
+
+  for (const [path, replacedBy] of expectations) {
+    const policy = lifecyclePolicyFor(fieldRegistry, path);
+
+    assert.equal(policy.lifecycle, 'retired');
+    assert.equal(policy.fieldClass, 'observation');
+    assert.equal(policy.path, path);
+    assert.equal(policy.readPolicy, 'retired');
+    assert.equal(policy.writePolicy, 'forbidden');
+    assert.equal(policy.replacedBy, replacedBy);
+  }
+});
+
 test('lifecyclePolicyFor returns active lifecycle without retired policy metadata', () => {
   const policy = lifecyclePolicyFor(fieldRegistry, 'items[].asset.placement.pageNumber');
 

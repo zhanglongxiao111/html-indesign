@@ -17,6 +17,7 @@ function createFieldRegistry(entries = []) {
   const byPath = new Map();
   const byHtmlAttr = new Map();
   const byRetiredHtmlAttr = new Map();
+  const byRetiredModelPath = new Map();
 
   for (const entry of normalizedEntries) {
     for (const fieldPath of entry.allPaths) {
@@ -41,6 +42,15 @@ function createFieldRegistry(entries = []) {
       }
       byRetiredHtmlAttr.set(attr, retiredHtmlAttrRecord(entry, retiredAttr));
     }
+
+    for (const retiredPath of retiredModelPathsFor(entry)) {
+      const modelPath = retiredPath && retiredPath.path;
+      if (!modelPath) continue;
+      if (byRetiredModelPath.has(modelPath)) {
+        throw new Error(`RETIRED_MODEL_PATH_DUPLICATED:${modelPath}`);
+      }
+      byRetiredModelPath.set(modelPath, retiredModelPathRecord(entry, retiredPath));
+    }
   }
 
   return Object.freeze({
@@ -53,6 +63,9 @@ function createFieldRegistry(entries = []) {
     },
     getRetiredHtmlAttr(attr) {
       return byRetiredHtmlAttr.get(attr) || null;
+    },
+    getRetiredModelPath(path) {
+      return byRetiredModelPath.get(path) || null;
     },
     listByOwner(owner) {
       return normalizedEntries.filter((entry) => entry.owner === owner);
@@ -86,6 +99,15 @@ function retiredHtmlAttrsFor(entry) {
   return arrayOrEmpty(retired.htmlAttrs);
 }
 
+function retiredModelPathsFor(entry) {
+  if (entry.lifecycle !== 'retired') {
+    return [];
+  }
+
+  const retired = entry.retired || {};
+  return arrayOrEmpty(retired.modelPaths);
+}
+
 function retiredHtmlAttrRecord(entry, retiredAttr) {
   return deepFreeze({
     canonicalPath: entry.canonicalPath,
@@ -97,6 +119,21 @@ function retiredHtmlAttrRecord(entry, retiredAttr) {
     writePolicy: retiredAttr.writePolicy,
     replacedBy: retiredAttr.replacedBy,
     reason: retiredAttr.reason,
+    entry,
+  });
+}
+
+function retiredModelPathRecord(entry, retiredPath) {
+  return deepFreeze({
+    canonicalPath: entry.canonicalPath,
+    owner: entry.owner,
+    fieldClass: entry.fieldClass,
+    lifecycle: entry.lifecycle,
+    path: retiredPath.path,
+    readPolicy: retiredPath.readPolicy,
+    writePolicy: 'forbidden',
+    replacedBy: retiredPath.replacedBy,
+    reason: retiredPath.reason,
     entry,
   });
 }

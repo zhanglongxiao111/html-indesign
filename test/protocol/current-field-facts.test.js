@@ -222,6 +222,7 @@ test('registry keeps sourceRuns metadata separate from canonical text runs', () 
 test('registry keeps reverse item effects as an InDesign format extension', () => {
   const canonicalVisualEffects = fieldRegistry.getByPath('items[].visualStyle.effects');
   const reverseEffects = fieldRegistry.getByPath('items[].extensions.indesign.effects');
+  const retiredEffects = fieldRegistry.getRetiredModelPath('items[].effects');
 
   assert.equal(canonicalVisualEffects, null);
   assert.equal(reverseEffects.fieldClass, 'formatExtension');
@@ -229,15 +230,26 @@ test('registry keeps reverse item effects as an InDesign format extension', () =
   assert.deepEqual(reverseEffects.currentPaths, []);
   assert.equal(reverseEffects.migration.from, 'items[].effects');
   assert.equal(reverseEffects.migration.to, 'items[].extensions.indesign.effects');
+  assert.equal(retiredEffects.canonicalPath, 'retired.model.itemsEffects');
+  assert.equal(retiredEffects.lifecycle, 'retired');
+  assert.equal(retiredEffects.path, 'items[].effects');
+  assert.equal(retiredEffects.replacedBy, 'items[].extensions.indesign.effects');
+  assert.equal(fieldRegistry.getByPath('items[].effects'), retiredEffects.entry);
 });
 
 test('registry records textFrameStyle as an InDesign extension migration target', () => {
   const textFrameStyle = fieldRegistry.getByPath('items[].extensions.indesign.textFrameStyle');
+  const retiredTextFrameStyle = fieldRegistry.getRetiredModelPath('items[].textFrameStyle');
 
   assert.equal(textFrameStyle.fieldClass, 'formatExtension');
   assert.deepEqual(textFrameStyle.currentPaths, []);
   assert.equal(textFrameStyle.migration.from, 'items[].textFrameStyle');
   assert.equal(textFrameStyle.migration.to, 'items[].extensions.indesign.textFrameStyle');
+  assert.equal(retiredTextFrameStyle.canonicalPath, 'retired.model.itemsTextFrameStyle');
+  assert.equal(retiredTextFrameStyle.lifecycle, 'retired');
+  assert.equal(retiredTextFrameStyle.path, 'items[].textFrameStyle');
+  assert.equal(retiredTextFrameStyle.replacedBy, 'items[].extensions.indesign.textFrameStyle');
+  assert.equal(fieldRegistry.getByPath('items[].textFrameStyle'), retiredTextFrameStyle.entry);
 });
 
 test('registry does not declare reverse visualStyle fields as native InDesign write fields', () => {

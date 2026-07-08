@@ -83,6 +83,12 @@ test('generated field docs render W1 registry adjudication metadata', () => {
   assert.match(markdown, /migration=items\[\]\.effects -> items\[\]\.extensions\.indesign\.effects/);
   assert.match(markdown, /retired\.model\.itemsType/);
   assert.match(markdown, /retiredModelPath=items\[\]\.type/);
+  assert.match(markdown, /retired\.model\.itemsEffects/);
+  assert.match(markdown, /retiredModelPath=items\[\]\.effects/);
+  assert.match(markdown, /replacedBy=items\[\]\.extensions\.indesign\.effects/);
+  assert.match(markdown, /retired\.model\.itemsTextFrameStyle/);
+  assert.match(markdown, /retiredModelPath=items\[\]\.textFrameStyle/);
+  assert.match(markdown, /replacedBy=items\[\]\.extensions\.indesign\.textFrameStyle/);
 });
 
 test('generated field docs are deterministic', () => {

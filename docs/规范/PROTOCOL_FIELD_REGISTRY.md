@@ -329,8 +329,8 @@
 | extensions.pptx.speakerNotes | n/a | pptx-adapter | candidate | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | native/native/native | n/a |
 | extensions.pptx.transition | n/a | pptx-adapter | candidate | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | native/native/native | n/a |
 | items[].content.runs[].textStyle | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
-| items[].extensions.indesign.effects | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | InDesign-specific reverse-export effects payload; current structured DocumentModel output uses extensions.indesign.effects. Flat items[].effects is retired from current model paths and retained only as migration metadata.; migration=items[].effects -> items[].extensions.indesign.effects (adapter-migrated) |
-| items[].extensions.indesign.textFrameStyle | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Flat items[].textFrameStyle is retired from current model paths and retained only as migration metadata.; migration=items[].textFrameStyle -> items[].extensions.indesign.textFrameStyle (adapter-migrated) |
+| items[].extensions.indesign.effects | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | InDesign-specific reverse-export effects payload; current structured DocumentModel output uses extensions.indesign.effects. Adapter migration metadata records the old flat source path, while retired lifecycle facts live in retired registry entries.; migration=items[].effects -> items[].extensions.indesign.effects (adapter-migrated) |
+| items[].extensions.indesign.textFrameStyle | n/a | reverse-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Adapter migration metadata records the old flat source path, while retired lifecycle facts live in retired registry entries.; migration=items[].textFrameStyle -> items[].extensions.indesign.textFrameStyle (adapter-migrated) |
 | styles.cellStyles[].indesignFeatures | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.cellStyles[].indesignFeatures.compositeFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.cellStyles[].indesignFeatures.dropCap | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
@@ -501,6 +501,8 @@
 | retired.htmlAttrs.dataIdMargins | n/a | document-page | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | n/a |
 | retired.htmlAttrs.dataIdPage | n/a | asset-placement | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | n/a |
 | retired.htmlAttrs.dataIdParentPageDisplayName | n/a | document-page | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | n/a |
+| retired.model.itemsEffects | items[].effects | reverse-model | retired | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired flat InDesign effects surface. Use the InDesign format extension path instead. |
+| retired.model.itemsTextFrameStyle | items[].textFrameStyle | reverse-model | retired | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired flat InDesign text frame style surface. Use the InDesign format extension path instead. |
 | retired.model.itemsType | items[].type | document-model | retired | observe-only/unsupported/unsupported | unsupported/unsupported/unsupported | unsupported/unsupported/unsupported | Retired item dialect field. Use items[].role for semantic role and items[].sourceType for source-format observation. |
 
 退役 HTML 属性：
@@ -510,4 +512,6 @@
 - retiredHtmlAttr=data-id-parent-page-display-name; readPolicy=observe-only; writePolicy=forbidden; replacedBy=data-id-parent-page-name; reason=replaced-by-single-parent-page-display-name-carrier
 
 退役模型路径：
+- retiredModelPath=items[].effects; readPolicy=retired; replacedBy=items[].extensions.indesign.effects; reason=flat-indesign-effects-moved-to-format-extension
+- retiredModelPath=items[].textFrameStyle; readPolicy=retired; replacedBy=items[].extensions.indesign.textFrameStyle; reason=flat-indesign-text-frame-style-moved-to-format-extension
 - retiredModelPath=items[].type; readPolicy=retired; replacedBy=items[].sourceType; reason=split-semantic-role-from-source-format-type

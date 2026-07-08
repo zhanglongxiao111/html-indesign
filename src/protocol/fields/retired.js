@@ -24,6 +24,54 @@ module.exports = [
     },
   },
   {
+    canonicalPath: 'retired.model.itemsEffects',
+    currentPaths: ['items[].effects'],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'reverse-model',
+    type: 'object',
+    description: 'Retired flat InDesign effects surface. Use the InDesign format extension path instead.',
+    capabilities: {
+      html: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+      indesign: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      modelPaths: [
+        {
+          path: 'items[].effects',
+          replacedBy: 'items[].extensions.indesign.effects',
+          readPolicy: 'retired',
+          reason: 'flat-indesign-effects-moved-to-format-extension',
+        },
+      ],
+    },
+  },
+  {
+    canonicalPath: 'retired.model.itemsTextFrameStyle',
+    currentPaths: ['items[].textFrameStyle'],
+    fieldClass: 'observation',
+    lifecycle: 'retired',
+    owner: 'reverse-model',
+    type: 'object',
+    description: 'Retired flat InDesign text frame style surface. Use the InDesign format extension path instead.',
+    capabilities: {
+      html: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+      indesign: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+    },
+    retired: {
+      modelPaths: [
+        {
+          path: 'items[].textFrameStyle',
+          replacedBy: 'items[].extensions.indesign.textFrameStyle',
+          readPolicy: 'retired',
+          reason: 'flat-indesign-text-frame-style-moved-to-format-extension',
+        },
+      ],
+    },
+  },
+  {
     canonicalPath: 'retired.htmlAttrs.dataIdPage',
     currentPaths: [],
     fieldClass: 'observation',

@@ -462,6 +462,28 @@ test('validateModelFields treats retired item type as retired instead of active 
   );
 });
 
+test('validateModelFields treats retired flat InDesign surfaces as retired model fields', () => {
+  const result = validateModelFields(
+    fieldRegistry,
+    ['items[].effects', 'items[].textFrameStyle'],
+    { strict: true },
+  );
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.accepted, []);
+  assert.deepEqual(result.unknown, []);
+  assert.deepEqual(
+    result.retired.map((item) => item.path),
+    ['items[].effects', 'items[].textFrameStyle'],
+  );
+  assert.deepEqual(
+    result.errors
+      .filter((error) => error.code === 'MODEL_FIELD_RETIRED')
+      .map((error) => error.path),
+    ['items[].effects', 'items[].textFrameStyle'],
+  );
+});
+
 test('scanModelPaths scans retired item type from DocumentModel objects without accepting root or page type', () => {
   const scannedPaths = scanModelPaths({
     kind: 'DocumentModel',
