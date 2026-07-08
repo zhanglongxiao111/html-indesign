@@ -512,7 +512,7 @@ Completed in `9c43e86` and follow-up fix `af364cd`: controller verification pass
 - Consumes: fixes from Tasks 1-6
 - Produces: current docs that describe the fixed boundary, not the pre-fix defect
 
-- [ ] **Step 1: Update long-term specs**
+- [x] **Step 1: Update long-term specs**
 
 Document these rules only after implementation is complete:
 
@@ -524,7 +524,7 @@ architecture baselines cannot silently grow.
 shared helper semantic families must have one executable source.
 ```
 
-- [ ] **Step 2: Update audit summary**
+- [x] **Step 2: Update audit summary**
 
 In `汇总_架构硬化核心代码膨胀审计.md`, add a closeout section listing:
 
@@ -534,11 +534,11 @@ remaining findings: none or explicit non-blocking follow-up
 verification commands
 ```
 
-- [ ] **Step 3: Register this plan**
+- [x] **Step 3: Register this plan**
 
 Update `docs/superpowers/plans/README.md` with a link to this plan.
 
-- [ ] **Step 4: Final verification**
+- [x] **Step 4: Final verification**
 
 Run:
 
@@ -560,6 +560,8 @@ all listed node --test commands pass
 npm test passes
 git diff --check has no output
 ```
+
+Completed in `a16a4a9` plus controller verification: `git ls-files .superpowers` had no output; `node --test test/architecture/` passed `76/76`; `node --test test/protocol/*.test.js` passed `170/170` because `node --test test/protocol/` is not a valid recursive directory invocation on this Windows/Node setup; reverse/plugin/E2E focused tests passed `59/59`; shared/instructions focused tests passed `75/75`; `npm test` passed `965/965`; `git diff --check` had no output.
 
 - [ ] **Step 5: Final review**
 
