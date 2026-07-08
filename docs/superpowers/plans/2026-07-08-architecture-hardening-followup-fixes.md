@@ -333,7 +333,7 @@ Completed in `62e73d1`: controller verification passed visual geometry focused s
 - Consumes: actual guardrail violations and baseline files
 - Produces: baseline comparison that fails on newly added exemptions unless an explicit reviewed start-point is encoded
 
-- [ ] **Step 1: Add failing baseline anti-expansion tests**
+- [x] **Step 1: Add failing baseline anti-expansion tests**
 
 In `test/architecture/helpers/baseline-ratchet.js` tests, add coverage proving a baseline with a new exemption fails unless the guardrail explicitly declares an approved starting baseline.
 
@@ -345,7 +345,7 @@ node --test test/architecture/baseline-ratchet.test.js test/architecture/single-
 
 Expected: FAIL before implementation.
 
-- [ ] **Step 2: Extend baseline ratchet helper**
+- [x] **Step 2: Extend baseline ratchet helper**
 
 Add an option such as:
 
@@ -360,11 +360,11 @@ compareViolationsToBaseline({
 
 If `forbidNewExemptions` is true, any exemption not present in `approvedBaseline` must be reported separately as a baseline expansion failure.
 
-- [ ] **Step 3: Apply anti-expansion to G1/G2/G4/G5/G6/G7/G8**
+- [x] **Step 3: Apply anti-expansion to G1/G2/G4/G5/G6/G7/G8**
 
 Wire every architecture guardrail to forbid silent baseline growth. Because current baselines are empty, approved baseline should also be empty for these rules.
 
-- [ ] **Step 4: Replace G4 name-only invalid-input coverage**
+- [x] **Step 4: Replace G4 name-only invalid-input coverage**
 
 Change G4.1 so it does not accept empty tests that merely contain the required name. Acceptable evidence must be one of:
 
@@ -376,11 +376,11 @@ assert.equal(result.ok, false) plus a specific error code assertion
 
 Keep G4.2 process execution for audit scripts.
 
-- [ ] **Step 5: Exclude transient workspace from G4 scans**
+- [x] **Step 5: Exclude transient workspace from G4 scans**
 
 Change G4 file collection to exclude `test/workspace/` and handle `ENOENT` during recursive scans without turning missing temporary directories into guardrail failures.
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run:
 
@@ -390,12 +390,14 @@ node --test test/architecture/
 
 Expected: 61+ tests pass; added tests prove baseline expansion and empty invalid-input tests fail.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add test/architecture
 git commit -m "test: harden architecture guardrails"
 ```
+
+Completed in `508a2be` and follow-up fix `9817b2b`: controller verification passed focused `16/16` and full architecture suite `75/75`; task re-review approved with no Critical, Important, or Minor findings.
 
 ### Task 6: Consolidate Shared Helpers and Expand G6 Semantic Coverage
 
