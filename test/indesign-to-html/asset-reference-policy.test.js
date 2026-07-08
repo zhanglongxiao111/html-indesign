@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const {
   prepareAuthorAssets,
   shouldConsiderGeneratedPreviewPath,
@@ -42,6 +43,48 @@ test('prepareAuthorAssets copies local relative assets in reference mode for por
   assert.equal(result.report.entries[0].reason, 'local-copy-for-preview');
   assert.equal(result.pathMap.get('../assets/site.png'), 'assets/site.png');
   assert.equal(fs.existsSync(path.join(outDir, 'assets/site.png')), true);
+});
+
+test('prepareAuthorAssets copies file URL assets in reference mode for portable previews', () => {
+  const root = path.resolve('test/workspace/asset-reference-file-url-copy-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  const imagePath = path.join(sourceRoot, 'assets', 'site.png');
+  fs.mkdirSync(path.dirname(imagePath), { recursive: true });
+  fs.writeFileSync(imagePath, 'image-bytes');
+  const imageUrl = pathToFileURL(imagePath).href;
+
+  const result = prepareAuthorAssets(modelWithAssets(imageUrl), {
+    outDir,
+    sourceRoot,
+  });
+
+  assert.equal(result.report.policy, 'reference');
+  assert.equal(result.report.copied, 1);
+  assert.deepEqual(result.report.missing, []);
+  assert.equal(result.report.entries[0].reason, 'local-copy-for-preview');
+  assert.equal(result.pathMap.get(imageUrl.replace(/\\/g, '/').toLowerCase()), 'assets/site.png');
+  assert.equal(fs.readFileSync(path.join(outDir, 'assets/site.png'), 'utf8'), 'image-bytes');
+});
+
+test('prepareAuthorAssets reports missing file URL assets in reference mode', () => {
+  const root = path.resolve('test/workspace/asset-reference-file-url-missing-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  const missingUrl = pathToFileURL(path.join(sourceRoot, 'assets', 'missing.png')).href;
+
+  const result = prepareAuthorAssets(modelWithAssets(missingUrl), {
+    outDir,
+    sourceRoot,
+  });
+
+  assert.equal(result.report.copied, 0);
+  assert.deepEqual(result.report.missing, [
+    { path: missingUrl, reason: 'local-reference-missing' },
+  ]);
 });
 
 test('prepareAuthorAssets does not copy first-page PDF previews without explicit page facts', () => {
@@ -147,6 +190,29 @@ test('prepareAuthorAssets keeps copy policy available for portable author packag
   assert.equal(result.report.copied, 1);
   assert.equal(result.pathMap.get('../assets/site.png'), 'assets/site.png');
   assert.equal(fs.existsSync(path.join(outDir, 'assets/site.png')), true);
+});
+
+test('prepareAuthorAssets copy policy copies file URL assets instead of reporting them missing', () => {
+  const root = path.resolve('test/workspace/asset-reference-copy-file-url-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  const imagePath = path.join(sourceRoot, 'assets', 'site.png');
+  fs.mkdirSync(path.dirname(imagePath), { recursive: true });
+  fs.writeFileSync(imagePath, 'image-bytes');
+  const imageUrl = pathToFileURL(imagePath).href;
+
+  const result = prepareAuthorAssets(modelWithAssets(imageUrl), {
+    outDir,
+    sourceRoot,
+    assetPolicy: 'copy',
+  });
+
+  assert.equal(result.report.policy, 'copy');
+  assert.equal(result.report.copied, 1);
+  assert.deepEqual(result.report.missing, []);
+  assert.equal(result.pathMap.get(imageUrl.replace(/\\/g, '/').toLowerCase()), 'assets/site.png');
+  assert.equal(fs.readFileSync(path.join(outDir, 'assets/site.png'), 'utf8'), 'image-bytes');
 });
 
 test('prepareAuthorAssets copies generated placed-asset previews while keeping NAS originals referenced in place', () => {

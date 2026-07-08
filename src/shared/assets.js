@@ -1,5 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const path = require('path');
+const { fileURLToPath } = require('url');
 
 const RASTER_EXTENSIONS = new Set(['.jpg', '.jpeg', '.jfif', '.png', '.tif', '.tiff', '.webp', '.bmp']);
 
@@ -168,6 +169,21 @@ function sourceFileKey(value) {
   return process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
 }
 
+function resolveLocalAssetReference(value, options = {}) {
+  const input = String(value || '').trim();
+  if (!input || isRemoteReference(input)) return null;
+  if (isFileUrlReference(input)) {
+    try {
+      return path.resolve(fileURLToPath(input));
+    } catch (_error) {
+      return null;
+    }
+  }
+  if (path.isAbsolute(input)) return path.resolve(input);
+  const root = options.sourceRoot || options.baseDir || (options.resolveRelativeToCwd ? process.cwd() : null);
+  return root ? path.resolve(root, input) : null;
+}
+
 function sanitizeRelative(value) {
   return slash(value)
     .split('/')
@@ -183,6 +199,10 @@ function isRemoteReference(value) {
     && !/^[a-z]:[\\/]/i.test(input);
 }
 
+function isFileUrlReference(value) {
+  return /^file:/i.test(String(value || ''));
+}
+
 function slash(value) {
   return String(value || '').replace(/\\/g, '/');
 }
@@ -195,6 +215,7 @@ module.exports = {
   placementFromAttributes,
   normalizePathKey,
   sourceFileKey,
+  resolveLocalAssetReference,
   sanitizeRelative,
   isRemoteReference,
 };

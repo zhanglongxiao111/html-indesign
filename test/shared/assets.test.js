@@ -1,5 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const {
   inferAssetKind,
   assetSourceFromElementLike,
@@ -9,6 +13,7 @@ const {
   sourceFileKey,
   sanitizeRelative,
   isRemoteReference,
+  resolveLocalAssetReference,
 } = require('../../src/shared/assets');
 
 test('inferAssetKind maps architecture presentation asset extensions', () => {
@@ -107,4 +112,14 @@ test('remote reference detection keeps file URLs local and HTTP style URLs remot
   assert.equal(isRemoteReference('data:image/png;base64,AAAA'), true);
   assert.equal(isRemoteReference('file:///C:/Project/render.png'), false);
   assert.equal(isRemoteReference('C:\\Project\\render.png'), false);
+});
+
+test('local asset references convert file URLs to filesystem paths', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'html-indesign-file-url-'));
+  const assetPath = path.join(root, '素材 图.png');
+  fs.writeFileSync(assetPath, 'image-bytes');
+
+  assert.equal(resolveLocalAssetReference(pathToFileURL(assetPath).href), assetPath);
+  assert.equal(resolveLocalAssetReference('素材 图.png', { sourceRoot: root }), assetPath);
+  assert.equal(resolveLocalAssetReference('https://example.test/素材 图.png', { sourceRoot: root }), null);
 });

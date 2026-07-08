@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
-const { isRemoteReference } = require('../../../shared/assets');
+const { isRemoteReference, resolveLocalAssetReference } = require('../../../shared/assets');
 
 const EMPTY_PROJECT_BOOLEAN_ATTRIBUTES = Object.freeze([
   HTML_DATA_ID_ATTRIBUTES.OBJECT,
@@ -320,7 +320,7 @@ function resourceIdentity(root, value) {
 
 function resolveResourcePath(root, value) {
   if (!value || isRemoteReference(value)) return null;
-  return path.isAbsolute(value) ? path.resolve(value) : path.resolve(root, value);
+  return resolveLocalAssetReference(value, { sourceRoot: root });
 }
 
 function slashPath(value) {

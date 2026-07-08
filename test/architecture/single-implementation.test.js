@@ -207,6 +207,7 @@ test('G6 catches renamed duplicate implementations in semantic helper families',
       function pathMapKey(value) { return String(value).replace(/\\\\/g, '/').toLowerCase(); }
       const isRemoteUrl = (value) => /^[a-z][a-z0-9+.-]*:/i.test(String(value));
     `,
+    'src/shared/nas-paths.js': 'function normalizeAssetPathKey(value) { return String(value).replace(/\\\\/g, "/").toLowerCase(); }\n',
     'src/writers/indesign/local-text.js': 'function normalizeInstructionText(value) { return String(value).replace(/\\s+/g, " ").trim(); }\n',
     'src/writers/indesign/local-table.js': 'function normalizeColumnWidths(widths, tableWidth) { return widths; }\n',
     'src/writers/indesign/local-border.js': 'const hasVisibleBorder = (edge) => Boolean(edge);\n',
@@ -215,6 +216,11 @@ test('G6 catches renamed duplicate implementations in semantic helper families',
   const violations = collectG6Violations(root);
 
   assert.deepEqual(violations, [
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/shared/nas-paths.js',
+      detail: 'defines asset path key helper normalizeAssetPathKey',
+    },
     {
       rule: 'G6.1 shared helpers have a single implementation',
       file: 'src/writers/html/local-assets.js',
@@ -290,6 +296,10 @@ test('border uniformity collector scans the full G6 src and scripts scope', () =
       name: 'sameCompiledBorder',
     },
     {
+      file: 'src/shared/ignored.js',
+      name: 'sameBorder',
+    },
+    {
       file: 'src/style-synthesis/box-model.js',
       name: 'bordersAreUniform',
     },
@@ -311,15 +321,17 @@ function collectG6Violations(repoRoot) {
     if (!isG6Scope(relativeFile) || isSkipped(relativeFile) || !isCodeFile(file)) continue;
     const text = stripCommentsPreservingDefinitions(fs.readFileSync(file, 'utf8'), relativeFile);
     const seen = new Set();
-    for (const match of text.matchAll(DEFINITION_PATTERN)) {
-      const name = match[1] || match[2];
-      if (seen.has(name)) continue;
-      seen.add(name);
-      violations.push({
-        rule: 'G6.1 shared helpers have a single implementation',
-        file: relativeFile,
-        detail: `defines ${name}`,
-      });
+    if (!relativeFile.startsWith('src/shared/')) {
+      for (const match of text.matchAll(DEFINITION_PATTERN)) {
+        const name = match[1] || match[2];
+        if (seen.has(name)) continue;
+        seen.add(name);
+        violations.push({
+          rule: 'G6.1 shared helpers have a single implementation',
+          file: relativeFile,
+          detail: `defines ${name}`,
+        });
+      }
     }
     for (const definition of collectSemanticHelperDefinitions(text, relativeFile)) {
       violations.push({
@@ -372,7 +384,6 @@ function collectBorderUniformityDefinitions(repoRoot) {
 }
 
 function isG6Scope(relativeFile) {
-  if (relativeFile.startsWith('src/shared/')) return false;
   return relativeFile.startsWith('src/') || relativeFile.startsWith('scripts/');
 }
 

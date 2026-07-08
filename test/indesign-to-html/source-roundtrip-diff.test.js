@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const {
   auditAuthorSourceRoundtrip,
@@ -73,6 +74,23 @@ test('auditAuthorSourceRoundtrip resolves Windows absolute resource paths as fil
   writeFixtureFile(imagePath, 'same-image-bytes');
   writeFixtureFile(path.join(reverseRoot, 'assets/site.png'), 'same-image-bytes');
   writePackage(sourceRoot, `<section class="page"><img class="photo" src="${slash(imagePath)}" alt="Site"></section>`);
+  writePackage(reverseRoot, '<section class="page"><img class="photo" src="assets/site.png" alt="Site"></section>');
+
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
+
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.warnings, []);
+});
+
+test('auditAuthorSourceRoundtrip resolves file URL resource paths as files', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-file-url-resource');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  const imagePath = path.join(root, 'shared/site.png');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(imagePath, 'same-image-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'assets/site.png'), 'same-image-bytes');
+  writePackage(sourceRoot, `<section class="page"><img class="photo" src="${pathToFileURL(imagePath).href}" alt="Site"></section>`);
   writePackage(reverseRoot, '<section class="page"><img class="photo" src="assets/site.png" alt="Site"></section>');
 
   const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });

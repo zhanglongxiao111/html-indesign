@@ -4,6 +4,7 @@ const path = require('path');
 const {
   normalizePathKey,
   sourceFileKey,
+  resolveLocalAssetReference,
   sanitizeRelative,
   isRemoteReference,
 } = require('../../shared/assets');
@@ -104,8 +105,8 @@ function resolveAssetRecord(record, sourceRoot) {
   const candidates = [];
   for (const value of [record.value, record.fallback, ...(record.aliases || [])]) {
     if (!value || isRemoteReference(value)) continue;
-    if (path.isAbsolute(value)) candidates.push(path.resolve(value));
-    if (sourceRoot) candidates.push(path.resolve(sourceRoot, value));
+    const resolved = resolveLocalAssetReference(value, { sourceRoot });
+    if (resolved) candidates.push(resolved);
   }
   for (const candidate of unique(candidates)) {
     if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
@@ -132,7 +133,7 @@ function assetPackagePath(value, resolvedPath, { assetRoot, used }) {
 
 function assetSubPath(value, resolvedPath, assetRoot) {
   const normalized = slash(value || '');
-  if (normalized && !path.isAbsolute(value) && !isRemoteReference(value)) {
+  if (normalized && !/^file:/i.test(normalized) && !path.isAbsolute(value) && !isRemoteReference(value)) {
     const parts = normalized.split('/').filter((part) => part && part !== '.');
     while (parts[0] === '..') parts.shift();
     if (parts[0] === assetRoot) parts.shift();

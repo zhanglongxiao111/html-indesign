@@ -8,6 +8,7 @@ const { toBrowserAssetPath } = require('../../shared/nas-paths');
 const {
   normalizePathKey,
   sourceFileKey,
+  resolveLocalAssetReference,
   sanitizeRelative,
   isRemoteReference,
 } = require('../../shared/assets');
@@ -65,6 +66,7 @@ function referenceAuthorAssets(model, options = {}) {
         copiedBySource,
         used,
         pathMap,
+        missing,
       });
       if (copiedPath) {
         htmlPath = copiedPath;
@@ -106,7 +108,10 @@ function shouldCopyLocalReference(original, htmlPath, options = {}) {
 
 function copyLocalReference(record, context) {
   const resolved = resolveLocalReference(record, context.sourceRoot);
-  if (!resolved) return '';
+  if (!resolved) {
+    context.missing.push({ path: record.value, reason: 'local-reference-missing' });
+    return '';
+  }
   const sourceKey = sourceFileKey(resolved);
   let relativePath = context.copiedBySource.get(sourceKey);
   if (!relativePath) {
@@ -159,8 +164,8 @@ function copyGeneratedPreview(record, context) {
 function resolveGeneratedPreview(record) {
   for (const value of [record.value, record.fallback, ...(record.aliases || [])]) {
     if (!shouldConsiderGeneratedPreviewPath(value)) continue;
-    const candidate = path.isAbsolute(value) ? path.resolve(value) : path.resolve(value);
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+    const candidate = resolveLocalAssetReference(value, { resolveRelativeToCwd: true });
+    if (candidate && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
   }
   return '';
 }
@@ -193,8 +198,8 @@ function resolveLocalReference(record, sourceRoot) {
   const candidates = [];
   for (const value of [record.value, record.fallback, ...(record.aliases || [])]) {
     if (!value || isRemoteReference(value) || isNasReference(value)) continue;
-    if (path.isAbsolute(value)) candidates.push(path.resolve(value));
-    if (sourceRoot) candidates.push(path.resolve(sourceRoot, value));
+    const resolved = resolveLocalAssetReference(value, { sourceRoot });
+    if (resolved) candidates.push(resolved);
   }
   for (const candidate of unique(candidates)) {
     if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
@@ -221,7 +226,7 @@ function assetPackagePath(value, resolvedPath, { assetRoot, used }) {
 
 function assetSubPath(value, resolvedPath, assetRoot) {
   const normalized = slash(value || '');
-  if (normalized && !path.isAbsolute(value) && !isRemoteReference(value)) {
+  if (normalized && !/^file:/i.test(normalized) && !path.isAbsolute(value) && !isRemoteReference(value)) {
     const parts = normalized.split('/').filter((part) => part && part !== '.');
     while (parts[0] === '..') parts.shift();
     if (parts[0] === assetRoot) parts.shift();
