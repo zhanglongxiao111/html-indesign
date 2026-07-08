@@ -6,7 +6,8 @@ Completed. W4 Task 12d documentation closeout is done: blueprint observation rec
 
 ## Commit ids
 
-- Final closeout commit id: recorded in the final response after commit creation. A commit cannot embed its own final hash without changing that hash.
+- Closeout commit: `b94e327b719c486c316759e45a611472aabecfb8`
+- Follow-up report-only fix commit: records the actual closeout commit id and explains this metadata correction; no spec, plan, long-term library spec, or code files are changed.
 
 ## Files changed
 
