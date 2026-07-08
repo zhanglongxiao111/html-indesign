@@ -32,7 +32,7 @@ function validateSemanticPreset(preset, options = {}) {
   if (preset.tokens !== undefined && !isObject(preset.tokens)) {
     push(errors, 'SEMANTIC_PRESET_TOKENS_INVALID', 'tokens must be an object');
   } else {
-    ['semantic', 'assets', 'fits', 'crops'].forEach((name) => validateStringArray(errors, preset, name));
+    ['semantic', 'semanticContainers', 'assets', 'fits', 'crops'].forEach((name) => validateStringArray(errors, preset, name));
   }
 
   return { valid: errors.length === 0, errors, warnings };

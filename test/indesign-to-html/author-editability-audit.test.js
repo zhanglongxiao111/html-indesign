@@ -56,6 +56,46 @@ test('auditAuthorEditability can gate algorithm upgrades with explicit editabili
   ]);
 });
 
+test('auditAuthorEditability reads semantic container classes from a project preset', () => {
+  const root = fixtureRoot('author-editability-project-preset-containers');
+  writeAuthorPackage(root, {
+    config: {
+      semanticPreset: 'semantic-preset.json',
+    },
+    semanticContainers: ['editable-cluster'],
+    html: [
+      '<section id="p1" class="page" data-page="p1">',
+      '  <section id="custom" class="editable-cluster">',
+      '    <p id="custom-copy-a">项目语义容器内容 A</p>',
+      '    <p id="custom-copy-b">项目语义容器内容 B</p>',
+      '  </section>',
+      '  <section id="legacy" class="text-block">默认容器不应从本地 allowlist 兜底</section>',
+      '</section>',
+    ].join('\n'),
+  });
+
+  const report = auditAuthorEditability(root);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.summary.objectIdElements, 4);
+  assert.equal(report.summary.semanticContainerElements, 1);
+  assert.equal(report.summary.looseTopLevelObjects, 1);
+  assert.deepEqual(report.summary.semanticContainerCoverage, {
+    covered: 3,
+    total: 4,
+    ratio: 0.75,
+  });
+});
+
+test('author editability audit does not declare a local semantic container allowlist', () => {
+  const source = fs.readFileSync(
+    path.resolve('src/writers/html/audit/author-editability.js'),
+    'utf8'
+  );
+
+  assert.equal(source.includes('SEMANTIC_CONTAINER_CLASSES'), false);
+});
+
 test('audit-author-editability CLI writes a report and returns a compact summary', () => {
   const root = fixtureRoot('author-editability-cli');
   writeAuthorPackage(root);
@@ -114,13 +154,25 @@ function fixtureRoot(name) {
   return root;
 }
 
-function writeAuthorPackage(root) {
-  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+function writeAuthorPackage(root, options = {}) {
+  const config = {
     pages: [{ id: 'p1', file: 'pages/00-p1.html' }],
     styles: ['styles/layout.css'],
-  }, null, 2), 'utf8');
+    ...(options.config || {}),
+  };
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
+  if (options.semanticContainers) {
+    fs.writeFileSync(path.join(root, 'semantic-preset.json'), JSON.stringify({
+      schemaVersion: 1,
+      id: 'project-editability',
+      styleNameMap: {},
+      tokens: {
+        semanticContainers: options.semanticContainers,
+      },
+    }, null, 2), 'utf8');
+  }
   fs.writeFileSync(path.join(root, 'styles/layout.css'), '.page{display:grid}', 'utf8');
-  fs.writeFileSync(path.join(root, 'pages/00-p1.html'), [
+  fs.writeFileSync(path.join(root, 'pages/00-p1.html'), options.html || [
     '<section id="p1" class="page" data-page="p1">',
     '  <figure id="hero" style="left:10px" data-id-content-x="0px" data-id-content-y="0px" data-id-content-width="100px" data-id-content-height="80px">',
     '    <img src="hero.png">',

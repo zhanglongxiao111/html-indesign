@@ -14,6 +14,7 @@ function collectKnownSemanticTokens(preset) {
     cellStyles: new Set(),
     layers: new Set(),
     semantic: new Set(),
+    semanticContainers: new Set(),
     assets: new Set(),
     fits: new Set(),
     crops: new Set(),
@@ -28,7 +29,7 @@ function collectKnownSemanticTokens(preset) {
   });
 
   const declared = (preset && preset.tokens) || {};
-  ['semantic', 'assets', 'fits', 'crops'].forEach((kind) => {
+  ['semantic', 'semanticContainers', 'assets', 'fits', 'crops'].forEach((kind) => {
     const values = Array.isArray(declared[kind]) ? declared[kind] : [];
     values.forEach((token) => addToken(tokens[kind], token));
   });

@@ -3,17 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
+const { collectKnownSemanticTokens, resolveSemanticPreset } = require('../../../semantic-preset');
 
 const TEXT_SELECTOR = 'p,h1,h2,h3,h4,h5,h6,figcaption,li,td,th';
-const SEMANTIC_CONTAINER_CLASSES = new Set([
-  'figure-grid',
-  'image-grid',
-  'material-grid',
-  'text-block',
-  'diagram',
-  'callout',
-  'content-grid',
-]);
 const LOW_LEVEL_GEOMETRY_ATTRIBUTES = new Set([
   HTML_DATA_ID_ATTRIBUTES.CONTENT_X,
   HTML_DATA_ID_ATTRIBUTES.CONTENT_Y,
@@ -36,10 +28,11 @@ function auditAuthorEditability(root, options = {}) {
   }
 
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const semanticContainerClasses = resolveSemanticContainerClasses(packageRoot, config, options);
   const pageFiles = validatePageList(config, configPath);
   const totals = emptyTotals();
   for (const page of pageFiles) {
-    const pageMetrics = scanPage(packageRoot, page);
+    const pageMetrics = scanPage(packageRoot, page, semanticContainerClasses);
     pages.push(pageMetrics);
     addTotals(totals, pageMetrics);
     if (pageMetrics.missing) {
@@ -65,7 +58,24 @@ function validatePageList(config, configPath) {
   });
 }
 
-function scanPage(packageRoot, page) {
+function resolveSemanticContainerClasses(packageRoot, config, options = {}) {
+  if (options.preset) {
+    return collectKnownSemanticTokens(options.preset).semanticContainers;
+  }
+  if (Object.prototype.hasOwnProperty.call(config || {}, 'semanticPreset')) {
+    const relativePath = config.semanticPreset;
+    if (typeof relativePath !== 'string' || !relativePath.trim()) {
+      throw new Error('Author package semanticPreset must be a non-empty string when declared.');
+    }
+  }
+  const resolved = resolveSemanticPreset({
+    rootDir: packageRoot,
+    config,
+  });
+  return collectKnownSemanticTokens(resolved.preset).semanticContainers;
+}
+
+function scanPage(packageRoot, page, semanticContainerClasses) {
   const file = page && page.file ? String(page.file) : '';
   const fullPath = path.join(packageRoot, file);
   if (!file || !fs.existsSync(fullPath)) {
@@ -75,11 +85,11 @@ function scanPage(packageRoot, page) {
   const $ = cheerio.load(html, { decodeEntities: false });
   const pageRoots = $('.page').toArray();
   const objectIdElements = $('[id]').toArray().filter((element) => !isPageRoot($, element));
-  const semanticContainerElements = objectIdElements.filter((element) => isSemanticContainer($, element));
-  const coveredObjectIdElements = objectIdElements.filter((element) => isCoveredBySemanticContainer($, element));
+  const semanticContainerElements = objectIdElements.filter((element) => isSemanticContainer($, element, semanticContainerClasses));
+  const coveredObjectIdElements = objectIdElements.filter((element) => isCoveredBySemanticContainer($, element, semanticContainerClasses));
   const looseTopLevelObjects = pageRoots.reduce((count, pageRoot) => {
     return count + $(pageRoot).children('[id]').toArray()
-      .filter((element) => !isSemanticContainer($, element))
+      .filter((element) => !isSemanticContainer($, element, semanticContainerClasses))
       .filter((element) => !isPageRoot($, element))
       .length;
   }, 0);
@@ -106,16 +116,18 @@ function isPageRoot($, element) {
   return $(element).hasClass('page');
 }
 
-function isSemanticContainer($, element) {
+function isSemanticContainer($, element, semanticContainerClasses) {
   const tag = tagName(element);
   if (tag === 'figure' || tag === 'table' || tag === 'ul' || tag === 'ol') return true;
   const classes = classList($(element).attr('class'));
-  return classes.some((className) => SEMANTIC_CONTAINER_CLASSES.has(className));
+  return classes.some((className) => semanticContainerClasses.has(className));
 }
 
-function isCoveredBySemanticContainer($, element) {
-  if (isSemanticContainer($, element)) return true;
-  return $(element).parents().toArray().some((parent) => !isPageRoot($, parent) && isSemanticContainer($, parent));
+function isCoveredBySemanticContainer($, element, semanticContainerClasses) {
+  if (isSemanticContainer($, element, semanticContainerClasses)) return true;
+  return $(element).parents().toArray().some((parent) => {
+    return !isPageRoot($, parent) && isSemanticContainer($, parent, semanticContainerClasses);
+  });
 }
 
 function countLowLevelGeometryAttrs($) {

@@ -43,6 +43,24 @@ test('collects known semantic tokens from style maps and token lists', () => {
   assert.equal(known.assets.has('pdf'), true);
   assert.equal(known.fits.has('cover'), true);
   assert.equal(known.crops.has('media'), true);
+  assert.equal(known.semanticContainers.has('text-block'), true);
+  assert.equal(known.semanticContainers.has('figure-grid'), true);
+});
+
+test('validates semantic container token lists', () => {
+  const validation = validateSemanticPreset({
+    schemaVersion: 1,
+    id: 'bad-containers',
+    styleNameMap: {},
+    tokens: {
+      semanticContainers: ['content-grid', ''],
+    },
+  });
+
+  assert.equal(validation.valid, false);
+  assert.deepEqual(validation.errors.map((error) => error.code), [
+    'SEMANTIC_PRESET_TOKEN_INVALID',
+  ]);
 });
 
 test('validates required semantic preset fields', () => {

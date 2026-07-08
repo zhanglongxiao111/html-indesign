@@ -144,6 +144,15 @@
       "materials",
       "schedule"
     ],
+    "semanticContainers": [
+      "figure-grid",
+      "image-grid",
+      "material-grid",
+      "text-block",
+      "diagram",
+      "callout",
+      "content-grid"
+    ],
     "assets": [
       "raster",
       "image",
