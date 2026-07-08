@@ -276,7 +276,7 @@ npm test
 
 ### 11. W3 链路归位
 
-进度：11a 实施中（已派实施子 agent `Euler`，目标是先清理 `src/indesign-cli-plugin/tools/reverse-export.js` require `scripts/indesign-reverse-export.js` 和 `src/indesign-cli-plugin/tools/authoring-lint.js` require `src/authoring/lint.js` 两条 G1；11d 的三条 adapter/writer 双向直连暂不触碰；2026-07-08）。
+进度：11a 审核中（实施子 agent `Euler` 已提交 `fbf5f50`；`compileReverseSnapshotToHtml` 迁入 `src/reverse-pipeline/` 独立编排入口，避免放入 writer 层后新增 writer→adapter 方向违规；`scripts/indesign-reverse-export.js` 保留薄 CLI wrapper，插件 `reverse-export` 改调 src pipeline，插件 `authoring-lint` 改走 `src/authoring` 公共入口；G1 baseline 已从 5 条降到 3 条，只保留 11d 的三条 adapter/writer 双向直连；控制器验证 `node --test test/indesign-reverse/cli.test.js test/paged-html/authoring-lint-cli.test.js test/architecture/dependency-direction.test.js` 26/26、旧 plugin require 扫描无输出、active `compileReverseSnapshotToHtml` 定义仅 `src/reverse-pipeline/index.js` 一处、`npm test` 914/914、`git diff --check HEAD~1..HEAD` 通过；等待审核 agent `Anscombe` 审核；2026-07-08）。
 
 - [ ] **11a 反向流水线上移**：`compileReverseSnapshotToHtml` 编排逻辑迁入 `src/writers/html/reverse-pipeline.js`（或选定编排模块）；`scripts/indesign-reverse-export.js` 与 `src/indesign-cli-plugin/tools/reverse-export.js` 改调 src 入口；`tools/authoring-lint.js` 改走 `src/authoring` 公共入口（authoring/index.js 需要则扩导出面）。
 - [ ] **11b conversion-gate 入 src**：门禁算法迁 `src/writers/html/audit/conversion-gate.js`，脚本保留薄 CLI；现有测试同步指向 src 模块。
