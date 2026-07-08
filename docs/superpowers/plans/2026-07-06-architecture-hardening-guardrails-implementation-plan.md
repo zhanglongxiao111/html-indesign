@@ -276,7 +276,7 @@ npm test
 
 ### 11. W3 链路归位
 
-进度：11f 进行中（11a：实施子 agent `Euler` 提交 `fbf5f50`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；`compileReverseSnapshotToHtml` 已迁入 `src/reverse-pipeline/` 独立编排入口，脚本保留薄 CLI wrapper，插件 `reverse-export` 改调 src pipeline，插件 `authoring-lint` 改走 `src/authoring` 公共入口；11b 已完成：实施子 agent `Euler` 提交 `365f799`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；conversion gate 算法、阈值、summary、报告校验已迁入 `src/writers/html/audit/conversion-gate.js`，脚本保留薄 CLI；11c 已完成：实施子 agent `Euler` 提交 `7d58695`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；浏览器几何捕获已迁入 `src/adapters/html/reader/visual-geometry-capture.js`，脚本保留 CLI/audit orchestrator；11d 已完成：实施子 agent `Euler` 提交 `973ba0a`，控制器文档修复提交 `a8fc4b9`，审核 agent `Anscombe` 最终判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；剩余三条 G1 adapter/writer 双向直连已拆除，`src/indesign-pipeline/` 承接 snapshot 到 instructions 编排，`src/style-synthesis/` 承接上游样式合成，asset placement 解析移入 `src/shared/assets.js` 单实现，`test/architecture/baselines/G1.json` 已收至空基线；11e 已完成：实施子 agent `Euler` 提交 `b054c31`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；InDesign E2E build/export 断言已迁入 `src/writers/indesign/audit/e2e-result-audit.js`，reverse HTML/author/second-pass 审计已迁入 `src/writers/html/audit/reverse-roundtrip.js`，`scripts/indesign-e2e.js` 仅保留 E2E 编排、CLI/host action、命令执行、run context 与 JSX wrapper；控制器验证 11e focused 48/48、author/instructions 40/40、`npm test` 919/919、script export probe `bad=[]`、`git diff --check` 通过；11f 开始进行 W3 收口验证和真实 InDesign E2E；2026-07-08）。
+进度：W3 已完成待收口复核（11a：实施子 agent `Euler` 提交 `fbf5f50`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；`compileReverseSnapshotToHtml` 已迁入 `src/reverse-pipeline/` 独立编排入口，脚本保留薄 CLI wrapper，插件 `reverse-export` 改调 src pipeline，插件 `authoring-lint` 改走 `src/authoring` 公共入口；11b 已完成：实施子 agent `Euler` 提交 `365f799`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；conversion gate 算法、阈值、summary、报告校验已迁入 `src/writers/html/audit/conversion-gate.js`，脚本保留薄 CLI；11c 已完成：实施子 agent `Euler` 提交 `7d58695`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；浏览器几何捕获已迁入 `src/adapters/html/reader/visual-geometry-capture.js`，脚本保留 CLI/audit orchestrator；11d 已完成：实施子 agent `Euler` 提交 `973ba0a`，控制器文档修复提交 `a8fc4b9`，审核 agent `Anscombe` 最终判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；剩余三条 G1 adapter/writer 双向直连已拆除，`src/indesign-pipeline/` 承接 snapshot 到 instructions 编排，`src/style-synthesis/` 承接上游样式合成，asset placement 解析移入 `src/shared/assets.js` 单实现，`test/architecture/baselines/G1.json` 已收至空基线；11e 已完成：实施子 agent `Euler` 提交 `b054c31`，审核 agent `Anscombe` 判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；InDesign E2E build/export 断言已迁入 `src/writers/indesign/audit/e2e-result-audit.js`，reverse HTML/author/second-pass 审计已迁入 `src/writers/html/audit/reverse-roundtrip.js`，`scripts/indesign-e2e.js` 仅保留 E2E 编排、CLI/host action、命令执行、run context 与 JSX wrapper；11f 已完成：控制器验证 G1/G7/G8 17/17、`npm test` 919/919、`git diff --check HEAD~1..HEAD` 通过，真实 InDesign E2E `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 通过，runDir `test/workspace/indesign-e2e-20260708-110812`，build/export `oversetTextFrames: 0`，canonical content inventory 与 canonical structure signature 均 ok，canonical source drift 仅记录格式漂移 `filesChanged=9` / `normalizedFilesChanged=9`；2026-07-08）。
 
 - [x] **11a 反向流水线上移**：`compileReverseSnapshotToHtml` 编排逻辑迁入 `src/writers/html/reverse-pipeline.js`（或选定编排模块）；`scripts/indesign-reverse-export.js` 与 `src/indesign-cli-plugin/tools/reverse-export.js` 改调 src 入口；`tools/authoring-lint.js` 改走 `src/authoring` 公共入口（authoring/index.js 需要则扩导出面）。
 - [x] **11b conversion-gate 入 src**：门禁算法迁 `src/writers/html/audit/conversion-gate.js`，脚本保留薄 CLI；现有测试同步指向 src 模块。
@@ -284,7 +284,7 @@ npm test
 - [x] **11d 拆双向直连**：`adapters/html/normalizer` 调用的样式编译逻辑迁入 `src/style-synthesis/`；`instructions-compiler.js` 的组合入口上移到 `src/indesign-pipeline/`，writer 不再 require adapter；`graphic-instructions.js` 与 HTML asset detector 共用 `src/shared/assets.js` 的 placement 解析。
 - [x] **11e e2e 审计函数迁移**：`indesign-e2e.js` 中无 src 对应的审计函数迁入对应 audit 模块，脚本只留编排。
 - [x] 收 `baselines/G1.json` 至归零。搬迁提交不含行为变更。
-- [ ] **11f 真实 E2E 回归**：同任务 9g 命令，无退化。
+- [x] **11f 真实 E2E 回归**：同任务 9g 命令，无退化。
 
 验收命令：
 
@@ -346,5 +346,5 @@ rg "legacy|pagedHtml|paged-html" src scripts _indesign_scripts test --iglob "!do
 - [ ] W0 完成：门禁空输入必 fail 有回归用例；legacy 分支与孤儿模块清除；AGENTS.md 同步。
 - [x] W1 完成：registry 裁定落地、两侧 adapter 同构、出口强制校验、三选一读取消灭、E2E 回归通过。
 - [x] W2 完成：常量导出、三处漂移单一实现、共享工具收敛、47 文件迁移完毕。
-- [ ] W3 完成：src 不 require scripts、双向直连拆除、门禁算法在 src、E2E 回归通过。
+- [x] W3 完成：src 不 require scripts、双向直连拆除、门禁算法在 src、E2E 回归通过。
 - [ ] 全部豁免基线归零；`npm test` 全绿；spec 状态更新为已实施。
