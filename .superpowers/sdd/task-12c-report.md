@@ -9,12 +9,14 @@ Implemented W4 Task 12c only. Semantic container class tokens are now declared i
 ## Commit id(s)
 
 - Implementation commit: `28b6718d365a099453315ebb4967751fc571382a`
-- Report commit: created after this report file was written; see final response / git log.
+- Report commit: `53451a0aa105216e4c7433205aae71850469b98b`
+- Hegel review fix commit: `dc4ebdc71d888a5dac001d9a4635d223c9f175d1`
 
 ## Files changed
 
 - `src/semantic-preset/schema.js`
 - `src/semantic-preset/maps.js`
+- `src/semantic-preset/kinds.js`
 - `src/writers/html/audit/author-editability.js`
 - `presets/architecture-report/semantic-preset.json`
 - `test/fixtures/e2e/architecture-report/semantic-preset.json`
