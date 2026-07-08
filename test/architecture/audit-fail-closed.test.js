@@ -74,6 +74,30 @@ test('G4 ignores invalid-input coverage text in comments and ordinary strings', 
   }]);
 });
 
+test('G4 ignores invalid-input failure evidence hidden in comments and strings inside the test body', () => {
+  const root = makeSampleProject({
+    'scripts/audit-pseudo-evidence.js': 'process.exit(1);\n',
+    'test/audit-pseudo-evidence.test.js': [
+      'const test = require("node:test");',
+      'test("audit-pseudo-evidence invalid-input 必须 fail", () => {',
+      '  // assert.throws(() => runInvalidInput());',
+      '  const command = "spawnSync(process.execPath, [\\"scripts/audit-pseudo-evidence.js\\"])";',
+      '  const assertion = "assert.notEqual(result.status, 0)";',
+      '  const resultAssertion = "assert.equal(result.ok, false); assert.equal(result.code, \\"INVALID_INPUT\\")";',
+      '});',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G4.1 audit invalid-input coverage',
+    file: 'scripts/audit-pseudo-evidence.js',
+    detail: 'missing test named "audit-pseudo-evidence invalid-input 必须 fail" with invalid-input failure evidence',
+  }]);
+});
+
 test('G4 accepts a real Node test case named for invalid-input coverage', () => {
   const root = makeSampleProject({
     'scripts/audit-covered.js': 'process.exit(1);\n',
@@ -181,6 +205,37 @@ test('G4 ignores transient ENOENT under test/workspace during invalid-input cove
   }
 });
 
+test('G4 collectFiles tolerates ENOENT only below test/workspace', () => {
+  const root = makeSampleProject({
+    'test/workspace/placeholder.test.js': '',
+    'test/non-workspace/placeholder.test.js': '',
+  });
+
+  assert.deepEqual(collectFiles(path.join(root, 'test', 'workspace', 'missing'), { repoRoot: root }), []);
+  assert.throws(
+    () => collectFiles(path.join(root, 'test', 'non-workspace', 'missing'), { repoRoot: root }),
+    /ENOENT/
+  );
+});
+
+test('G4 failure reports baseline expansion entries', () => {
+  const message = formatG4Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G4.1 audit invalid-input coverage',
+      file: 'scripts/audit-expanded.js',
+      detail: 'missing test named "audit-expanded invalid-input 必须 fail" with invalid-input failure evidence',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Rule: G4\.1 audit invalid-input coverage/);
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=scripts\/audit-expanded\.js/);
+});
+
 test('G4 current audit fail-closed violations match the ratchet baseline', () => {
   const actualViolations = collectG4Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -244,6 +299,7 @@ function collectNodeTestInvalidInputEvidenceNames(repoRoot) {
   const names = new Set();
   if (!fs.existsSync(testDir)) return names;
   for (const file of collectFiles(testDir, {
+    repoRoot,
     shouldSkipDirectory: (directory) => repoRelative(repoRoot, directory).startsWith('test/workspace'),
   })
     .filter((file) => file.endsWith('.test.js'))
@@ -303,20 +359,29 @@ function hasInvalidInputFailureEvidence(testBody) {
 }
 
 function hasNonzeroProcessAssertion(testBody) {
-  if (!/\b(?:spawnSync|execFileSync|execSync)\s*\(/.test(testBody)) return false;
-  return /assert\.(?:notEqual|notStrictEqual)\s*\([^)]*\.status\s*,\s*0\b/.test(testBody)
-    || /assert\.(?:equal|strictEqual)\s*\([^)]*\.status\s*,\s*[1-9]\d*\b/.test(testBody)
-    || /assert\.notEqual\s*\([^)]*\.exitCode\s*,\s*0\b/.test(testBody);
+  if (!hasCodeMatch(testBody, /\b(?:spawnSync|execFileSync|execSync)\s*\(/)) return false;
+  return hasCodeMatch(testBody, /assert\.(?:notEqual|notStrictEqual)\s*\([^)]*\.status\s*,\s*0\b/)
+    || hasCodeMatch(testBody, /assert\.(?:equal|strictEqual)\s*\([^)]*\.status\s*,\s*[1-9]\d*\b/)
+    || hasCodeMatch(testBody, /assert\.notEqual\s*\([^)]*\.exitCode\s*,\s*0\b/);
 }
 
 function hasThrowAssertion(testBody) {
-  return /assert\.throws\s*\(/.test(testBody);
+  return hasCodeMatch(testBody, /assert\.throws\s*\(/);
 }
 
 function hasExplicitInvalidResultAssertion(testBody) {
-  const hasOkFalse = /assert\.(?:equal|strictEqual)\s*\([^)]*\.ok\s*,\s*false\b/.test(testBody);
-  const hasSpecificErrorCode = /assert\.(?:equal|strictEqual|match)\s*\([^)]*\.(?:code|errorCode)\s*,\s*['"][A-Z0-9_-]+['"]/.test(testBody);
+  const hasOkFalse = hasCodeMatch(testBody, /assert\.(?:equal|strictEqual)\s*\([^)]*\.ok\s*,\s*false\b/);
+  const hasSpecificErrorCode = hasCodeMatch(testBody, /assert\.(?:equal|strictEqual|match)\s*\([^)]*\.(?:code|errorCode)\s*,\s*['"][A-Z0-9_-]+['"]/);
   return hasOkFalse && hasSpecificErrorCode;
+}
+
+function hasCodeMatch(source, pattern) {
+  const codeMask = codeMaskFor(source);
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  for (const match of source.matchAll(new RegExp(pattern.source, flags))) {
+    if (codeMask[match.index]) return true;
+  }
+  return false;
 }
 
 function collectNodeTestApiNames(source) {
@@ -573,7 +638,7 @@ function collectFiles(root, options = {}) {
   try {
     entries = fs.readdirSync(root, { withFileTypes: true });
   } catch (error) {
-    if (error && error.code === 'ENOENT') return files;
+    if (error && error.code === 'ENOENT' && isTransientWorkspacePath(root, options.repoRoot)) return files;
     throw error;
   }
   for (const entry of entries) {
@@ -583,6 +648,13 @@ function collectFiles(root, options = {}) {
     if (entry.isFile()) files.push(fullPath);
   }
   return files;
+}
+
+function isTransientWorkspacePath(target, repoRoot) {
+  const normalized = repoRoot
+    ? repoRelative(repoRoot, target)
+    : target.replaceAll(path.sep, '/');
+  return normalized === 'test/workspace' || normalized.startsWith('test/workspace/');
 }
 
 function makeSampleProject(files) {
@@ -613,6 +685,7 @@ function formatG4Failure(result) {
   const failingRules = new Set([
     ...(result.newViolations || []).map((violation) => violation.rule),
     ...(result.expiredExemptions || []).map((violation) => violation.rule),
+    ...(result.baselineExpansion || []).map((violation) => violation.rule),
   ]);
 
   return [...failingRules].sort().map((rule) => {
@@ -625,6 +698,7 @@ function formatG4Failure(result) {
       specPath: SPEC_PATH,
       newViolations: (result.newViolations || []).filter((violation) => violation.rule === rule),
       expiredExemptions: (result.expiredExemptions || []).filter((violation) => violation.rule === rule),
+      baselineExpansion: (result.baselineExpansion || []).filter((violation) => violation.rule === rule),
     });
   }).join('\n\n');
 }

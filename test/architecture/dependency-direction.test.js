@@ -254,6 +254,24 @@ test('G1 failure reports describe every failing subrule family', () => {
   assert.doesNotMatch(message, /Rule: G1 dependency direction/);
 });
 
+test('G1 failure reports baseline expansion entries', () => {
+  const message = formatG1Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G1.3 src must not require scripts',
+      file: 'src/example.js',
+      detail: 'requires scripts/example.js',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Rule: G1\.3 src must not require scripts/);
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=src\/example\.js/);
+});
+
 test('G1 current dependency direction violations match the ratchet baseline', () => {
   const actualViolations = collectG1Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -492,6 +510,7 @@ function formatG1Failure(result) {
   const failingRules = new Set([
     ...(result.newViolations || []).map((violation) => violation.rule),
     ...(result.expiredExemptions || []).map((violation) => violation.rule),
+    ...(result.baselineExpansion || []).map((violation) => violation.rule),
   ]);
 
   return [...failingRules]
@@ -505,6 +524,7 @@ function formatG1Failure(result) {
         specPath: SPEC_PATH,
         newViolations: (result.newViolations || []).filter((violation) => violation.rule === rule),
         expiredExemptions: (result.expiredExemptions || []).filter((violation) => violation.rule === rule),
+        baselineExpansion: (result.baselineExpansion || []).filter((violation) => violation.rule === rule),
       });
     })
     .join('\n\n');

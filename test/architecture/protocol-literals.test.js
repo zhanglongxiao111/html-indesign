@@ -74,6 +74,23 @@ test('G2 catches bare data-id literals outside src/protocol and reports the requ
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
 });
 
+test('G2 failure reports baseline expansion entries', () => {
+  const message = formatG2Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G2.1 protocol literals use registry constants',
+      file: 'src/adapters/html/example.js',
+      detail: 'field data-id-expanded',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=src\/adapters\/html\/example\.js/);
+});
+
 test('G2 current protocol literal violations match the ratchet baseline', () => {
   const actualViolations = collectG2Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -289,6 +306,7 @@ function formatG2Failure(result) {
     specPath: SPEC_PATH,
     newViolations: result.newViolations || [],
     expiredExemptions: result.expiredExemptions || [],
+    baselineExpansion: result.baselineExpansion || [],
   });
 }
 

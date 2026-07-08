@@ -113,6 +113,23 @@ test('G8 does not treat test-only requires as src module ownership', () => {
   }]);
 });
 
+test('G8 failure reports baseline expansion entries', () => {
+  const message = formatG8Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G8.1 src module has an owner',
+      file: 'src/orphan.js',
+      detail: 'src module has no static incoming require edge',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=src\/orphan\.js/);
+});
+
 test('G8 current orphan module violations match the ratchet baseline', () => {
   const actualViolations = collectG8Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -297,6 +314,7 @@ function formatG8Failure(result) {
     specPath: SPEC_PATH,
     newViolations: result.newViolations || [],
     expiredExemptions: result.expiredExemptions || [],
+    baselineExpansion: result.baselineExpansion || [],
   });
 }
 

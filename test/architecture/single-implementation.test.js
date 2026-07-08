@@ -136,6 +136,23 @@ test('G6 collector scans definitions after regex literals with quotes', () => {
   ]);
 });
 
+test('G6 failure reports baseline expansion entries', () => {
+  const message = formatG6Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/new-helper.js',
+      detail: 'defines normalizeText',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=src\/writers\/html\/new-helper\.js/);
+});
+
 test('G6 current duplicate helper definitions match the ratchet baseline', () => {
   const actualViolations = collectG6Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -427,6 +444,7 @@ function formatG6Failure(result) {
     specPath: SPEC_PATH,
     newViolations: result.newViolations || [],
     expiredExemptions: result.expiredExemptions || [],
+    baselineExpansion: result.baselineExpansion || [],
   });
 }
 

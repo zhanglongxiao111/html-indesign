@@ -65,6 +65,23 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
 });
 
+test('G5 failure reports baseline expansion entries', () => {
+  const message = formatG5Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G5.1 retired naming is blocked',
+      file: 'src/example/old.js',
+      detail: 'line 1 contains legacy',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=src\/example\/old\.js/);
+});
+
 test('G5 current retired naming violations match the ratchet baseline', () => {
   const actualViolations = collectG5Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -230,6 +247,7 @@ function formatG5Failure(result) {
     specPath: SPEC_PATH,
     newViolations: result.newViolations || [],
     expiredExemptions: result.expiredExemptions || [],
+    baselineExpansion: result.baselineExpansion || [],
   });
 }
 

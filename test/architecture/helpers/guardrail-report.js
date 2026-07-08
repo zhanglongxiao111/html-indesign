@@ -9,6 +9,7 @@ function formatGuardrailFailure(report) {
   const specPath = requiredField(report, 'specPath');
   const newViolations = optionalList(report.newViolations, 'newViolations');
   const expiredExemptions = optionalList(report.expiredExemptions, 'expiredExemptions');
+  const baselineExpansion = optionalList(report.baselineExpansion, 'baselineExpansion');
 
   return [
     `Rule: ${rule}`,
@@ -21,6 +22,9 @@ function formatGuardrailFailure(report) {
     '',
     'Expired exemptions:',
     formatList(expiredExemptions),
+    '',
+    'Baseline expansion:',
+    formatList(baselineExpansion),
   ].join('\n');
 }
 

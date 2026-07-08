@@ -64,6 +64,24 @@ test('G7 catches undocumented src directories and audit scripts', () => {
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
 });
 
+test('G7 failure reports baseline expansion entries', () => {
+  const message = formatG7Failure({
+    newViolations: [],
+    expiredExemptions: [],
+    baselineExpansion: [{
+      rule: 'G7.2 audit benchmark script documented',
+      file: 'package.json',
+      detail: 'audit:expanded is missing from AGENTS.md section 9',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Rule: G7\.2 audit benchmark script documented/);
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /detail=audit:expanded is missing from AGENTS\.md section 9/);
+});
+
 test('G7 current docs-code sync violations match the ratchet baseline', () => {
   const actualViolations = collectG7Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
@@ -156,6 +174,7 @@ function formatG7Failure(result) {
   const failingRules = new Set([
     ...(result.newViolations || []).map((violation) => violation.rule),
     ...(result.expiredExemptions || []).map((violation) => violation.rule),
+    ...(result.baselineExpansion || []).map((violation) => violation.rule),
   ]);
 
   return [...failingRules].sort().map((rule) => {
@@ -168,6 +187,7 @@ function formatG7Failure(result) {
       specPath: SPEC_PATH,
       newViolations: (result.newViolations || []).filter((violation) => violation.rule === rule),
       expiredExemptions: (result.expiredExemptions || []).filter((violation) => violation.rule === rule),
+      baselineExpansion: (result.baselineExpansion || []).filter((violation) => violation.rule === rule),
     });
   }).join('\n\n');
 }

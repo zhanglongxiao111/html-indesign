@@ -21,6 +21,26 @@ test('formatGuardrailFailure formats the required four failure fields', () => {
   assert.match(message, /Expired exemptions/);
 });
 
+test('formatGuardrailFailure renders baseline expansion entries explicitly', () => {
+  const message = formatGuardrailFailure({
+    rule: 'G6.1 shared helpers have a single implementation',
+    reason: 'Shared helper semantics must live in src shared.',
+    remediation: 'Move the implementation to src shared.',
+    specPath: 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G6',
+    baselineExpansion: [{
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/new-helper.js',
+      detail: 'defines normalizeText',
+      reason: 'unreviewed exemption',
+      cleanupRef: 'Task 5',
+    }],
+  });
+
+  assert.match(message, /Baseline expansion:/);
+  assert.match(message, /file=src\/writers\/html\/new-helper\.js/);
+  assert.match(message, /cleanupRef=Task 5/);
+});
+
 test('formatGuardrailFailure rejects missing required failure fields', () => {
   assert.throws(
     () => formatGuardrailFailure({
