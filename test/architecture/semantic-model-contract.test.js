@@ -1027,6 +1027,7 @@ function sampleHtmlSnapshot() {
           paddingLeft: '1px',
           overflow: 'hidden',
           opacity: '0.75',
+          mixBlendMode: 'multiply',
         },
         visualStyle: {
           fillColor: '#eeeeee',
@@ -1318,6 +1319,7 @@ function sampleReverseSnapshot() {
           strokeMiterLimit: 4,
           cornerRadius: 2,
           opacity: 75,
+          blendMode: 'multiply',
         },
         textStyle: {
           composer: 'Adobe Paragraph Composer',

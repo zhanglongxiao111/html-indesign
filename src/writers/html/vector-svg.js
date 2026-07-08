@@ -65,8 +65,6 @@ function vectorPathElement(item, path, depth) {
   if (fillOpacity != null && attrs.fill === 'none' && visualStyle.fillColor) attrs[HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY] = fillOpacity;
   const strokeOpacity = opacityValue(visualStyle.strokeOpacity);
   if (strokeOpacity != null && attrs.stroke !== 'none') attrs['stroke-opacity'] = strokeOpacity;
-  const opacity = opacityValue(visualStyle.opacity);
-  if (opacity != null) attrs.opacity = opacity;
   const lineCap = strokeLineCap(visualStyle.strokeLineCap);
   if (lineCap) attrs['stroke-linecap'] = lineCap;
   const lineJoin = strokeLineJoin(visualStyle.strokeLineJoin);
@@ -196,7 +194,7 @@ function vectorPointForAttr(point = {}, bounds = {}, absolute, viewport = {}) {
 function numberForAttr(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
-  return Math.round(number * 1000000) / 1000000;
+  return Math.round(number * 1000) / 1000;
 }
 
 function pathUsesAbsoluteCoordinates(points, bounds = {}) {
@@ -277,7 +275,7 @@ function paintedStrokeExtent(item) {
 
 function orderVectorPathAttrs(attrs) {
   const out = {};
-  for (const key of ['d', HTML_DATA_ID_ATTRIBUTES.POINT_TYPES, HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS, 'fill', HTML_DATA_ID_ATTRIBUTES.FILL_COLOR, 'fill-opacity', HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY, 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE, 'stroke-dasharray', HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME, HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME, 'marker-start', 'marker-end', 'opacity']) {
+  for (const key of ['d', HTML_DATA_ID_ATTRIBUTES.POINT_TYPES, HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS, 'fill', HTML_DATA_ID_ATTRIBUTES.FILL_COLOR, 'fill-opacity', HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY, 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE, 'stroke-dasharray', HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME, HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME, 'marker-start', 'marker-end']) {
     if (Object.prototype.hasOwnProperty.call(attrs, key)) out[key] = attrs[key];
   }
   return out;

@@ -56,7 +56,13 @@ function vectorAttrsForItem(item, sourceNode, options) {
   if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   addObservedLabelAttrs(attrs, item);
   const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
-  const style = mergeCss([sourceStyle, 'overflow:visible', blendModeCss(item.visualStyle && item.visualStyle.blendMode), zIndexStyle(item.zIndex)]);
+  const style = mergeCss([
+    sourceStyle,
+    'overflow:visible',
+    blendModeCss(item.visualStyle && item.visualStyle.blendMode),
+    vectorOpacityStyle(item),
+    zIndexStyle(item.zIndex),
+  ]);
   if (style) attrs.style = style;
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   return svgAttrsToHtml(orderAttrs(attrs));
@@ -70,6 +76,15 @@ function svgAttrsToHtml(attrs) {
 
 function zIndexStyle(zIndex) {
   return Number.isFinite(Number(zIndex)) ? `z-index:${formatNumber(zIndex)}` : '';
+}
+
+function vectorOpacityStyle(item) {
+  const visualStyle = item && item.visualStyle || {};
+  const refs = item && item.styleRefs || {};
+  if (refs.synthesizedToken) return '';
+  const opacity = Number(visualStyle.opacity);
+  if (!Number.isFinite(opacity) || opacity < 0 || opacity >= 100) return '';
+  return `opacity:${formatNumber(opacity / 100)}`;
 }
 
 module.exports = {

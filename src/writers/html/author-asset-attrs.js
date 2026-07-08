@@ -74,9 +74,10 @@ function assetPreviewPath(asset, item = null) {
   const preview = asset && asset.preview;
   const nodeAttrs = sourceNodeAttrsForItem(item);
   const sourcePreview = nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC] || nodeAttrs[HTML_DATA_ID_ATTRIBUTES.PREVIEW_ASSET_PATH] || '';
+  if (sourcePreview) return sourcePreview;
   if (!preview) return sourcePreview;
   if (typeof preview === 'string') return preview;
-  return preview.path || preview.htmlPath || preview.relativePath || sourcePreview;
+  return preview.path || preview.htmlPath || preview.relativePath || '';
 }
 
 function addAssetPlacementAttrs(out, nodeAttrs, asset, item) {

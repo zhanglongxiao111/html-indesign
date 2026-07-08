@@ -18,6 +18,7 @@ const {
 } = require('../reader/source-metadata');
 const { vectorFactsFromSvgItem } = require('./svg-vector-geometry');
 const { validateSemanticModel } = require('../../../semantic-model');
+const { normalizeBlendMode } = require('../../../shared/blend-mode');
 
 const ITEM_STYLE_REFS_FIELD = fieldRegistry.getByPath('items[].styleRefs');
 if (!ITEM_STYLE_REFS_FIELD || !Array.isArray(ITEM_STYLE_REFS_FIELD.allowedKeys)) {
@@ -447,6 +448,8 @@ function visualStyleFromComputedStyle(item) {
   const out = {};
   const opacity = cssOpacityPercent(style.opacity);
   if (opacity !== null && opacity < 100) out.opacity = opacity;
+  const blendMode = normalizeBlendMode(style.mixBlendMode);
+  if (blendMode) out.blendMode = blendMode;
   return Object.keys(out).length ? out : null;
 }
 

@@ -95,6 +95,7 @@
 | items[].vectorGeometry.kind | reverseModel.pages[].items[].vectorGeometry.kind | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
 | items[].vectorGeometry.paths | reverseModel.pages[].items[].vectorGeometry.paths | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
 | items[].vectorGeometry.paths[].points[].pointType | reverseModel.pages[].items[].vectorGeometry.paths[].points[].pointType | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
+| items[].visualStyle.blendMode | reverseModel.pages[].items[].visualStyle.blendMode | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.cornerRadius | reverseModel.pages[].items[].visualStyle.cornerRadius | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.fillColor | reverseModel.pages[].items[].visualStyle.fillColor | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |
 | items[].visualStyle.fillOpacity | reverseModel.pages[].items[].visualStyle.fillOpacity | visual-style | active | native/native/native | native/observe-only/lossless | unsupported/approximate/lossless | n/a |

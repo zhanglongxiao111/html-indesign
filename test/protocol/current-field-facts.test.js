@@ -259,6 +259,7 @@ test('registry does not declare reverse visualStyle fields as native InDesign wr
   for (const path of [
     'items[].visualStyle.fillColor',
     'items[].visualStyle.strokeColor',
+    'items[].visualStyle.blendMode',
     'items[].visualStyle.strokeLineCap',
   ]) {
     const field = fieldRegistry.getByPath(path);

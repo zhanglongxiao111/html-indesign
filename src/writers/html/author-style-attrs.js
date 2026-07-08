@@ -96,7 +96,7 @@ function zIndexCss(zIndex) {
 }
 
 function cssForHtml(value) {
-  return String(value || '').trim();
+  return String(value || '').trim().replace(/(-?\d+(?:\.\d+)?)px\b/g, (_, number) => `${px(number)}`);
 }
 
 function mergeCss(values) {
@@ -128,7 +128,7 @@ function px(value) {
 function formatNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '0';
-  return String(Math.round(number * 10000) / 10000);
+  return String(Math.round(number * 1000) / 1000);
 }
 
 module.exports = {

@@ -148,6 +148,40 @@ test('pageItemsToAuthorHtml writes vector point type metadata for stable roundtr
   assert.match(html, /id="observed-vector"[^>]+data-id-object-style-name="无-59786243"/);
 });
 
+test('pageItemsToAuthorHtml normalizes vector control point precision for stable roundtrip', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'curve-1',
+        role: 'shape',
+        bounds: { x: 0, y: 0, width: 60, height: 60 },
+        visualStyle: { strokeColor: '#c8102e', strokeWeight: 2 },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [
+            {
+              closed: false,
+              points: [
+                { anchor: { x: 0, y: 0 }, leftDirection: { x: 0, y: 0 }, rightDirection: { x: 0, y: 0 }, pointType: 'PLAIN' },
+                {
+                  anchor: { x: 36.687, y: 33.704 },
+                  leftDirection: { x: 52.244377, y: 40.781171 },
+                  rightDirection: { x: 21.13, y: 26.627 },
+                  pointType: 'SMOOTH',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.match(html, /leftDirection&quot;:\{&quot;x&quot;:52\.244,&quot;y&quot;:40\.781\}/);
+  assert.doesNotMatch(html, /52\.244377/);
+});
+
 test('pageItemsToAuthorHtml restores inline character runs as editable inline tags', () => {
   const page = {
     id: 'agenda-page',
@@ -789,6 +823,46 @@ test('pageItemsToAuthorHtml keeps roundtripped generated image previews as previ
   assert.doesNotMatch(html, /data-id-content-/);
 });
 
+test('pageItemsToAuthorHtml preserves source preview src over newly exported frame previews', () => {
+  const page = {
+    id: 'observed-page',
+    items: [
+      {
+        id: 'pdf-frame',
+        role: 'graphic',
+        semantic: null,
+        bounds: { x: 20, y: 30, width: 240, height: 160 },
+        sourceNode: {
+          tagName: 'figure',
+          id: 'pdf-frame',
+          classList: ['id-object'],
+          attributes: {
+            'data-id-asset-kind': 'pdf',
+            'data-id-asset-path': '\\\\daga-nas5\\share\\drawing.pdf',
+            'data-id-preview-src': 'previews/pdf-frame-pdf.png',
+          },
+        },
+        structure: { parentId: 'observed-page', order: 1 },
+        asset: {
+          path: '\\\\daga-nas5\\share\\drawing.pdf',
+          graphicType: 'PDF',
+          preview: {
+            path: 'D:\\reverse\\previews\\transient-3712-pdf.png',
+            relativePath: 'previews/transient-3712-pdf.png',
+            source: 'indesign-frame-export',
+          },
+        },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.match(html, /<figure id="pdf-frame"[^>]+data-id-preview-src="previews\/pdf-frame-pdf\.png"/);
+  assert.match(html, /<img[^>]+class="placed-asset-preview"[^>]+src="previews\/pdf-frame-pdf\.png"/);
+  assert.doesNotMatch(html, /transient-3712/);
+});
+
 test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean generated preview images', () => {
   const page = {
     id: 'observed-page',
@@ -909,7 +983,52 @@ test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable s
   assert.match(html, /stroke-width="2"/);
   assert.match(html, /stroke-opacity="0.7"/);
   assert.match(html, /stroke-dasharray=/);
+  assert.match(html, /<svg[^>]+id="vector-1"[^>]+style="[^"]*opacity:0\.9/);
+  assert.doesNotMatch(html, /<path[^>]+\sopacity=/);
   assert.doesNotMatch(html, /background-color:#8ca064/);
+});
+
+test('pageItemsToAuthorHtml does not duplicate synthesized vector opacity on path output', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page-1',
+    items: [
+      {
+        id: 'vector-synth-opacity',
+        role: 'shape',
+        semantic: null,
+        bounds: { x: 0, y: 0, width: 100, height: 40 },
+        visualStyle: {
+          fillColor: null,
+          strokeColor: '#8ca064',
+          strokeWeight: 0.5,
+          opacity: 60,
+        },
+        styleRefs: {
+          objectStyle: '装饰线',
+          synthesizedToken: 'synth_object_028',
+        },
+        vectorGeometry: {
+          kind: 'rectangle',
+          paths: [
+            {
+              closed: true,
+              points: [
+                { anchor: { x: 0, y: 0 }, leftDirection: { x: 0, y: 0 }, rightDirection: { x: 0, y: 0 } },
+                { anchor: { x: 0, y: 40 }, leftDirection: { x: 0, y: 40 }, rightDirection: { x: 0, y: 40 } },
+                { anchor: { x: 100, y: 40 }, leftDirection: { x: 100, y: 40 }, rightDirection: { x: 100, y: 40 } },
+                { anchor: { x: 100, y: 0 }, leftDirection: { x: 100, y: 0 }, rightDirection: { x: 100, y: 0 } },
+              ],
+            },
+          ],
+        },
+        labels: [],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  assert.match(html, /class="[^"]*synth-synth_object_028/);
+  assert.doesNotMatch(html, /<svg[^>]+style="[^"]*opacity:0\.6/);
+  assert.doesNotMatch(html, /<path[^>]+\sopacity=/);
 });
 
 test('pageItemsToAuthorHtml preserves open vector fill as protocol fact without painting browser fill', () => {

@@ -111,6 +111,11 @@ module.exports = [
       snapshotPaths: ['visualStyle.opacity'],
     },
   },
+  visualStyleField('items[].visualStyle.blendMode', 'string', {
+    html: {
+      styleProps: ['mix-blend-mode'],
+    },
+  }),
   {
     canonicalPath: 'items[].visualStyle.strokeOpacity',
     currentPaths: ['reverseModel.pages[].items[].visualStyle.strokeOpacity'],
