@@ -28,6 +28,18 @@ function compareVisualGeometry(options = {}) {
     accepted: 0,
   };
 
+  compareVisualGeometryPages({ reference, candidate, tolerance, errors, stats });
+  compareVisualGeometryElements({ reference, candidate, tolerance, errors, warnings, stats });
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings,
+    stats,
+  };
+}
+
+function compareVisualGeometryPages({ reference, candidate, tolerance, errors, stats }) {
   if (reference.pages.length !== candidate.pages.length) {
     stats.pageMismatches += 1;
     errors.push(issue(
@@ -51,7 +63,9 @@ function compareVisualGeometry(options = {}) {
       ));
     }
   }
+}
 
+function compareVisualGeometryElements({ reference, candidate, tolerance, errors, warnings, stats }) {
   const referencePagesByIndex = new Map(reference.pages.map((page) => [page.index, page]));
   const referenceElements = new Map(reference.elements.map((element) => [element.key || elementKey(element), element]));
   const candidateElements = new Map(candidate.elements.map((element) => [element.key || elementKey(element), element]));
@@ -124,13 +138,6 @@ function compareVisualGeometry(options = {}) {
       ));
     }
   }
-
-  return {
-    ok: errors.length === 0,
-    errors,
-    warnings,
-    stats,
-  };
 }
 
 function normalizeCapture(capture) {

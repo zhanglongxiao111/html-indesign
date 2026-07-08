@@ -72,6 +72,28 @@ function tableCellPadding(style, options) {
   };
 }
 
+function bordersAreUniform(borders) {
+  return sameBorder(borders.top, borders.right)
+    && sameBorder(borders.top, borders.bottom)
+    && sameBorder(borders.top, borders.left);
+}
+
+function sameBorder(a, b) {
+  if (!visibleBorder(a) && !visibleBorder(b)) return true;
+  if (!visibleBorder(a) || !visibleBorder(b)) return false;
+  return a.color === b.color
+    && a.style === b.style
+    && Math.abs(Number(a.widthPt || 0) - Number(b.widthPt || 0)) < 0.01;
+}
+
+function visibleBorder(edge) {
+  return edge
+    && edge.color
+    && edge.style !== 'none'
+    && edge.style !== 'hidden'
+    && Number(edge.widthPt || 0) > 0;
+}
+
 function lengthStyleValue(item, prop) {
   const authored = item && item.authoredStyle && item.authoredStyle[prop];
   return authored || (item && item.computedStyle && item.computedStyle[prop]);
@@ -91,5 +113,6 @@ module.exports = {
   itemLengthToPt,
   cornerRadiusValue,
   tableCellPadding,
+  bordersAreUniform,
   lengthStyleValue,
 };

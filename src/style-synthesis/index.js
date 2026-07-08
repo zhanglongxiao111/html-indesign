@@ -14,6 +14,7 @@ const {
   itemLengthToPt,
   cornerRadiusValue,
   tableCellPadding,
+  bordersAreUniform,
   lengthStyleValue,
 } = require('./box-model');
 const { compileEffects, gradientHasSingleColor } = require('./effect-style-mapping');
@@ -752,10 +753,7 @@ function uniformBorderForObject(item, options) {
   const edges = [box.borders.top, box.borders.right, box.borders.bottom, box.borders.left];
   if (!edges.every((edge) => visibleCompiledBorder(edge))) return null;
   const first = edges[0];
-  const uniform = edges.every((edge) => edge.color === first.color
-    && edge.style === first.style
-    && Math.abs(Number(edge.widthPt || 0) - Number(first.widthPt || 0)) < 0.01);
-  return uniform ? { ...first, alignment: null } : null;
+  return bordersAreUniform(box.borders) ? { ...first, alignment: null } : null;
 }
 
 function visibleCompiledBorder(edge) {
@@ -772,20 +770,6 @@ function visibleCompiledCellBorder(edge) {
     && edge.style !== 'none'
     && edge.style !== 'hidden'
     && Number(edge.borderWeight || 0) > 0;
-}
-
-function bordersAreUniform(borders) {
-  return sameCompiledBorder(borders.top, borders.right)
-    && sameCompiledBorder(borders.top, borders.bottom)
-    && sameCompiledBorder(borders.top, borders.left);
-}
-
-function sameCompiledBorder(a, b) {
-  if (!visibleCompiledBorder(a) && !visibleCompiledBorder(b)) return true;
-  if (!visibleCompiledBorder(a) || !visibleCompiledBorder(b)) return false;
-  return a.color === b.color
-    && a.style === b.style
-    && Math.abs(Number(a.widthPt || 0) - Number(b.widthPt || 0)) < 0.01;
 }
 
 module.exports = {

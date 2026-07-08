@@ -38,6 +38,7 @@ const {
   parentPageKeySet,
 } = require('../../semantic-model/parent-pages');
 const { applySynthesizedStyleInstructions } = require('./synthesized-style-instructions');
+const { bordersAreUniform } = require('../../style-synthesis/box-model');
 
 function semanticModelToInstructions(model, options = {}) {
   model = applySynthesizedStyleInstructions(model);
@@ -197,12 +198,37 @@ function instructionItemsFor(modelItem, assets, page, layout, options, styles, r
 }
 
 function instructionItemFor(modelItem, assets, page, layout, options, styles, report) {
+  const context = instructionItemContextFor(modelItem, assets, page, layout, options, styles, report);
+  if (context.base.role === 'text') return textInstructionItemFor(context);
+  if (context.base.role === 'graphic') return graphicInstructionItemFor(context);
+  if (context.base.role === 'table') return tableInstructionItemFor(context);
+  return lineInstructionItemFor(context) || shapeInstructionItemFor(context);
+}
+
+function instructionItemContextFor(modelItem, assets, page, layout, options, styles, report) {
   const styleRefs = modelItem.styleRefs || {};
   const content = modelItem.content || { text: '', runs: [] };
   const vectorGeometry = vectorGeometryFor(modelItem);
   const visualStyle = modelItem.visualStyle || null;
   const indesignEffects = modelItem.extensions?.indesign?.effects ?? null;
-  const base = {
+  return {
+    modelItem,
+    assets,
+    page,
+    layout,
+    options,
+    styles,
+    report,
+    styleRefs,
+    content,
+    vectorGeometry,
+    visualStyle,
+    base: baseInstructionItemFor(modelItem, page, layout, options, styleRefs, indesignEffects),
+  };
+}
+
+function baseInstructionItemFor(modelItem, page, layout, options, styleRefs, indesignEffects) {
+  return {
     id: modelItem.id,
     role: modelItem.role,
     bounds: modelItem.bounds || itemBounds(modelItem, page, layout),
@@ -213,85 +239,135 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
     labels: modelItem.labels || [],
     effects: effectsForInstruction(indesignEffects, page, layout),
   };
-  if (base.role === 'text') {
-    const textFit = textFitPolicy(modelItem, options);
-    const text = textForInstruction(modelItem, content);
-    const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
-    return {
-      ...base,
-      type: 'TEXT',
-      bounds: textFrameBounds(modelItem, base.bounds, layout),
-      text,
-      paragraphStyle: styleRefs.paragraphStyle,
-      objectStyle: styleRefs.objectStyle,
-      frameStyle: styleRefs.frameStyle,
-      runs: runsForInstruction(modelItem, content, text),
-      ...(textFit ? { textFit } : {}),
-      ...(visualStyle ? { visualStyle } : {}),
-      ...(styleOverride ? { styleOverride } : {}),
-    };
-  }
-  if (base.role === 'graphic') {
-    const asset = assetForItem(modelItem, assets);
-    const placement = asset ? placementForItem(modelItem, asset) : null;
-    const contentBounds = graphicContentBounds(modelItem, base.bounds, layout, placement);
-    const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
-    return {
-      ...base,
-      type: 'GRAPHIC',
-      objectStyle: styleRefs.objectStyle,
-      frameStyle: styleRefs.frameStyle,
-      ...(visualStyle ? { visualStyle } : {}),
-      ...(styleOverride ? { styleOverride } : {}),
+}
+
+function textInstructionItemFor({
+  modelItem,
+  layout,
+  options,
+  styles,
+  report,
+  styleRefs,
+  content,
+  visualStyle,
+  base,
+}) {
+  const textFit = textFitPolicy(modelItem, options);
+  const text = textForInstruction(modelItem, content);
+  const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
+  return {
+    ...base,
+    type: 'TEXT',
+    bounds: textFrameBounds(modelItem, base.bounds, layout),
+    text,
+    paragraphStyle: styleRefs.paragraphStyle,
+    objectStyle: styleRefs.objectStyle,
+    frameStyle: styleRefs.frameStyle,
+    runs: runsForInstruction(modelItem, content, text),
+    ...(textFit ? { textFit } : {}),
+    ...(visualStyle ? { visualStyle } : {}),
+    ...(styleOverride ? { styleOverride } : {}),
+  };
+}
+
+function graphicInstructionItemFor({
+  modelItem,
+  assets,
+  layout,
+  styles,
+  report,
+  styleRefs,
+  visualStyle,
+  base,
+}) {
+  const asset = assetForItem(modelItem, assets);
+  const placement = asset ? placementForItem(modelItem, asset) : null;
+  const contentBounds = graphicContentBounds(modelItem, base.bounds, layout, placement);
+  const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
+  return {
+    ...base,
+    type: 'GRAPHIC',
+    objectStyle: styleRefs.objectStyle,
+    frameStyle: styleRefs.frameStyle,
+    ...(visualStyle ? { visualStyle } : {}),
+    ...(styleOverride ? { styleOverride } : {}),
+    contentBounds,
+    placed: asset ? {
+      assetId: asset.id,
+      fit: placement.fit,
+      position: placement.position,
+      pageNumber: placement.pageNumber,
+      crop: placement.crop,
+      artboard: placement.artboard,
+      layerComp: placement.layerComp,
+      visibleLayers: placement.visibleLayers,
+      hiddenLayers: placement.hiddenLayers,
+      preserveVector: placement.preserveVector,
       contentBounds,
-      placed: asset ? {
-        assetId: asset.id,
-        fit: placement.fit,
-        position: placement.position,
-        pageNumber: placement.pageNumber,
-        crop: placement.crop,
-        artboard: placement.artboard,
-        layerComp: placement.layerComp,
-        visibleLayers: placement.visibleLayers,
-        hiddenLayers: placement.hiddenLayers,
-        preserveVector: placement.preserveVector,
-        contentBounds,
-      } : null,
-    };
-  }
-  if (base.role === 'table') {
-    const table = modelItem.table && !Array.isArray(modelItem.table) ? modelItem.table : modelItem.content || {};
-    const rows = tableRowsForInstruction(modelItem, page, layout);
-    const rowHeights = tableRowHeightsForInstruction(modelItem, rows, layout);
-    const columnWidths = tableColumnWidthsForInstruction(modelItem, rows, layout);
-    return {
-      ...base,
-      type: 'TABLE',
-      bounds: nativeTableBounds(base.bounds, rowHeights || [], layout),
-      tableStyle: styleRefs.tableStyle,
-      objectStyle: styleRefs.objectStyle,
-      frameStyle: styleRefs.frameStyle,
-      text: modelItem.text,
-      rows,
-      columnCount: table.columnCount || 0,
-      columnWidths,
-      rowHeights,
-    };
-  }
+    } : null,
+  };
+}
+
+function tableInstructionItemFor({
+  modelItem,
+  page,
+  layout,
+  styleRefs,
+  base,
+}) {
+  const table = modelItem.table && !Array.isArray(modelItem.table) ? modelItem.table : modelItem.content || {};
+  const rows = tableRowsForInstruction(modelItem, page, layout);
+  const rowHeights = tableRowHeightsForInstruction(modelItem, rows, layout);
+  const columnWidths = tableColumnWidthsForInstruction(modelItem, rows, layout);
+  return {
+    ...base,
+    type: 'TABLE',
+    bounds: nativeTableBounds(base.bounds, rowHeights || [], layout),
+    tableStyle: styleRefs.tableStyle,
+    objectStyle: styleRefs.objectStyle,
+    frameStyle: styleRefs.frameStyle,
+    text: modelItem.text,
+    rows,
+    columnCount: table.columnCount || 0,
+    columnWidths,
+    rowHeights,
+  };
+}
+
+function lineInstructionItemFor({
+  modelItem,
+  layout,
+  styles,
+  report,
+  styleRefs,
+  vectorGeometry,
+  visualStyle,
+  base,
+}) {
   const line = nativeLineFor(modelItem, base.bounds, layout, styles, vectorGeometry, visualStyle);
-  if (line) {
-    const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
-    return {
-      ...base,
-      ...line,
-      type: 'LINE',
-      objectStyle: styleRefs.objectStyle,
-      frameStyle: null,
-      ...(vectorGeometry ? { vectorGeometry } : {}),
-      ...(visualStyle ? { visualStyle } : {}),
-      ...(styleOverride ? { styleOverride } : {}),
-    };
-  }
+  if (!line) return null;
+  const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
+  return {
+    ...base,
+    ...line,
+    type: 'LINE',
+    objectStyle: styleRefs.objectStyle,
+    frameStyle: null,
+    ...(vectorGeometry ? { vectorGeometry } : {}),
+    ...(visualStyle ? { visualStyle } : {}),
+    ...(styleOverride ? { styleOverride } : {}),
+  };
+}
+
+function shapeInstructionItemFor({
+  modelItem,
+  styles,
+  report,
+  styleRefs,
+  vectorGeometry,
+  visualStyle,
+  base,
+}) {
   const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
   return {
     ...base,
@@ -740,20 +816,6 @@ function visibleBorder(edge) {
     && edge.style !== 'none'
     && edge.style !== 'hidden'
     && Number(edge.widthPt || 0) > 0;
-}
-
-function bordersAreUniform(borders) {
-  return sameBorder(borders.top, borders.right)
-    && sameBorder(borders.top, borders.bottom)
-    && sameBorder(borders.top, borders.left);
-}
-
-function sameBorder(a, b) {
-  if (!visibleBorder(a) && !visibleBorder(b)) return true;
-  if (!visibleBorder(a) || !visibleBorder(b)) return false;
-  return a.color === b.color
-    && a.style === b.style
-    && Math.abs(Number(a.widthPt || 0) - Number(b.widthPt || 0)) < 0.01;
 }
 
 module.exports = {

@@ -145,6 +145,21 @@ test('G6 current duplicate helper definitions match the ratchet baseline', () =>
   }
 });
 
+test('border uniformity comparison has a single implementation in style-synthesis box model', () => {
+  const definitions = collectBorderUniformityDefinitions(REPO_ROOT);
+
+  assert.deepEqual(definitions, [
+    {
+      file: 'src/style-synthesis/box-model.js',
+      name: 'bordersAreUniform',
+    },
+    {
+      file: 'src/style-synthesis/box-model.js',
+      name: 'sameBorder',
+    },
+  ]);
+});
+
 function collectG6Violations(repoRoot) {
   const violations = [];
   for (const file of listProjectFiles(repoRoot)) {
@@ -164,6 +179,24 @@ function collectG6Violations(repoRoot) {
     }
   }
   return sortViolations(violations);
+}
+
+function collectBorderUniformityDefinitions(repoRoot) {
+  const pattern = /\b(?:function\s+(bordersAreUniform|sameCompiledBorder|sameBorder)\b|(?:const|let|var)\s+(bordersAreUniform|sameCompiledBorder|sameBorder)\s*=)/g;
+  return listProjectFiles(repoRoot)
+    .map((file) => ({ file, relativeFile: repoRelative(repoRoot, file) }))
+    .filter(({ relativeFile }) => (
+      (relativeFile.startsWith('src/writers/indesign/') || relativeFile.startsWith('src/style-synthesis/'))
+        && isCodeFile(relativeFile)
+    ))
+    .flatMap(({ file, relativeFile }) => {
+      const text = stripCommentsPreservingDefinitions(fs.readFileSync(file, 'utf8'), relativeFile);
+      return [...text.matchAll(pattern)].map((match) => ({
+        file: relativeFile,
+        name: match[1] || match[2],
+      }));
+    })
+    .sort((a, b) => `${a.file}\n${a.name}`.localeCompare(`${b.file}\n${b.name}`));
 }
 
 function isG6Scope(relativeFile) {
