@@ -276,6 +276,8 @@ npm test
 
 ### 11. W3 链路归位
 
+进度：11a 实施中（已派实施子 agent `Euler`，目标是先清理 `src/indesign-cli-plugin/tools/reverse-export.js` require `scripts/indesign-reverse-export.js` 和 `src/indesign-cli-plugin/tools/authoring-lint.js` require `src/authoring/lint.js` 两条 G1；11d 的三条 adapter/writer 双向直连暂不触碰；2026-07-08）。
+
 - [ ] **11a 反向流水线上移**：`compileReverseSnapshotToHtml` 编排逻辑迁入 `src/writers/html/reverse-pipeline.js`（或选定编排模块）；`scripts/indesign-reverse-export.js` 与 `src/indesign-cli-plugin/tools/reverse-export.js` 改调 src 入口；`tools/authoring-lint.js` 改走 `src/authoring` 公共入口（authoring/index.js 需要则扩导出面）。
 - [ ] **11b conversion-gate 入 src**：门禁算法迁 `src/writers/html/audit/conversion-gate.js`，脚本保留薄 CLI；现有测试同步指向 src 模块。
 - [ ] **11c 平行捕获合并**：`scripts/audit-reverse-visual.js` 的浏览器几何捕获合并回 `src/adapters/html/reader/`，消除与 `browser-snapshot.js` 的平行实现。
