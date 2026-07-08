@@ -1,18 +1,3 @@
 {
-  "exemptions": [
-    {
-      "rule": "G5.1 retired naming is blocked",
-      "file": "test/fixtures/paged-html",
-      "detail": "path contains paged-html",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    },
-    {
-      "rule": "G5.1 retired naming is blocked",
-      "file": "test/paged-html",
-      "detail": "path contains paged-html",
-      "reason": "既有违规待收口",
-      "cleanupRef": "Task 3"
-    }
-  ]
+  "exemptions": []
 }

@@ -19,7 +19,7 @@ test('browser snapshot reader exposes focused browser-context scripts', () => {
 });
 
 test('renderSnapshot captures fixed-size paged HTML pages', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/basic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
 
   assert.equal(Boolean(snapshot.sourcePackageInput), true);
@@ -34,7 +34,7 @@ test('renderSnapshot captures fixed-size paged HTML pages', async () => {
 });
 
 test('renderSnapshot rejects missing page selector instead of returning an empty snapshot', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/basic-deck.html');
 
   await assert.rejects(
     () => renderSnapshot({ htmlPath, pageSelector: '.definitely-missing-page-selector' }),
@@ -75,7 +75,7 @@ test('renderSnapshot rejects bare-array browser capture payloads', async () => {
 });
 
 test('renderSnapshot computes element bounds in page millimeters', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/basic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const title = snapshot.pages[0].items.find((item) => item.text.includes('项目标题'));
 
@@ -248,7 +248,7 @@ test('snapshotToSemanticModel captures authored SVG path geometry and vector pai
 });
 
 test('renderSnapshot reports unsupported CSS effects and pseudo content', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/unsupported-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/unsupported-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const codes = snapshot.report.messages.map((message) => message.code);
 
@@ -259,7 +259,7 @@ test('renderSnapshot reports unsupported CSS effects and pseudo content', async 
 });
 
 test('renderSnapshot reports list markers that are not yet compiled to native bullets', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/list-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/list-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
 
   assert.equal(snapshot.pages[0].items.some((item) => item.tagName === 'li'), true);
@@ -267,7 +267,7 @@ test('renderSnapshot reports list markers that are not yet compiled to native bu
 });
 
 test('renderSnapshot captures inline character runs inside table cells', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/table-inline-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/table-inline-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const table = snapshot.pages[0].items.find((item) => item.role === 'table');
   const cell = table.table[0].cells[0];
@@ -352,7 +352,7 @@ test('renderSnapshot keeps PDF source node separate from its preview wrapper', a
 });
 
 test('renderSnapshot captures page padding and grid semantics for InDesign guides', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/grid-guide-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/grid-guide-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const page = snapshot.pages[0];
 

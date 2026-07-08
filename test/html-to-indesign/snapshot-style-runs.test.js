@@ -4,7 +4,7 @@ const path = require('path');
 const { renderSnapshot } = require('../../src/adapters/html');
 
 test('renderSnapshot captures style properties needed by InDesign style compilation', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/style-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const page = snapshot.pages[0];
   const title = page.items.find((item) => item.attributes['data-id-paragraph-style'] === 'report-title');
@@ -21,7 +21,7 @@ test('renderSnapshot captures style properties needed by InDesign style compilat
 });
 
 test('renderSnapshot captures inline character runs for text items', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/style-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const title = snapshot.pages[0].items.find((item) => item.attributes['data-id-paragraph-style'] === 'report-title');
   const accentRun = title.runs.find((run) => run.attributes['data-id-character-style'] === 'accent');

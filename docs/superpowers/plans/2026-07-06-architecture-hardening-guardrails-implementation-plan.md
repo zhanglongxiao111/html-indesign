@@ -180,7 +180,7 @@ npm test
 
 ### 5. W0-1 门禁反假成功修复
 
-进度：已完成（提交 `090782b`、`bdc59e4`；最终复审未发现阻断问题；G4 baseline 9 条收缩到 6 条；`node --test test/indesign-reverse/content-inventory.test.js test/indesign-reverse/structure-signature.test.js test/indesign-reverse/reverse-snapshot-structure.test.js` 48/48 通过，`node --test test/indesign-reverse/effective-diff-audit.test.js test/indesign-reverse/parent-page-furniture-audit.test.js` 13/13 通过，`node --test test/architecture/audit-fail-closed.test.js` 6/6 通过，`npm test` 828/828 通过，2026-07-07）。
+进度：已完成（提交 `090782b`、`bdc59e4`；最终复审未发现阻断问题；G4 baseline 9 条收缩到 6 条；`node --test test/indesign-to-html/content-inventory.test.js test/indesign-to-html/structure-signature.test.js test/indesign-to-html/reverse-snapshot-structure.test.js` 48/48 通过，`node --test test/indesign-to-html/effective-diff-audit.test.js test/indesign-to-html/parent-page-furniture-audit.test.js` 13/13 通过，`node --test test/architecture/audit-fail-closed.test.js` 6/6 通过，`npm test` 828/828 通过，2026-07-07）。
 
 - [x] `content-inventory.js`：空/缺失 `pages` 显式 fail（原因码 `CONTENT_INVENTORY_INPUT_INVALID`）；`readAssetAliases` 解析失败记 warning。
 - [x] `structure-signature.js`、`reverse-snapshot-structure.js`（矢量双侧缺失）、`parent-page-furniture.js`（bounds 缺失）同模式逐一排查修复；裁定基准：空输入永远是错误，不存在"两边都空所以相等"。
@@ -190,7 +190,7 @@ npm test
 验收命令：
 
 ```powershell
-node --test test/indesign-reverse/ test/architecture/audit-fail-safety.test.js
+node --test test/indesign-to-html/ test/architecture/audit-fail-safety.test.js
 npm test
 ```
 
@@ -227,14 +227,14 @@ node --test test/architecture/docs-sync.test.js
 
 ### 8. W0 收口检查点
 
-进度：已完成（提交 `919632e`、`921fd2f`、`36b2c23`；最终复审未发现阻断问题；G4=0、G7=0、G8=0，G5 仅剩 W4 test path 2 条；`node --test test/indesign-reverse/conversion-gate-cli.test.js test/architecture/audit-fail-closed.test.js test/architecture/` 72/72 通过，`npm test` 843/843 通过，2026-07-07）。
+进度：已完成（提交 `919632e`、`921fd2f`、`36b2c23`；最终复审未发现阻断问题；G4=0、G7=0、G8=0，G5 仅剩 W4 test path 2 条；`node --test test/indesign-to-html/conversion-gate-cli.test.js test/architecture/audit-fail-closed.test.js test/architecture/` 72/72 通过，`npm test` 843/843 通过，2026-07-07）。
 
 - [x] 确认 G4（audit 部分）/G5（代码部分）/G7/G8 基线归零；G5 剩余条目应只剩 test 目录改名（W4）。
 - [x] `npm test` 全绿。**此检查点后可编辑性基准计划方可跑首轮。**
 
 ### 9. W1 模型方言统一
 
-进度：已完成（9f 已完成：实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；最终复审未发现 P0/P1/P2；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，sourceType-only 不再生成 current synthesized refs；`npm test` 883/883 通过；9g 首轮真实 E2E 暴露 `indesign-cli` 当前 JSON schema 解析问题，已由提交 `509b667` 修复并以 `npm test` 884/884 验证；随后暴露 `metrics-area-table` 原生表格 text frame overset，`c137914` 的 frame slack 修复不足，实施子 agent `Hume` 已提交 `dc95801` 改为从 cell geometry 计算 presentation native table row/column sizing，普通真实 E2E `npm run e2e:indesign` 已通过且 `oversetTextFrames: 0`；审核子 agent `Arendt` 对 9g 表格修复判定无 P0、表格修复可接受，但提示后续需补 2pt table reserve / width delta 边界说明；实施子 agent `Boyle` 已提交 `c7d084a` 收口 reverse strict field registry gaps，复现 `compileReverseSnapshotToHtml` 通过且 `npm test` 886/886；实施子 agent `Wegener` 已提交 `d77a7af` 修复可信 `data-id-semantic` 写回，focused tests 118/118、architecture semantic model 12/12、`npm test` 889/889 通过；实施子 agent `Descartes` 已提交 `0d250f1`，通过跳过结构化 group shape 容器重复 summary text 解决 `site-legend-text` overset，并补充 table reserve 注释与 width delta 边界测试；完整真实 E2E `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 已通过，runDir `test/workspace/indesign-e2e-20260708-064317`，build/export `oversetTextFrames: 0`，canonical content inventory 与 structure signature 均 ok，warnings 仅剩 `CANONICAL_SOURCE_DRIFT_ADVISORY` 格式漂移提示；最终审核 agent `Noether` 发现 P1：grouped shape 文本去重条件过宽，任意结构化子项都会 suppress 容器文本，可能吞掉带非文本子项的合法 shape 自身文本；实施子 agent `Laplace` 已提交 `827f05c`，将 suppress 条件收窄为“结构化 text 子项承载同一段父文本”才跳过容器 text，并新增非文本子项保留父文本的 RED/GREEN 回归；子 agent 验证 `node --test test/semantic-model/to-instructions.test.js` 30/30、`node --test test/paged-html/instructions-compiler.test.js` 33/33、`npm test` 892/892、`git diff --check` 均通过；控制器复核 `node --test test/semantic-model/to-instructions.test.js test/paged-html/instructions-compiler.test.js` 63/63、`npm test` 892/892、`git diff --check`、真实 E2E `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 均通过，最新 runDir `test/workspace/indesign-e2e-20260708-070341`，build/export `oversetTextFrames: 0`，canonical content inventory 与 structure signature 均 ok；最终 re-review `Noether` 判定 `SPEC: PASS` / `QUALITY: PASS`，未发现新的 P0/P1/P2；2026-07-08）。
+进度：已完成（9f 已完成：实现提交 `b93f5cd`，style-atoms 修复 `e5fbc50`；最终复审未发现 P0/P1/P2；`style-atoms` current synthesized style atom 已改为只由 canonical `role` 驱动，sourceType-only 不再生成 current synthesized refs；`npm test` 883/883 通过；9g 首轮真实 E2E 暴露 `indesign-cli` 当前 JSON schema 解析问题，已由提交 `509b667` 修复并以 `npm test` 884/884 验证；随后暴露 `metrics-area-table` 原生表格 text frame overset，`c137914` 的 frame slack 修复不足，实施子 agent `Hume` 已提交 `dc95801` 改为从 cell geometry 计算 presentation native table row/column sizing，普通真实 E2E `npm run e2e:indesign` 已通过且 `oversetTextFrames: 0`；审核子 agent `Arendt` 对 9g 表格修复判定无 P0、表格修复可接受，但提示后续需补 2pt table reserve / width delta 边界说明；实施子 agent `Boyle` 已提交 `c7d084a` 收口 reverse strict field registry gaps，复现 `compileReverseSnapshotToHtml` 通过且 `npm test` 886/886；实施子 agent `Wegener` 已提交 `d77a7af` 修复可信 `data-id-semantic` 写回，focused tests 118/118、architecture semantic model 12/12、`npm test` 889/889 通过；实施子 agent `Descartes` 已提交 `0d250f1`，通过跳过结构化 group shape 容器重复 summary text 解决 `site-legend-text` overset，并补充 table reserve 注释与 width delta 边界测试；完整真实 E2E `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 已通过，runDir `test/workspace/indesign-e2e-20260708-064317`，build/export `oversetTextFrames: 0`，canonical content inventory 与 structure signature 均 ok，warnings 仅剩 `CANONICAL_SOURCE_DRIFT_ADVISORY` 格式漂移提示；最终审核 agent `Noether` 发现 P1：grouped shape 文本去重条件过宽，任意结构化子项都会 suppress 容器文本，可能吞掉带非文本子项的合法 shape 自身文本；实施子 agent `Laplace` 已提交 `827f05c`，将 suppress 条件收窄为“结构化 text 子项承载同一段父文本”才跳过容器 text，并新增非文本子项保留父文本的 RED/GREEN 回归；子 agent 验证 `node --test test/semantic-model/to-instructions.test.js` 30/30、`node --test test/html-to-indesign/instructions-compiler.test.js` 33/33、`npm test` 892/892、`git diff --check` 均通过；控制器复核 `node --test test/semantic-model/to-instructions.test.js test/html-to-indesign/instructions-compiler.test.js` 63/63、`npm test` 892/892、`git diff --check`、真实 E2E `npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip` 均通过，最新 runDir `test/workspace/indesign-e2e-20260708-070341`，build/export `oversetTextFrames: 0`，canonical content inventory 与 structure signature 均 ok；最终 re-review `Noether` 判定 `SPEC: PASS` / `QUALITY: PASS`，未发现新的 P0/P1/P2；2026-07-08）。
 
 按 spec §4 W1 裁定表执行，顺序不可颠倒：
 
@@ -296,7 +296,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 12. W4 卫生与文档收口
 
-- [ ] `test/paged-html/`、`test/indesign-reverse/` 及 fixtures 目录改名对齐现行架构（收 G5 剩余条目至归零）。
+- [ ] `test/html-to-indesign/`、`test/indesign-to-html/` 及 fixtures 目录改名对齐现行架构（收 G5 剩余条目至归零）。
 - [ ] `instructionItemFor` 按五角色拆函数；`compareVisualGeometry` 拆两级；重复 `bordersAreUniform` 上提 `box-model.js`。
 - [ ] `SEMANTIC_CONTAINER_CLASSES` 与语义 preset 对齐（单一来源）。
 - [ ] `extract_blueprint.jsx` 列入 blueprint 退役观察清单（docs 记录，不删代码）。

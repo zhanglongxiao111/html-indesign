@@ -6,7 +6,7 @@ const { semanticModelToInstructions } = require('../../src/writers/indesign');
 
 test('semanticModelToInstructions produces current executor schema', async () => {
   const snapshot = await renderSnapshot({
-    htmlPath: path.resolve(__dirname, '../fixtures/paged-html/basic-deck.html'),
+    htmlPath: path.resolve(__dirname, '../fixtures/fixed-html/basic-deck.html'),
   });
   const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation', targetSize: 'same' });
   const instructions = semanticModelToInstructions(model, {});
@@ -21,7 +21,7 @@ test('semanticModelToInstructions produces current executor schema', async () =>
 
 test('semanticModelToInstructions carries labels for document pages guides layers and items', async () => {
   const snapshot = await renderSnapshot({
-    htmlPath: path.resolve(__dirname, '../fixtures/paged-html/grid-guide-deck.html'),
+    htmlPath: path.resolve(__dirname, '../fixtures/fixed-html/grid-guide-deck.html'),
   });
   const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation', targetSize: 'same' });
   const instructions = semanticModelToInstructions(model, {});

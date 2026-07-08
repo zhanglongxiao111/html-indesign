@@ -5,7 +5,7 @@ const { renderSnapshot } = require('../../src/adapters/html');
 const { detectAssetsFromItems } = require('../../src/adapters/html/reader/asset-detector');
 
 test('renderSnapshot detects raster pdf psd and ai placed assets', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const kinds = snapshot.assets.map((asset) => asset.kind).sort();
 
@@ -27,7 +27,7 @@ test('renderSnapshot detects raster pdf psd and ai placed assets', async () => {
 });
 
 test('detectAssetsFromItems preserves PDF and AI layer visibility metadata', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const assets = detectAssetsFromItems([{
     id: 'layered-pdf',
     tagName: 'img',
@@ -59,7 +59,7 @@ test('detectAssetsFromItems preserves PDF and AI layer visibility metadata', () 
 });
 
 test('detectAssetsFromItems treats retired data-id-page as an invalid PDF page field', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const assets = detectAssetsFromItems([{
     id: 'retired-page-field-pdf',
     tagName: 'object',
@@ -82,7 +82,7 @@ test('detectAssetsFromItems treats retired data-id-page as an invalid PDF page f
 });
 
 test('detectAssetsFromItems ignores invalid data-id-pdf-page values', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const items = ['abc', '0', '-2'].map((page, index) => ({
     id: `invalid-page-${index}`,
     tagName: 'object',
@@ -107,7 +107,7 @@ test('detectAssetsFromItems ignores invalid data-id-pdf-page values', () => {
 });
 
 test('renderSnapshot inherits semantic frame attributes from ignored asset wrappers', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const wrapped = snapshot.pages[0].items.find((item) => item.id === 'wrapped-pdf-frame');
 
@@ -120,7 +120,7 @@ test('renderSnapshot inherits semantic frame attributes from ignored asset wrapp
 });
 
 test('renderSnapshot treats semantic asset links as placed graphics', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const linked = snapshot.pages[0].items.find((item) => item.id === 'linked-pdf');
 
@@ -130,7 +130,7 @@ test('renderSnapshot treats semantic asset links as placed graphics', async () =
 });
 
 test('detectAssetsFromItems keeps same-basename assets from different folders distinct', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const items = [
     assetItem('left', './assets/a/plan.pdf'),
     assetItem('right', './assets/b/plan.pdf'),
@@ -143,7 +143,7 @@ test('detectAssetsFromItems keeps same-basename assets from different folders di
 });
 
 test('detectAssetsFromItems treats css background-image urls as placed assets', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const assets = detectAssetsFromItems([{
     id: 'background-render',
     tagName: 'div',
@@ -164,7 +164,7 @@ test('detectAssetsFromItems treats css background-image urls as placed assets', 
 });
 
 test('detectAssetsFromItems uses generated preview src for embedded image frames without source paths', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const assets = detectAssetsFromItems([{
     id: 'embedded-image',
     tagName: 'figure',

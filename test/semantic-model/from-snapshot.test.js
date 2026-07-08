@@ -15,7 +15,7 @@ function captureThrow(fn) {
 
 test('snapshotToSemanticModel builds document pages, styles, assets, and items', async () => {
   const snapshot = await renderSnapshot({
-    htmlPath: path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html'),
+    htmlPath: path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html'),
   });
   const model = snapshotToSemanticModel(snapshot, {
     unitMode: 'presentation',

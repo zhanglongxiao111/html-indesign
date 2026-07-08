@@ -24,9 +24,10 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
   const root = makeSampleProject({
     'src/example/old.js': 'const pagedHtml = require("./legacy");\n',
     '_indesign_scripts/lib/hi_old.jsxinc': 'var source = "pagedHtml";\n',
+    'test/examples/paged-html-case.test.js': 'test path names are scanned even though test file contents are not.\n',
     'docs/legacy/history.md': 'legacy and paged-html are historical here.\n',
     'docs/superpowers/plans/old-plan.md': 'paged-html appears in planning notes.\n',
-    'package.json': '{"scripts":{"old":"node test/fixtures/paged-html/basic-deck.html"}}\n',
+    'package.json': '{"scripts":{"old":"node test/fixtures/fixed-html/basic-deck.html"}}\n',
     'src/protocol/lifecycle.js': 'const LIFECYCLE = "legacy";\n',
     'src/labels.js': 'const tag = "legacy-label";\n',
   });
@@ -48,6 +49,11 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
       rule: 'G5.1 retired naming is blocked',
       file: 'src/example/old.js',
       detail: 'line 1 contains pagedHtml',
+    },
+    {
+      rule: 'G5.1 retired naming is blocked',
+      file: 'test/examples/paged-html-case.test.js',
+      detail: 'path contains paged-html',
     },
   ]);
 
@@ -78,7 +84,7 @@ function collectG5Violations(repoRoot) {
       if (allowedPath(relativeFile, match[0])) continue;
       const violation = {
         rule: 'G5.1 retired naming is blocked',
-        file: pathViolationFile(relativeFile, match[0]),
+        file: relativeFile,
         detail: `path contains ${match[0]}`,
       };
       const key = JSON.stringify(violation);
@@ -159,16 +165,6 @@ function isGuardrailScope(relativeFile) {
 
 function shouldScanContent(relativeFile) {
   return !relativeFile.startsWith('test/');
-}
-
-function pathViolationFile(relativeFile, token) {
-  if (token === 'paged-html' && relativeFile.startsWith('test/fixtures/paged-html/')) {
-    return 'test/fixtures/paged-html';
-  }
-  if (token === 'paged-html' && relativeFile.startsWith('test/paged-html/')) {
-    return 'test/paged-html';
-  }
-  return relativeFile;
 }
 
 function isProtocolLifecycleVocabulary(relativeFile, line, token) {

@@ -7,7 +7,7 @@ const { compileInstructions } = require('../../src/indesign-pipeline');
 const { detectAssetsFromItems } = require('../../src/adapters/html/reader/asset-detector');
 
 test('compileInstructions emits document styles pages and text items', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/style-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot, { mode: 'editable-first' });
   const page = instructions.pages[0];
@@ -48,7 +48,7 @@ test('compileInstructions carries source package labels into instructions', asyn
 });
 
 test('compileInstructions emits graphic placed assets and layers', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const graphicItems = instructions.pages[0].items.filter((item) => item.type === 'GRAPHIC');
@@ -120,7 +120,7 @@ test('compileInstructions binds graphics by exact source before non-unique selec
 });
 
 test('compileInstructions keeps placement options on each graphic use', () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/asset-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
   const items = [
     graphicItem('first-plan', './assets/site-plan.pdf', 1),
     graphicItem('second-plan', './assets/site-plan.pdf', 2),
@@ -374,7 +374,7 @@ function graphicItem(id, src, pageNumber) {
 }
 
 test('compileInstructions preserves nested paint order above parent object backgrounds', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const page = instructions.pages[0];
@@ -389,7 +389,7 @@ test('compileInstructions preserves nested paint order above parent object backg
 });
 
 test('compileInstructions emits generated stripe objects for asymmetric left borders', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const page = instructions.pages[0];
@@ -465,7 +465,7 @@ test('compileInstructions emits decoration objects for non-left asymmetric borde
 });
 
 test('compileInstructions keeps semantic table rows for native InDesign tables', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const page = instructions.pages[0];
@@ -524,7 +524,7 @@ test('compileInstructions emits page backgrounds through parent pages', async ()
 });
 
 test('compileInstructions maps page padding to margins and semantic grid to guides', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/grid-guide-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/grid-guide-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const docPage = instructions.document.pages[0];
@@ -726,7 +726,7 @@ test('compileInstructions merges near-duplicate guide positions from browser rou
 });
 
 test('compileInstructions scales margins and guides in presentation mode', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/grid-guide-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/grid-guide-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot, {
     unitMode: 'presentation',
@@ -875,7 +875,7 @@ test('compileInstructions emits native lines and oval dot shapes', async () => {
 });
 
 test('compileInstructions orders visual layers below editable text layers', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const layerOrder = Object.fromEntries(instructions.layers.map((layer) => [layer.name, layer.order]));
@@ -885,7 +885,7 @@ test('compileInstructions orders visual layers below editable text layers', asyn
 });
 
 test('compileInstructions preserves gradient masks as InDesign gradient feather effects', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const wash = instructions.pages[0].items.find((item) => item.id === 'p1-el2');
@@ -1000,7 +1000,7 @@ test('compileInstructions does not warn for transforms converted to native lines
 });
 
 test('compileInstructions emits editable text for textual annotation objects', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/semantic-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const page = instructions.pages[0];

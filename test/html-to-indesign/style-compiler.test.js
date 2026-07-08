@@ -5,7 +5,7 @@ const { renderSnapshot } = require('../../src/adapters/html');
 const { compileStyles } = require('../../src/writers/indesign');
 
 test('compileStyles creates swatches fonts and named paragraph styles', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/style-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const styled = compileStyles(snapshot);
   const title = styled.pages[0].items.find((item) => item.attributes['data-id-paragraph-style'] === 'report-title');
@@ -20,7 +20,7 @@ test('compileStyles creates swatches fonts and named paragraph styles', async ()
 });
 
 test('compileStyles creates character object and frame styles', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/style-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const styled = compileStyles(snapshot);
   const title = styled.pages[0].items.find((item) => item.attributes['data-id-paragraph-style'] === 'report-title');

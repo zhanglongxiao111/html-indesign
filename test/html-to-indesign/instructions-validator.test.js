@@ -6,7 +6,7 @@ const { compileInstructions } = require('../../src/indesign-pipeline');
 const { validateInstructions } = require('../../src/writers/indesign');
 
 test('validateInstructions accepts compiler output', async () => {
-  const htmlPath = path.resolve(__dirname, '../fixtures/paged-html/style-deck.html');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/style-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
   const instructions = compileInstructions(snapshot);
   const result = validateInstructions(instructions);
