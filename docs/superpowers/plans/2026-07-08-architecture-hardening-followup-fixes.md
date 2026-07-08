@@ -31,7 +31,7 @@
 - Consumes: existing `.gitignore` entry `.superpowers/`
 - Produces: no tracked `.superpowers/sdd/*.md`
 
-- [ ] **Step 1: Verify tracked scratch files**
+- [x] **Step 1: Verify tracked scratch files**
 
 Run:
 
@@ -41,7 +41,7 @@ git ls-files .superpowers/sdd/*.md
 
 Expected before fix: the command may list tracked process reports.
 
-- [ ] **Step 2: Remove tracked reports from Git only**
+- [x] **Step 2: Remove tracked reports from Git only**
 
 Run:
 
@@ -52,7 +52,7 @@ if ($files) { git rm --cached -- $files }
 
 Expected: files are staged as deletions but still exist locally.
 
-- [ ] **Step 3: Verify scratch remains usable but untracked**
+- [x] **Step 3: Verify scratch remains usable but untracked**
 
 Run:
 
@@ -68,7 +68,7 @@ Expected:
 True
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add .gitignore
@@ -76,6 +76,8 @@ git commit -m "chore: stop tracking superpowers scratch reports"
 ```
 
 Expected: commit removes only tracked `.superpowers/sdd/*.md` from version control.
+
+Completed in `f562732`: `git ls-files .superpowers` has no output, `.superpowers/sdd/progress.md` remains available locally, and the branch is pushed to `origin/codex/architecture-hardening-guardrails`.
 
 ### Task 2: Complete Retired Model Path Lifecycle Governance
 
