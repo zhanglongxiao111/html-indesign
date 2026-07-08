@@ -258,7 +258,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10d 准备中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，把 text/style/CSS length/NAS helper 收敛到 shared，G6 baseline 从 15 收到 1 并扩展护栏覆盖 10c 新 helper 名；控制器验证 G6 4/4、focused 40/40、`npm test` 910/910；审核 agent `Galileo` 复审判定 `SPEC: PASS` / `QUALITY: PASS`，无 P0/P1/P2；准备调度 10d `data-id-*` 字面量迁移；2026-07-08）。
+进度：10d 实施中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，审核 agent `Galileo` 复审通过；已创建 `.superpowers/sdd/task-10d-brief.md`，当前 G2 baseline 为 331 个 exemption、46 个 `src/` 或 `scripts/` 文件，10d 目标是迁移到 registry-derived constants 并把 G2 baseline 收到 0；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
