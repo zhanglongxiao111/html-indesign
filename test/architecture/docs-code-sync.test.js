@@ -10,6 +10,7 @@ const { formatGuardrailFailure } = require('./helpers/guardrail-report');
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G7';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G7.json');
+const APPROVED_BASELINE = { exemptions: [] };
 
 const G7_RULE_METADATA = {
   'G7.1 src top-level directory documented': {
@@ -66,7 +67,12 @@ test('G7 catches undocumented src directories and audit scripts', () => {
 test('G7 current docs-code sync violations match the ratchet baseline', () => {
   const actualViolations = collectG7Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG7Failure(result));

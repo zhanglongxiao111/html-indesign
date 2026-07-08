@@ -11,6 +11,7 @@ const { collectRequireGraphFromFiles } = require('./helpers/require-graph');
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G8';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G8.json');
+const APPROVED_BASELINE = { exemptions: [] };
 
 const G8_RULE_METADATA = {
   'G8.1 src module has an owner': {
@@ -115,7 +116,12 @@ test('G8 does not treat test-only requires as src module ownership', () => {
 test('G8 current orphan module violations match the ratchet baseline', () => {
   const actualViolations = collectG8Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG8Failure(result));

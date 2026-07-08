@@ -11,6 +11,7 @@ const { formatGuardrailFailure } = require('./helpers/guardrail-report');
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G2';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G2.json');
+const APPROVED_BASELINE = { exemptions: [] };
 const DATA_ID_LITERAL_PATTERN = /\bdata-id-[a-z0-9][a-z0-9-]*/gi;
 
 const G2_RULE_METADATA = {
@@ -76,7 +77,12 @@ test('G2 catches bare data-id literals outside src/protocol and reports the requ
 test('G2 current protocol literal violations match the ratchet baseline', () => {
   const actualViolations = collectG2Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG2Failure(result));

@@ -43,6 +43,62 @@ test('compareViolationsToBaseline passes only when actual violations exactly mat
   assert.deepEqual(result.expiredExemptions, []);
 });
 
+test('compareViolationsToBaseline rejects baseline exemption expansion beyond an approved starting point', () => {
+  const actualViolations = [
+    { rule: 'G6', file: 'src/new-helper.js', detail: 'defines normalizeText' },
+  ];
+  const baseline = {
+    exemptions: [
+      {
+        rule: 'G6',
+        file: 'src/new-helper.js',
+        detail: 'defines normalizeText',
+        reason: 'unreviewed new exemption',
+        cleanupRef: 'Task 5',
+      },
+    ],
+  };
+
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: { exemptions: [] },
+    forbidNewExemptions: true,
+  });
+
+  assert.equal(result.passed, false);
+  assert.deepEqual(result.newViolations, []);
+  assert.deepEqual(result.expiredExemptions, []);
+  assert.deepEqual(result.baselineExpansion, baseline.exemptions);
+});
+
+test('compareViolationsToBaseline allows baseline exemptions already present in the approved starting point', () => {
+  const actualViolations = [
+    { rule: 'G6', file: 'src/known-helper.js', detail: 'defines normalizeText' },
+  ];
+  const approvedBaseline = {
+    exemptions: [
+      {
+        rule: 'G6',
+        file: 'src/known-helper.js',
+        detail: 'defines normalizeText',
+        reason: 'reviewed existing exemption',
+        cleanupRef: 'Task 4',
+      },
+    ],
+  };
+
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline: approvedBaseline,
+    approvedBaseline,
+    forbidNewExemptions: true,
+  });
+
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.baselineExpansion, []);
+});
+
 test('compareViolationsToBaseline rejects malformed baseline entries instead of falling back', () => {
   assert.throws(
     () => compareViolationsToBaseline({

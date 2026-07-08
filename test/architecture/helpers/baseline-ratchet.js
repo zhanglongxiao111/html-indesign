@@ -1,31 +1,55 @@
-function compareViolationsToBaseline({ actualViolations, baseline }) {
+function compareViolationsToBaseline({
+  actualViolations,
+  baseline,
+  approvedBaseline,
+  forbidNewExemptions = false,
+}) {
   if (!Array.isArray(actualViolations)) {
     throw new Error('actualViolations must be an array');
   }
-  if (!baseline || typeof baseline !== 'object' || Array.isArray(baseline)) {
-    throw new Error('baseline must be an object');
-  }
-  if (!Array.isArray(baseline.exemptions)) {
-    throw new Error('baseline.exemptions must be an array');
+  validateBaseline(baseline, 'baseline');
+  if (forbidNewExemptions) {
+    validateBaseline(approvedBaseline, 'approvedBaseline');
   }
 
   actualViolations.forEach((violation, index) => validateViolation(violation, `actualViolations[${index}]`));
-  baseline.exemptions.forEach((exemption, index) => {
-    validateViolation(exemption, `baseline.exemptions[${index}]`);
-    requireString(exemption.reason, `baseline.exemptions[${index}].reason`);
-    requireString(exemption.cleanupRef, `baseline.exemptions[${index}].cleanupRef`);
-  });
+  validateExemptions(baseline.exemptions, 'baseline.exemptions');
+  if (forbidNewExemptions) {
+    validateExemptions(approvedBaseline.exemptions, 'approvedBaseline.exemptions');
+  }
 
   const baselineKeys = new Set(baseline.exemptions.map(violationKey));
   const actualKeys = new Set(actualViolations.map(violationKey));
+  const approvedBaselineKeys = new Set((approvedBaseline?.exemptions || []).map(violationKey));
   const newViolations = actualViolations.filter((violation) => !baselineKeys.has(violationKey(violation)));
   const expiredExemptions = baseline.exemptions.filter((exemption) => !actualKeys.has(violationKey(exemption)));
+  const baselineExpansion = forbidNewExemptions
+    ? baseline.exemptions.filter((exemption) => !approvedBaselineKeys.has(violationKey(exemption)))
+    : [];
 
   return {
-    passed: newViolations.length === 0 && expiredExemptions.length === 0,
+    passed: newViolations.length === 0 && expiredExemptions.length === 0 && baselineExpansion.length === 0,
     newViolations,
     expiredExemptions,
+    baselineExpansion,
   };
+}
+
+function validateBaseline(baseline, path) {
+  if (!baseline || typeof baseline !== 'object' || Array.isArray(baseline)) {
+    throw new Error(`${path} must be an object`);
+  }
+  if (!Array.isArray(baseline.exemptions)) {
+    throw new Error(`${path}.exemptions must be an array`);
+  }
+}
+
+function validateExemptions(exemptions, path) {
+  exemptions.forEach((exemption, index) => {
+    validateViolation(exemption, `${path}[${index}]`);
+    requireString(exemption.reason, `${path}[${index}].reason`);
+    requireString(exemption.cleanupRef, `${path}[${index}].cleanupRef`);
+  });
 }
 
 function validateViolation(violation, path) {

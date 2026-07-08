@@ -11,6 +11,7 @@ const { formatGuardrailFailure } = require('./helpers/guardrail-report');
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G4';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G4.json');
+const APPROVED_BASELINE = { exemptions: [] };
 
 const G4_RULE_METADATA = {
   'G4.1 audit invalid-input coverage': {
@@ -35,7 +36,7 @@ test('G4 catches an audit script with no invalid-input 必须 fail test and a si
     {
       rule: 'G4.1 audit invalid-input coverage',
       file: 'scripts/audit-silent.js',
-      detail: 'missing test named "audit-silent invalid-input 必须 fail"',
+      detail: 'missing test named "audit-silent invalid-input 必须 fail" with invalid-input failure evidence',
     },
     {
       rule: 'G4.2 audit cli unknown input exits nonzero',
@@ -69,7 +70,7 @@ test('G4 ignores invalid-input coverage text in comments and ordinary strings', 
   assert.deepEqual(violations, [{
     rule: 'G4.1 audit invalid-input coverage',
     file: 'scripts/audit-commented.js',
-    detail: 'missing test named "audit-commented invalid-input 必须 fail"',
+    detail: 'missing test named "audit-commented invalid-input 必须 fail" with invalid-input failure evidence',
   }]);
 });
 
@@ -78,7 +79,12 @@ test('G4 accepts a real Node test case named for invalid-input coverage', () => 
     'scripts/audit-covered.js': 'process.exit(1);\n',
     'test/audit-covered.test.js': [
       'const test = require("node:test");',
-      'test("audit-covered invalid-input 必须 fail", () => {});',
+      'const assert = require("node:assert/strict");',
+      'const { spawnSync } = require("node:child_process");',
+      'test("audit-covered invalid-input 必须 fail", () => {',
+      '  const result = spawnSync(process.execPath, ["scripts/audit-covered.js"], { cwd: process.cwd() });',
+      '  assert.notEqual(result.status, 0);',
+      '});',
       '',
     ].join('\n'),
   });
@@ -88,12 +94,31 @@ test('G4 accepts a real Node test case named for invalid-input coverage', () => 
   assert.deepEqual(violations, []);
 });
 
+test('G4 rejects invalid-input coverage with only an empty matching test name', () => {
+  const root = makeSampleProject({
+    'scripts/audit-empty-evidence.js': 'process.exit(1);\n',
+    'test/audit-empty-evidence.test.js': [
+      'const test = require("node:test");',
+      'test("audit-empty-evidence invalid-input 必须 fail", () => {});',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G4.1 audit invalid-input coverage',
+    file: 'scripts/audit-empty-evidence.js',
+    detail: 'missing test named "audit-empty-evidence invalid-input 必须 fail" with invalid-input failure evidence',
+  }]);
+});
+
 test('G4 rejects invalid-input coverage when test is shadowed by a local function', () => {
   const root = makeSampleProject({
     'scripts/audit-shadowed.js': 'process.exit(1);\n',
     'test/audit-shadowed.test.js': [
       'function test(_name, _fn) {}',
-      'test("audit-shadowed invalid-input 必须 fail", () => {});',
+      'test("audit-shadowed invalid-input 必须 fail", () => { assert.throws(() => { throw new Error("invalid input"); }); });',
       '',
     ].join('\n'),
   });
@@ -103,7 +128,7 @@ test('G4 rejects invalid-input coverage when test is shadowed by a local functio
   assert.deepEqual(violations, [{
     rule: 'G4.1 audit invalid-input coverage',
     file: 'scripts/audit-shadowed.js',
-    detail: 'missing test named "audit-shadowed invalid-input 必须 fail"',
+    detail: 'missing test named "audit-shadowed invalid-input 必须 fail" with invalid-input failure evidence',
   }]);
 });
 
@@ -112,7 +137,11 @@ test('G4 accepts a destructured node:test import for invalid-input coverage', ()
     'scripts/audit-destructured.js': 'process.exit(1);\n',
     'test/audit-destructured.test.js': [
       'const { test } = require("node:test");',
-      'test("audit-destructured invalid-input 必须 fail", () => {});',
+      'const assert = require("node:assert/strict");',
+      'test("audit-destructured invalid-input 必须 fail", () => {',
+      '  assert.equal({ ok: false, code: "INVALID_INPUT" }.ok, false);',
+      '  assert.equal({ ok: false, code: "INVALID_INPUT" }.code, "INVALID_INPUT");',
+      '});',
       '',
     ].join('\n'),
   });
@@ -122,10 +151,45 @@ test('G4 accepts a destructured node:test import for invalid-input coverage', ()
   assert.deepEqual(violations, []);
 });
 
+test('G4 ignores transient ENOENT under test/workspace during invalid-input coverage scans', () => {
+  const root = makeSampleProject({
+    'scripts/audit-workspace.js': 'process.exit(1);\n',
+    'test/audit-workspace.test.js': [
+      'const test = require("node:test");',
+      'const assert = require("node:assert/strict");',
+      'test("audit-workspace invalid-input 必须 fail", () => {',
+      '  assert.throws(() => { throw Object.assign(new Error("invalid input"), { code: "INVALID_INPUT" }); }, /invalid input/);',
+      '});',
+      '',
+    ].join('\n'),
+    'test/workspace/transient/placeholder.test.js': 'throw new Error("must not be scanned");\n',
+  });
+  const originalReaddirSync = fs.readdirSync;
+  fs.readdirSync = function readdirSyncWithTransientWorkspaceEnoent(target, options) {
+    if (path.relative(root, target).replaceAll(path.sep, '/') === 'test/workspace') {
+      const error = new Error('transient workspace missing');
+      error.code = 'ENOENT';
+      throw error;
+    }
+    return originalReaddirSync.call(this, target, options);
+  };
+  try {
+    const violations = collectG4Violations(root);
+    assert.deepEqual(violations, []);
+  } finally {
+    fs.readdirSync = originalReaddirSync;
+  }
+});
+
 test('G4 current audit fail-closed violations match the ratchet baseline', () => {
   const actualViolations = collectG4Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG4Failure(result));
@@ -134,18 +198,18 @@ test('G4 current audit fail-closed violations match the ratchet baseline', () =>
 
 function collectG4Violations(repoRoot) {
   const scripts = collectAuditScripts(repoRoot);
-  const testNames = collectNodeTestNames(repoRoot);
+  const invalidInputEvidenceNames = collectNodeTestInvalidInputEvidenceNames(repoRoot);
   const violations = [];
 
   for (const script of scripts) {
     const basename = path.basename(script, '.js');
     const relativeScript = repoRelative(repoRoot, script);
     const expectedName = `${basename} invalid-input 必须 fail`;
-    if (!testNames.has(expectedName)) {
+    if (!invalidInputEvidenceNames.has(expectedName)) {
       violations.push({
         rule: 'G4.1 audit invalid-input coverage',
         file: relativeScript,
-        detail: `missing test named "${expectedName}"`,
+        detail: `missing test named "${expectedName}" with invalid-input failure evidence`,
       });
     }
 
@@ -175,24 +239,28 @@ function collectAuditScripts(repoRoot) {
     .sort();
 }
 
-function collectNodeTestNames(repoRoot) {
+function collectNodeTestInvalidInputEvidenceNames(repoRoot) {
   const testDir = path.join(repoRoot, 'test');
   const names = new Set();
   if (!fs.existsSync(testDir)) return names;
-  for (const file of collectFiles(testDir)
+  for (const file of collectFiles(testDir, {
+    shouldSkipDirectory: (directory) => repoRelative(repoRoot, directory).startsWith('test/workspace'),
+  })
     .filter((file) => file.endsWith('.test.js'))
     .filter((file) => !repoRelative(repoRoot, file).startsWith('test/architecture/'))) {
-    for (const name of extractNodeTestNames(fs.readFileSync(file, 'utf8'))) {
-      names.add(name);
+    for (const testCase of extractNodeTestCases(fs.readFileSync(file, 'utf8'))) {
+      if (hasInvalidInputFailureEvidence(testCase.body)) {
+        names.add(testCase.name);
+      }
     }
   }
   return names;
 }
 
-function extractNodeTestNames(source) {
+function extractNodeTestCases(source) {
   const apiNames = collectNodeTestApiNames(source);
-  const names = [];
-  if (apiNames.size === 0) return names;
+  const testCases = [];
+  if (apiNames.size === 0) return testCases;
   let index = 0;
   while (index < source.length) {
     if (source.startsWith('//', index)) {
@@ -213,13 +281,42 @@ function extractNodeTestNames(source) {
       }
       const firstArgumentIndex = nextArgumentIndex(source, openParenIndex + 1);
       const literal = readStaticStringLiteral(source, firstArgumentIndex);
-      if (literal) names.push(literal.value);
+      const closeParenIndex = findCallCloseParen(source, openParenIndex);
+      if (literal && closeParenIndex !== null) {
+        testCases.push({
+          name: literal.value,
+          body: source.slice(literal.end, closeParenIndex),
+        });
+      }
       index = openParenIndex + 1;
     } else {
       index += 1;
     }
   }
-  return names;
+  return testCases;
+}
+
+function hasInvalidInputFailureEvidence(testBody) {
+  return hasNonzeroProcessAssertion(testBody)
+    || hasThrowAssertion(testBody)
+    || hasExplicitInvalidResultAssertion(testBody);
+}
+
+function hasNonzeroProcessAssertion(testBody) {
+  if (!/\b(?:spawnSync|execFileSync|execSync)\s*\(/.test(testBody)) return false;
+  return /assert\.(?:notEqual|notStrictEqual)\s*\([^)]*\.status\s*,\s*0\b/.test(testBody)
+    || /assert\.(?:equal|strictEqual)\s*\([^)]*\.status\s*,\s*[1-9]\d*\b/.test(testBody)
+    || /assert\.notEqual\s*\([^)]*\.exitCode\s*,\s*0\b/.test(testBody);
+}
+
+function hasThrowAssertion(testBody) {
+  return /assert\.throws\s*\(/.test(testBody);
+}
+
+function hasExplicitInvalidResultAssertion(testBody) {
+  const hasOkFalse = /assert\.(?:equal|strictEqual)\s*\([^)]*\.ok\s*,\s*false\b/.test(testBody);
+  const hasSpecificErrorCode = /assert\.(?:equal|strictEqual|match)\s*\([^)]*\.(?:code|errorCode)\s*,\s*['"][A-Z0-9_-]+['"]/.test(testBody);
+  return hasOkFalse && hasSpecificErrorCode;
 }
 
 function collectNodeTestApiNames(source) {
@@ -316,6 +413,34 @@ function findCallOpenParen(source, index) {
   let cursor = index;
   while (cursor < source.length && /\s/.test(source[cursor])) cursor += 1;
   return source[cursor] === '(' ? cursor : null;
+}
+
+function findCallCloseParen(source, openParenIndex) {
+  let depth = 1;
+  let index = openParenIndex + 1;
+  while (index < source.length) {
+    if (source.startsWith('//', index)) {
+      index = skipLineComment(source, index);
+    } else if (source.startsWith('/*', index)) {
+      index = skipBlockComment(source, index);
+    } else if (source[index] === '"' || source[index] === "'") {
+      index = skipQuotedString(source, index).end;
+    } else if (source[index] === '`') {
+      index = skipTemplateLiteral(source, index).end;
+    } else if (source[index] === '/' && startsRegexLiteral(source, index)) {
+      index = skipRegexLiteral(source, index);
+    } else if (source[index] === '(') {
+      depth += 1;
+      index += 1;
+    } else if (source[index] === ')') {
+      depth -= 1;
+      if (depth === 0) return index;
+      index += 1;
+    } else {
+      index += 1;
+    }
+  }
+  return null;
 }
 
 function nextArgumentIndex(source, index) {
@@ -442,11 +567,19 @@ function isIdentifierCharacter(character) {
   return typeof character === 'string' && /[$\w]/.test(character);
 }
 
-function collectFiles(root) {
+function collectFiles(root, options = {}) {
   const files = [];
-  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = fs.readdirSync(root, { withFileTypes: true });
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return files;
+    throw error;
+  }
+  for (const entry of entries) {
     const fullPath = path.join(root, entry.name);
-    if (entry.isDirectory()) files.push(...collectFiles(fullPath));
+    if (entry.isDirectory() && options.shouldSkipDirectory?.(fullPath)) continue;
+    if (entry.isDirectory()) files.push(...collectFiles(fullPath, options));
     if (entry.isFile()) files.push(fullPath);
   }
   return files;

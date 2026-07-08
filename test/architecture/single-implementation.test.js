@@ -11,6 +11,7 @@ const { formatGuardrailFailure } = require('./helpers/guardrail-report');
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G6';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G6.json');
+const APPROVED_BASELINE = { exemptions: [] };
 const SINGLE_IMPLEMENTATION_NAMES = [
   'normalizeText',
   'normalizeLineEndings',
@@ -138,7 +139,12 @@ test('G6 collector scans definitions after regex literals with quotes', () => {
 test('G6 current duplicate helper definitions match the ratchet baseline', () => {
   const actualViolations = collectG6Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG6Failure(result));

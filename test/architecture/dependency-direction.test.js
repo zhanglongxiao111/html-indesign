@@ -11,6 +11,7 @@ const { collectRequireGraph, collectRequireGraphFromFiles } = require('./helpers
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G1';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G1.json');
+const APPROVED_BASELINE = { exemptions: [] };
 const ROOT_PUBLIC_ENTRYPOINTS = ['index.js'];
 const G1_RULE_METADATA = {
   'G1.0 static require graph': {
@@ -256,7 +257,12 @@ test('G1 failure reports describe every failing subrule family', () => {
 test('G1 current dependency direction violations match the ratchet baseline', () => {
   const actualViolations = collectG1Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG1Failure(result));

@@ -11,6 +11,7 @@ const { formatGuardrailFailure } = require('./helpers/guardrail-report');
 const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md#G5';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G5.json');
+const APPROVED_BASELINE = { exemptions: [] };
 const RETIRED_PATTERN = /\blegacy\b|pagedHtml|paged-html/gi;
 
 const G5_RULE_METADATA = {
@@ -67,7 +68,12 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
 test('G5 current retired naming violations match the ratchet baseline', () => {
   const actualViolations = collectG5Violations(REPO_ROOT);
   const baseline = readJson(BASELINE_PATH);
-  const result = compareViolationsToBaseline({ actualViolations, baseline });
+  const result = compareViolationsToBaseline({
+    actualViolations,
+    baseline,
+    approvedBaseline: APPROVED_BASELINE,
+    forbidNewExemptions: true,
+  });
 
   if (!result.passed) {
     throw new Error(formatG5Failure(result));
