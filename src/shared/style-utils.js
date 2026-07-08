@@ -180,6 +180,12 @@ function safeVisualClassToken(value) {
     .replace(/^-+|-+$/g, '') || 'style';
 }
 
+function parseZIndex(value) {
+  if (value == null || value === 'auto') return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function stableAutoName(prefix, signature) {
   const hash = crypto
     .createHash('sha1')
@@ -232,6 +238,7 @@ module.exports = {
   safeAuthorClassToken,
   safeMigrationClassToken,
   safeVisualClassToken,
+  parseZIndex,
   stableAutoName,
   firstClassName,
   explicitName,

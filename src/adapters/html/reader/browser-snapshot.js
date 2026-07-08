@@ -3,6 +3,7 @@ const { chromium } = require('playwright');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const { rectPxToMm, round } = require('../../../shared/geometry');
 const { createReport, addMessage } = require('../../../shared/report');
+const { parseZIndex } = require('../../../shared/style-utils');
 const { detectAssetsFromItems } = require('./asset-detector');
 const { roleFromItem, selectorFor } = require('./candidate-elements');
 const { defaultPageSelector } = require('./page-detector');
@@ -166,12 +167,6 @@ function roundBounds(bounds, digits) {
     width: round(bounds.width, digits),
     height: round(bounds.height, digits),
   };
-}
-
-function parseZIndex(value) {
-  if (value == null || value === 'auto') return 0;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function applyNestedPaintOrder(items) {
