@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const {
   parseArgs,
   compileReverseSnapshotToHtml: compileReverseSnapshotToHtmlFromCli,
@@ -152,6 +153,28 @@ test('compileReverseSnapshotToHtml returns src-level author audit gates when sou
   assert.equal(result.report.authorAudit, result.files.author.audit);
   assert.equal(fs.existsSync(path.join(outDir, 'author/reports/content-inventory-report.json')), true);
   assert.equal(fs.existsSync(path.join(outDir, 'author/reports/structure-signature-report.json')), true);
+});
+
+test('standalone reverse export CLI exits nonzero when shared author audit fails', () => {
+  const root = path.resolve('test/workspace/reverse-cli-author-audit-exit-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'out');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><h1>Unmatched source text</h1></section>');
+
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/indesign-reverse-export.js'),
+    '--snapshot', path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
+    '--out', outDir,
+    '--mode', 'structured',
+    '--source-root', sourceRoot,
+  ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
+  const report = JSON.parse(result.stdout);
+
+  assert.notEqual(result.status, 0);
+  assert.equal(report.ok, false);
+  assert.equal(report.files.author.audit.ok, false);
+  assert.deepEqual(report.report.authorAudit, report.files.author.audit);
 });
 
 test('compileReverseSnapshotToHtml writes historical blueprint through reverse pipeline', () => {

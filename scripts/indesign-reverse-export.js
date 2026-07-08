@@ -80,6 +80,9 @@ async function main() {
 
   const result = compileReverseSnapshotToHtml(options);
   console.log(JSON.stringify(result, null, 2));
+  if (result && result.ok === false) {
+    process.exitCode = 1;
+  }
 }
 
 function readValue(argv, index, flag) {
