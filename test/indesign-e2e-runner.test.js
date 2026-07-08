@@ -14,6 +14,7 @@ const {
   parseCliResultJson,
   resolveIndesignCliCommand,
   parseTargetSize,
+  resolveReverseSourceRootForHtml,
 } = require('../scripts/indesign-e2e');
 const scriptExports = require('../scripts/indesign-e2e');
 const {
@@ -142,6 +143,23 @@ test('indesign e2e first-pass author audit is owned by the reverse pipeline', ()
   const script = fs.readFileSync(path.resolve('scripts/indesign-e2e.js'), 'utf8');
 
   assert.equal(script.includes('auditReverseAuthorPackage({'), false);
+});
+
+test('reverse roundtrip source root is only explicit or a real author package root', () => {
+  const root = path.resolve('test/workspace/e2e-source-root-resolution-test');
+  const looseRoot = path.join(root, 'loose-html');
+  const authorRoot = path.join(root, 'author-package');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(looseRoot, { recursive: true });
+  fs.writeFileSync(path.join(looseRoot, 'deck.html'), '<!doctype html><main></main>\n', 'utf8');
+  writeMinimalAuthorPackage(authorRoot, '<section class="page"><p>作者包</p></section>');
+
+  assert.equal(resolveReverseSourceRootForHtml(path.join(looseRoot, 'deck.html')), null);
+  assert.equal(resolveReverseSourceRootForHtml(path.join(authorRoot, 'deck.html')), authorRoot);
+  assert.equal(
+    resolveReverseSourceRootForHtml(path.join(looseRoot, 'deck.html'), { sourceRoot: authorRoot }),
+    authorRoot
+  );
 });
 
 test('assertPanelNameAuditOk rejects English panel-facing names', () => {

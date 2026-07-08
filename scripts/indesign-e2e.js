@@ -279,6 +279,18 @@ function findAuthorPackageForHtml(htmlPath) {
   return readAuthorPackage(configPath);
 }
 
+function resolveReverseSourceRootForHtml(htmlPath, options = {}) {
+  if (options.sourceRoot) return path.resolve(options.sourceRoot);
+
+  const packageInfo = findAuthorPackageForHtml(htmlPath);
+  if (!packageInfo) return null;
+
+  const resolvedHtmlPath = path.resolve(htmlPath);
+  return path.resolve(packageInfo.entryPath) === resolvedHtmlPath
+    ? packageInfo.rootDir
+    : null;
+}
+
 function runCli(args, cwd) {
   return runCommand(resolveIndesignCliCommand(), args, cwd);
 }
@@ -350,13 +362,17 @@ async function runReverseRoundtrip(context, options = {}) {
   assertCliResultOk(reverseResult, 'InDesign reverse snapshot failed');
 
   const { compileReverseSnapshotToHtml } = require('./indesign-reverse-export');
-  const htmlResult = compileReverseSnapshotToHtml({
+  const sourceRoot = resolveReverseSourceRootForHtml(context.htmlPath, options);
+  const reverseCompileOptions = {
     snapshotPath: context.reverseSnapshotPath,
     outDir: context.reverseOutDir,
     mode: reverseMode,
-    sourceRoot: path.dirname(context.htmlPath),
-    strictSourceRoundtrip: true,
-  });
+  };
+  if (sourceRoot) {
+    reverseCompileOptions.sourceRoot = sourceRoot;
+    reverseCompileOptions.strictSourceRoundtrip = true;
+  }
+  const htmlResult = compileReverseSnapshotToHtml(reverseCompileOptions);
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
   const reverseHtml = fs.readFileSync(reverseHtmlPath, 'utf8');
   const htmlAudit = reverseMode === 'observation'
@@ -538,4 +554,5 @@ module.exports = {
   parseArgs,
   parseTargetSize,
   runIndesignE2E,
+  resolveReverseSourceRootForHtml,
 };
