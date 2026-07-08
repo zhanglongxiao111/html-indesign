@@ -101,6 +101,36 @@ test('validateSemanticModel passes strict field domains to model field validatio
   );
 });
 
+test('validateSemanticModel rejects invalid current role values in strict field mode', () => {
+  const result = validateSemanticModel({
+    kind: 'DocumentModel',
+    id: 'doc',
+    labels: [{ kind: 'document', id: 'doc' }],
+    pages: [{
+      id: 'p1',
+      labels: [{ kind: 'page', id: 'p1' }],
+      items: [{
+        id: 'item-1',
+        role: 'bogus',
+        effectiveLabel: { role: ' text ' },
+        labels: [{ kind: 'item', id: 'item-1' }],
+      }],
+    }],
+  }, { strictFields: true });
+
+  assert.equal(result.valid, false);
+  for (const path of ['items[].role', 'items[].effectiveLabel.role']) {
+    assert.equal(
+      result.errors.some((error) => (
+        error.code === 'MODEL_FIELD_VALUE_NOT_ALLOWED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be rejected`,
+    );
+  }
+});
+
 test('validateSemanticModel rejects unknown raw label fields only when label domain is strict', () => {
   const model = {
     kind: 'DocumentModel',

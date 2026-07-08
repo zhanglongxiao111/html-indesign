@@ -325,7 +325,7 @@ function hasExplicitParentTextSemantic(item) {
   const semantic = String(item.semantic || '').trim();
   if (['page-number', 'folio', 'running-header', 'running-footer', 'chapter-marker', 'section-marker'].includes(semantic)) return true;
   return (item.labels || []).some((label) => {
-    const values = [label && label.semantic, label && label.role, label && label.token, label && label.type]
+    const values = [label && label.semantic, label && label.role]
       .map((value) => String(value || '').trim());
     return values.some((value) => ['page-number', 'folio', 'running-header', 'running-footer', 'chapter-marker', 'section-marker'].includes(value));
   });

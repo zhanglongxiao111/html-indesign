@@ -54,6 +54,21 @@ test('validateReverseLabel observes unknown semantic instead of accepting copied
   assert.deepEqual(result.rejectionReasons, ['unknown-semantic']);
 });
 
+test('validateReverseLabel observes invalid registered role values without making them effective', () => {
+  const result = validateReverseLabel({
+    semantic: 'page-title',
+    role: 'bogus',
+  }, { preset, mode: 'structured', kind: 'item' });
+
+  assert.equal(result.status, 'partial');
+  assert.equal(result.valid, true);
+  assert.equal(result.effective.role, undefined);
+  assert.equal(result.effective.semantic, 'page-title');
+  assert.equal(result.observed.role, 'bogus');
+  assert.equal(result.rejectedFields.role, 'label-field-value-not-allowed');
+  assert.equal(result.fieldValidation.invalidValues[0].path, 'role');
+});
+
 test('validateReverseLabel treats standard style-map tokens as known semantics', () => {
   const result = validateReverseLabel({
     semantic: 'metric-card',

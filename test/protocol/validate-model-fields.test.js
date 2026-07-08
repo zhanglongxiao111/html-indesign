@@ -148,6 +148,37 @@ test('validateModelFields can scan a DocumentModel object input explicitly', () 
   );
 });
 
+test('validateModelFields rejects registered allowedValues violations in strict mode', () => {
+  const result = validateModelFields(fieldRegistry, {
+    kind: 'DocumentModel',
+    id: 'doc',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'item-1',
+        role: 'bogus',
+        effectiveLabel: { role: ' text ' },
+      }],
+    }],
+  }, { strict: true });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.invalidValues.map((entry) => entry.path), [
+    'items[].role',
+    'items[].effectiveLabel.role',
+  ]);
+  for (const path of ['items[].role', 'items[].effectiveLabel.role']) {
+    assert.equal(
+      result.errors.some((error) => (
+        error.code === 'MODEL_FIELD_VALUE_NOT_ALLOWED'
+        && error.path === path
+      )),
+      true,
+      `${path} should be a strict value-domain error`,
+    );
+  }
+});
+
 test('validateModelFields rejects non-path-array and non-DocumentModel inputs', () => {
   for (const input of [
     'labels[].x',

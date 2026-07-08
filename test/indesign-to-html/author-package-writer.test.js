@@ -596,6 +596,71 @@ test('writeReverseAuthorPackage renders applied parent page decoration without t
   assert.doesNotMatch(html, /image-placeholder-frame/);
 });
 
+test('writeReverseAuthorPackage ignores raw label token and type for parent page text semantics', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-parent-raw-label-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'parent-raw-label-test',
+    title: 'Parent Raw Label Test',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [{
+      id: 'A-Parent',
+      name: 'A-Parent',
+      items: [
+        {
+          id: 'raw-type-page-number',
+          role: 'text',
+          semantic: null,
+          bounds: { x: 40, y: 40, width: 80, height: 20 },
+          content: { text: 'RAW TYPE', runs: [] },
+          labels: [{ kind: 'item', id: 'raw-type-page-number', type: 'page-number' }],
+        },
+        {
+          id: 'raw-token-page-number',
+          role: 'text',
+          semantic: null,
+          bounds: { x: 40, y: 70, width: 80, height: 20 },
+          content: { text: 'RAW TOKEN', runs: [] },
+          labels: [{ kind: 'item', id: 'raw-token-page-number', token: 'page-number' }],
+        },
+        {
+          id: 'current-page-number',
+          role: 'text',
+          semantic: 'page-number',
+          bounds: { x: 40, y: 100, width: 80, height: 20 },
+          content: { text: 'CURRENT SEMANTIC', runs: [] },
+        },
+        {
+          id: 'current-label-page-number',
+          role: 'text',
+          semantic: null,
+          bounds: { x: 40, y: 130, width: 80, height: 20 },
+          content: { text: 'CURRENT LABEL', runs: [] },
+          labels: [{ kind: 'item', id: 'current-label-page-number', semantic: 'page-number' }],
+        },
+      ],
+    }],
+    pages: [{
+      id: 'page-1',
+      parentPageId: 'A-Parent',
+      width: 800,
+      height: 450,
+      items: [],
+    }],
+    styles: {},
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const html = fs.readFileSync(path.join(outDir, 'pages/00-page-1.html'), 'utf8');
+  assert.doesNotMatch(html, /RAW TYPE/);
+  assert.doesNotMatch(html, /RAW TOKEN/);
+  assert.match(html, /CURRENT SEMANTIC/);
+  assert.match(html, /CURRENT LABEL/);
+});
+
 test('writeReverseAuthorPackage restores source resource tags instead of div placeholders', () => {
   const outDir = path.resolve('test/workspace/reverse-author-resource-test');
   fs.rmSync(outDir, { recursive: true, force: true });

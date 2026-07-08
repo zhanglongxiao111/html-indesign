@@ -107,6 +107,78 @@ test('reverseSnapshotToSemanticModel defaults missing item semantic to null', ()
   assert.notEqual(item.semantic, 'unknown');
 });
 
+test('reverseSnapshotToSemanticModel writes sanitized effective role instead of raw label role', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'sanitized-role.indd', mode: 'structured' },
+    document: { name: 'sanitized-role.indd', labels: [] },
+    pages: [{
+      id: '1',
+      index: 0,
+      labels: [],
+      bounds: { x: 0, y: 0, width: 800, height: 450 },
+      items: [{
+        id: 'title',
+        type: 'TextFrame',
+        text: 'Title',
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'item',
+          id: 'title',
+          semantic: 'page-title',
+          role: ' text ',
+        }],
+      }],
+    }],
+  }, {
+    mode: 'structured',
+    semanticPreset: { semantics: { 'page-title': { roles: ['text'] } } },
+  });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.role, 'text');
+  assert.equal(item.effectiveLabel.role, 'text');
+});
+
+test('reverseSnapshotToSemanticModel rejects invalid label role under strict field validation', () => {
+  const error = captureThrow(() => reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'bogus-role.indd', mode: 'structured' },
+    document: { name: 'bogus-role.indd', labels: [] },
+    pages: [{
+      id: '1',
+      index: 0,
+      labels: [],
+      bounds: { x: 0, y: 0, width: 800, height: 450 },
+      items: [{
+        id: 'title',
+        type: 'TextFrame',
+        text: 'Title',
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'item',
+          id: 'title',
+          semantic: 'page-title',
+          role: 'bogus',
+        }],
+      }],
+    }],
+  }, {
+    mode: 'structured',
+    strictFields: true,
+    semanticPreset: { semantics: { 'page-title': { roles: ['text'] } } },
+  }));
+
+  assert.equal(error.code, 'SEMANTIC_MODEL_VALIDATION_FAILED');
+  assert.equal(
+    error.validation.errors.some((issue) => (
+      issue.code === 'LABEL_FIELD_VALUE_NOT_ALLOWED'
+      && issue.path === 'role'
+    )),
+    true,
+  );
+});
+
 test('reverseSnapshotToSemanticModel restores page semantic from source package page files only when whitelisted', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'source-page-semantic.indd', mode: 'structured' },

@@ -1,6 +1,5 @@
 const {
   fieldRegistry,
-  scanModelPaths,
   validateLabelFields,
   validateModelFields,
 } = require('../protocol');
@@ -41,7 +40,7 @@ function validateSemanticModel(model, options = {}) {
   if (options.strictFields === true || options.warnFields === true) {
     fieldValidation = validateModelFields(
       fieldRegistry,
-      scanModelPaths(model),
+      model,
       {
         strict: options.strictFields === true,
         domains: fieldDomains || undefined,

@@ -10,6 +10,7 @@ function validateLabelFields(registry, label, options = {}) {
   const unknown = [];
   const retired = [];
   const disallowed = [];
+  const invalidValues = [];
   const observed = [];
   const warnings = [];
   const errors = [];
@@ -68,6 +69,23 @@ function validateLabelFields(registry, label, options = {}) {
       continue;
     }
 
+    const invalidValue = invalidAllowedValue(path, label[path], allowedEntries);
+    if (invalidValue) {
+      invalidValues.push(invalidValue);
+      observed.push(path);
+      const issue = {
+        code: 'LABEL_FIELD_VALUE_NOT_ALLOWED',
+        path,
+        value: invalidValue.value,
+        allowedValues: invalidValue.allowedValues,
+        field: invalidValue.field,
+        message: `InDesign label payload field value is not allowed for ${path}: ${String(invalidValue.value)}`,
+      };
+      warnings.push(issue);
+      if (strict) errors.push({ ...issue });
+      continue;
+    }
+
     accepted.push(path);
   }
 
@@ -77,6 +95,7 @@ function validateLabelFields(registry, label, options = {}) {
     unknown,
     retired,
     disallowed,
+    invalidValues,
     observed,
     warnings,
     errors,
@@ -196,12 +215,35 @@ function allowedLabelKindsFor(entries) {
   return out;
 }
 
+function invalidAllowedValue(path, value, entries) {
+  const fields = entries
+    .map((entry) => entry.field)
+    .filter((field) => Array.isArray(field.allowedValues) && field.allowedValues.length);
+  if (!fields.length) return null;
+  const normalized = normalizeAllowedValue(value);
+  if (fields.some((field) => field.allowedValues.includes(normalized))) {
+    return null;
+  }
+  const field = fields[0];
+  return {
+    path,
+    value,
+    normalizedValue: normalized,
+    allowedValues: field.allowedValues.slice(),
+    field,
+  };
+}
+
 function normalizeLabelKinds(value) {
   return uniqueStrings(value).map(cleanLabelKind).filter(Boolean);
 }
 
 function cleanLabelKind(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeAllowedValue(value) {
+  return typeof value === 'string' ? value.trim() : value;
 }
 
 function addPath(paths, seen, path) {

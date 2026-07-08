@@ -213,7 +213,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
   });
   const effective = validation.effective;
   const observed = observedLabelWithReasons(validation);
-  const role = label.role || roleFromInDesignType(item.type, item);
+  const role = effective.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
   const vectorGeometry = reverseVectorGeometry(item.vectorGeometry);
   const extensions = reverseItemExtensions(item);

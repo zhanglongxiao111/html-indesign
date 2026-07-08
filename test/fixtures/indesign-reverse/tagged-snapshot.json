@@ -70,7 +70,7 @@
             "kind": "style",
             "id": "style-page-title",
             "source": "html-to-indesign",
-            "styleKind": "paragraph",
+            "styleKind": "paragraphStyles",
             "token": "page-title",
             "displayName": "页面标题",
             "htmlClass": "page-title"

@@ -154,6 +154,26 @@ test('validateLabelFields rejects unknown label payload fields in strict mode', 
   );
 });
 
+test('validateLabelFields rejects registered allowedValues violations in strict mode', () => {
+  const result = validateLabelFields(fieldRegistry, {
+    kind: 'item',
+    id: 'title',
+    role: 'bogus',
+  }, { strict: true });
+
+  assert.equal(result.valid, false);
+  assert.deepEqual(result.accepted, ['kind', 'id']);
+  assert.deepEqual(result.invalidValues.map((entry) => entry.path), ['role']);
+  assert.equal(result.observed.includes('role'), true);
+  assert.equal(
+    result.errors.some((error) => (
+      error.code === 'LABEL_FIELD_VALUE_NOT_ALLOWED'
+      && error.path === 'role'
+    )),
+    true,
+  );
+});
+
 test('validateLabelFields reports unknown fields in observation mode without accepting them', () => {
   const result = validateLabelFields(fieldRegistry, {
     kind: 'item',
@@ -238,7 +258,7 @@ test('validateLabelFields accepts legal document style layer and parent page pay
     id: 'style-page-title',
     token: 'page-title',
     displayName: '页面标题',
-    styleKind: 'paragraph',
+    styleKind: 'paragraphStyles',
     htmlClass: 'page-title',
   }, { strict: true });
   assert.equal(style.valid, true);

@@ -89,6 +89,7 @@ function applyFieldValidation(label, validation, observed, rejectedFields, reaso
     ...validation.unknown.map((path) => ({ path, reason: 'label-field-not-registered' })),
     ...validation.retired.map((entry) => ({ path: entry.path, reason: 'label-field-not-registered' })),
     ...(validation.disallowed || []).map((entry) => ({ path: entry.path, reason: 'label-field-kind-not-allowed' })),
+    ...(validation.invalidValues || []).map((entry) => ({ path: entry.path, reason: 'label-field-value-not-allowed' })),
   ];
   for (const { path, reason } of rejectedPaths) {
     observeRejectedPayloadPath(label, path, observed);
@@ -148,7 +149,8 @@ function setValueAtPath(target, parts, value) {
 function applySemantic(label, known, effective, observed, rejectedFields, reasons) {
   const semantic = clean(label.semantic);
   const role = clean(label.role);
-  if (role) effective.role = role;
+  const roleRejected = Object.prototype.hasOwnProperty.call(rejectedFields, 'role');
+  if (role && !roleRejected) effective.role = role;
   if (!semantic) {
     effective.semantic = null;
     return;
@@ -161,7 +163,7 @@ function applySemantic(label, known, effective, observed, rejectedFields, reason
     return;
   }
   const allowedRoles = known.semanticRoles.get(semantic);
-  if (role && allowedRoles && allowedRoles.size && !allowedRoles.has(role)) {
+  if (!roleRejected && role && allowedRoles && allowedRoles.size && !allowedRoles.has(role)) {
     observed.semantic = semantic;
     rejectedFields.semantic = 'role-mismatch';
     reasons.push('role-mismatch');
