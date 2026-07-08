@@ -98,7 +98,7 @@ Completed in `f562732`: `git ls-files .superpowers` has no output, `.superpowers
 - Consumes: `fieldRegistry.getByPath(path)`, `lifecyclePolicyFor(fieldRegistry, path)`, existing retired HTML attr policy
 - Produces: registered and queryable retired model paths for `items[].type`, `items[].effects`, and `items[].textFrameStyle`
 
-- [ ] **Step 1: Add failing lifecycle tests**
+- [x] **Step 1: Add failing lifecycle tests**
 
 Add tests proving:
 
@@ -118,15 +118,15 @@ node --test test/protocol/lifecycle.test.js test/protocol/validate-retired-field
 
 Expected: FAIL before implementation.
 
-- [ ] **Step 2: Index retired model paths in registry**
+- [x] **Step 2: Index retired model paths in registry**
 
 Extend `src/protocol/registry.js` with a `byRetiredModelPath` index parallel to `byRetiredHtmlAttr`. The index must read `field.retired.modelPaths[].path` and must not infer retired fields from `migration.from`.
 
-- [ ] **Step 3: Teach lifecycle query about retired model paths**
+- [x] **Step 3: Teach lifecycle query about retired model paths**
 
 Update `src/protocol/field-query.js` so `lifecyclePolicyFor(fieldRegistry, 'items[].type')` and the two flat reverse paths return a retired policy object with `replacedBy`, `readPolicy`, and field metadata.
 
-- [ ] **Step 4: Extend retired validator input**
+- [x] **Step 4: Extend retired validator input**
 
 Update `src/protocol/validators/validate-retired-fields.js` to accept:
 
@@ -139,7 +139,7 @@ validateRetiredFields(fieldRegistry, {
 
 Strict invalid model paths must fail visibly; they must not be silently ignored.
 
-- [ ] **Step 5: Register flat reverse paths as retired**
+- [x] **Step 5: Register flat reverse paths as retired**
 
 Add formal retired entries for:
 
@@ -150,7 +150,7 @@ items[].textFrameStyle -> items[].extensions.indesign.textFrameStyle
 
 Keep current active extension fields in `src/protocol/fields/reverse-surfaces.js`, but remove wording that treats `migration.from` as the lifecycle source.
 
-- [ ] **Step 6: Update generated docs**
+- [x] **Step 6: Update generated docs**
 
 Run:
 
@@ -160,7 +160,7 @@ npm run docs:protocol
 
 If there is no script for this repository, run the existing generator command used by `test/protocol/generated-docs.test.js` and record it in the task report.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Run:
 
@@ -170,12 +170,14 @@ node --test test/protocol/lifecycle.test.js test/protocol/validate-retired-field
 
 Expected: all pass; retired model paths are documented in `docs/规范/PROTOCOL_FIELD_REGISTRY.md`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```powershell
 git add src/protocol docs/规范/PROTOCOL_FIELD_REGISTRY.md test/protocol
 git commit -m "protocol: complete retired model path lifecycle"
 ```
+
+Completed in `103b5fc` and follow-up fix `655d30f`: controller verification passed focused protocol suites `82/82` and registry/field/constants `33/33`; task re-review approved with no Critical, Important, or Minor findings.
 
 ### Task 3: Unify Reverse Export and E2E Author Audit Gates
 
