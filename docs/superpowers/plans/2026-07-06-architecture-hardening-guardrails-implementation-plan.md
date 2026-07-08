@@ -258,12 +258,12 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10d 复审中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，审核 agent `Galileo` 复审通过；10d 实施子 agent `Euler` 已提交 `f1ff021`，审核 agent `Anscombe` 判定 `SPEC: FAIL` / `QUALITY: FAIL`，P1 为 `src/writers/html/audit/source-roundtrip-diff.js` 仍有 active bare protocol regex 且 G2 collector 不扫 regex literal，P2 为 `src/writers/html/audit/visual-geometry-audit.js` 仍有 runtime `data-id-` 协议前缀；Euler 修复提交 `2ff6908` 已扩展 G2 覆盖 regex literal 与 bare prefix literal，并清理两处残留；控制器验证 `node --test test/architecture/protocol-literals.test.js test/protocol/constants.test.js` 8/8、`node --test test/indesign-reverse/source-roundtrip-diff.test.js test/indesign-reverse/visual-geometry-audit.test.js` 28/28、非 protocol `data-id-` 扫描无输出、`npm test` 911/911、`git diff --check HEAD~1..HEAD` 通过；等待 Anscombe 复审，不通过 baseline 掩盖；2026-07-08）。
+进度：10d 已完成，W2 剩余 G6 单项基线待清零（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，审核 agent `Galileo` 复审通过；10d 已完成：实施子 agent `Euler` 提交 `f1ff021` 与修复提交 `2ff6908`，审核 agent `Anscombe` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；控制器验证 `node --test test/architecture/protocol-literals.test.js test/protocol/constants.test.js` 8/8、`node --test test/indesign-reverse/source-roundtrip-diff.test.js test/indesign-reverse/visual-geometry-audit.test.js` 28/28、非 protocol `data-id-` 扫描无输出、`npm test` 911/911、`git diff --check HEAD~1..HEAD` 通过；当前 `test/architecture/baselines/G6.json` 仍有 `src/adapters/html/reader/browser-snapshot.js` 的 `parseZIndex` 单项豁免，任务 10 预期的 G6 归零尚未满足；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
 - [x] **10c 共享工具收敛**：`src/shared/text.js` 按语义拆分命名（如 `normalizeLineEndings` / `collapseWhitespace` / NBSP 变体）；`safeClass` 族收敛到 `shared/style-utils.js`（合并前先确认 synth token → CSS class 链路行为不变，有差异的实现先取证再定统一行为）；单位换算收敛（`authoring-validator.js` 的动态换算属不同概念，命名区分不强并）；NAS 路径逻辑复用 `shared/nas-paths.js`。逐点替换引用并收 `baselines/G6.json`。
-- [ ] **10d 字面量迁移**：47 个文件的 `data-id-` 字面量机械替换为常量引用；每迁移一批收 `baselines/G2.json` 对应条目，直至归零。
+- [x] **10d 字面量迁移**：47 个文件的 `data-id-` 字面量机械替换为常量引用；每迁移一批收 `baselines/G2.json` 对应条目，直至归零。
 
 验收命令：
 
