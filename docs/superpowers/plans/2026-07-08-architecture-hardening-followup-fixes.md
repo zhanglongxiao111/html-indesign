@@ -272,7 +272,7 @@ Completed in `1a8883e` and follow-up fix `97854ff`: controller verification pass
 - Consumes: reverse snapshot/model source metadata
 - Produces: `enrichCaptureWithReverseModelSourceMetadata(capture, reverseModel)` exported from `src`
 
-- [ ] **Step 1: Add failing src-level evidence test**
+- [x] **Step 1: Add failing src-level evidence test**
 
 Move the existing script-only evidence enrichment assertion into a `src` audit test. The test must import from `src/writers/html/audit/...`, not `scripts/audit-reverse-visual.js`.
 
@@ -284,7 +284,7 @@ node --test test/indesign-to-html/visual-geometry-audit.test.js test/indesign-to
 
 Expected: FAIL before implementation if no src export exists.
 
-- [ ] **Step 2: Move enrichment helpers**
+- [x] **Step 2: Move enrichment helpers**
 
 Move these helpers out of `scripts/audit-reverse-visual.js`:
 
@@ -297,7 +297,7 @@ collectReverseModelSourceMetadata
 
 Keep script responsibilities limited to argument parsing, file loading, calling src helpers, output writing, and exit code mapping.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run:
 
@@ -307,12 +307,14 @@ node --test test/indesign-to-html/visual-geometry-audit.test.js test/indesign-to
 
 Expected: all pass; script imports enrichment from `src`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add src/writers/html/audit scripts/audit-reverse-visual.js test/indesign-to-html
 git commit -m "audit: move reverse visual evidence into src"
 ```
+
+Completed in `62e73d1`: controller verification passed visual geometry focused suite `25/25`; task review approved with no Critical, Important, or Minor findings.
 
 ### Task 5: Harden Architecture Guardrails Against False Green
 
