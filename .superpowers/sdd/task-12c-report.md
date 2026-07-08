@@ -96,6 +96,63 @@ rg "SEMANTIC_CONTAINER_CLASSES|figure-grid|image-grid|material-grid|text-block|c
 
 PASS: exit code 0. Output only showed preset/test fixture data and the test assertion that checks `SEMANTIC_CONTAINER_CLASSES` is absent; it did not show a local `SEMANTIC_CONTAINER_CLASSES` allowlist in `src/writers/html/audit/author-editability.js`.
 
+## Hegel review fix
+
+Review result addressed:
+
+- Hegel reported `SPEC: FAIL` / `QUALITY: FAIL` for one P1: `tokens.semanticContainers` was not the only source because `collectKnownSemanticTokens()` swept all keys in its output token object and therefore also collected `styleNameMap.semanticContainers`.
+
+Fix:
+
+- Added shared semantic preset kind constants in `src/semantic-preset/kinds.js`.
+- Changed `collectKnownSemanticTokens()` to collect style-map tokens only from registered style map kinds:
+  - `paragraphStyles`
+  - `characterStyles`
+  - `objectStyles`
+  - `frameStyles`
+  - `tableStyles`
+  - `cellStyles`
+  - `layers`
+- Kept `semanticContainers` collection limited to `tokens.semanticContainers`.
+- Added schema rejection for unknown `styleNameMap` kinds with `SEMANTIC_PRESET_STYLE_MAP_KIND_UNKNOWN`.
+- Added a regression test proving `styleNameMap.semanticContainers = { bypassed: 'Bypassed' }` neither feeds `known.semanticContainers` nor passes validation.
+
+Fix RED check:
+
+```powershell
+node --test test\semantic-preset\semantic-preset.test.js
+```
+
+Observed failure before implementation:
+
+- `semantic container tokens cannot enter through styleNameMap` failed because `known.semanticContainers.has('bypassed')` was `true`.
+
+Fix verification:
+
+```powershell
+node --test test\semantic-preset\semantic-preset.test.js
+```
+
+PASS: 8 tests, 8 pass, 0 fail.
+
+```powershell
+node --test test\indesign-to-html\author-editability-audit.test.js
+```
+
+PASS: 7 tests, 7 pass, 0 fail.
+
+```powershell
+node --test test\indesign-to-html\conversion-gate-cli.test.js
+```
+
+PASS: 11 tests, 11 pass, 0 fail.
+
+```powershell
+npm test
+```
+
+PASS: 925 tests, 925 pass, 0 fail.
+
 ## Concerns
 
 - None for Task 12c scope.

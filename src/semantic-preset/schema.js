@@ -1,5 +1,12 @@
 'use strict';
 
+const {
+  STYLE_NAME_MAP_KINDS,
+  TOKEN_LIST_KINDS,
+} = require('./kinds');
+
+const STYLE_NAME_MAP_KIND_SET = new Set(STYLE_NAME_MAP_KINDS);
+
 function validateSemanticPreset(preset, options = {}) {
   const errors = [];
   const warnings = [];
@@ -18,24 +25,25 @@ function validateSemanticPreset(preset, options = {}) {
   if (!isObject(preset.styleNameMap)) {
     push(errors, 'SEMANTIC_PRESET_STYLE_MAP_REQUIRED', 'semantic preset styleNameMap is required');
   } else {
-    [
-      'paragraphStyles',
-      'characterStyles',
-      'objectStyles',
-      'frameStyles',
-      'tableStyles',
-      'cellStyles',
-      'layers',
-    ].forEach((name) => validateStringMap(errors, preset, name));
+    validateStyleNameMapKinds(errors, preset.styleNameMap);
+    STYLE_NAME_MAP_KINDS.forEach((name) => validateStringMap(errors, preset, name));
   }
 
   if (preset.tokens !== undefined && !isObject(preset.tokens)) {
     push(errors, 'SEMANTIC_PRESET_TOKENS_INVALID', 'tokens must be an object');
   } else {
-    ['semantic', 'semanticContainers', 'assets', 'fits', 'crops'].forEach((name) => validateStringArray(errors, preset, name));
+    TOKEN_LIST_KINDS.forEach((name) => validateStringArray(errors, preset, name));
   }
 
   return { valid: errors.length === 0, errors, warnings };
+}
+
+function validateStyleNameMapKinds(errors, styleNameMap) {
+  Object.keys(styleNameMap).forEach((kind) => {
+    if (!STYLE_NAME_MAP_KIND_SET.has(kind)) {
+      push(errors, 'SEMANTIC_PRESET_STYLE_MAP_KIND_UNKNOWN', `styleNameMap.${kind} is not a registered style map kind`, { kind });
+    }
+  });
 }
 
 function validateStringMap(errors, preset, name) {

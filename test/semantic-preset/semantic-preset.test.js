@@ -63,6 +63,26 @@ test('validates semantic container token lists', () => {
   ]);
 });
 
+test('semantic container tokens cannot enter through styleNameMap', () => {
+  const preset = {
+    schemaVersion: 1,
+    id: 'bypassed-containers',
+    styleNameMap: {
+      semanticContainers: {
+        bypassed: 'Bypassed',
+      },
+    },
+  };
+  const known = collectKnownSemanticTokens(preset);
+  const validation = validateSemanticPreset(preset);
+
+  assert.equal(known.semanticContainers.has('bypassed'), false);
+  assert.equal(validation.valid, false);
+  assert.deepEqual(validation.errors.map((error) => error.code), [
+    'SEMANTIC_PRESET_STYLE_MAP_KIND_UNKNOWN',
+  ]);
+});
+
 test('validates required semantic preset fields', () => {
   const validation = validateSemanticPreset({
     schemaVersion: 2,
