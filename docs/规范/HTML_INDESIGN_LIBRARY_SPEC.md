@@ -1108,11 +1108,13 @@ html-indesign reverse --mode observation --out test/workspace/reverse-observed
 | `src/semantic-reconstruction/` | Semantic Reconstruction：observed model -> reconstructed author model、证据、置信度和 unresolved 报告 |
 | `src/writers/html/` | HTML Writer：reverse author package、visual HTML、source/visual audit |
 | `_indesign_scripts/build_from_instructions.jsx` | 保留为 InDesign executor，减少业务逻辑 |
-| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 抽取；其输出通过 `src/adapters/indesign/normalizer/blueprint-migration.js` 归一化为 semantic model |
+| `_indesign_scripts/extract_blueprint.jsx` | 历史 blueprint 观察抽取；其输出只是迁移输入，必须通过 `src/adapters/indesign/normalizer/blueprint-migration.js` 归一化为 semantic model |
 | `test/artifacts/*.json` | 继续作为真实 InDesign 样式和模板样本 |
 | `test/reference/` | 继续作为旧模板和反向生成参考样本 |
 
 旧根层 blueprint 模板脚本和 `historicalTemplate` 公共出口已经退役。旧 blueprint 只能作为迁移输入进入 `src/adapters/indesign/normalizer/blueprint-migration.js`，再通过统一语义模型和 writer 输出；不得恢复旧模板 HTML 生成、旧槽位 validator、旧 builder 或公共 wrapper。新的浏览器驱动转换代码放在 `src/adapters/html/*`，HTML snapshot 到 InDesign instructions 的高层编排放在 `src/indesign-pipeline/*`，样式合成放在 `src/style-synthesis/*`，InDesign 写出代码放在 `src/writers/indesign/*`，反向导出归一化放在 `src/adapters/indesign/*`，HTML 写出和审核放在 `src/writers/html/*`。
+
+Blueprint 观察清单：`_indesign_scripts/extract_blueprint.jsx` 保留为历史 InDesign 模板的观察/迁移抽取脚本，不属于当前 authoring、HTML-to-InDesign build 或结构化输出路径。其 `blueprint.json` 输出不得直接进入作者包或构建 instructions；只能作为 historical blueprint input，经 `blueprintMigrationToSemanticModel` 与反向流水线转换、复核和报告后，才可进入当前结构化 HTML 或后续 InDesign 输出。
 
 当前模块布局：
 

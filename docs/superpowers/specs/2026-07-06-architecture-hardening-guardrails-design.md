@@ -1,10 +1,22 @@
 # 架构加固与护栏体系设计
 
 - 日期：2026-07-06
-- 状态：提案（未实施）
+- 状态：已实施
 - 类型：方案设计（过程文档）
 - 依据：`docs/review/2026-07-06-架构健康度审查报告.md`（下称审查报告，全部 file:line 证据在其中）
 - 关联：`AGENTS.md` §2/§5、`src/protocol/`、`src/semantic-model/`
+
+## 0. 实施收口（2026-07-08）
+
+本方案已按 W0-W4 落地为当前架构护栏和收口文档。以下记录为实施后的偏差和落点说明，不改写下方历史设计文本：
+
+- 反向流水线最终落在独立编排模块 `src/reverse-pipeline/`，而不是建议路径 `src/writers/html/reverse-pipeline.js`。
+- HTML snapshot 到 InDesign instructions 的编排最终落在 `src/indesign-pipeline/`。
+- 样式合成逻辑最终落在 `src/style-synthesis/`，而不是下沉到 `src/shared/`。
+- 测试目录最终采用 `test/html-to-indesign/`、`test/indesign-to-html/` 和 `test/fixtures/fixed-html/`。
+- 语义容器 class 的唯一来源为 semantic preset 的 `tokens.semanticContainers`，`author-editability` 不再维护本地 allowlist。
+- `_indesign_scripts/extract_blueprint.jsx` 保留为历史 blueprint 观察/迁移抽取脚本；它不是当前 authoring/build 路径，输出必须经 `blueprintMigrationToSemanticModel` 和反向流水线进入统一语义模型后才可参与结构化输出。
+- `docs/superpowers/plans/README.md` 仍登记本实施计划；`AGENTS.md` 的仓库地图和边界说明已与 `src/reverse-pipeline/`、`src/indesign-pipeline/`、`src/style-synthesis/` 等 W3/W4 实际结构核对。
 
 ## 1. 背景与根因诊断
 
