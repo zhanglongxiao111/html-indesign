@@ -113,6 +113,7 @@ test('compileReverseSnapshotToHtml forwards source root into the author package 
   writeFixtureFile(path.join(sourceRoot, 'styles/layout.css'), '.page { display:grid; }');
   writeFixtureFile(path.join(sourceRoot, 'styles/components.css'), '.swatch { width: 18px; height: 18px; }');
   writeFixtureFile(path.join(sourceRoot, 'styles/pages.css'), '#agenda-page { color:#123456; }');
+  writeAuthorPackage(sourceRoot, '<section class="page"><h2 id="agenda-title">汇报结构</h2></section>');
 
   compileReverseSnapshotToHtml({
     snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
@@ -125,6 +126,32 @@ test('compileReverseSnapshotToHtml forwards source root into the author package 
     fs.readFileSync(path.join(outDir, 'author/styles/components.css'), 'utf8'),
     '.swatch { width: 18px; height: 18px; }',
   );
+});
+
+test('compileReverseSnapshotToHtml returns src-level author audit gates when source root is explicit', () => {
+  const root = path.resolve('test/workspace/reverse-cli-author-audit-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'out');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><h1>Unmatched source text</h1></section>');
+
+  const result = compileReverseSnapshotToHtml({
+    snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
+    outDir,
+    mode: 'structured',
+    sourceRoot,
+    strictSourceRoundtrip: true,
+  });
+
+  assert.equal(result.files.author.audit.sourceRoundtrip.ok, false);
+  assert.equal(result.files.author.audit.contentInventory.ok, false);
+  assert.equal(result.files.author.audit.structureSignature.ok, false);
+  assert.equal(result.files.author.audit.ok, false);
+  assert.equal(result.ok, false);
+  assert.equal(result.report.ok, false);
+  assert.equal(result.report.authorAudit, result.files.author.audit);
+  assert.equal(fs.existsSync(path.join(outDir, 'author/reports/content-inventory-report.json')), true);
+  assert.equal(fs.existsSync(path.join(outDir, 'author/reports/structure-signature-report.json')), true);
 });
 
 test('compileReverseSnapshotToHtml writes historical blueprint through reverse pipeline', () => {
@@ -172,4 +199,16 @@ test('compileReverseSnapshotToHtml can run page object graph reconstruction', ()
 function writeFixtureFile(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content, 'utf8');
+}
+
+function writeAuthorPackage(root, pageHtml) {
+  fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'reverse-cli-author-audit-source',
+    entry: 'deck.html',
+    styles: ['styles/tokens.css', 'styles/layout.css', 'styles/components.css', 'styles/pages.css'],
+    pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'pages/01-agenda.html'), pageHtml, 'utf8');
 }

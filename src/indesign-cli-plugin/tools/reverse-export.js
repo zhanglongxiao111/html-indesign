@@ -91,6 +91,18 @@ async function resume(params) {
   const visualDeckPath = result.files ? result.files.visualHtml : path.join(state.outDir, 'deck.visual.html');
   const reportPath = result.files ? result.files.report : path.join(state.outDir, 'report.json');
   const reverseModelPath = result.files ? result.files.model : path.join(state.outDir, 'reverse-model.json');
+  const authorAudit = result.files && result.files.author && result.files.author.audit;
+
+  if (authorAudit && authorAudit.ok === false) {
+    return {
+      status: 'error',
+      error: {
+        code: 'REVERSE_AUTHOR_AUDIT_FAILED',
+        message: 'Reverse author package audit failed.',
+        details: authorAudit,
+      },
+    };
+  }
 
   if (!fs.existsSync(authorDeckPath)) {
     return {

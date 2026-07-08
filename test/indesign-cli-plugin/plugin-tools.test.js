@@ -186,8 +186,50 @@ test('html.reverse_export resume writes author html from reverse snapshot', () =
     && (item.path.endsWith('author\\deck.html') || item.path.endsWith('author/deck.html'))), true);
 });
 
+test('html.reverse_export resume fails visibly when reverse author audit fails', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-reverse-audit-failure');
+  const sourceRoot = path.join(outDir, 'source');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><h1>Unmatched source text</h1></section>');
+
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  fs.copyFileSync(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'), snapshotPath);
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      outDir,
+      snapshotPath,
+      mode: 'structured',
+      assetPolicy: 'reference',
+      sourceRoot,
+      nasPublicRoot: '/nas',
+    },
+    host_results: [
+      { id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } },
+    ],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'REVERSE_AUTHOR_AUDIT_FAILED');
+  assert.equal(response.error.details.ok, false);
+  assert.equal(response.error.details.contentInventory.ok, false);
+});
+
 module.exports = {
   callPlugin,
   repoRoot,
   workspaceRoot,
 };
+
+function writeAuthorPackage(root, pageHtml) {
+  fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'plugin-reverse-audit-source',
+    entry: 'deck.html',
+    pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'pages/01-agenda.html'), pageHtml, 'utf8');
+}

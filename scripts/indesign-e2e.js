@@ -17,7 +17,6 @@ const {
 const {
   auditReverseHtmlSemantics,
   assertReverseHtmlSemantics,
-  auditReverseAuthorPackage,
   auditSecondPassAuthorStability,
 } = require('../src/writers/html/audit/reverse-roundtrip');
 
@@ -356,18 +355,15 @@ async function runReverseRoundtrip(context, options = {}) {
     outDir: context.reverseOutDir,
     mode: reverseMode,
     sourceRoot: path.dirname(context.htmlPath),
+    strictSourceRoundtrip: true,
   });
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
   const reverseHtml = fs.readFileSync(reverseHtmlPath, 'utf8');
   const htmlAudit = reverseMode === 'observation'
     ? auditReverseHtmlSemantics(reverseHtml)
     : assertReverseHtmlSemantics(reverseHtml, reverseHtmlPath);
-  const authorAudit = auditReverseAuthorPackage({
-    ...htmlResult.files.author,
-    sourceRoot: path.dirname(context.htmlPath),
-    strictSourceRoundtrip: true,
-  });
-  if (!authorAudit.ok) {
+  const authorAudit = htmlResult.files && htmlResult.files.author && htmlResult.files.author.audit;
+  if (!authorAudit || !authorAudit.ok) {
     throw new Error(`Reverse author package audit failed: ${JSON.stringify(authorAudit, null, 2)}`);
   }
   const author = Object.assign({}, htmlResult.files.author, { audit: authorAudit });

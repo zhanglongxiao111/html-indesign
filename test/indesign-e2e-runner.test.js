@@ -138,6 +138,12 @@ test('indesign e2e script exports only script-owned helpers', () => {
   assert.equal(typeof scriptExports.runIndesignE2E, 'function');
 });
 
+test('indesign e2e first-pass author audit is owned by the reverse pipeline', () => {
+  const script = fs.readFileSync(path.resolve('scripts/indesign-e2e.js'), 'utf8');
+
+  assert.equal(script.includes('auditReverseAuthorPackage({'), false);
+});
+
 test('assertPanelNameAuditOk rejects English panel-facing names', () => {
   assert.throws(() => assertPanelNameAuditOk({
     audit: {

@@ -8,7 +8,7 @@ const {
 const { reconstructSemanticModel } = require('../semantic-reconstruction');
 const { semanticModelToHtml } = require('../writers/html/visual-html-writer');
 const { writeReverseAuthorPackage } = require('../writers/html/author-package-writer');
-const { auditReverseAuthorPackage } = require('../writers/html/audit/author-audit');
+const { auditReverseAuthorPackage } = require('../writers/html/audit/reverse-roundtrip');
 
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
@@ -38,19 +38,27 @@ function compileReverseSnapshotToHtml(options) {
     assetPolicy: options.assetPolicy || 'reference',
     nasPublicRoot: options.nasPublicRoot || '/nas',
   });
-  const authorAudit = auditReverseAuthorPackage(authorResult.outDir, { model });
+  const authorAudit = auditReverseAuthorPackage({
+    config: authorResult.configPath,
+    entry: authorResult.entryPath,
+    outDir: authorResult.outDir,
+    pages: authorResult.pages,
+    sourceRoot: options.sourceRoot,
+    strictSourceRoundtrip: options.strictSourceRoundtrip,
+    strictStructureSignature: options.strictStructureSignature,
+  });
 
   fs.writeFileSync(path.join(outDir, 'deck.visual.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, modeHtmlName), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'deck.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, reconstructionReportName), JSON.stringify(reconstruction.report, null, 2), 'utf8');
-  const finalReport = { ...report, authorAudit };
+  const finalReport = { ...report, ok: report.ok && authorAudit.ok, authorAudit };
   fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(finalReport, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(finalReport, null, 2), 'utf8');
 
   return {
-    ok: true,
+    ok: finalReport.ok,
     outDir,
     files: {
       html: path.join(outDir, 'deck.html'),
@@ -66,6 +74,7 @@ function compileReverseSnapshotToHtml(options) {
         presentation: authorResult.presentation,
         outDir: authorResult.outDir,
         pages: authorResult.pages,
+        audit: authorAudit,
       },
     },
     report: finalReport,
