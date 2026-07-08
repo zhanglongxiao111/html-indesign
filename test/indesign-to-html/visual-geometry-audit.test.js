@@ -1,6 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { compareVisualGeometry } = require('../../src/writers/html/audit/visual-geometry-audit');
+const {
+  enrichCaptureWithReverseModelSourceMetadata,
+} = require('../../src/writers/html/audit/reverse-visual-evidence');
 
 test('compareVisualGeometry reports missing and shifted author elements', () => {
   const report = compareVisualGeometry({
@@ -48,6 +51,47 @@ test('compareVisualGeometry accepts matching elements within tolerance', () => {
   assert.equal(report.ok, true);
   assert.equal(report.stats.compared, 1);
   assert.equal(report.errors.length, 0);
+});
+
+test('reverse visual evidence enriches reference source metadata from reverse model evidence', () => {
+  const capture = {
+    pages: [{ index: 0, width: 1000, height: 600 }],
+    elements: [{
+      key: '0:metrics',
+      id: 'metrics',
+      pageIndex: 0,
+      tagName: 'table',
+      tableStyle: 'area-table',
+      dataIdAttrs: ['data-id-table-style'],
+      x: 300,
+      y: 100,
+      width: 500,
+      height: 301,
+    }],
+  };
+  const model = {
+    pages: [{
+      items: [{
+        id: 'metrics',
+        sourceNode: {
+          attributes: {
+            'data-id-source-csv': '../smoke-assets/data/metrics.csv',
+            'data-id-source-xml': '../smoke-assets/data/metrics.xml',
+          },
+        },
+      }],
+    }],
+  };
+
+  enrichCaptureWithReverseModelSourceMetadata(capture, model);
+
+  assert.equal(capture.elements[0].sourceCsv, '../smoke-assets/data/metrics.csv');
+  assert.equal(capture.elements[0].sourceXml, '../smoke-assets/data/metrics.xml');
+  assert.deepEqual(capture.elements[0].dataIdAttrs, [
+    'data-id-table-style',
+    'data-id-source-csv',
+    'data-id-source-xml',
+  ]);
 });
 
 test('compareVisualGeometry reports text content drift even when geometry matches', () => {

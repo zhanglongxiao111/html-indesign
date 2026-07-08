@@ -8,7 +8,6 @@ const {
   parseArgs,
   resolveInputs,
   captureHtmlGeometry: captureHtmlGeometryFromCli,
-  enrichCaptureWithReverseModelSourceMetadata,
 } = cli;
 const {
   captureHtmlGeometry,
@@ -46,47 +45,6 @@ test('audit-reverse-visual cli accepts explicit reference and candidate files', 
   assert.equal(inputs.referenceHtml, path.resolve('visual.html'));
   assert.equal(inputs.candidateHtml, path.resolve('author.html'));
   assert.equal(inputs.outFile, path.resolve('report.json'));
-});
-
-test('audit-reverse-visual enriches reference source metadata from reverse model evidence', () => {
-  const capture = {
-    pages: [{ index: 0, width: 1000, height: 600 }],
-    elements: [{
-      key: '0:metrics',
-      id: 'metrics',
-      pageIndex: 0,
-      tagName: 'table',
-      tableStyle: 'area-table',
-      dataIdAttrs: ['data-id-table-style'],
-      x: 300,
-      y: 100,
-      width: 500,
-      height: 301,
-    }],
-  };
-  const model = {
-    pages: [{
-      items: [{
-        id: 'metrics',
-        sourceNode: {
-          attributes: {
-            'data-id-source-csv': '../smoke-assets/data/metrics.csv',
-            'data-id-source-xml': '../smoke-assets/data/metrics.xml',
-          },
-        },
-      }],
-    }],
-  };
-
-  enrichCaptureWithReverseModelSourceMetadata(capture, model);
-
-  assert.equal(capture.elements[0].sourceCsv, '../smoke-assets/data/metrics.csv');
-  assert.equal(capture.elements[0].sourceXml, '../smoke-assets/data/metrics.xml');
-  assert.deepEqual(capture.elements[0].dataIdAttrs, [
-    'data-id-table-style',
-    'data-id-source-csv',
-    'data-id-source-xml',
-  ]);
 });
 
 test('audit-reverse-visual does not accept table height drift via stale authoring-report source aliases', () => {
