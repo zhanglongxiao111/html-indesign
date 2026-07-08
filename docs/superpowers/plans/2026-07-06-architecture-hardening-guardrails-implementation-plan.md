@@ -296,7 +296,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 12. W4 卫生与文档收口
 
-- [ ] `test/html-to-indesign/`、`test/indesign-to-html/` 及 fixtures 目录改名对齐现行架构（收 G5 剩余条目至归零）。
+- [x] 测试目录已改为 `test/html-to-indesign/`、`test/indesign-to-html/`，fixtures 已改为 `test/fixtures/fixed-html/`；G5 baseline 已归零；审核 agent `Fermat` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `423340b`、`5b17c23`、`e256ed2`，2026-07-08）。
 - [ ] `instructionItemFor` 按五角色拆函数；`compareVisualGeometry` 拆两级；重复 `bordersAreUniform` 上提 `box-model.js`。
 - [ ] `SEMANTIC_CONTAINER_CLASSES` 与语义 preset 对齐（单一来源）。
 - [ ] `extract_blueprint.jsx` 列入 blueprint 退役观察清单（docs 记录，不删代码）。
