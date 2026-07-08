@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { lintAuthoringPackage } = require('../../src/authoring');
 
 const ROOT_DIR = path.join(__dirname, '../..');
 
@@ -19,6 +20,10 @@ test('lint-authoring CLI includes expected options', () => {
   assert.match(source, /lintAuthoringPackage/);
   assert.match(source, /lintAuthoringHtml/);
   assert.match(service, /validateAuthoringRules/);
+});
+
+test('public authoring entry exports lintAuthoringPackage', () => {
+  assert.equal(typeof lintAuthoringPackage, 'function');
 });
 
 test('lint-authoring --strict fails unregistered data-id carriers through registry validation', () => {

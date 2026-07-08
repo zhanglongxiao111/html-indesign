@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { compileReverseSnapshotToHtml } = require('../../../scripts/indesign-reverse-export');
+const { compileReverseSnapshotToHtml } = require('../../reverse-pipeline');
 const { buildReverseSnapshotJsx } = require('../host-jsx');
 const { ensureOutputDir, getCwd, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');

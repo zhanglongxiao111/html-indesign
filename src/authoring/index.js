@@ -1,1 +1,4 @@
-module.exports = require('./source-package');
+module.exports = {
+  ...require('./source-package'),
+  ...require('./lint'),
+};

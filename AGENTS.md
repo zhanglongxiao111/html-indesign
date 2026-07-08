@@ -72,6 +72,7 @@
 | `src/adapters/indesign/` | InDesign 适配器：反向 snapshot 读取、标签白名单、历史 blueprint 迁移 |
 | `src/writers/html/` | HTML 写出器：语义模型到固定语义 HTML、视觉 HTML、作者包和审核报告 |
 | `src/authoring/` | 作者源码包工具：组装、检查和维护分页作者包；不得承担格式适配或写出职责 |
+| `src/reverse-pipeline/` | 反向导出编排入口：读取 InDesign snapshot 或历史 blueprint，经语义重建后调用 HTML writer 输出视觉 HTML、作者包和报告 |
 | `src/semantic-model/` | 统一语义模型层，承接 HTML 与 InDesign 双向事实 |
 | `src/semantic-preset/` | 项目语义库预设：初始化和管理白名单语义 token；不得替代协议字段注册表 |
 | `src/semantic-reconstruction/` | 语义重建层：Observed Model 到可编辑作者语义模型的算法脚手架和报告 |

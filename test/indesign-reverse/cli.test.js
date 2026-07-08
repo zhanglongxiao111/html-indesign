@@ -4,8 +4,15 @@ const fs = require('fs');
 const path = require('path');
 const {
   parseArgs,
-  compileReverseSnapshotToHtml,
+  compileReverseSnapshotToHtml: compileReverseSnapshotToHtmlFromCli,
 } = require('../../scripts/indesign-reverse-export');
+const {
+  compileReverseSnapshotToHtml,
+} = require('../../src/reverse-pipeline');
+
+test('reverse export CLI reuses the src reverse pipeline entry', () => {
+  assert.equal(compileReverseSnapshotToHtmlFromCli, compileReverseSnapshotToHtml);
+});
 
 test('parseArgs accepts mode, snapshot and out dir', () => {
   const args = parseArgs(['--mode', 'structured', '--snapshot', 'reverse.json', '--out', 'out-dir']);

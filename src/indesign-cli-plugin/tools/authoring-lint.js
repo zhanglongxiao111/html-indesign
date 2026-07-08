@@ -1,4 +1,4 @@
-const { lintAuthoringPackage } = require('../../authoring/lint');
+const { lintAuthoringPackage } = require('../../authoring');
 const { resolveProjectPath } = require('../path-policy');
 
 async function call(args, context) {
