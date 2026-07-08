@@ -299,9 +299,9 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 - [x] 测试目录已改为 `test/html-to-indesign/`、`test/indesign-to-html/`，fixtures 已改为 `test/fixtures/fixed-html/`；G5 baseline 已归零；审核 agent `Fermat` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `423340b`、`5b17c23`、`e256ed2`，2026-07-08）。
 - [x] `instructionItemFor` 已按 text / graphic / table / line / shape 拆函数；`compareVisualGeometry` 已拆为页面与元素比较层；重复 `bordersAreUniform` / same-border 逻辑已上提 `src/style-synthesis/box-model.js` 单实现，G6 已补全域回归；审核 agent `Dewey` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `54935d9`、`724423f`，2026-07-08）。
 - [x] 语义容器 class 已迁入 semantic preset `tokens.semanticContainers` 单一来源；`author-editability` 不再维护本地 `SEMANTIC_CONTAINER_CLASSES` allowlist，且 `styleNameMap.semanticContainers` 旁路已拒绝；审核 agent `Hegel` 最终判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2（提交 `28b6718`、`53451a0`、`dc4ebdc`、`c5b609d`，2026-07-08）。
-- [x] `extract_blueprint.jsx` 已列入 blueprint 退役观察清单：`docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 明确其仅为历史观察/迁移抽取，不属于当前 authoring/build 路径，输出必须经 `blueprintMigrationToSemanticModel` 与反向流水线。
-- [x] spec 状态行已由"提案"更新为"已实施"，并补记 2026-07-08 实施偏差；`docs/superpowers/plans/README.md` 仍登记本计划；AGENTS.md 边界描述已按 W3/W4 实际结构核对，无需再改。
-- [x] 全基线归零终检：`test/architecture/baselines/*.json` 的 `exemptions` 数组均为空。
+- [x] `extract_blueprint.jsx` 已列入 blueprint 退役观察清单：`docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md` 明确其仅为历史观察/迁移抽取，不属于当前 authoring/build 路径，输出必须经 `blueprintMigrationToSemanticModel` 与反向流水线；审核 agent `Planck` 复审判定无 P0/P1/P2。
+- [x] spec 状态行已由"提案"更新为"已实施"，并补记 2026-07-08 实施偏差；`docs/superpowers/plans/README.md` 仍登记本计划；AGENTS.md 边界描述已按 W3/W4 实际结构核对，无需再改；审核 agent `Planck` 复审判定无 P0/P1/P2。
+- [x] 全基线归零终检：`test/architecture/baselines/*.json` 的 `exemptions` 数组均为空；`node --test test/architecture/` 61/61、`npm test` 925/925 通过（提交 `b94e327`、`9b50d47`，2026-07-08）。
 
 验收命令：
 
