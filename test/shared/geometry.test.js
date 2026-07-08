@@ -2,6 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   parseCssLength,
+  cssLengthToMm,
+  cssLengthStringToMmOrZero,
+  cssLengthStringToPx,
+  cssLengthStringToVisualMm,
   parsePhysicalSize,
   rectPxToMm,
   boundsToGeometricBounds,
@@ -12,6 +16,18 @@ test('parseCssLength parses mm, px, pt, and defaults to px', () => {
   assert.deepEqual(parseCssLength('1123px'), { value: 1123, unit: 'px' });
   assert.deepEqual(parseCssLength('12pt'), { value: 12, unit: 'pt' });
   assert.deepEqual(parseCssLength('42'), { value: 42, unit: 'px' });
+});
+
+test('css length helpers preserve null zero and visual rounding semantics', () => {
+  assert.equal(cssLengthToMm({ value: 96, unit: 'px' }), 25.4);
+  assert.equal(cssLengthStringToMmOrZero('bad'), 0);
+  assert.ok(Math.abs(cssLengthStringToPx('25.4mm') - 96) < 1e-9);
+  assert.equal(cssLengthStringToPx('12pt'), 16);
+  assert.equal(cssLengthStringToPx('bad'), null);
+  assert.equal(cssLengthStringToVisualMm('95px'), 25);
+  assert.equal(cssLengthStringToVisualMm('96px'), 25.4);
+  assert.equal(cssLengthStringToVisualMm('12pt'), 4.23);
+  assert.equal(cssLengthStringToVisualMm('bad'), null);
 });
 
 test('parsePhysicalSize extracts width and height from CSS text', () => {

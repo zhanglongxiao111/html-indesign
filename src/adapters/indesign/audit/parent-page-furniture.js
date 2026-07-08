@@ -1,3 +1,5 @@
+const { normalizeLineEndings } = require('../../../shared/text');
+
 const DEFAULT_OPTIONS = Object.freeze({
   minRepeatPages: 2,
   minRepeatPageRatio: 0.08,
@@ -267,13 +269,13 @@ function isFolioItem(item) {
   const labelText = labelSummary(item).toLowerCase();
   const styleText = `${item.objectStyleName || ''} ${item.paragraphStyleName || ''}`.toLowerCase();
   if (/(^|[-_\s])folio($|[-_\s])|page-number|页码/.test(`${labelText} ${styleText}`)) return true;
-  const text = normalizeText(item.text).trim();
+  const text = normalizeLineEndings(item.text).trim();
   return text.length > 0 && /^(?:\d{1,4}|[ivxlcdm]{1,8})$/i.test(text);
 }
 
 function isDecorativeRule(item, options) {
   if (item.placedAsset) return false;
-  if (normalizeText(item.text).trim()) return false;
+  if (normalizeLineEndings(item.text).trim()) return false;
   const styleText = `${item.objectStyleName || ''} ${labelSummary(item)}`.toLowerCase();
   if (/装饰|decor|rule|divider|header-line|footer-line/.test(styleText)) return true;
   if (!hasStroke(item)) return false;
@@ -283,7 +285,7 @@ function isDecorativeRule(item, options) {
 }
 
 function isRepeatedBackground(item, page) {
-  if (normalizeText(item.text).trim()) return false;
+  if (normalizeLineEndings(item.text).trim()) return false;
   const styleText = `${item.id || ''} ${item.objectStyleName || ''} ${labelSummary(item)}`.toLowerCase();
   if (/background|背景/.test(styleText)) return true;
   if (!hasFill(item) || item.placedAsset) return false;
@@ -292,7 +294,7 @@ function isRepeatedBackground(item, page) {
 }
 
 function isHeaderFooterText(item, page, options, sourceScope) {
-  const text = normalizeText(item.text).trim();
+  const text = normalizeLineEndings(item.text).trim();
   if (!text || text.length > 120) return false;
   if (item.placedAsset) return false;
   const styleText = `${item.objectStyleName || ''} ${item.paragraphStyleName || ''} ${labelSummary(item)}`.toLowerCase();
@@ -606,13 +608,9 @@ function assetPath(item) {
 }
 
 function compactText(value) {
-  const text = normalizeText(value).replace(/\s+/g, ' ').trim();
+  const text = normalizeLineEndings(value).replace(/\s+/g, ' ').trim();
   if (text.length <= 80) return text;
   return `${text.slice(0, 40)}...${text.slice(-20)}`;
-}
-
-function normalizeText(value) {
-  return String(value || '').replace(/\r\n|\r/g, '\n');
 }
 
 function repeatPageThreshold(snapshot, options) {

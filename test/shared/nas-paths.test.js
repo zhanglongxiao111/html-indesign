@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { uncToNasUrl, toBrowserAssetPath } = require('../../src/shared/nas-paths');
+const { uncToNasUrl, toBrowserAssetPath, nasUrlToUncPath } = require('../../src/shared/nas-paths');
 
 test('uncToNasUrl converts host-name UNC paths to HTMLHub NAS URLs', () => {
   assert.equal(
@@ -30,4 +30,11 @@ test('uncToNasUrl canonicalizes UNC host names for Linux NAS gateways', () => {
 
 test('toBrowserAssetPath keeps relative package paths unchanged', () => {
   assert.equal(toBrowserAssetPath('../assets/a b.png'), '../assets/a b.png');
+});
+
+test('nasUrlToUncPath converts HTMLHub NAS URLs back to UNC identities', () => {
+  assert.equal(
+    nasUrlToUncPath('/nas/daga-nas5/share/%E4%B8%AD.png'),
+    '\\\\daga-nas5\\share\\中.png'
+  );
 });

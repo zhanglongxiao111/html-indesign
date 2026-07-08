@@ -1,3 +1,5 @@
+const { normalizeLineEndings } = require('../../../shared/text');
+
 const VISUAL_STYLE_FIELDS = Object.freeze([
   'fillColor',
   'fillTint',
@@ -212,7 +214,7 @@ function itemSignature(item, page, index) {
     parent: parentSignature(item.parent),
     bounds: normalizeBounds(item.bounds),
     zIndex: numberOrNull(item.zIndex),
-    text: normalizeText(item.text),
+    text: normalizeLineEndings(item.text),
     asset: placedAssetSignature(item.placedAsset),
     visualStyle,
     effects: normalizeDeep(item.effects || null),
@@ -347,7 +349,7 @@ function hasVisibleStrokeStyle(style) {
 
 function hasEffectiveItemFootprint(item) {
   if (!item) return false;
-  if (normalizeText(item.text).trim()) return true;
+  if (normalizeLineEndings(item.text).trim()) return true;
   if (item.asset) return true;
   if (item.effects) return true;
   return hasFillPaint(item) || hasStrokePaint(item);
@@ -639,8 +641,8 @@ function structuralMatchScore(expected, actual, options) {
   if (!sameType && !bothVector) return 0;
 
   let score = sameType ? 6 : 3;
-  const expectedText = normalizeText(expected.text);
-  const actualText = normalizeText(actual.text);
+  const expectedText = normalizeLineEndings(expected.text);
+  const actualText = normalizeLineEndings(actual.text);
   if (expectedText || actualText) {
     if (effectiveText(expectedText) !== effectiveText(actualText)) return 0;
     score += expectedText.length > 20 ? 10 : 8;
@@ -1015,18 +1017,14 @@ function intersectionArea(left, right) {
   return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
 }
 
-function normalizeText(value) {
-  return String(value || '').replace(/\r\n|\r/g, '\n');
-}
-
 function compactText(value) {
-  const text = normalizeText(value).replace(/\s+/g, ' ').trim();
+  const text = normalizeLineEndings(value).replace(/\s+/g, ' ').trim();
   if (text.length <= 80) return text;
   return `${text.slice(0, 40)}...${text.slice(-20)}`;
 }
 
 function effectiveText(value) {
-  return normalizeText(value)
+  return normalizeLineEndings(value)
     .split('\n')
     .map((line) => line.trim())
     .join('\n')

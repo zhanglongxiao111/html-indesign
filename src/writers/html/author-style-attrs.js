@@ -1,6 +1,7 @@
 'use strict';
 
 const { blendModeCss } = require('./css-blend-mode');
+const { safeAuthorClassToken } = require('../../shared/style-utils');
 
 function authorInlineStyleForItem(item, sourceStyle) {
   const indesign = item && item.extensions && item.extensions.indesign || {};
@@ -24,13 +25,13 @@ function authorClassesForItem(item, sourceClasses, sourceAttrs = {}) {
   const tableStyle = sourceAttrs['data-id-table-style'] || refs.tableStyle;
   const cellStyle = sourceAttrs['data-id-cell-style'] || refs.cellStyle;
   const synthesizedToken = sourceAttrs['data-id-style-token'] || refs.synthesizedToken;
-  if (paragraphStyle) classes.add(`pstyle-${safeClass(paragraphStyle)}`);
-  if (characterStyle) classes.add(`cstyle-${safeClass(characterStyle)}`);
-  if (objectStyle) classes.add(`ostyle-${safeClass(objectStyle)}`);
-  if (frameStyle) classes.add(`fstyle-${safeClass(frameStyle)}`);
-  if (tableStyle) classes.add(`tstyle-${safeClass(tableStyle)}`);
-  if (cellStyle) classes.add(`cellstyle-${safeClass(cellStyle)}`);
-  if (synthesizedToken) classes.add(`synth-${safeClass(synthesizedToken)}`);
+  if (paragraphStyle) classes.add(`pstyle-${safeAuthorClassToken(paragraphStyle)}`);
+  if (characterStyle) classes.add(`cstyle-${safeAuthorClassToken(characterStyle)}`);
+  if (objectStyle) classes.add(`ostyle-${safeAuthorClassToken(objectStyle)}`);
+  if (frameStyle) classes.add(`fstyle-${safeAuthorClassToken(frameStyle)}`);
+  if (tableStyle) classes.add(`tstyle-${safeAuthorClassToken(tableStyle)}`);
+  if (cellStyle) classes.add(`cellstyle-${safeAuthorClassToken(cellStyle)}`);
+  if (synthesizedToken) classes.add(`synth-${safeAuthorClassToken(synthesizedToken)}`);
   return Array.from(classes).filter(Boolean);
 }
 
@@ -127,10 +128,6 @@ function formatNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '0';
   return String(Math.round(number * 10000) / 10000);
-}
-
-function safeClass(value) {
-  return String(value || 'style').replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-');
 }
 
 module.exports = {

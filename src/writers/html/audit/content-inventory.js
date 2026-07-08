@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 const { assetSourceFromElementLike, inferAssetKind } = require('../../../shared/assets');
+const { nasUrlToUncPath } = require('../../../shared/nas-paths');
+const { collapseWhitespace } = require('../../../shared/text');
 const {
   HTML_DATA_ID_ATTRIBUTES,
   ITEM_ROLE,
@@ -105,7 +107,7 @@ function textDigest($) {
   const out = [];
   $('section.page').first().find('h1,h2,h3,h4,h5,h6,p,figcaption,li,td,th,span').each((_, element) => {
     if (isPageFurnitureElement($, element)) return;
-    const text = normalizeText($(element).text());
+    const text = collapseWhitespace($(element).text());
     if (text) out.push(text);
   });
   return out;
@@ -172,7 +174,7 @@ function hasRecognizedAssetSource(tagName, attributes) {
 }
 
 function modelText(item) {
-  return normalizeText(item.content && item.content.text || item.text || '');
+  return collapseWhitespace(item.content && item.content.text || item.text || '');
 }
 
 function modelResource(item) {
@@ -276,8 +278,8 @@ function geometryEntry(id, role, bounds) {
 
 function resourceIdentity(root, value) {
   const raw = decodeResourcePath(String(value || '').trim());
-  const nas = raw.match(/^\/nas\/([^/]+)\/(.+)$/i);
-  if (nas) return `\\\\${nas[1]}\\${nas[2].replace(/\//g, '\\')}`;
+  const nasPath = nasUrlToUncPath(raw);
+  if (nasPath) return nasPath;
   if (/^\\\\|^\/\//.test(raw)) return raw.replace(/\//g, '\\');
   if (/^[a-zA-Z]:[\\/]/.test(raw)) return path.normalize(raw);
   if (root && escapesPackageRoot(raw)) return path.normalize(path.resolve(root, raw));
@@ -370,12 +372,8 @@ function cssNumber(style, prop) {
   return match ? round(Number(match[1])) : 0;
 }
 
-function normalizeText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
-}
-
 function canonicalContentText(value) {
-  return normalizeText(value)
+  return collapseWhitespace(value)
     .replace(/([\p{Script=Han}])\s+([\p{Script=Han}])/gu, '$1$2')
     .replace(/([\p{Script=Han}])\s+([，。！？；：、])/gu, '$1$2')
     .replace(/([，。！？；：、])\s+([\p{Script=Han}])/gu, '$1$2')

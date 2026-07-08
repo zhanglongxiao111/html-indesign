@@ -31,6 +31,16 @@ function isNasReference(value) {
   return input.startsWith('\\\\') || input.startsWith('//') || input.startsWith('/nas/') || /^file:\/\/[^/]/i.test(input);
 }
 
+function nasUrlToUncPath(value, options = {}) {
+  const input = String(value || '').trim();
+  const nasRoot = String(options.nasRoot || '/nas').replace(/\/+$/g, '') || '/nas';
+  if (!input.startsWith(`${nasRoot}/`)) return null;
+  const parts = input.slice(nasRoot.length + 1).split('/');
+  if (parts.length < 2 || !parts[0]) return null;
+  const host = safeDecode(parts.shift());
+  return `\\\\${host}\\${parts.map(safeDecode).join('\\')}`;
+}
+
 function fileUrlParts(value) {
   if (!/^file:/i.test(value)) return null;
   let parsed;
@@ -75,4 +85,5 @@ module.exports = {
   uncToNasUrl,
   toBrowserAssetPath,
   isNasReference,
+  nasUrlToUncPath,
 };

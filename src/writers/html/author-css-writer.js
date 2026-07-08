@@ -1,5 +1,6 @@
 const { isDegenerateInvisibleVector } = require('./vector-svg');
 const { blendModeCss } = require('./css-blend-mode');
+const { safeAuthorClassToken } = require('../../shared/style-utils');
 
 function writeAuthorCssFiles(model) {
   return {
@@ -54,7 +55,7 @@ function synthesizedStyleCss(styles) {
     const declarations = synthesizedStyleDeclarations(style);
     return [
       `/* ${String(style.displayName || style.token)} */`,
-      `.synth-${safeClass(style.token)} { ${declarations} }`,
+      `.synth-${safeAuthorClassToken(style.token)} { ${declarations} }`,
     ].join('\n');
   }).filter(Boolean).join('\n');
 }
@@ -159,7 +160,7 @@ function hasLineMarker(visualStyle) {
 
 function styleCollectionCss(collection, prefix) {
   return Object.values(collection || {}).filter((style) => style && style.css).map((style) => {
-    return `.${prefix}-${safeClass(style.safeName || style.token || style.name)} { ${String(style.css).replace(/pt\b/g, 'px')} }`;
+    return `.${prefix}-${safeAuthorClassToken(style.safeName || style.token || style.name)} { ${String(style.css).replace(/pt\b/g, 'px')} }`;
   }).join('\n');
 }
 
@@ -176,10 +177,6 @@ function formatNumber(value) {
 
 function cssString(value) {
   return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-function safeClass(value) {
-  return String(value || 'style').replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-');
 }
 
 module.exports = {

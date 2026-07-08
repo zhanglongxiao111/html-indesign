@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const { collapseWhitespace } = require('../../../shared/text');
 
 const STRUCTURE_TAGS = 'section,figure,figcaption,p,h1,h2,h3,h4,h5,h6,ul,ol,li,table,thead,tbody,tr,td,th,img,object,svg';
 
@@ -125,7 +126,7 @@ function pageStructureNodes($) {
       classList: classList(node.attr('class')),
       parentKey: parentStructureKey($, element),
       order: orderByParent.get(element) || 0,
-      text: normalizeText(node.children().length ? '' : node.text()),
+      text: collapseWhitespace(node.children().length ? '' : node.text()),
       resource: node.attr('src') || node.attr('data') || null,
     });
   }
@@ -182,10 +183,6 @@ function classList(value) {
 
 function isIgnoredStructureElement($, element) {
   return $(element).attr('data-id-ignore') != null;
-}
-
-function normalizeText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 module.exports = {

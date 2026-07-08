@@ -1,4 +1,9 @@
-const { parseCssLength, round } = require('../../shared/geometry');
+const {
+  parseCssLength,
+  cssLengthStringToPx,
+  cssLengthStringToVisualMm,
+  round,
+} = require('../../shared/geometry');
 const { cssLengthToPt } = require('../../shared/style-utils');
 
 function styleLengthToPt(style, prop, options) {
@@ -29,7 +34,7 @@ function presentationLengthStyleValue(item, prop) {
 }
 
 function cssLengthToPresentationPt(value, options) {
-  const px = cssLengthToPx(value);
+  const px = cssLengthStringToPx(value);
   if (px == null) return null;
   return round(px * presentationScale(options), 4);
 }
@@ -59,10 +64,10 @@ function tableCellPadding(style, options) {
   return {
     unit: 'mm',
     values: {
-      top: cssLengthToMm(style.paddingTop),
-      right: cssLengthToMm(style.paddingRight),
-      bottom: cssLengthToMm(style.paddingBottom),
-      left: cssLengthToMm(style.paddingLeft),
+      top: cssLengthStringToVisualMm(style.paddingTop),
+      right: cssLengthStringToVisualMm(style.paddingRight),
+      bottom: cssLengthStringToVisualMm(style.paddingBottom),
+      left: cssLengthStringToVisualMm(style.paddingLeft),
     },
   };
 }
@@ -78,28 +83,6 @@ function isPresentationLayout(options) {
 
 function presentationScale(options) {
   return Number(options && options.layout && options.layout.scale || 1);
-}
-
-function cssLengthToPx(value) {
-  const parsed = parseCssLength(value);
-  if (!parsed) return null;
-  if (parsed.unit === 'px') return parsed.value;
-  if (parsed.unit === 'pt') return parsed.value * 96 / 72;
-  if (parsed.unit === 'mm') return parsed.value * 96 / 25.4;
-  return null;
-}
-
-function cssLengthToMm(value) {
-  const parsed = parseCssLength(value);
-  if (!parsed) return null;
-  let mm = null;
-  if (parsed.unit === 'mm') mm = parsed.value;
-  if (parsed.unit === 'pt') mm = parsed.value * 25.4 / 72;
-  if (parsed.unit === 'px') mm = parsed.value * 25.4 / 96;
-  if (mm == null) return null;
-  const nearest = Math.round(mm);
-  if (Math.abs(mm - nearest) < 0.15) return nearest;
-  return round(mm, 2);
 }
 
 module.exports = {

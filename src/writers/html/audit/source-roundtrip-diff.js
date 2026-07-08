@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const cheerio = require('cheerio');
+const { collapseWhitespace } = require('../../../shared/text');
 
 function auditAuthorSourceRoundtrip(options = {}) {
   const sourceRoot = options.sourceRoot && path.resolve(options.sourceRoot);
@@ -330,7 +331,7 @@ function tagSequence($) {
 function pageText($) {
   const root = $('section.page, section[data-page], body').first();
   const text = root.length ? root.text() : $.root().text();
-  return normalizeText(text);
+  return collapseWhitespace(text);
 }
 
 function characterStyleEntries($) {
@@ -340,7 +341,7 @@ function characterStyleEntries($) {
       tag: element.name.toLowerCase(),
       className: normalizeClass(node.attr('class')),
       style: node.attr('data-id-character-style') || '',
-      text: normalizeText(node.text()),
+      text: collapseWhitespace(node.text()),
     };
   }).get();
 }
@@ -353,7 +354,7 @@ function criticalInlineStyles($) {
     return {
       tag: element.name.toLowerCase(),
       className: normalizeClass(node.attr('class')),
-      text: normalizeText(node.text()),
+      text: collapseWhitespace(node.text()),
       style,
     };
   }).get().filter(Boolean);
@@ -365,7 +366,7 @@ function tableCellStyleEntries($) {
     return {
       tag: element.name.toLowerCase(),
       paragraphStyle: node.attr('data-id-paragraph-style') || '',
-      text: normalizeText(node.text()),
+      text: collapseWhitespace(node.text()),
     };
   }).get();
 }
@@ -398,10 +399,6 @@ function resourceEntries($) {
 
 function isCriticalInlineStyle(style) {
   return /(^|;)(left|top|right|bottom|width|height|transform|background|background-color)\s*:/.test(style);
-}
-
-function normalizeText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 function normalizeClass(value) {

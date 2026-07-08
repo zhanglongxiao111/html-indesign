@@ -1,4 +1,8 @@
-const { parseCssLength, round } = require('../shared/geometry');
+const {
+  parseCssLength,
+  cssLengthStringToMmOrZero,
+  round,
+} = require('../shared/geometry');
 
 function resolveLayout(snapshot, options = {}) {
   if (options && options.layout) return options.layout;
@@ -85,7 +89,7 @@ function pageMargins(page, layout) {
 
 function pageStyleLength(value, layout) {
   if (layout.unitMode === 'presentation') return cssLengthToTarget(value, layout);
-  return normalizeVisualMm(cssLengthToMm(value));
+  return normalizeVisualMm(cssLengthToPrintMmOrZero(value));
 }
 
 function boxLengths(value, layout) {
@@ -327,7 +331,7 @@ function boundsFromRect(rect, pageRect, layout) {
 }
 
 function cssLengthToTarget(value, layout) {
-  if (layout.unitMode !== 'presentation') return normalizeVisualMm(cssLengthToMm(value));
+  if (layout.unitMode !== 'presentation') return normalizeVisualMm(cssLengthToPrintMmOrZero(value));
   const parsed = parseCssLength(value);
   if (!parsed) return 0;
   let px = parsed.value;
@@ -336,12 +340,8 @@ function cssLengthToTarget(value, layout) {
   return round(px * Number(layout.scale || 1), 2);
 }
 
-function cssLengthToMm(value) {
-  const parsed = parseCssLength(value);
-  if (!parsed) return 0;
-  if (parsed.unit === 'mm') return parsed.value;
-  if (parsed.unit === 'pt') return parsed.value * 25.4 / 72;
-  return parsed.value * 25.4 / 96;
+function cssLengthToPrintMmOrZero(value) {
+  return cssLengthStringToMmOrZero(value);
 }
 
 function normalizeVisualMm(value) {
@@ -358,6 +358,6 @@ module.exports = {
   pageGuides,
   itemBounds,
   cssLengthToTarget,
-  cssLengthToMm,
+  cssLengthToMm: cssLengthToPrintMmOrZero,
   normalizeVisualMm,
 };

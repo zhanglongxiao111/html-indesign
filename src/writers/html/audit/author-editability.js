@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const { collapseWhitespace } = require('../../../shared/text');
 
 const TEXT_SELECTOR = 'p,h1,h2,h3,h4,h5,h6,figcaption,li,td,th';
 const SEMANTIC_CONTAINER_CLASSES = new Set([
@@ -86,7 +87,7 @@ function scanPage(packageRoot, page) {
     lowLevelGeometryAttrs: countLowLevelGeometryAttrs($),
     vectorSvgElements: $('svg[id]').length,
     figureCaptionPairs: $('figure').toArray().filter((element) => $(element).find('figcaption').length > 0).length,
-    textElements: $(TEXT_SELECTOR).toArray().filter((element) => normalizeText($(element).text())).length,
+    textElements: $(TEXT_SELECTOR).toArray().filter((element) => collapseWhitespace($(element).text())).length,
     characterStyleSpans: $('[data-id-character-style]').length,
   };
 }
@@ -276,10 +277,6 @@ function tagName(element) {
 
 function classList(value) {
   return String(value || '').split(/\s+/).map((item) => item.trim()).filter(Boolean);
-}
-
-function normalizeText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
 module.exports = {

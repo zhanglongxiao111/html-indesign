@@ -5,6 +5,8 @@ const {
   parseSlotType,
   createProtocolLabel,
 } = require('../../../shared/labels');
+const { safeMigrationClassToken } = require('../../../shared/style-utils');
+const { normalizeLineEndings } = require('../../../shared/text');
 const { validateSemanticModel } = require('../../../semantic-model');
 
 const HISTORICAL_BLUEPRINT_INPUT = 'historical-blueprint';
@@ -150,7 +152,7 @@ function blueprintItemToModel(item, context) {
       objectStyle: item.appliedObjectStyle || null,
       frameStyle: null,
     },
-    content: { text: normalizeText(item.content || '') },
+    content: { text: normalizeLineEndings(item.content || '') },
     labels: [createProtocolLabel({
       kind: 'item',
       id,
@@ -159,7 +161,7 @@ function blueprintItemToModel(item, context) {
       semantic: context.isSlot ? slotName : semanticForStaticItem(item, role),
       htmlTag: tagForBlueprintRole(role),
       className: htmlClassForBlueprintItem({ isSlot: context.isSlot, role, slotName }),
-      sourceText: normalizeText(item.content || ''),
+      sourceText: normalizeLineEndings(item.content || ''),
     })],
     source: BLUEPRINT_MIGRATION_SOURCE,
     zIndex: Number.isFinite(zIndex) ? zIndex : null,
@@ -258,7 +260,7 @@ function htmlClassForBlueprintItem(item) {
     'migration-item',
     item.isSlot ? 'migration-slot' : 'migration-static',
     `migration-${item.role}`,
-    item.slotName ? `slot-${safeClassToken(item.slotName)}` : null,
+    item.slotName ? `slot-${safeMigrationClassToken(item.slotName)}` : null,
   ].filter(Boolean).join(' ');
 }
 
@@ -292,10 +294,6 @@ function normalizeBounds(bounds, itemId) {
   };
 }
 
-function normalizeText(value) {
-  return String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-}
-
 function styleCss(styles, name) {
   if (!styles || !name || !styles[name]) return '';
   return styles[name].css || '';
@@ -317,16 +315,7 @@ function documentIdFromName(name) {
 function assetIdFromPath(value) {
   const raw = String(value || 'asset');
   const filename = raw.split(/[\\/]/).pop() || raw;
-  return safeClassToken(path.parse(filename).name || filename);
-}
-
-function safeClassToken(value) {
-  return String(value || '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\u4e00-\u9fa5-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '') || 'item';
+  return safeMigrationClassToken(path.parse(filename).name || filename);
 }
 
 function requiredNumber(value, message) {

@@ -22,6 +22,32 @@ function cssLengthToMm(length, pxToMm = 25.4 / 96) {
   return null;
 }
 
+function cssLengthStringToMm(value, pxToMm = 25.4 / 96) {
+  return cssLengthToMm(parseCssLength(value), pxToMm);
+}
+
+function cssLengthStringToMmOrZero(value, pxToMm = 25.4 / 96) {
+  const mm = cssLengthStringToMm(value, pxToMm);
+  return mm == null ? 0 : mm;
+}
+
+function cssLengthStringToPx(value) {
+  const parsed = parseCssLength(value);
+  if (!parsed) return null;
+  if (parsed.unit === 'px') return parsed.value;
+  if (parsed.unit === 'pt') return parsed.value * 96 / 72;
+  if (parsed.unit === 'mm') return parsed.value * 96 / 25.4;
+  return null;
+}
+
+function cssLengthStringToVisualMm(value) {
+  const mm = cssLengthStringToMm(value);
+  if (mm == null) return null;
+  const nearest = Math.round(mm);
+  if (Math.abs(mm - nearest) < 0.15) return nearest;
+  return round(mm, 2);
+}
+
 function parseStyleDeclarations(styleText) {
   const out = {};
   String(styleText || '').split(';').forEach((part) => {
@@ -67,6 +93,11 @@ function boundsToGeometricBounds(bounds) {
 module.exports = {
   round,
   parseCssLength,
+  cssLengthToMm,
+  cssLengthStringToMm,
+  cssLengthStringToMmOrZero,
+  cssLengthStringToPx,
+  cssLengthStringToVisualMm,
   parseStyleDeclarations,
   parsePhysicalSize,
   rectPxToMm,

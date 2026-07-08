@@ -160,6 +160,26 @@ function sanitizeStyleName(value) {
   return safe || null;
 }
 
+function safeAuthorClassToken(value) {
+  return String(value || 'style').replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-');
+}
+
+function safeMigrationClassToken(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\u4e00-\u9fa5-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'item';
+}
+
+function safeVisualClassToken(value) {
+  return String(value || 'style')
+    .replace(/[\[\]]/g, '')
+    .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-')
+    .replace(/^-+|-+$/g, '') || 'style';
+}
+
 function stableAutoName(prefix, signature) {
   const hash = crypto
     .createHash('sha1')
@@ -209,6 +229,9 @@ module.exports = {
   parseCssLinearGradient,
   cssLengthToPt,
   sanitizeStyleName,
+  safeAuthorClassToken,
+  safeMigrationClassToken,
+  safeVisualClassToken,
   stableAutoName,
   firstClassName,
   explicitName,

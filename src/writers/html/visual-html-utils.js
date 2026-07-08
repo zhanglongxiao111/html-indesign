@@ -1,3 +1,5 @@
+const { safeVisualClassToken } = require('../../shared/style-utils');
+
 function requiredNumber(value, message) {
   const number = Number(value);
   if (!Number.isFinite(number)) {
@@ -63,14 +65,7 @@ function styleByName(model, collectionName, name) {
 }
 
 function styleClassToken(style) {
-  return safeClassToken(style.safeName || style.token || style.name || 'style');
-}
-
-function safeClassToken(value) {
-  return String(value || 'style')
-    .replace(/[\[\]]/g, '')
-    .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-')
-    .replace(/^-+|-+$/g, '') || 'style';
+  return safeVisualClassToken(style.safeName || style.token || style.name || 'style');
 }
 
 function fontFamilyFromCss(css) {
