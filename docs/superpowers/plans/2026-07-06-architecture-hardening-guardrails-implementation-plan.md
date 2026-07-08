@@ -258,7 +258,7 @@ npm run e2e:indesign -- -- --reverse-roundtrip --second-pass-roundtrip
 
 ### 10. W2 注册表源头化
 
-进度：10e 审核中（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，审核 agent `Galileo` 复审通过；10d 已完成：实施子 agent `Euler` 提交 `f1ff021` 与修复提交 `2ff6908`，审核 agent `Anscombe` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；10e 实施子 agent `Euler` 已提交 `03814ff`，将 `parseZIndex` 收到 `src/shared/style-utils.js` 并删除 `test/architecture/baselines/G6.json` 最后一项豁免；控制器验证 `node --test test/shared/style-utils.test.js test/architecture/single-implementation.test.js` 8/8、`node --test test/architecture/protocol-literals.test.js test/architecture/single-implementation.test.js` 6/6、`npm test` 912/912、`git diff --check HEAD~1..HEAD` 通过；等待审核 agent `Anscombe` 复审，不允许新增豁免或弱化 G6；2026-07-08）。
+进度：已完成（10a 已完成：实施子 agent `Gauss` 已提交 `8f9fb69`，审核 agent `Nash` 通过；10b 已完成：实施子 agent `Erdos` 提交 `7fa270c` 与修复提交 `3c559a4`，审核 agent `Pauli` 复审通过；10c 已完成：实施子 agent `Sagan` 提交 `a4ccfb9` 与修复提交 `de4ac73`，审核 agent `Galileo` 复审通过；10d 已完成：实施子 agent `Euler` 提交 `f1ff021` 与修复提交 `2ff6908`，审核 agent `Anscombe` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；10e residual 已完成：实施子 agent `Euler` 提交 `03814ff`，审核 agent `Anscombe` 复审判定 `SPEC: PASS` / `QUALITY: PASS` 且无 P0/P1/P2；控制器验证 `node --test test/shared/style-utils.test.js test/architecture/single-implementation.test.js` 8/8、`node --test test/architecture/protocol-literals.test.js test/architecture/single-implementation.test.js` 6/6、`npm test` 912/912、`git diff --check HEAD~1..HEAD` 通过；G2/G6 baseline 均已归零；2026-07-08）。
 
 - [x] **10a 常量导出**：`src/protocol/constants.js` 由 fields 数据生成属性名常量表、role 值枚举（含 background/decoration/annotation 全值域）、样式 kind 枚举。
 - [x] **10b 三处漂移收编**（裁定方法见 spec §4 W2）：svg 角色以 writers/indesign 实际编译行为取证后定案，分类逻辑收敛为单一共享函数，adapter 与 audit 同源引用；`authoring-validator.js` 的 role 子集改引用枚举（作者可写子集若小于全集，在 registry 显式声明）；SAFE_TAGS 合并或改名（禁止同名异义），取证两份清单的真实用途后处置。
@@ -343,6 +343,6 @@ rg "legacy|pagedHtml|paged-html" src scripts _indesign_scripts test --iglob "!do
 - [ ] 8 条护栏落地、自测通过、失败信息四要素齐全、随 `npm test` 运行。
 - [ ] W0 完成：门禁空输入必 fail 有回归用例；legacy 分支与孤儿模块清除；AGENTS.md 同步。
 - [x] W1 完成：registry 裁定落地、两侧 adapter 同构、出口强制校验、三选一读取消灭、E2E 回归通过。
-- [ ] W2 完成：常量导出、三处漂移单一实现、共享工具收敛、47 文件迁移完毕。
+- [x] W2 完成：常量导出、三处漂移单一实现、共享工具收敛、47 文件迁移完毕。
 - [ ] W3 完成：src 不 require scripts、双向直连拆除、门禁算法在 src、E2E 回归通过。
 - [ ] 全部豁免基线归零；`npm test` 全绿；spec 状态更新为已实施。
