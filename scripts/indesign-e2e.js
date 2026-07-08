@@ -45,6 +45,29 @@ function createRunContext(options = {}) {
   };
 }
 
+function createHumanInddRunContext(options = {}) {
+  if (!options.inddPath) {
+    throw new Error('createHumanInddRunContext requires inddPath');
+  }
+  const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, '..'));
+  const workspaceDir = path.resolve(options.workspaceDir || path.join(repoRoot, 'test/workspace'));
+  const timestamp = options.timestamp || timestampFor(new Date());
+  const runDir = path.resolve(options.runDir || path.join(workspaceDir, `human-indd-e2e-${timestamp}`));
+  const inddPath = path.resolve(options.inddPath);
+  return {
+    repoRoot,
+    workspaceDir,
+    runDir,
+    inddPath,
+    timestamp,
+    reverseScriptPath: path.join(runDir, 'reverse-snapshot.jsx'),
+    reverseSnapshotPath: path.join(runDir, 'reverse-snapshot.json'),
+    reverseOutDir: path.join(runDir, 'reverse-html'),
+    authorRoundtripDir: path.join(runDir, 'generated-author-e2e'),
+    resultPath: path.join(runDir, 'human-indd-e2e-result.json'),
+  };
+}
+
 function timestampFor(date) {
   const pad = (value) => String(value).padStart(2, '0');
   return [
@@ -66,6 +89,10 @@ function parseArgs(argv, repoRoot) {
       options.htmlPath = argv[++index];
     } else if (arg.startsWith('--html=')) {
       options.htmlPath = arg.slice('--html='.length);
+    } else if (arg === '--indd') {
+      options.inddPath = argv[++index];
+    } else if (arg.startsWith('--indd=')) {
+      options.inddPath = arg.slice('--indd='.length);
     } else if (arg === '--run-dir') {
       options.runDir = argv[++index];
     } else if (arg.startsWith('--run-dir=')) {
@@ -98,13 +125,19 @@ function parseArgs(argv, repoRoot) {
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
+  if (options.inddPath) {
+    options.reverseRoundtrip = true;
+    options.secondPassRoundtrip = true;
+    if (!options.reverseMode) options.reverseMode = 'observation';
+  }
   return options;
 }
 
 function usage() {
   return [
-    'Usage: node scripts/indesign-e2e.js [--html <deck.html>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--reverse-mode structured|inferred|observation] [--second-pass-roundtrip]',
+    'Usage: node scripts/indesign-e2e.js [--html <deck.html> | --indd <document.indd>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--reverse-mode structured|inferred|observation] [--second-pass-roundtrip]',
     'npm: npm run e2e:indesign -- -- --target-size qhd --reverse-roundtrip --second-pass-roundtrip',
+    'human INDD: npm run e2e:indesign -- -- --indd <document.indd> --run-dir test/workspace/human-indd-e2e',
     '',
     'Default HTML: test/fixtures/e2e/architecture-report/deck.html',
     'Default unit mode: presentation',
@@ -180,6 +213,71 @@ async function runIndesignE2E(options = {}) {
     verify: verifyResult.data,
     reverse,
     preview,
+  };
+  fs.writeFileSync(context.resultPath, JSON.stringify(result, null, 2), 'utf8');
+  return result;
+}
+
+async function runHumanInddRoundtripE2E(options = {}) {
+  const context = createHumanInddRunContext(options);
+  fs.mkdirSync(context.runDir, { recursive: true });
+
+  if (!fs.existsSync(context.inddPath)) {
+    throw new Error(`INDD file not found: ${context.inddPath}`);
+  }
+
+  fs.writeFileSync(context.reverseScriptPath, buildReverseSnapshotJsx({
+    repoRoot: context.repoRoot,
+    outputPath: context.reverseSnapshotPath,
+    inddPath: context.inddPath,
+    closeDocument: true,
+  }), 'utf8');
+
+  const reverseCli = runCli(['--json', '--pretty', 'script', 'run', context.reverseScriptPath], context.repoRoot);
+  const reverseSnapshot = parseCliResultJson(reverseCli.stdout);
+  assertCliResultOk(reverseSnapshot, 'Human InDesign reverse snapshot failed');
+
+  const { compileReverseSnapshotToHtml } = require('./indesign-reverse-export');
+  const reverseHtml = compileReverseSnapshotToHtml({
+    snapshotPath: context.reverseSnapshotPath,
+    outDir: context.reverseOutDir,
+    mode: options.reverseMode || 'observation',
+    assetPolicy: options.assetPolicy || 'reference',
+  });
+  const author = reverseHtml.files && reverseHtml.files.author;
+  if (!author || !author.audit || !author.audit.ok) {
+    throw new Error(`Human InDesign reverse author package audit failed: ${JSON.stringify(author && author.audit || null, null, 2)}`);
+  }
+
+  const authorRoundtrip = await runIndesignE2E({
+    repoRoot: context.repoRoot,
+    workspaceDir: context.workspaceDir,
+    runDir: context.authorRoundtripDir,
+    htmlPath: author.entry,
+    targetSize: options.targetSize,
+    unitMode: options.unitMode,
+    skipPreview: options.skipPreview,
+    reverseRoundtrip: true,
+    secondPassRoundtrip: true,
+    reverseMode: options.reverseMode || 'observation',
+    styleNameMap: options.styleNameMap,
+  });
+
+  const stability = authorRoundtrip.reverse && authorRoundtrip.reverse.canonicalStability;
+  if (!stability || !stability.ok) {
+    throw new Error(`Human InDesign author roundtrip is not byte-stable: ${JSON.stringify(stability || null, null, 2)}`);
+  }
+
+  const result = {
+    ok: true,
+    runDir: context.runDir,
+    inddPath: context.inddPath,
+    reverseSnapshot,
+    reverseHtml,
+    author,
+    authorRoundtrip,
+    canonicalStability: stability,
+    canonicalDrift: authorRoundtrip.reverse && authorRoundtrip.reverse.canonicalDrift || null,
   };
   fs.writeFileSync(context.resultPath, JSON.stringify(result, null, 2), 'utf8');
   return result;
@@ -518,6 +616,21 @@ async function main() {
     console.log(usage());
     return;
   }
+  if (options.inddPath) {
+    const result = await runHumanInddRoundtripE2E(options);
+    console.log(JSON.stringify({
+      ok: result.ok,
+      runDir: result.runDir,
+      inddPath: result.inddPath,
+      pages: result.reverseHtml.report && result.reverseHtml.report.pages,
+      items: result.reverseHtml.report && result.reverseHtml.report.items,
+      assets: result.reverseHtml.report && result.reverseHtml.report.assets,
+      authorEntry: result.author && result.author.entry,
+      roundtripRunDir: result.authorRoundtrip && result.authorRoundtrip.runDir,
+      canonicalDrift: result.canonicalDrift && result.canonicalDrift.stats,
+    }, null, 2));
+    return;
+  }
   const result = await runIndesignE2E(options);
   console.log(JSON.stringify({
     ok: result.ok,
@@ -544,6 +657,7 @@ if (require.main === module) {
 
 module.exports = {
   createRunContext,
+  createHumanInddRunContext,
   buildBuildJsx,
   buildExportJsx,
   buildReverseSnapshotJsx,
@@ -554,5 +668,6 @@ module.exports = {
   parseArgs,
   parseTargetSize,
   runIndesignE2E,
+  runHumanInddRoundtripE2E,
   resolveReverseSourceRootForHtml,
 };

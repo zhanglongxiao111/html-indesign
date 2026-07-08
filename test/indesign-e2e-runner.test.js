@@ -8,6 +8,7 @@ const {
   buildBuildJsx,
   buildExportJsx,
   buildReverseSnapshotJsx,
+  createHumanInddRunContext,
   architectureStyleNameMap,
   loadStyleNameMapForHtml,
   parseArgs,
@@ -297,13 +298,45 @@ test('parseArgs accepts second pass roundtrip gate flag', () => {
   assert.equal(options.secondPassRoundtrip, true);
 });
 
+test('parseArgs accepts human InDesign input as a strict second-pass observation roundtrip', () => {
+  const options = parseArgs([
+    '--indd=//daga-nas5/daga-2025-project/report.indd',
+    '--run-dir=test/workspace/human-indd-e2e',
+  ], 'D:/AI/html-indesign');
+
+  assert.equal(options.inddPath, '//daga-nas5/daga-2025-project/report.indd');
+  assert.equal(options.runDir, 'test/workspace/human-indd-e2e');
+  assert.equal(options.reverseMode, 'observation');
+  assert.equal(options.reverseRoundtrip, true);
+  assert.equal(options.secondPassRoundtrip, true);
+});
+
+test('createHumanInddRunContext keeps all human InDesign roundtrip output in the local workspace', () => {
+  const repoRoot = path.resolve('D:/AI/html-indesign');
+  const context = createHumanInddRunContext({
+    repoRoot,
+    timestamp: '20260708-230000',
+    inddPath: '//daga-nas5/daga-2025-project/report.indd',
+  });
+
+  assert.equal(context.inddPath, path.resolve('//daga-nas5/daga-2025-project/report.indd'));
+  assert.equal(context.workspaceDir, path.join(repoRoot, 'test/workspace'));
+  assert.equal(context.runDir, path.join(repoRoot, 'test/workspace/human-indd-e2e-20260708-230000'));
+  assert.equal(context.reverseSnapshotPath, path.join(context.runDir, 'reverse-snapshot.json'));
+  assert.equal(context.reverseOutDir, path.join(context.runDir, 'reverse-html'));
+  assert.equal(context.authorRoundtripDir, path.join(context.runDir, 'generated-author-e2e'));
+  assert.equal(context.runDir.startsWith(path.dirname(context.inddPath)), false);
+});
+
 test('build reverse snapshot jsx writes target output label and runs reverse script', () => {
   const jsx = buildReverseSnapshotJsx({
     repoRoot: 'D:/AI/html-indesign',
     outputPath: 'D:/AI/html-indesign/test/workspace/reverse-snapshot.json',
+    inddPath: '//daga-nas5/daga-2025-project/report.indd',
   });
 
   assert.match(jsx, /html_indesign_reverse_output/);
+  assert.match(jsx, /app\.open\(indd\)/);
   assert.match(jsx, /export_to_html_snapshot\.jsx/);
 });
 
