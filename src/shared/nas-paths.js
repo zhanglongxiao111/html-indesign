@@ -1,5 +1,7 @@
 'use strict';
 
+const { isRemoteReference } = require('./assets');
+
 function uncToNasUrl(value, options = {}) {
   const input = String(value || '').trim();
   const nasRoot = String(options.nasRoot || '/nas').replace(/\/+$/g, '') || '/nas';
@@ -21,7 +23,7 @@ function uncToNasUrl(value, options = {}) {
 function toBrowserAssetPath(value, options = {}) {
   const input = String(value || '');
   if (!input) return '';
-  if (isRemoteUrl(input) && !/^file:/i.test(input)) return input;
+  if (isRemoteReference(input)) return input;
   const converted = uncToNasUrl(input, options);
   return converted || input;
 }
@@ -75,10 +77,6 @@ function safeDecode(value) {
   } catch (_error) {
     return String(value || '');
   }
-}
-
-function isRemoteUrl(value) {
-  return /^[a-z][a-z0-9+.-]*:/i.test(String(value || '')) && !/^[a-z]:[\\/]/i.test(String(value || ''));
 }
 
 module.exports = {

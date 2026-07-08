@@ -5,6 +5,12 @@ const fs = require('fs');
 const path = require('path');
 const { copyAuthorAssets } = require('./author-asset-packager');
 const { toBrowserAssetPath } = require('../../shared/nas-paths');
+const {
+  normalizePathKey,
+  sourceFileKey,
+  sanitizeRelative,
+  isRemoteReference,
+} = require('../../shared/assets');
 
 function prepareAuthorAssets(model, options = {}) {
   const policy = options.assetPolicy || 'reference';
@@ -333,10 +339,6 @@ function reasonForReference(original, htmlPath) {
   return 'reference';
 }
 
-function normalizePathKey(value) {
-  return slash(String(value || '')).toLowerCase();
-}
-
 function slash(value) {
   return String(value || '').replace(/\\/g, '/');
 }
@@ -347,25 +349,9 @@ function isSkippedReference(value) {
   return isRemoteReference(input);
 }
 
-function isRemoteReference(value) {
-  return /^[a-z][a-z0-9+.-]*:/i.test(String(value || '')) && !/^file:/i.test(String(value || '')) && !/^[a-z]:[\\/]/i.test(String(value || ''));
-}
-
 function isNasReference(value) {
   const input = slash(String(value || ''));
   return /^\/\/[^/]+\/.+/.test(input) || input.startsWith('/nas/');
-}
-
-function sourceFileKey(value) {
-  return process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
-}
-
-function sanitizeRelative(value) {
-  return slash(value)
-    .split('/')
-    .filter((part) => part && part !== '.' && part !== '..')
-    .map((part) => part.replace(/[<>:"|?*]/g, '_'))
-    .join('/') || 'asset';
 }
 
 function unique(values) {

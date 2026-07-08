@@ -1,4 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { normalizePathKey } = require('../../shared/assets');
+
 function rewriteResourceAttrs(attrs, options = {}) {
   if (!attrs || !options.assetPathMap) return attrs;
   for (const name of ['src', 'data', 'href', HTML_DATA_ID_ATTRIBUTES.PREVIEW_SRC]) {
@@ -14,10 +16,6 @@ function lookupAssetPath(map, value) {
   const key = normalizePathKey(value);
   if (typeof map.get === 'function') return map.get(key) || map.get(String(value)) || '';
   return map[key] || map[String(value)] || '';
-}
-
-function normalizePathKey(value) {
-  return String(value || '').replace(/\\/g, '/').toLowerCase();
 }
 
 module.exports = {

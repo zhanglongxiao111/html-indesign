@@ -248,7 +248,7 @@
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return false;
     const style = getComputedStyle(el);
-    return hasVisibleBackground(style) || hasVisibleBorder(style);
+    return hasVisibleBackground(style) || hasVisibleCssBorder(style);
   }
 
   function hasVisibleBackground(style) {
@@ -256,7 +256,7 @@
       || Boolean(style.backgroundImage && style.backgroundImage !== 'none');
   }
 
-  function hasVisibleBorder(style) {
+  function hasVisibleCssBorder(style) {
     for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
       const borderStyle = String(style[`border${side}Style`] || '').toLowerCase();
       if (borderStyle === 'none' || borderStyle === 'hidden') continue;

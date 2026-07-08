@@ -160,10 +160,41 @@ function normalizePosition(value) {
   return parts.slice(0, 2).join(' ');
 }
 
+function normalizePathKey(value) {
+  return slash(String(value || '')).toLowerCase();
+}
+
+function sourceFileKey(value) {
+  return process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+}
+
+function sanitizeRelative(value) {
+  return slash(value)
+    .split('/')
+    .filter((part) => part && part !== '.' && part !== '..')
+    .map((part) => part.replace(/[<>:"|?*]/g, '_'))
+    .join('/') || 'asset';
+}
+
+function isRemoteReference(value) {
+  const input = String(value || '');
+  return /^[a-z][a-z0-9+.-]*:/i.test(input)
+    && !/^file:/i.test(input)
+    && !/^[a-z]:[\\/]/i.test(input);
+}
+
+function slash(value) {
+  return String(value || '').replace(/\\/g, '/');
+}
+
 module.exports = {
   inferAssetKind,
   assetSourceFromElementLike,
   createAssetId,
   firstCssUrl,
   placementFromAttributes,
+  normalizePathKey,
+  sourceFileKey,
+  sanitizeRelative,
+  isRemoteReference,
 };

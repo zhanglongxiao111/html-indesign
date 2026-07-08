@@ -1,6 +1,12 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const fs = require('fs');
 const path = require('path');
+const {
+  normalizePathKey,
+  sourceFileKey,
+  sanitizeRelative,
+  isRemoteReference,
+} = require('../../shared/assets');
 
 function copyAuthorAssets(model, { outDir, sourceRoot, assetRoot }) {
   const records = collectAssetReferences(model);
@@ -87,7 +93,7 @@ function collectAssetReferencesForItem(item, records, seen) {
 
 function pushAssetRecord(records, seen, record) {
   const value = String(record.value || '').trim();
-  if (!value || isRemoteUrl(value) || value.startsWith('#')) return;
+  if (!value || isRemoteReference(value) || value.startsWith('#')) return;
   const key = normalizePathKey(value);
   if (seen.has(key)) return;
   seen.add(key);
@@ -97,7 +103,7 @@ function pushAssetRecord(records, seen, record) {
 function resolveAssetRecord(record, sourceRoot) {
   const candidates = [];
   for (const value of [record.value, record.fallback, ...(record.aliases || [])]) {
-    if (!value || isRemoteUrl(value)) continue;
+    if (!value || isRemoteReference(value)) continue;
     if (path.isAbsolute(value)) candidates.push(path.resolve(value));
     if (sourceRoot) candidates.push(path.resolve(sourceRoot, value));
   }
@@ -126,7 +132,7 @@ function assetPackagePath(value, resolvedPath, { assetRoot, used }) {
 
 function assetSubPath(value, resolvedPath, assetRoot) {
   const normalized = slash(value || '');
-  if (normalized && !path.isAbsolute(value) && !isRemoteUrl(value)) {
+  if (normalized && !path.isAbsolute(value) && !isRemoteReference(value)) {
     const parts = normalized.split('/').filter((part) => part && part !== '.');
     while (parts[0] === '..') parts.shift();
     if (parts[0] === assetRoot) parts.shift();
@@ -161,26 +167,6 @@ function pdfPreviewPath(pdfPath, page) {
 function addPathMap(pathMap, from, to) {
   if (!from || !to) return;
   pathMap.set(normalizePathKey(from), slash(to));
-}
-
-function sourceFileKey(value) {
-  return process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
-}
-
-function normalizePathKey(value) {
-  return slash(String(value || '')).toLowerCase();
-}
-
-function sanitizeRelative(value) {
-  return slash(value)
-    .split('/')
-    .filter((part) => part && part !== '.' && part !== '..')
-    .map((part) => part.replace(/[<>:"|?*]/g, '_'))
-    .join('/') || 'asset';
-}
-
-function isRemoteUrl(value) {
-  return /^[a-z][a-z0-9+.-]*:/i.test(String(value || '')) && !/^[a-z]:[\\/]/i.test(String(value || ''));
 }
 
 function slash(value) {

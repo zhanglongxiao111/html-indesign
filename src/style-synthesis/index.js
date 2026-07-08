@@ -15,6 +15,8 @@ const {
   cornerRadiusValue,
   tableCellPadding,
   bordersAreUniform,
+  visibleBorder,
+  normalizeTableWidths,
   lengthStyleValue,
 } = require('./box-model');
 const { compileEffects, gradientHasSingleColor } = require('./effect-style-mapping');
@@ -448,7 +450,7 @@ function compileTableCellRuns(cell, styles, report, options) {
 function warnObjectBorderLimitations(item, box, report) {
   const borders = box && box.borders;
   if (!borders || bordersAreUniform(borders)) return;
-  const edges = [borders.top, borders.right, borders.bottom, borders.left].filter(visibleCompiledBorder);
+  const edges = [borders.top, borders.right, borders.bottom, borders.left].filter(visibleBorder);
   const hasStyledEdge = edges.some((edge) => !['solid', 'none', 'hidden', ''].includes(String(edge.style || '').toLowerCase()));
   const hasRadius = String(item.computedStyle && item.computedStyle.borderRadius || '').trim();
   if (!hasStyledEdge && (!hasRadius || hasRadius === '0px')) return;
@@ -502,16 +504,6 @@ function compileTableColumnWidths(item, rows) {
     for (let index = 0; index < span; index += 1) widths.push(round(width, 2));
   }
   return normalizeTableWidths(widths, item.boundsMm && item.boundsMm.width);
-}
-
-function normalizeTableWidths(widths, tableWidth) {
-  if (!widths.length || !Number.isFinite(Number(tableWidth))) return widths;
-  const total = widths.reduce((sum, width) => sum + width, 0);
-  const delta = round(Number(tableWidth) - total, 2);
-  if (Math.abs(delta) > 0 && Math.abs(delta) < 1) {
-    widths[widths.length - 1] = round(widths[widths.length - 1] + delta, 2);
-  }
-  return widths;
 }
 
 function compileTableRowHeights(rows) {
@@ -751,17 +743,9 @@ function normalizedStrokeAlignment(value) {
 function uniformBorderForObject(item, options) {
   const box = compileBoxModel(item, createEmptyStyleModel(), options);
   const edges = [box.borders.top, box.borders.right, box.borders.bottom, box.borders.left];
-  if (!edges.every((edge) => visibleCompiledBorder(edge))) return null;
+  if (!edges.every((edge) => visibleBorder(edge))) return null;
   const first = edges[0];
   return bordersAreUniform(box.borders) ? { ...first, alignment: null } : null;
-}
-
-function visibleCompiledBorder(edge) {
-  return edge
-    && edge.color
-    && edge.style !== 'none'
-    && edge.style !== 'hidden'
-    && Number(edge.widthPt || 0) > 0;
 }
 
 function visibleCompiledCellBorder(edge) {

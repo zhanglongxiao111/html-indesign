@@ -38,7 +38,8 @@ const {
   parentPageKeySet,
 } = require('../../semantic-model/parent-pages');
 const { applySynthesizedStyleInstructions } = require('./synthesized-style-instructions');
-const { bordersAreUniform } = require('../../style-synthesis/box-model');
+const { bordersAreUniform, visibleBorder } = require('../../style-synthesis/box-model');
+const { normalizeInstructionText } = require('../../shared/text');
 
 function semanticModelToInstructions(model, options = {}) {
   model = applySynthesizedStyleInstructions(model);
@@ -804,18 +805,6 @@ function hasStructuredTextChildCarryingItemText(item, siblingItems = []) {
   if (childTexts.length === 0) return false;
   if (childTexts.some((text) => text === parentText)) return true;
   return normalizeInstructionText(childTexts.join(' ')) === parentText;
-}
-
-function normalizeInstructionText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
-}
-
-function visibleBorder(edge) {
-  return edge
-    && edge.color
-    && edge.style !== 'none'
-    && edge.style !== 'hidden'
-    && Number(edge.widthPt || 0) > 0;
 }
 
 module.exports = {

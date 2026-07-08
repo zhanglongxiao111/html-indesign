@@ -31,6 +31,38 @@ const DEFINITION_PATTERN = new RegExp(
   String.raw`\b(?:function\s+(${SINGLE_IMPLEMENTATION_NAMES.join('|')})\b|(?:const|let|var)\s+(${SINGLE_IMPLEMENTATION_NAMES.join('|')})\s*=)`,
   'g'
 );
+const SEMANTIC_HELPER_FAMILIES = [
+  {
+    label: 'asset path key',
+    canonicalFiles: ['src/shared/assets.js'],
+    names: ['normalizePathKey', 'sourceFileKey', 'pathMapKey', 'assetPathKey', 'normalizeAssetPathKey'],
+  },
+  {
+    label: 'asset remote detection',
+    canonicalFiles: ['src/shared/assets.js'],
+    names: ['isRemoteReference', 'isRemoteUrl', 'isRemoteAssetReference', 'isExternalReference'],
+  },
+  {
+    label: 'text whitespace normalization',
+    canonicalFiles: ['src/shared/text.js'],
+    names: ['collapseWhitespace', 'normalizeInstructionText', 'normalizeWhitespace', 'normalizeTextWhitespace'],
+  },
+  {
+    label: 'table width normalization',
+    canonicalFiles: ['src/style-synthesis/box-model.js'],
+    names: ['normalizeTableWidths', 'normalizeColumnWidths', 'normalizeTableColumnWidths'],
+  },
+  {
+    label: 'border visibility',
+    canonicalFiles: ['src/style-synthesis/box-model.js'],
+    names: ['visibleBorder', 'hasVisibleBorder', 'visibleCompiledBorder'],
+  },
+  {
+    label: 'border uniformity',
+    canonicalFiles: ['src/style-synthesis/box-model.js'],
+    names: ['bordersAreUniform', 'sameBorder', 'sameCompiledBorder'],
+  },
+];
 
 const G6_RULE_METADATA = {
   'G6.1 shared helpers have a single implementation': {
@@ -78,6 +110,11 @@ test('G6 catches duplicate helper definitions outside src/shared and reports the
       rule: 'G6.1 shared helpers have a single implementation',
       file: 'src/writers/html/new-text.js',
       detail: 'defines collapseWhitespace',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/path-key.js',
+      detail: 'defines asset path key helper normalizePathKey',
     },
   ]);
 
@@ -151,6 +188,59 @@ test('G6 failure reports baseline expansion entries', () => {
 
   assert.match(message, /Baseline expansion:/);
   assert.match(message, /file=src\/writers\/html\/new-helper\.js/);
+});
+
+test('G6 catches renamed duplicate implementations in semantic helper families', () => {
+  const root = makeSampleProject({
+    'src/shared/assets.js': `
+      function normalizePathKey(value) { return String(value).replace(/\\\\/g, '/').toLowerCase(); }
+      function isRemoteReference(value) { return /^[a-z][a-z0-9+.-]*:/i.test(String(value)); }
+    `,
+    'src/shared/text.js': 'function collapseWhitespace(value) { return String(value).replace(/\\s+/g, " ").trim(); }\n',
+    'src/style-synthesis/box-model.js': `
+      function normalizeTableWidths(widths, tableWidth) { return widths; }
+      function visibleBorder(edge) { return Boolean(edge); }
+      function bordersAreUniform(borders) { return sameBorder(borders.top, borders.right); }
+      function sameBorder(a, b) { return a === b; }
+    `,
+    'src/writers/html/local-assets.js': `
+      function pathMapKey(value) { return String(value).replace(/\\\\/g, '/').toLowerCase(); }
+      const isRemoteUrl = (value) => /^[a-z][a-z0-9+.-]*:/i.test(String(value));
+    `,
+    'src/writers/indesign/local-text.js': 'function normalizeInstructionText(value) { return String(value).replace(/\\s+/g, " ").trim(); }\n',
+    'src/writers/indesign/local-table.js': 'function normalizeColumnWidths(widths, tableWidth) { return widths; }\n',
+    'src/writers/indesign/local-border.js': 'const hasVisibleBorder = (edge) => Boolean(edge);\n',
+  });
+
+  const violations = collectG6Violations(root);
+
+  assert.deepEqual(violations, [
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/local-assets.js',
+      detail: 'defines asset path key helper pathMapKey',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/html/local-assets.js',
+      detail: 'defines asset remote detection helper isRemoteUrl',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/indesign/local-border.js',
+      detail: 'defines border visibility helper hasVisibleBorder',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/indesign/local-table.js',
+      detail: 'defines table width normalization helper normalizeColumnWidths',
+    },
+    {
+      rule: 'G6.1 shared helpers have a single implementation',
+      file: 'src/writers/indesign/local-text.js',
+      detail: 'defines text whitespace normalization helper normalizeInstructionText',
+    },
+  ]);
 });
 
 test('G6 current duplicate helper definitions match the ratchet baseline', () => {
@@ -231,8 +321,39 @@ function collectG6Violations(repoRoot) {
         detail: `defines ${name}`,
       });
     }
+    for (const definition of collectSemanticHelperDefinitions(text, relativeFile)) {
+      violations.push({
+        rule: 'G6.1 shared helpers have a single implementation',
+        file: relativeFile,
+        detail: `defines ${definition.label} helper ${definition.name}`,
+      });
+    }
   }
   return sortViolations(violations);
+}
+
+function collectSemanticHelperDefinitions(text, relativeFile) {
+  const definitions = [];
+  for (const family of SEMANTIC_HELPER_FAMILIES) {
+    if (family.canonicalFiles.includes(relativeFile)) continue;
+    const pattern = helperDefinitionPattern(family.names);
+    const seen = new Set();
+    for (const match of text.matchAll(pattern)) {
+      const name = match[1] || match[2];
+      if (SINGLE_IMPLEMENTATION_NAMES.includes(name)) continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      definitions.push({ label: family.label, name });
+    }
+  }
+  return definitions;
+}
+
+function helperDefinitionPattern(names) {
+  return new RegExp(
+    String.raw`\b(?:function\s+(${names.map(escapeRegExp).join('|')})\b|(?:const|let|var)\s+(${names.map(escapeRegExp).join('|')})\s*=)`,
+    'g'
+  );
 }
 
 function collectBorderUniformityDefinitions(repoRoot) {

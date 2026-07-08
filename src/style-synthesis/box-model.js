@@ -94,6 +94,17 @@ function visibleBorder(edge) {
     && Number(edge.widthPt || 0) > 0;
 }
 
+function normalizeTableWidths(widths, tableWidth) {
+  const targetWidth = Number(tableWidth || 0);
+  if (!widths.length || targetWidth <= 0) return widths;
+  const total = widths.reduce((sum, width) => sum + Number(width || 0), 0);
+  const delta = round(targetWidth - total, 2);
+  if (Math.abs(delta) > 0 && Math.abs(delta) <= Math.max(1, targetWidth * 0.01)) {
+    widths[widths.length - 1] = round(widths[widths.length - 1] + delta, 2);
+  }
+  return widths;
+}
+
 function lengthStyleValue(item, prop) {
   const authored = item && item.authoredStyle && item.authoredStyle[prop];
   return authored || (item && item.computedStyle && item.computedStyle[prop]);
@@ -114,5 +125,7 @@ module.exports = {
   cornerRadiusValue,
   tableCellPadding,
   bordersAreUniform,
+  visibleBorder,
+  normalizeTableWidths,
   lengthStyleValue,
 };

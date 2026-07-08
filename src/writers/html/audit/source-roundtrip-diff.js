@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
+const { isRemoteReference } = require('../../../shared/assets');
 
 const EMPTY_PROJECT_BOOLEAN_ATTRIBUTES = Object.freeze([
   HTML_DATA_ID_ATTRIBUTES.OBJECT,
@@ -318,17 +319,12 @@ function resourceIdentity(root, value) {
 }
 
 function resolveResourcePath(root, value) {
-  if (!value || isRemoteUrl(value)) return null;
+  if (!value || isRemoteReference(value)) return null;
   return path.isAbsolute(value) ? path.resolve(value) : path.resolve(root, value);
 }
 
 function slashPath(value) {
   return String(value || '').replace(/\\/g, '/');
-}
-
-function isRemoteUrl(value) {
-  const text = String(value || '');
-  return /^[a-z][a-z0-9+.-]*:/i.test(text) && !/^[a-z]:[\\/]/i.test(text);
 }
 
 function tagSequence($) {

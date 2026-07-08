@@ -5,6 +5,10 @@ const {
   assetSourceFromElementLike,
   createAssetId,
   placementFromAttributes,
+  normalizePathKey,
+  sourceFileKey,
+  sanitizeRelative,
+  isRemoteReference,
 } = require('../../src/shared/assets');
 
 test('inferAssetKind maps architecture presentation asset extensions', () => {
@@ -89,4 +93,18 @@ test('placementFromAttributes preserves protocol placement fields', () => {
       scaleY: 0.75,
     },
   });
+});
+
+test('asset path helpers share one canonical path identity contract', () => {
+  assert.equal(normalizePathKey('C:\\Project\\Assets\\Site Plan.PDF'), 'c:/project/assets/site plan.pdf');
+  assert.equal(normalizePathKey('//daga-nas5/share/图纸 A.pdf'), '//daga-nas5/share/图纸 a.pdf');
+  assert.equal(sourceFileKey('C:/Project/Assets/../Assets/Site Plan.PDF'), sourceFileKey('C:\\Project\\Assets\\Site Plan.PDF'));
+  assert.equal(sanitizeRelative('../assets/./bad:name?.pdf'), 'assets/bad_name_.pdf');
+});
+
+test('remote reference detection keeps file URLs local and HTTP style URLs remote', () => {
+  assert.equal(isRemoteReference('https://example.test/render.png'), true);
+  assert.equal(isRemoteReference('data:image/png;base64,AAAA'), true);
+  assert.equal(isRemoteReference('file:///C:/Project/render.png'), false);
+  assert.equal(isRemoteReference('C:\\Project\\render.png'), false);
 });
