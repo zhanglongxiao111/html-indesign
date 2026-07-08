@@ -83,3 +83,41 @@ Result: pass, no whitespace errors.
 
 - None for Task 12b scope.
 - The report cannot contain the final commit hash before the commit object exists; the final response records the immutable commit id after commit creation.
+
+## Dewey review fix
+
+P1 fixed after Dewey review:
+
+- `collectBorderUniformityDefinitions()` now uses the same G6 scope semantics as the main duplicate-helper collector: `isG6Scope(relativeFile) && !isSkipped(relativeFile) && isCodeFile(file)`.
+- Added a RED/GREEN sample test proving definitions in `src/writers/html/...` and `scripts/...` are collected, while `src/shared/...` and skipped paths remain excluded.
+- The only allowed current definitions remain `bordersAreUniform` and `sameBorder` in `src/style-synthesis/box-model.js`.
+
+Verification for this fix:
+
+```powershell
+node --test test/architecture/single-implementation.test.js
+```
+
+RED result before collector fix: failed as expected because the sample duplicate definitions in `scripts/drift.js` and `src/writers/html/drift.js` were missed.
+
+GREEN result after collector fix: pass, 6/6 tests.
+
+Additional required verification run for the fix:
+
+```powershell
+node --test test/html-to-indesign/instructions-compiler.test.js test/html-to-indesign/style-compiler.test.js test/html-to-indesign/synthesized-style-compiler.test.js
+```
+
+Result: pass, 53/53 tests.
+
+```powershell
+node --test test/indesign-to-html/visual-geometry-audit.test.js test/indesign-to-html/visual-geometry-cli.test.js
+```
+
+Result: pass, 25/25 tests.
+
+```powershell
+npm test
+```
+
+Result: pass, 921/921 tests.

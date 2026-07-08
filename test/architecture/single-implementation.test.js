@@ -160,6 +160,37 @@ test('border uniformity comparison has a single implementation in style-synthesi
   ]);
 });
 
+test('border uniformity collector scans the full G6 src and scripts scope', () => {
+  const root = makeSampleProject({
+    'src/style-synthesis/box-model.js': 'function bordersAreUniform(borders) { return sameBorder(borders.top, borders.right); }\nfunction sameBorder(a, b) { return a === b; }\n',
+    'src/writers/html/drift.js': 'function bordersAreUniform(borders) { return Boolean(borders); }\n',
+    'scripts/drift.js': 'const sameCompiledBorder = (a, b) => a === b;\n',
+    'src/shared/ignored.js': 'function sameBorder(a, b) { return a === b; }\n',
+    'test/workspace/ignored.js': 'function bordersAreUniform() { return true; }\n',
+  });
+
+  const definitions = collectBorderUniformityDefinitions(root);
+
+  assert.deepEqual(definitions, [
+    {
+      file: 'scripts/drift.js',
+      name: 'sameCompiledBorder',
+    },
+    {
+      file: 'src/style-synthesis/box-model.js',
+      name: 'bordersAreUniform',
+    },
+    {
+      file: 'src/style-synthesis/box-model.js',
+      name: 'sameBorder',
+    },
+    {
+      file: 'src/writers/html/drift.js',
+      name: 'bordersAreUniform',
+    },
+  ]);
+});
+
 function collectG6Violations(repoRoot) {
   const violations = [];
   for (const file of listProjectFiles(repoRoot)) {
@@ -185,10 +216,7 @@ function collectBorderUniformityDefinitions(repoRoot) {
   const pattern = /\b(?:function\s+(bordersAreUniform|sameCompiledBorder|sameBorder)\b|(?:const|let|var)\s+(bordersAreUniform|sameCompiledBorder|sameBorder)\s*=)/g;
   return listProjectFiles(repoRoot)
     .map((file) => ({ file, relativeFile: repoRelative(repoRoot, file) }))
-    .filter(({ relativeFile }) => (
-      (relativeFile.startsWith('src/writers/indesign/') || relativeFile.startsWith('src/style-synthesis/'))
-        && isCodeFile(relativeFile)
-    ))
+    .filter(({ file, relativeFile }) => isG6Scope(relativeFile) && !isSkipped(relativeFile) && isCodeFile(file))
     .flatMap(({ file, relativeFile }) => {
       const text = stripCommentsPreservingDefinitions(fs.readFileSync(file, 'utf8'), relativeFile);
       return [...text.matchAll(pattern)].map((match) => ({
