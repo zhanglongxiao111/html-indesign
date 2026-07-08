@@ -196,7 +196,7 @@ Completed in `103b5fc` and follow-up fix `655d30f`: controller verification pass
 - Consumes: `compileReverseSnapshotToHtml(options)`
 - Produces: one `src`-level reverse author audit result used by CLI, plugin resume, and E2E
 
-- [ ] **Step 1: Add failing tests for strong reverse pipeline audit**
+- [x] **Step 1: Add failing tests for strong reverse pipeline audit**
 
 Add a test that calls `compileReverseSnapshotToHtml({ sourceRoot, ... })` and asserts returned author audit includes:
 
@@ -216,7 +216,7 @@ node --test test/indesign-to-html/cli.test.js test/indesign-e2e-runner.test.js
 
 Expected: FAIL before implementation.
 
-- [ ] **Step 2: Route reverse pipeline through high-level audit**
+- [x] **Step 2: Route reverse pipeline through high-level audit**
 
 In `src/reverse-pipeline/index.js`, replace direct low-level `author-audit` usage with `src/writers/html/audit/reverse-roundtrip.js` when source package context is present.
 
@@ -232,15 +232,15 @@ The pipeline must accept explicit options:
 
 No default sourceRoot inference outside the provided reverse/export context.
 
-- [ ] **Step 3: Thin E2E script to consume pipeline audit**
+- [x] **Step 3: Thin E2E script to consume pipeline audit**
 
 Update `scripts/indesign-e2e.js` so first-pass author audit comes from the reverse pipeline result. E2E may still run second-pass stability, but it must not recompute a stronger first-pass gate only in the script.
 
-- [ ] **Step 4: Keep plugin reverse export fail-visible**
+- [x] **Step 4: Keep plugin reverse export fail-visible**
 
 Ensure `src/indesign-cli-plugin/tools/reverse-export.js` passes any available source-root context into `compileReverseSnapshotToHtml` and surfaces `author.audit.ok === false` as a failed plugin result, not a successful result with warnings.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run:
 
@@ -250,12 +250,14 @@ node --test test/indesign-to-html/cli.test.js test/indesign-cli-plugin/plugin-to
 
 Expected: all pass; reverse export and E2E share the same first-pass author audit result.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src/reverse-pipeline src/writers/html/audit scripts/indesign-e2e.js scripts/indesign-reverse-export.js src/indesign-cli-plugin test/indesign-to-html test/indesign-cli-plugin test/indesign-e2e-runner.test.js
 git commit -m "audit: unify reverse author gates"
 ```
+
+Completed in `1a8883e` and follow-up fix `97854ff`: controller verification passed Task 3 focused suite `57/57`; task re-review approved with no Critical, Important, or Minor findings.
 
 ### Task 4: Move Reverse Visual Evidence Enrichment into `src`
 
