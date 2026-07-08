@@ -10,19 +10,24 @@ const {
   buildReverseSnapshotJsx,
   architectureStyleNameMap,
   loadStyleNameMapForHtml,
-  assertPanelNameAuditOk,
-  assertNoTextOverset,
-  assertReverseHtmlSemantics,
-  auditReverseAuthorPackage,
-  auditSecondPassAuthorStability,
-  auditReverseHtmlSemantics,
-  isAllowedBuiltInPanelName,
-  observedPanelNamesForHtml,
   parseArgs,
   parseCliResultJson,
   resolveIndesignCliCommand,
   parseTargetSize,
 } = require('../scripts/indesign-e2e');
+const scriptExports = require('../scripts/indesign-e2e');
+const {
+  assertPanelNameAuditOk,
+  assertNoTextOverset,
+  isAllowedBuiltInPanelName,
+  observedPanelNamesForHtml,
+} = require('../src/writers/indesign/audit/e2e-result-audit');
+const {
+  assertReverseHtmlSemantics,
+  auditReverseAuthorPackage,
+  auditSecondPassAuthorStability,
+  auditReverseHtmlSemantics,
+} = require('../src/writers/html/audit/reverse-roundtrip');
 const { renderSnapshot } = require('../src/adapters/html');
 const { compileInstructions } = require('../src/indesign-pipeline');
 
@@ -119,6 +124,18 @@ test('parseCliResultJson returns current script run parsed payload', () => {
       pages: 7,
     },
   });
+});
+
+test('indesign e2e script exports only script-owned helpers', () => {
+  assert.equal(scriptExports.assertPanelNameAuditOk, undefined);
+  assert.equal(scriptExports.observedPanelNamesForHtml, undefined);
+  assert.equal(scriptExports.assertNoTextOverset, undefined);
+  assert.equal(scriptExports.auditReverseHtmlSemantics, undefined);
+  assert.equal(scriptExports.assertReverseHtmlSemantics, undefined);
+  assert.equal(scriptExports.auditReverseAuthorPackage, undefined);
+  assert.equal(scriptExports.auditSecondPassAuthorStability, undefined);
+  assert.equal(typeof scriptExports.createRunContext, 'function');
+  assert.equal(typeof scriptExports.runIndesignE2E, 'function');
 });
 
 test('assertPanelNameAuditOk rejects English panel-facing names', () => {
