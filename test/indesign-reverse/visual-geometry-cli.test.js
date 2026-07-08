@@ -3,11 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const cli = require('../../scripts/audit-reverse-visual');
 const {
   parseArgs,
   resolveInputs,
+  captureHtmlGeometry: captureHtmlGeometryFromCli,
   enrichCaptureWithReverseModelSourceMetadata,
-} = require('../../scripts/audit-reverse-visual');
+} = cli;
+const {
+  captureHtmlGeometry,
+} = require('../../src/adapters/html/reader/visual-geometry-capture');
+
+test('audit-reverse-visual CLI reuses the src HTML geometry capture reader', () => {
+  assert.equal(captureHtmlGeometryFromCli, captureHtmlGeometry);
+});
 
 test('audit-reverse-visual cli resolves reverse-html directory defaults', () => {
   const root = path.resolve('test/workspace/reverse-html');
