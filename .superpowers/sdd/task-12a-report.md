@@ -58,10 +58,40 @@ Implementation verification:
   - Pass: 919/919.
 
 - `rg "test/paged-html|test/fixtures/paged-html|test/indesign-reverse" package.json test src scripts _indesign_scripts docs/superpowers/plans/2026-07-06-architecture-hardening-guardrails-implementation-plan.md`
-  - Pass: no matches, command exited 1 as expected for no results.
+  - Initial implementation pass: no matches, command exited 1 as expected for no results.
+  - Superseded for the plan document by the post-review fix below: historical progress records intentionally retain the paths that were actually run at the time.
 
 - `git diff --check`
   - Pass: no whitespace errors.
+
+## Post-review Fix
+
+Fermat review result: `SPEC: PASS`, `QUALITY: FAIL` for P2 documentation scope drift.
+
+Fix applied:
+
+- Restored historical progress and acceptance-command records in `docs/superpowers/plans/2026-07-06-architecture-hardening-guardrails-implementation-plan.md` to their original recorded paths:
+  - `test/indesign-reverse/...`
+  - `test/paged-html/instructions-compiler.test.js`
+- Kept active Task 12a implementation paths unchanged:
+  - `test/html-to-indesign/`
+  - `test/fixtures/fixed-html/`
+  - `test/indesign-to-html/`
+- Did not change `package.json`, test fixture references, actual test directories, or `test/architecture/baselines/G5.json`.
+
+Post-review verification:
+
+- `node --test test/architecture/retired-naming.test.js`
+  - Pass: 2/2.
+
+- `node --test test/architecture/`
+  - Pass: 59/59.
+
+- `npm test`
+  - Pass: 919/919.
+
+- `git diff --check HEAD~1..HEAD`
+  - Pass: no whitespace errors in the fix commit range.
 
 ## Concerns
 
