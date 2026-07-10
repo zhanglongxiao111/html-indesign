@@ -1,8 +1,15 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 // Forward: recreate document composite fonts from instructions before styles apply.
+// Two facts probed against real InDesign: entry faces must be assigned as a
+// resolvable base Font object with the weight selected via entry.fontStyle
+// (assigning a bold face directly leaves the composite permanently
+// unresolvable), and registration completes asynchronously, so styles can
+// only reference the composite after a wait-and-verify pass.
 HI.ensureCompositeFonts = function (doc, compositeFonts, report) {
     var out = {};
+    var created = [];
+    var faces = null;
     for (var name in compositeFonts) {
         if (!compositeFonts.hasOwnProperty(name)) continue;
         var def = compositeFonts[name] || {};
@@ -19,13 +26,16 @@ HI.ensureCompositeFonts = function (doc, compositeFonts, report) {
                 continue;
             }
         }
-        HI.assignCompositeFontEntries(cf, def.entries || [], report);
+        if (!faces) faces = HI.fontFacesByFamily();
+        HI.assignCompositeFontEntries(cf, def.entries || [], faces, report);
         out[fontName] = cf;
+        created.push(fontName);
     }
+    if (created.length) HI.waitForCompositeFonts(doc, created, report);
     return out;
 };
 
-HI.assignCompositeFontEntries = function (cf, entries, report) {
+HI.assignCompositeFontEntries = function (cf, entries, faces, report) {
     for (var i = 0; i < entries.length; i++) {
         var def = entries[i] || {};
         if (!def.name) continue;
@@ -41,12 +51,25 @@ HI.assignCompositeFontEntries = function (cf, entries, report) {
             }
         }
         if (def.appliedFont) {
-            var font = HI.resolveFont({ appliedFont: def.appliedFont, fontStyleName: def.fontStyle }, report);
-            if (font) {
+            var family = String(def.appliedFont);
+            var familyFaces = faces[family] || [];
+            var baseStyle = HI.compositeBaseFaceStyle(familyFaces);
+            var baseFont = baseStyle ? HI.fontByName(family + "\t" + baseStyle) : null;
+            if (!baseFont) {
+                HI.addMessage(report, "warning", "COMPOSITE_FONT_ENTRY_FONT_FAILED", "Entry font family has no resolvable face", { compositeFont: String(cf.name), entry: def.name, font: family });
+            } else {
                 try {
-                    entry.appliedFont = font;
+                    entry.appliedFont = baseFont;
                 } catch (error) {
-                    HI.addMessage(report, "warning", "COMPOSITE_FONT_ENTRY_FONT_FAILED", String(error), { compositeFont: String(cf.name), entry: def.name, font: def.appliedFont });
+                    HI.addMessage(report, "warning", "COMPOSITE_FONT_ENTRY_FONT_FAILED", String(error), { compositeFont: String(cf.name), entry: def.name, font: family });
+                }
+                var targetStyle = String(def.fontStyle || "");
+                if (targetStyle && targetStyle !== baseStyle) {
+                    if (HI.arrayContains(familyFaces, targetStyle)) {
+                        try { entry.fontStyle = targetStyle; } catch (_) {}
+                    } else {
+                        HI.addMessage(report, "warning", "COMPOSITE_FONT_ENTRY_STYLE_UNAVAILABLE", "Entry font style is not available for the family; base face kept", { compositeFont: String(cf.name), entry: def.name, font: family, fontStyle: targetStyle });
+                    }
                 }
             }
         }
@@ -55,6 +78,62 @@ HI.assignCompositeFontEntries = function (cf, entries, report) {
         try { if (def.verticalScale !== null && typeof def.verticalScale !== "undefined" && isFinite(Number(def.verticalScale))) entry.verticalScale = Number(def.verticalScale); } catch (_) {}
         try { if (def.baselineShift !== null && typeof def.baselineShift !== "undefined" && isFinite(Number(def.baselineShift))) entry.baselineShift = Number(def.baselineShift); } catch (_) {}
         try { if (typeof def.scaleOption === "boolean") entry.scaleOption = def.scaleOption; } catch (_) {}
+    }
+};
+
+HI.compositeBaseFaceStyle = function (familyFaces) {
+    if (!familyFaces || !familyFaces.length) return null;
+    if (HI.arrayContains(familyFaces, "Regular")) return "Regular";
+    return String(familyFaces[0]);
+};
+
+HI.arrayContains = function (list, value) {
+    for (var i = 0; i < (list || []).length; i++) {
+        if (String(list[i]) === String(value)) return true;
+    }
+    return false;
+};
+
+HI.fontFacesByFamily = function () {
+    var out = {};
+    try {
+        var names = app.fonts.everyItem().name;
+        for (var i = 0; i < names.length; i++) {
+            var parts = String(names[i]).split("\t");
+            if (parts.length < 2) continue;
+            if (!out[parts[0]]) out[parts[0]] = [];
+            out[parts[0]].push(parts[1]);
+        }
+    } catch (_) {}
+    return out;
+};
+
+HI.waitForCompositeFonts = function (doc, names, report) {
+    for (var i = 0; i < names.length; i++) {
+        var name = names[i];
+        var resolved = false;
+        for (var attempt = 0; attempt < 12; attempt++) {
+            if (HI.compositeFontResolvable(doc, name)) { resolved = true; break; }
+            $.sleep(250);
+        }
+        if (!resolved) {
+            HI.addMessage(report, "warning", "COMPOSITE_FONT_UNRESOLVED", "Composite font did not become resolvable after creation", { name: name });
+        }
+    }
+};
+
+HI.compositeFontResolvable = function (doc, name) {
+    var probe = null;
+    try {
+        var font = HI.fontByName(name + "\tRegular");
+        if (!font) return false;
+        probe = doc.paragraphStyles.add({ name: "__hi_composite_font_probe__" });
+        probe.appliedFont = font;
+        return true;
+    } catch (_) {
+        return false;
+    } finally {
+        try { if (probe) probe.remove(); } catch (_) {}
     }
 };
 
