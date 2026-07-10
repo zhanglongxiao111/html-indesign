@@ -8,8 +8,10 @@ const {
   safeVisualClassToken,
 } = require('../../src/shared/style-utils');
 
-test('safeAuthorClassToken preserves existing author CSS class token behavior', () => {
-  assert.equal(safeAuthorClassToken(' [Body Copy]/A  '), '--Body-Copy--A--');
+test('safeAuthorClassToken stays idempotent across style-name sanitization', () => {
+  assert.equal(safeAuthorClassToken(' [Body Copy]/A  '), 'Body-Copy-A');
+  assert.equal(safeAuthorClassToken('右上角标题（24点右对齐）'), '右上角标题-24点右对齐');
+  assert.equal(safeAuthorClassToken(safeAuthorClassToken('右上角标题（24点右对齐）')), '右上角标题-24点右对齐');
   assert.equal(safeAuthorClassToken(''), 'style');
 });
 

@@ -176,7 +176,11 @@ function sanitizeStyleName(value) {
 }
 
 function safeAuthorClassToken(value) {
-  return String(value || 'style').replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-');
+  const token = String(value || 'style')
+    .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return token || 'style';
 }
 
 function safeMigrationClassToken(value) {
