@@ -109,16 +109,19 @@ HI.fontFacesByFamily = function () {
 };
 
 HI.waitForCompositeFonts = function (doc, names, report) {
-    for (var i = 0; i < names.length; i++) {
-        var name = names[i];
-        var resolved = false;
-        for (var attempt = 0; attempt < 12; attempt++) {
-            if (HI.compositeFontResolvable(doc, name)) { resolved = true; break; }
-            $.sleep(250);
+    // Registration is asynchronous and takes ~20s for production-sized
+    // definitions, so poll every pending font in one loop with a 60s budget.
+    var pending = names.slice(0);
+    for (var attempt = 0; attempt < 240 && pending.length; attempt++) {
+        var still = [];
+        for (var i = 0; i < pending.length; i++) {
+            if (!HI.compositeFontResolvable(doc, pending[i])) still.push(pending[i]);
         }
-        if (!resolved) {
-            HI.addMessage(report, "warning", "COMPOSITE_FONT_UNRESOLVED", "Composite font did not become resolvable after creation", { name: name });
-        }
+        pending = still;
+        if (pending.length) $.sleep(250);
+    }
+    for (var j = 0; j < pending.length; j++) {
+        HI.addMessage(report, "warning", "COMPOSITE_FONT_UNRESOLVED", "Composite font did not become resolvable after creation", { name: pending[j] });
     }
 };
 
