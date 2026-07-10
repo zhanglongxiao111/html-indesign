@@ -35,6 +35,7 @@ function executorLibNames() {
     'hi_document.jsxinc',
     'hi_parent_pages.jsxinc',
     'hi_fonts.jsxinc',
+    'hi_composite_fonts.jsxinc',
     'hi_styles.jsxinc',
     'hi_blend_modes.jsxinc',
     'hi_vector_styles.jsxinc',
