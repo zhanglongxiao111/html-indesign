@@ -354,3 +354,13 @@ test('pageItemsToAuthorHtml materializes a self-named source ancestor wrapper fo
   assert.match(html, /<object[^>]+id="drawing-pdf-source"/);
   assert.match(html, /<div[^>]+id="drawing-pdf-frame"[\s\S]*<object[\s\S]*<\/div>/);
 });
+
+test('ownContent preserves line-leading typed spaces as nbsp entities', () => {
+  const item = {
+    id: 'note',
+    role: 'text',
+    content: { text: '第一行\n   第二行', runs: [{ text: '第一行\n   第二行', characterStyle: null }] },
+  };
+  const html = ownContent(item, 2);
+  assert.equal(html, '第一行<br>&nbsp;&nbsp;&nbsp;第二行');
+});

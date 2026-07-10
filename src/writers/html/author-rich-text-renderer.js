@@ -19,7 +19,7 @@ function ownContent(item, depth) {
   }
   const rich = richTextContent(item);
   if (rich != null) return rich;
-  return escapeHtml((item.content && item.content.text) || '').replace(/\r\n|\r|\n/g, '<br>');
+  return plainTextContent((item.content && item.content.text) || '');
 }
 
 function tableSourceHtmlContent(sourceHtml, depth) {

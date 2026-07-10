@@ -300,12 +300,18 @@ function emptyProjectBooleanAttributes(html) {
 function comparableResourceEntry(entry, root) {
   const out = { ...entry };
   if (Object.prototype.hasOwnProperty.call(out, 'src')) {
-    out.src = resourceIdentity(root, out.src);
+    out.src = isDerivedPreviewEntry(out)
+      ? `path:${String(out.src || '').replace(/\\/g, '/')}`
+      : resourceIdentity(root, out.src);
   }
   if (Object.prototype.hasOwnProperty.call(out, 'data')) {
     out.data = resourceIdentity(root, out.data);
   }
   return out;
+}
+
+function isDerivedPreviewEntry(entry) {
+  return /(^| )placed-asset-preview( |$)|(^| )pdf-preview( |$)/.test(String(entry.className || ''));
 }
 
 function resourceIdentity(root, value) {

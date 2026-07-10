@@ -101,7 +101,9 @@ function formatNumber(value) {
 }
 
 function px(value) {
-  return `${formatNumber(value)}px`;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0px';
+  return `${Math.round(number * 100) / 100}px`;
 }
 
 function numberOrZero(value) {
