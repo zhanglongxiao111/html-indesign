@@ -153,6 +153,7 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     baseZIndex: parseZIndex(item.computedStyle.zIndex),
     computedStyle: item.computedStyle,
     authoredStyle: item.authoredStyle || {},
+    ruleStyle: item.ruleStyle || {},
     unsupported: item.unsupported || {},
     runs: item.runs,
     table: tableRowsWithBounds(item.table || [], pageInfo.rectPx, widthMm, heightMm),

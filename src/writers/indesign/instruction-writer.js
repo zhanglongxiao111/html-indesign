@@ -340,6 +340,7 @@ function textInstructionItemFor({
     objectStyle: styleRefs.objectStyle,
     frameStyle: styleRefs.frameStyle,
     runs: runsForInstruction(modelItem, content, text),
+    ...(modelItem.textOverride ? { textOverride: modelItem.textOverride } : {}),
     ...(textFit ? { textFit } : {}),
     ...(visualStyle ? { visualStyle } : {}),
     ...(styleOverride ? { styleOverride } : {}),

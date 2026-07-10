@@ -537,7 +537,70 @@ test('compileStyles maps visual CSS pixels to points in presentation mode', asyn
 
   assert.equal(metricCard.strokeWeight, 2);
   assert.equal(metricCard.cornerRadius, '8pt');
-  assert.equal(coverTitle.pointSize, 90.6666);
+  assert.equal(coverTitle.pointSize, 90.6667);
+});
+
+test('compileStyles keeps declared paragraph style identity and emits item text overrides', () => {
+  const declaredRule = {
+    fontFamily: "'右上角标题',sans-serif",
+    fontSize: '24px',
+    lineHeight: '24px',
+    textAlign: 'right',
+    color: '#666666',
+  };
+  const textItem = (id, computedStyle) => ({
+    id,
+    role: 'text',
+    tagName: 'p',
+    classList: ['pstyle-右上角标题-24点右对齐'],
+    attributes: { 'data-id-paragraph-style': '右上角标题-24点右对齐' },
+    text: '底图示意',
+    boundsMm: { x: 10, y: 10, width: 60, height: 10 },
+    computedStyle,
+    authoredStyle: {},
+    ruleStyle: declaredRule,
+    runs: [],
+  });
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 200,
+      heightMm: 120,
+      items: [
+        textItem('declared-item', {
+          fontFamily: '"右上角标题", Arial, sans-serif',
+          fontSize: '24px',
+          lineHeight: '24px',
+          textAlign: 'right',
+          color: 'rgb(102, 102, 102)',
+        }),
+        textItem('override-item', {
+          fontFamily: '微软雅黑, sans-serif',
+          fontSize: '18px',
+          lineHeight: '30px',
+          textAlign: 'center',
+          color: 'rgb(102, 102, 102)',
+        }),
+      ],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const [declaredItem, overrideItem] = styled.pages[0].items;
+
+  assert.equal(Object.keys(styled.styles.paragraphStyles).filter((name) => name.startsWith('右上角标题')).length, 1, 'no conflict variants are minted for declared styles');
+  assert.equal(declaredItem.styleRefs.paragraphStyle, '右上角标题-24点右对齐');
+  assert.equal(overrideItem.styleRefs.paragraphStyle, '右上角标题-24点右对齐');
+  assert.equal(styled.styles.paragraphStyles['右上角标题-24点右对齐'].pointSize, 18, 'declared rule pixels map to the style definition');
+  assert.equal(styled.styles.paragraphStyles['右上角标题-24点右对齐'].justification, 'right');
+  assert.equal(declaredItem.textOverride, undefined, 'items matching the declared definition carry no override');
+  assert.ok(overrideItem.textOverride, 'diverging items carry a text override');
+  assert.equal(overrideItem.textOverride.pointSize, 13.5, 'override carries the computed point size');
+  assert.equal(overrideItem.textOverride.justification, 'center');
+  assert.equal(overrideItem.textOverride.appliedFont, '微软雅黑');
 });
 
 test('compileStyles warns instead of compiling multi-color gradients as opacity feathers', () => {

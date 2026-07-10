@@ -34,6 +34,7 @@ HI.createTextFrame = function (doc, page, item, context, report) {
     var text = HI.textFromRuns(item);
     frame.contents = text;
     HI.applyParagraphStyle(doc, frame, item.paragraphStyle, report);
+    HI.applyTextOverride(doc, frame, item.textOverride, item.runs || [], report);
     HI.applyRuns(doc, frame, item.runs || [], report);
     try { frame.label = HI.itemLabel(item); } catch (_) {}
     HI.writeProtocolLabels(frame, item.labels || [], report, { itemId: item.id, critical: true });

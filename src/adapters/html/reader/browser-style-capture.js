@@ -68,6 +68,17 @@
   }
 
   function authoredStyleObject(el, styleRules) {
+    const out = ruleStyleObject(el, styleRules);
+    const inline = el.style || {};
+    const inlineDecls = rawDeclarationMap(inline.cssText || '');
+    for (const prop of snapshotStyleProps) {
+      const value = inline.getPropertyValue ? authoredValue(inline, prop, inlineDecls) : '';
+      if (value) out[prop] = value.trim();
+    }
+    return out;
+  }
+
+  function ruleStyleObject(el, styleRules) {
     const out = {};
     for (const prop of snapshotStyleProps) out[prop] = '';
     for (const rule of styleRules) {
@@ -80,12 +91,6 @@
         const value = authoredValue(rule.style, prop, rule.rawDecls);
         if (value) out[prop] = value.trim();
       }
-    }
-    const inline = el.style || {};
-    const inlineDecls = rawDeclarationMap(inline.cssText || '');
-    for (const prop of snapshotStyleProps) {
-      const value = inline.getPropertyValue ? authoredValue(inline, prop, inlineDecls) : '';
-      if (value) out[prop] = value.trim();
     }
     return out;
   }
@@ -258,6 +263,7 @@
     snapshotStyleProps,
     styleObject,
     authoredStyleObject,
+    ruleStyleObject,
     collectStyleRules,
     mergeVisualFrameStyle,
   };

@@ -110,7 +110,9 @@ function compileItemStyles(item, styles, report, options) {
   };
 
   if (item.role === 'text') {
-    styleRefs.paragraphStyle = ensureParagraphStyle(styles, item, report, options);
+    const paragraph = compileParagraphStyle(styles, item, report, options);
+    styleRefs.paragraphStyle = paragraph.name;
+    if (paragraph.textOverride) compiled.textOverride = paragraph.textOverride;
     if (shouldCompileTextFrameObjectStyle(item)) {
       styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
       styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
@@ -261,17 +263,36 @@ function expandRunsWithPlainSegments(fullText, runs) {
 }
 
 function ensureParagraphStyle(styles, item, report, options) {
-  const style = item.computedStyle || {};
-  const fillColor = ensureSwatch(styles, style.color);
-  const fontName = ensureFont(styles, style.fontFamily, options, item.text);
-  const signature = {
-    appliedFont: fontName,
+  return compileParagraphStyle(styles, item, report, options).name;
+}
+
+function compileParagraphStyle(styles, item, report, options) {
+  const computedSignature = paragraphSignatureFor(item.computedStyle || {}, item, styles, options);
+  const declaredName = styleNameForKind(item, 'paragraphStyles', null, options);
+  const declaredFacts = declaredName ? declaredParagraphFacts(item) : null;
+  const signature = declaredFacts
+    ? paragraphSignatureFor(declaredFacts, item, styles, options)
+    : computedSignature;
+  const requestedName = declaredName || stableAutoName('paragraph', signature);
+  const name = ensureNamedStyle(styles, 'paragraphStyles', requestedName, 'paragraph', signature, item, report, options);
+  if (!signature.appliedFont) {
+    addMessage(report, 'warning', 'FONT_MISSING', 'Text item has no computed font family', { itemId: item.id });
+  }
+  return {
+    name,
+    textOverride: declaredFacts ? paragraphOverrideFor(computedSignature, signature) : null,
+  };
+}
+
+function paragraphSignatureFor(style, item, styles, options) {
+  return {
+    appliedFont: ensureFont(styles, style.fontFamily, options, item.text),
     fontStyleName: fontStyleNameFor(style),
     pointSize: styleLengthToPt(style, 'fontSize', options),
     leading: styleLengthToPt(style, 'lineHeight', options),
     fontWeight: style.fontWeight || '400',
     fontStyle: style.fontStyle || 'normal',
-    fillColor,
+    fillColor: ensureSwatch(styles, style.color),
     justification: style.textAlign || 'left',
     tracking: trackingValue(style, options),
     capitalization: capitalizationFor(style),
@@ -279,13 +300,72 @@ function ensureParagraphStyle(styles, item, report, options) {
     spaceAfter: styleLengthToPt(style, 'marginBottom', options),
     composer: paragraphComposerFor(item),
   };
-  const requestedName = styleNameForKind(item, 'paragraphStyles', signature, options)
-    || stableAutoName('paragraph', signature);
-  const name = ensureNamedStyle(styles, 'paragraphStyles', requestedName, 'paragraph', signature, item, report, options);
-  if (!fontName) {
-    addMessage(report, 'warning', 'FONT_MISSING', 'Text item has no computed font family', { itemId: item.id });
+}
+
+const DECLARED_PARAGRAPH_FACT_PROPS = [
+  'fontFamily',
+  'fontSize',
+  'lineHeight',
+  'fontWeight',
+  'fontStyle',
+  'color',
+  'textAlign',
+  'letterSpacing',
+  'textTransform',
+  'marginTop',
+  'marginBottom',
+];
+
+function declaredParagraphFacts(item) {
+  const rule = item.ruleStyle || {};
+  const computed = item.computedStyle || {};
+  if (!ruleFactValue(rule.fontSize) && !ruleFactValue(rule.fontFamily)) return null;
+  const facts = {};
+  for (const prop of DECLARED_PARAGRAPH_FACT_PROPS) {
+    facts[prop] = ruleFactValue(rule[prop]) || computed[prop];
   }
-  return name;
+  return facts;
+}
+
+function ruleFactValue(value) {
+  const text = String(value || '').trim();
+  return text || null;
+}
+
+const PARAGRAPH_OVERRIDE_KEYS = [
+  'appliedFont',
+  'fontStyleName',
+  'pointSize',
+  'leading',
+  'fontWeight',
+  'fontStyle',
+  'fillColor',
+  'justification',
+  'tracking',
+  'capitalization',
+  'spaceBefore',
+  'spaceAfter',
+];
+
+const NUMERIC_OVERRIDE_TOLERANCE = 0.01;
+
+function paragraphOverrideFor(computed, declared) {
+  const override = {};
+  for (const key of PARAGRAPH_OVERRIDE_KEYS) {
+    if (computed[key] == null) continue;
+    if (overrideValuesMatch(computed[key], declared[key])) continue;
+    override[key] = computed[key];
+  }
+  return Object.keys(override).length ? override : null;
+}
+
+function overrideValuesMatch(computed, declared) {
+  const computedNumber = Number(computed);
+  const declaredNumber = Number(declared);
+  if (Number.isFinite(computedNumber) && Number.isFinite(declaredNumber)) {
+    return Math.abs(computedNumber - declaredNumber) < NUMERIC_OVERRIDE_TOLERANCE;
+  }
+  return String(computed) === String(declared);
 }
 
 function paragraphComposerFor(item) {

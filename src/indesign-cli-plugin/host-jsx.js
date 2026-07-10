@@ -18,6 +18,7 @@ function buildBuildJsx({ repoRoot, instructionsPath }) {
     includeLib("hi_fonts.jsxinc");
     includeLib("hi_composite_fonts.jsxinc");
     includeLib("hi_styles.jsxinc");
+    includeLib("hi_text_overrides.jsxinc");
     includeLib("hi_blend_modes.jsxinc");
     includeLib("hi_vector_styles.jsxinc");
     includeLib("hi_assets.jsxinc");

@@ -1,0 +1,69 @@
+if (typeof HI === "undefined") { HI = {}; }
+
+// Apply per-item residual text formatting on top of the declared paragraph
+// style. Paragraph-level properties cover the whole frame text; character
+// level properties only touch ranges not owned by character-styled runs so
+// character styles keep winning where they are declared.
+HI.applyTextOverride = function (doc, frame, override, runs, report) {
+    if (!override) return;
+    var text = null;
+    try { text = frame.texts[0]; } catch (_) { return; }
+    if (!text) return;
+    try { if (override.justification) text.justification = HI.justificationFor(override.justification); } catch (_) {}
+    try { if (override.spaceBefore !== null && typeof override.spaceBefore !== "undefined") text.spaceBefore = HI.ptValue(override.spaceBefore); } catch (_) {}
+    try { if (override.spaceAfter !== null && typeof override.spaceAfter !== "undefined") text.spaceAfter = HI.ptValue(override.spaceAfter); } catch (_) {}
+    var ranges = HI.textOverrideRanges(frame, runs || []);
+    for (var i = 0; i < ranges.length; i++) {
+        HI.applyCharacterLevelOverride(doc, ranges[i], override, report);
+    }
+};
+
+HI.textOverrideRanges = function (frame, runs) {
+    var out = [];
+    var total = 0;
+    try { total = frame.texts[0].characters.length; } catch (_) { return out; }
+    if (!total) return out;
+    var covered = [];
+    var index = 0;
+    for (var i = 0; i < runs.length; i++) {
+        var length = String(runs[i].text || "").length;
+        if (runs[i].characterStyle && length > 0) covered.push([index, index + length - 1]);
+        index += length;
+    }
+    var cursor = 0;
+    for (var c = 0; c < covered.length; c++) {
+        if (covered[c][0] > cursor) out.push(HI.textRangeFor(frame, cursor, covered[c][0] - 1));
+        cursor = covered[c][1] + 1;
+    }
+    if (cursor < total) out.push(HI.textRangeFor(frame, cursor, total - 1));
+    var filtered = [];
+    for (var f = 0; f < out.length; f++) { if (out[f]) filtered.push(out[f]); }
+    return filtered;
+};
+
+HI.textRangeFor = function (frame, start, end) {
+    try { return frame.texts[0].characters.itemByRange(start, end); } catch (_) {}
+    return null;
+};
+
+HI.applyCharacterLevelOverride = function (doc, range, override, report) {
+    if (!range) return;
+    try { if (override.pointSize !== null && typeof override.pointSize !== "undefined") range.pointSize = HI.ptValue(override.pointSize); } catch (_) {}
+    try { if (override.leading !== null && typeof override.leading !== "undefined") range.leading = HI.ptValue(override.leading); } catch (_) {}
+    try { if (override.fillColor) range.fillColor = doc.swatches.itemByName(override.fillColor); } catch (_) {}
+    try { if (override.tracking !== null && typeof override.tracking !== "undefined") range.tracking = Number(override.tracking); } catch (_) {}
+    try {
+        if (override.appliedFont) {
+            var font = HI.resolveFont(override, report);
+            if (font) range.appliedFont = font;
+            if (override.fontStyleName) range.fontStyle = override.fontStyleName;
+        }
+    } catch (error) {
+        HI.addMessage(report, "warning", "FONT_APPLY_FAILED", String(error), { font: override.appliedFont });
+    }
+    try {
+        var capitalization = String(override.capitalization || "").toLowerCase();
+        if (capitalization === "allcaps") range.capitalization = Capitalization.ALL_CAPS;
+        if (capitalization === "smallcaps") range.capitalization = Capitalization.SMALL_CAPS;
+    } catch (_) {}
+};

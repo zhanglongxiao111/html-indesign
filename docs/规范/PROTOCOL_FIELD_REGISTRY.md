@@ -90,6 +90,7 @@
 | items[].table.rows[].cells[].textColor | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].header | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
 | items[].table.rows[].index | n/a | table-content | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=editable-shapes) | n/a |
+| items[].textOverride | n/a | style-refs | active | native/unsupported/native | unsupported/native/native | unsupported/unsupported/lossless | n/a |
 | items[].textStyle | reverseModel.pages[].items[].textStyle | text-content | active | observe-only/native/native | native/native/native | unsupported/approximate/lossless | n/a |
 | items[].textStyle.composer | reverseModel.pages[].items[].textStyle.composer, sourceNode.attributes.data-id-paragraph-composer | text-content | active | observe-only/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | items[].vectorGeometry.kind | reverseModel.pages[].items[].vectorGeometry.kind | vector-geometry | active | native/native/native | native/native/native | unsupported/fallback/lossless (fallbackKind=svg) | n/a |
@@ -241,6 +242,7 @@
 | items[].layerName | pages[].items[].layerName | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].parentPageItem | parentPages[].items[].parentPageItem, sourceNode.attributes.data-id-parent-page-item | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].parentPageSourceId | parentPages[].items[].parentPageSourceId, sourceNode.attributes.data-id-parent-page-source-id | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].ruleStyle | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].source | pages[].source, items[].source, sourceNode.attributes.data-id-source | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceAncestorNodes | labels[].sourceAncestorNodes, effectiveLabel.sourceAncestorNodes, pages[].effectiveLabel.sourceAncestorNodes | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceClassName | labels[].className, effectiveLabel.className, pages[].effectiveLabel.className | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |

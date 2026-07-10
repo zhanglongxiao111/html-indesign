@@ -280,6 +280,22 @@ module.exports = [
     },
   },
   {
+    canonicalPath: 'items[].textOverride',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'style-refs',
+    type: 'object',
+    capabilities: {
+      html: { read: 'native', write: 'unsupported', persist: 'native' },
+      indesign: { read: 'unsupported', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      instructionPaths: ['textOverride'],
+    },
+  },
+  {
     canonicalPath: 'items[].styleRefs.characterStyle',
     currentPaths: [
       'items[].characterStyle',

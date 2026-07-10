@@ -127,6 +127,8 @@ const ITEM_FIELD_PATHS = Object.freeze({
   classList: 'items[].classList',
   computedStyle: 'items[].computedStyle',
   authoredStyle: 'items[].authoredStyle',
+  ruleStyle: 'items[].ruleStyle',
+  textOverride: 'items[].textOverride',
   sourceSelector: 'items[].sourceSelector',
   boundsMm: 'items[].boundsMm',
   box: 'items[].box',
