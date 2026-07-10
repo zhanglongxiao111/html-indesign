@@ -89,6 +89,11 @@ HI.boundsToGeometricBounds = function (bounds) {
     return [Number(bounds.y), Number(bounds.x), Number(bounds.y) + Number(bounds.height), Number(bounds.x) + Number(bounds.width)];
 };
 
+HI.boundsAreDegenerate = function (bounds) {
+    if (!bounds) return true;
+    return !(Number(bounds.width) > 0) || !(Number(bounds.height) > 0);
+};
+
 HI.measurementUnitName = function (value) {
     var key = String(value || "mm").toLowerCase();
     if (key === "pt" || key === "point" || key === "points" || key === "px" || key === "pixel" || key === "pixels") return "pt";

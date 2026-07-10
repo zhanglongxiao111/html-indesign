@@ -7,6 +7,7 @@ const {
   pageMargins,
 } = require('../../../semantic-model/layout');
 const { createProtocolLabel } = require('../../../shared/labels');
+const { isIndesignBuiltinStyleName } = require('../../../shared/style-utils');
 const {
   fieldRegistry,
   HTML_DATA_ID_ATTRIBUTES,
@@ -416,12 +417,18 @@ function itemExtensionsFor(item) {
   return { indesign };
 }
 
+const STYLE_NAME_REF_KEYS = new Set([
+  'paragraphStyle', 'characterStyle', 'objectStyle', 'frameStyle', 'tableStyle', 'cellStyle', 'genericStyle',
+  'paragraphStyleDisplayName', 'characterStyleDisplayName', 'objectStyleDisplayName',
+  'frameStyleDisplayName', 'tableStyleDisplayName',
+]);
+
 function filterItemStyleRefs(styleRefs) {
   const filtered = {};
   for (const [key, value] of Object.entries(styleRefs || {})) {
-    if (ITEM_STYLE_REF_ALLOWED_KEYS.has(key)) {
-      filtered[key] = value;
-    }
+    if (!ITEM_STYLE_REF_ALLOWED_KEYS.has(key)) continue;
+    if (STYLE_NAME_REF_KEYS.has(key) && isIndesignBuiltinStyleName(value)) continue;
+    filtered[key] = value;
   }
   return filtered;
 }

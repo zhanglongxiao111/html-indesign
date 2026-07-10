@@ -1818,3 +1818,49 @@ test('reverseSnapshotToSemanticModel preserves reverse style resources composite
   assert.equal(body.zIndex, 5);
   assert.equal(body.firstLineFont, '建筑复合字体');
 });
+
+test('reverseSnapshotToSemanticModel drops built-in default style names instead of carrying them as refs', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'builtin-styles.indd', mode: 'observation' },
+    document: { name: 'builtin-styles.indd', labels: [] },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'default-styled-frame',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 50, width: 360, height: 72 },
+            text: 'Observed note',
+            labels: [],
+            paragraphStyleName: '[基本段落]',
+            objectStyleName: '[基本文本框架]',
+          },
+          {
+            id: 'custom-styled-frame',
+            type: 'TextFrame',
+            bounds: { x: 40, y: 150, width: 360, height: 72 },
+            text: 'Styled note',
+            labels: [],
+            paragraphStyleName: '正文段落',
+            objectStyleName: '[无]',
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const defaults = model.pages[0].items[0];
+  assert.equal(defaults.styleRefs.paragraphStyle, null, 'built-in paragraph default must not become a style ref');
+  assert.equal(defaults.styleRefs.paragraphStyleDisplayName, null);
+  assert.equal(defaults.styleRefs.objectStyle, null, 'built-in object default must not become a style ref');
+  assert.equal(defaults.styleRefs.objectStyleDisplayName, null);
+
+  const custom = model.pages[0].items[1];
+  assert.ok(custom.styleRefs.paragraphStyle, 'real custom paragraph style must survive');
+  assert.equal(custom.styleRefs.paragraphStyleDisplayName, '正文段落');
+  assert.equal(custom.styleRefs.objectStyle, null, '[无] object style must not become a style ref');
+});

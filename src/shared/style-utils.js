@@ -1,6 +1,21 @@
 const crypto = require('crypto');
 const { parseCssLength, round } = require('./geometry');
 
+const INDESIGN_BUILTIN_STYLE_NAMES = new Set([
+  '[无]', '[None]',
+  '[基本段落]', '[Basic Paragraph]',
+  '[无段落样式]', '[No Paragraph Style]',
+  '[基本图形框架]', '[Basic Graphics Frame]',
+  '[基本文本框架]', '[Basic Text Frame]',
+  '[基本网格]', '[Basic Grid]',
+  '[基本表]', '[Basic Table]',
+  '[无表样式]', '[No Table Style]',
+]);
+
+function isIndesignBuiltinStyleName(name) {
+  return INDESIGN_BUILTIN_STYLE_NAMES.has(String(name || '').trim());
+}
+
 function normalizeCssColor(value) {
   const text = String(value || '').trim().toLowerCase();
   if (!text || text === 'transparent') return null;
@@ -230,6 +245,7 @@ function explicitName(attributes, names) {
 }
 
 module.exports = {
+  isIndesignBuiltinStyleName,
   normalizeCssColor,
   normalizeCssColorFromBackgroundImage,
   parseCssLinearGradient,

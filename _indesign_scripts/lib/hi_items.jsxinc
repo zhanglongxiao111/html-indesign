@@ -99,8 +99,14 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
 HI.createShapeFrame = function (doc, page, item, context, report) {
     var rect = HI.createVectorShapePageItem(page, item) || (String(item.shapeKind || "").toLowerCase() === "oval" ? page.ovals.add() : page.rectangles.add());
     HI.clearDefaultStroke(doc, rect);
-    rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
-    HI.applyVectorGeometry(rect, item, report);
+    if (HI.boundsAreDegenerate(item.bounds)) {
+        if (!HI.applyVectorGeometry(rect, item, report)) {
+            HI.addMessage(report, "error", "SHAPE_DEGENERATE_BOUNDS_UNSUPPORTED", "Zero-dimension shape carries no vector path to define its geometry; InDesign cannot set a zero-size bounding box", { itemId: item.id, bounds: item.bounds });
+        }
+    } else {
+        rect.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+        HI.applyVectorGeometry(rect, item, report);
+    }
     HI.assignLayer(rect, context, item.layer);
     HI.applyObjectStyle(doc, rect, item.objectStyle, report);
     HI.applyFrameStyle(doc, rect, item.frameStyle, report);

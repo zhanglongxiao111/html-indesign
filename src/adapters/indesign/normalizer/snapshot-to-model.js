@@ -7,6 +7,7 @@ const {
 } = require('../../../protocol');
 const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
+const { isIndesignBuiltinStyleName } = require('../../../shared/style-utils');
 const { normalizeLineEndings } = require('../../../shared/text');
 const { validateReverseLabel } = require('./label-whitelist');
 const { tableSourceHtmlMatchesTable } = require('./table-source-html');
@@ -230,12 +231,9 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     layer: item.layerName || null,
     styleRefs: reverseStyleRefs({
       ...(isPlainObject(item.styleRefs) ? item.styleRefs : {}),
-      paragraphStyle: mapStyleName(styleMaps, 'paragraphStyles', item.paragraphStyleName),
-      paragraphStyleDisplayName: item.paragraphStyleName || null,
-      objectStyle: mapStyleName(styleMaps, 'objectStyles', item.objectStyleName),
-      objectStyleDisplayName: item.objectStyleName || null,
-      frameStyle: mapStyleName(styleMaps, 'frameStyles', item.frameStyleName),
-      frameStyleDisplayName: item.frameStyleName || null,
+      ...reverseStyleNamePair(styleMaps, 'paragraphStyles', 'paragraphStyle', item.paragraphStyleName),
+      ...reverseStyleNamePair(styleMaps, 'objectStyles', 'objectStyle', item.objectStyleName),
+      ...reverseStyleNamePair(styleMaps, 'frameStyles', 'frameStyle', item.frameStyleName),
       tableStyle: table && table.tableStyle ? table.tableStyle : null,
       tableStyleDisplayName: table && table.tableStyleDisplayName ? table.tableStyleDisplayName : null,
       layer: item.layerName || null,
@@ -261,6 +259,16 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     rejectionReasons: validation.rejectionReasons,
     asset: item.placedAsset || null,
     labels: labelsWithRequiredKind(item.labels, 'item', label.id || item.id, { role }),
+  };
+}
+
+function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {
+  if (isIndesignBuiltinStyleName(rawName)) {
+    return { [refKey]: null, [`${refKey}DisplayName`]: null };
+  }
+  return {
+    [refKey]: mapStyleName(styleMaps, kind, rawName),
+    [`${refKey}DisplayName`]: rawName || null,
   };
 }
 
