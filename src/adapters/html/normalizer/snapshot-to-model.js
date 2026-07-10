@@ -300,7 +300,14 @@ function parentPageModelItemFor(item, parentPage) {
   const id = item.parentPageSourceId || item.id;
   const pageItemLabel = Array.isArray(item.labels) && item.labels[0] ? item.labels[0] : null;
   const labelPayload = pageItemLabel
-    ? { ...pageItemLabel, id, structure: null }
+    ? {
+      ...pageItemLabel,
+      id,
+      structure: null,
+      sourceFile: null,
+      sourceAncestorNodes: [],
+      sourceNode: instanceNeutralSourceNode(pageItemLabel.sourceNode),
+    }
     : {
       kind: 'item',
       id,
@@ -317,6 +324,18 @@ function parentPageModelItemFor(item, parentPage) {
     structure: null,
     labels: [createProtocolLabel(labelPayload)],
   };
+}
+
+// Parent-page furniture labels are shared by every page the parent applies
+// to, so page-instance identity (element id, page source file, ancestors)
+// must not ride along; only instance-neutral facts like style tokens stay.
+function instanceNeutralSourceNode(sourceNode) {
+  if (!sourceNode || typeof sourceNode !== 'object') return null;
+  const attributes = { ...(sourceNode.attributes || {}) };
+  delete attributes.id;
+  const neutral = { ...sourceNode, attributes };
+  delete neutral.id;
+  return neutral;
 }
 
 function itemModelFor(item, page, layout) {

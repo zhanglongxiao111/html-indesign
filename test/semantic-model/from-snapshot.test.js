@@ -292,6 +292,12 @@ test('snapshotToSemanticModel restores parent page items from reverse author HTM
     furnitureLabel.sourceNode.attributes['data-id-parent-page-source-id'],
     'parent-rule',
   );
+  assert.equal(furnitureLabel.sourceNode.id, undefined,
+    'shared furniture labels must not carry a page-instance element id');
+  assert.equal(furnitureLabel.sourceNode.attributes.id, undefined);
+  assert.equal(furnitureLabel.sourceFile, null,
+    'shared furniture labels must not claim a single page source file');
+  assert.deepEqual(furnitureLabel.sourceAncestorNodes, []);
 });
 
 test('snapshotToSemanticModel does not synthesize CSS grid guides for observed reverse pages', () => {

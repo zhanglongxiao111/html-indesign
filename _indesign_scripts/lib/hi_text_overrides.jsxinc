@@ -6,10 +6,13 @@ if (typeof HI === "undefined") { HI = {}; }
 // residual, while ranges owned by character-styled runs only take the
 // properties their character style definition leaves undefined, so character
 // styles keep winning where they declare a value.
+// All reads and writes go through parentStory: frame.texts[0] only exposes
+// text already composed into the frame, so it is empty while the frame is
+// overset (small frames stay overset until text-fit expands them later).
 HI.applyTextOverride = function (doc, frame, override, runs, report) {
     if (!override) return;
     var text = null;
-    try { text = frame.texts[0]; } catch (_) { return; }
+    try { text = frame.parentStory.texts[0]; } catch (_) { return; }
     if (!text) return;
     try { if (override.justification) text.justification = HI.justificationFor(override.justification); } catch (_) {}
     try { if (override.spaceBefore !== null && typeof override.spaceBefore !== "undefined") text.spaceBefore = HI.ptValue(override.spaceBefore); } catch (_) {}
@@ -28,7 +31,7 @@ HI.applyTextOverride = function (doc, frame, override, runs, report) {
 HI.textOverrideSegments = function (frame, runs) {
     var out = [];
     var total = 0;
-    try { total = frame.texts[0].characters.length; } catch (_) { return out; }
+    try { total = frame.parentStory.characters.length; } catch (_) { return out; }
     if (!total) return out;
     var cursor = 0;
     var index = 0;
@@ -53,7 +56,7 @@ HI.pushOverrideSegment = function (out, frame, start, end, characterStyle, total
 };
 
 HI.textRangeFor = function (frame, start, end) {
-    try { return frame.texts[0].characters.itemByRange(start, end); } catch (_) {}
+    try { return frame.parentStory.characters.itemByRange(start, end); } catch (_) {}
     return null;
 };
 
