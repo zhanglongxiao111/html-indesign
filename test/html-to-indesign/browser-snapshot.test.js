@@ -313,15 +313,20 @@ test('renderSnapshot preserves hard line breaks from br elements', async () => {
   .copy { position:absolute; left:20px; top:20px; width:240px; height:80px; }
 </style>
 <section class="page" id="page-1">
-  <p id="copy" class="copy" data-id-paragraph-style="body">第一行<br><span data-id-character-style="accent">第二行<br>第三行</span></p>
+  <p id="copy" class="copy" data-id-paragraph-style="body">第一行<br><span data-id-character-style="accent">第二行<br>第三行<br></span></p>
+  <p id="tail" class="copy" data-id-paragraph-style="body">尾行<br></p>
 </section>`, 'utf8');
 
   const snapshot = await renderSnapshot({ htmlPath });
   const copy = snapshot.pages[0].items.find((item) => item.id === 'copy');
+  const tail = snapshot.pages[0].items.find((item) => item.id === 'tail');
 
   assert.ok(copy);
-  assert.equal(copy.text, '第一行\n第二行\n第三行');
-  assert.deepEqual(copy.runs.map((run) => run.text), ['第二行\n第三行']);
+  assert.equal(copy.text, '第一行\n第二行\n第三行\n');
+  assert.deepEqual(copy.runs.map((run) => run.text), ['第二行\n第三行\n']);
+  assert.ok(tail);
+  assert.equal(tail.text, '尾行\n');
+  assert.deepEqual(tail.runs.map((run) => run.text), ['尾行\n']);
 });
 
 test('renderSnapshot keeps PDF source node separate from its preview wrapper', async () => {

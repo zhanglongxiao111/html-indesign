@@ -22,15 +22,23 @@
   }
 
   function sourceText(el) {
-    return textWithHardBreaks(el);
+    return textWithHardBreaks(el, '\n');
   }
 
-  function textWithHardBreaks(node) {
+  function textWithHardBreaks(node, brToken) {
     if (!node) return '';
     if (node.nodeType === 3) return String(node.nodeValue || '');
     if (node.nodeType !== 1) return '';
-    if (String(node.tagName || '').toLowerCase() === 'br') return '\n';
-    return Array.from(node.childNodes || []).map(textWithHardBreaks).join('');
+    if (String(node.tagName || '').toLowerCase() === 'br') return brToken;
+    return Array.from(node.childNodes || []).map((child) => textWithHardBreaks(child, brToken)).join('');
+  }
+
+  const HARD_BREAK_TOKEN = '\u0000';
+
+  function trimmedTextWithHardBreaks(el) {
+    return textWithHardBreaks(el, HARD_BREAK_TOKEN)
+      .trim()
+      .replace(/[ \t]*\u0000[ \t]*/g, '\n');
   }
 
   function sourceNodeFor(el, pageEl, extra) {
@@ -148,7 +156,7 @@
     const inlineRuns = inlineRunsFor(el);
     if (inlineRuns.length) return inlineRuns;
     return [{
-      text: sourceText(el).trim(),
+      text: trimmedTextWithHardBreaks(el),
       tagName,
       classList: classList(el),
       attributes: attrs(el),
@@ -165,7 +173,7 @@
         header: isHeaderRow,
         cells: Array.from(row.cells || []).map((cell, cellIndex) => ({
           index: cellIndex,
-          text: sourceText(cell).trim(),
+          text: trimmedTextWithHardBreaks(cell),
           tagName: cell.tagName.toLowerCase(),
           header: isHeaderRow || cell.tagName.toLowerCase() === 'th',
           rowSpan: cell.rowSpan || 1,
@@ -235,7 +243,7 @@
     const inlineSelector = `span,strong,b,em,i,mark,sup,sub,[${dataId.CHARACTER_STYLE}]`;
     const inlineEls = Array.from(el.querySelectorAll(inlineSelector));
     return inlineEls.map((runEl) => ({
-      text: sourceText(runEl).trim(),
+      text: trimmedTextWithHardBreaks(runEl),
       tagName: runEl.tagName.toLowerCase(),
       classList: classList(runEl),
       attributes: attrs(runEl),
@@ -310,6 +318,7 @@
     rectObject,
     attrs,
     sourceText,
+    trimmedTextWithHardBreaks,
     sourceNodeFor,
     sourcePreviewNodeFor,
     sourceHtmlFor,

@@ -141,7 +141,7 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     sourceNode: item.sourceNode || null,
     sourceAncestorNodes: item.sourceAncestorNodes || [],
     cssVars: item.cssVars || {},
-    text: item.text.trim(),
+    text: item.text,
     rectPx: item.rectPx,
     boundsMm: roundBounds(rectPxToMm({
       rectPx: item.rectPx,

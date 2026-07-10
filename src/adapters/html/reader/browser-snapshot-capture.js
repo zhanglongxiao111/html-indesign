@@ -129,7 +129,7 @@
       sourceAncestorNodes: elements.sourceAncestorNodes(el, pageEl, candidates),
       cssVars: elements.cssVarsFor(el),
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
-      text: elements.sourceText(el),
+      text: elements.trimmedTextWithHardBreaks(el),
       computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),
       authoredStyle: styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle),
       runs: elements.textRunsFor(el),
