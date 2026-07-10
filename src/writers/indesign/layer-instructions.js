@@ -19,7 +19,7 @@ function layerForItem(item, options) {
   return mappedLayerName(token, options);
 }
 
-function collectLayers(pages, options) {
+function collectLayers(pages, options, observedLayers = []) {
   const names = new Map();
   for (const token of ['background', 'image', 'drawing', 'graphics', 'content', 'overlay', 'tables', 'text', 'annotation', 'annotations']) {
     names.set(mappedLayerName(token, options), names.size);
@@ -29,12 +29,29 @@ function collectLayers(pages, options) {
       if (!names.has(item.layer)) names.set(item.layer, names.size);
     }
   }
+  const observedBottomFirstOrder = observedLayerOrder(observedLayers);
   return Array.from(names.keys()).sort((a, b) => {
+    const observedA = observedBottomFirstOrder.has(a);
+    const observedB = observedBottomFirstOrder.has(b);
+    if (observedA && observedB) return observedBottomFirstOrder.get(a) - observedBottomFirstOrder.get(b);
+    if (observedA !== observedB) return observedA ? 1 : -1;
     const rankA = layerRank(a);
     const rankB = layerRank(b);
     if (rankA !== rankB) return rankA - rankB;
     return names.get(a) - names.get(b);
   }).map((name, index) => layerInstruction(name, name, index));
+}
+
+function observedLayerOrder(observedLayers) {
+  const order = new Map();
+  const layers = Array.isArray(observedLayers) ? observedLayers : [];
+  for (let index = 0; index < layers.length; index++) {
+    const name = layers[index] && (layers[index].name || layers[index]);
+    if (name == null) continue;
+    const key = String(name);
+    if (!order.has(key)) order.set(key, layers.length - 1 - index);
+  }
+  return order;
 }
 
 function layerInstruction(token, displayName, order) {

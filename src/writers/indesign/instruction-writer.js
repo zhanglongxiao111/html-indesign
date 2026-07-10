@@ -98,7 +98,7 @@ function semanticModelToInstructions(model, options = {}) {
     options,
     ensureSwatch: ensureInstructionSwatch,
   });
-  const layers = collectLayers([...pages, ...parentPages], options);
+  const layers = collectLayers([...pages, ...parentPages], options, model.layers || []);
 
   return {
     metadata: {

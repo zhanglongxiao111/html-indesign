@@ -265,3 +265,33 @@ test('validateInstructions rejects overrides targeting pasteboard parent items',
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((error) => error.code === 'PARENT_PAGE_ITEM_OVERRIDE_OFF_PARENT_PAGE'));
 });
+
+test('semanticModelToInstructions orders observed document layers by their original stacking', () => {
+  const instructions = semanticModelToInstructions({
+    kind: 'DocumentModel',
+    id: 'layer-order-doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    styles: {},
+    layers: [
+      { name: 'text' },
+      { name: '图片' },
+      { name: '装饰线' },
+    ],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 800,
+      height: 450,
+      items: [
+        { id: 'a', role: 'shape', layer: '装饰线', bounds: { x: 0, y: 0, width: 10, height: 10 }, labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'a', source: 'html-to-indesign', role: 'shape' }] },
+        { id: 'b', role: 'shape', layer: '图片', bounds: { x: 0, y: 20, width: 10, height: 10 }, labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'b', source: 'html-to-indesign', role: 'shape' }] },
+      ],
+    }],
+  });
+
+  const names = instructions.layers.map((layer) => layer.name);
+  assert.ok(names.indexOf('装饰线') < names.indexOf('图片'), '装饰线 must be created below 图片 to match the original stacking');
+  assert.ok(names.indexOf('图片') < names.indexOf('text'), '图片 must be created below text to match the original stacking');
+});
