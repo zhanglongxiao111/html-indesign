@@ -26,7 +26,7 @@ test('auditAuthorSourceRoundtrip accepts equivalent source and reverse author pa
   assert.equal(audit.stats.pagesCompared, 1);
 });
 
-test('auditAuthorSourceRoundtrip reports source-level losses without failing default mode', () => {
+test('auditAuthorSourceRoundtrip reports source-level losses as errors by default', () => {
   const root = path.resolve('test/workspace/source-roundtrip-losses');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
@@ -36,11 +36,11 @@ test('auditAuthorSourceRoundtrip reports source-level losses without failing def
   writePackage(reverseRoot, lossyPageHtml());
 
   const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
-  const warningCodes = audit.warnings.map((issue) => issue.code).sort();
+  const errorCodes = audit.errors.map((issue) => issue.code).sort();
 
-  assert.equal(audit.ok, true);
-  assert.deepEqual(audit.errors, []);
-  assert.deepEqual(warningCodes, [
+  assert.equal(audit.ok, false);
+  assert.deepEqual(audit.warnings, []);
+  assert.deepEqual(errorCodes, [
     'ROUNDTRIP_CHARACTER_STYLE_CHANGED',
     'ROUNDTRIP_INLINE_STYLE_CHANGED',
     'ROUNDTRIP_TABLE_CELL_STYLE_CHANGED',
@@ -114,25 +114,7 @@ test('auditAuthorSourceRoundtrip ignores generated reverse ids for preserved inl
   assert.deepEqual(audit.warnings, []);
 });
 
-test('auditAuthorSourceRoundtrip strict mode turns source losses into errors', () => {
-  const root = path.resolve('test/workspace/source-roundtrip-strict');
-  const sourceRoot = path.join(root, 'source');
-  const reverseRoot = path.join(root, 'reverse');
-  fs.rmSync(root, { recursive: true, force: true });
-
-  writePackage(sourceRoot, equivalentPageHtml());
-  writePackage(reverseRoot, lossyPageHtml());
-
-  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot, strict: true });
-  const errorCodes = audit.errors.map((issue) => issue.code);
-
-  assert.equal(audit.ok, false);
-  assert.equal(audit.warnings.length, 0);
-  assert.ok(errorCodes.includes('ROUNDTRIP_TEXT_CHANGED'));
-  assert.ok(errorCodes.includes('ROUNDTRIP_TAG_SEQUENCE_CHANGED'));
-});
-
-test('auditAuthorSourceRoundtrip strict mode rejects config metadata drift', () => {
+test('auditAuthorSourceRoundtrip keeps config metadata drift as a warning', () => {
   const root = path.resolve('test/workspace/source-roundtrip-config-drift');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
@@ -149,14 +131,15 @@ test('auditAuthorSourceRoundtrip strict mode rejects config metadata drift', () 
     profile: null,
   });
 
-  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot, strict: true });
-  const errorCodes = audit.errors.map((issue) => issue.code);
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
+  const warningCodes = audit.warnings.map((issue) => issue.code);
 
-  assert.equal(audit.ok, false);
-  assert.ok(errorCodes.includes('ROUNDTRIP_CONFIG_METADATA_CHANGED'));
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.errors, []);
+  assert.ok(warningCodes.includes('ROUNDTRIP_CONFIG_METADATA_CHANGED'));
 });
 
-test('auditAuthorSourceRoundtrip strict mode rejects reverse author source noise', () => {
+test('auditAuthorSourceRoundtrip rejects reverse author source noise by default', () => {
   const root = path.resolve('test/workspace/source-roundtrip-source-noise');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
@@ -179,7 +162,7 @@ test('auditAuthorSourceRoundtrip strict mode rejects reverse author source noise
 </section>
 `);
 
-  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot, strict: true });
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
   const errorCodes = audit.errors.map((issue) => issue.code);
 
   assert.equal(audit.ok, false);
@@ -202,7 +185,7 @@ test('measureAuthorSourceDrift reports exact source changes even when semantic a
     '',
   ].join('\n'));
 
-  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot, strict: true });
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
   const drift = measureAuthorSourceDrift({ sourceRoot, reverseRoot });
   const changedPage = drift.files.find((entry) => entry.file === 'pages/01-agenda.html');
 

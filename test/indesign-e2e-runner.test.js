@@ -431,7 +431,6 @@ test('auditReverseAuthorPackage attaches content inventory and structure signatu
     entry: path.join(reverseRoot, 'deck.html'),
     outDir: reverseRoot,
     sourceRoot,
-    strictSourceRoundtrip: true,
   });
 
   assert.equal(audit.ok, true);
@@ -441,8 +440,8 @@ test('auditReverseAuthorPackage attaches content inventory and structure signatu
   assert.equal(fs.existsSync(path.join(reverseRoot, 'reports/structure-signature-report.json')), true);
 });
 
-test('auditReverseAuthorPackage keeps exact source diffs advisory when integrity checks pass', () => {
-  const root = path.resolve('test/workspace/e2e-audit-source-advisory');
+test('auditReverseAuthorPackage 关键内联样式漂移 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/e2e-audit-source-hard');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
   fs.rmSync(root, { recursive: true, force: true });
@@ -454,46 +453,35 @@ test('auditReverseAuthorPackage keeps exact source diffs advisory when integrity
     entry: path.join(reverseRoot, 'deck.html'),
     outDir: reverseRoot,
     sourceRoot,
-    strictSourceRoundtrip: true,
   });
 
   assert.equal(audit.sourceRoundtrip.ok, false);
   assert.equal(audit.contentInventory.ok, true);
   assert.equal(audit.structureSignature.ok, true);
-  assert.equal(audit.ok, true);
-  assert.deepEqual(audit.errors, []);
-  assert.equal(audit.warnings.some((warning) => warning.code === 'SOURCE_ROUNDTRIP_DIFF_ADVISORY'), true);
+  assert.equal(audit.ok, false);
+  assert.equal(audit.errors.some((error) => error.code === 'ROUNDTRIP_INLINE_STYLE_CHANGED'), true);
 });
 
-test('auditReverseAuthorPackage keeps source structure diffs advisory unless strict structure is requested', () => {
-  const root = path.resolve('test/workspace/e2e-audit-structure-advisory');
+test('auditReverseAuthorPackage 结构节点丢失 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/e2e-audit-structure-hard');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
   fs.rmSync(root, { recursive: true, force: true });
   writeMinimalAuthorPackage(sourceRoot, '<section class="page"><section id="group"><p id="copy">完整文字</p></section></section>');
   writeMinimalAuthorPackage(reverseRoot, '<section class="page"><p id="copy">完整文字</p></section>');
 
-  const advisoryAudit = auditReverseAuthorPackage({
+  const audit = auditReverseAuthorPackage({
     config: path.join(reverseRoot, 'deck.config.json'),
     entry: path.join(reverseRoot, 'deck.html'),
     outDir: reverseRoot,
     sourceRoot,
-  });
-  const strictAudit = auditReverseAuthorPackage({
-    config: path.join(reverseRoot, 'deck.config.json'),
-    entry: path.join(reverseRoot, 'deck.html'),
-    outDir: reverseRoot,
-    sourceRoot,
-    strictStructureSignature: true,
   });
 
-  assert.equal(advisoryAudit.structureSignature.ok, false);
-  assert.equal(advisoryAudit.contentInventory.ok, true);
-  assert.equal(advisoryAudit.ok, true);
-  assert.deepEqual(advisoryAudit.errors, []);
-  assert.equal(advisoryAudit.warnings.some((warning) => warning.code === 'STRUCTURE_SIGNATURE_DIFF_ADVISORY'), true);
-  assert.equal(strictAudit.ok, false);
-  assert.equal(strictAudit.errors.some((error) => error.code === 'STRUCTURE_NODE_PARENT_CHANGED'), true);
+  assert.equal(audit.structureSignature.ok, false);
+  assert.equal(audit.contentInventory.ok, false);
+  assert.equal(audit.ok, false);
+  assert.equal(audit.errors.some((error) => error.code === 'STRUCTURE_NODE_MISSING'), true);
+  assert.equal(audit.errors.some((error) => error.code === 'CONTENT_GEOMETRY_ITEMS_LOST'), true);
 });
 
 test('auditSecondPassAuthorStability fails when the second-pass author package drifts by bytes', () => {

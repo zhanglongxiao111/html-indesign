@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-test('audit-reverse-author-roundtrip cli prints JSON report and honors strict mode', () => {
+test('audit-reverse-author-roundtrip cli 文本丢失 invalid-input 必须 fail', () => {
   const root = path.resolve('test/workspace/source-roundtrip-cli');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
@@ -13,30 +13,30 @@ test('audit-reverse-author-roundtrip cli prints JSON report and honors strict mo
   writePackage(reverseRoot, '<section class="page"><h1>CONTENTS</h1></section>');
 
   const script = path.resolve('scripts/audit-reverse-author-roundtrip.js');
-  const normal = spawnSync(process.execPath, [
+  const result = spawnSync(process.execPath, [
     script,
     '--source', sourceRoot,
     '--reverse', reverseRoot,
     '--json',
   ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
-  const normalReport = JSON.parse(normal.stdout);
+  const report = JSON.parse(result.stdout);
 
-  assert.equal(normal.status, 0);
-  assert.equal(normalReport.ok, true);
-  assert.deepEqual(normalReport.warnings.map((issue) => issue.code), ['ROUNDTRIP_TEXT_CHANGED']);
+  assert.equal(result.status, 1);
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.errors.map((issue) => issue.code), ['ROUNDTRIP_TEXT_CHANGED']);
+  assert.deepEqual(report.warnings, []);
+});
 
-  const strict = spawnSync(process.execPath, [
-    script,
-    '--source', sourceRoot,
-    '--reverse', reverseRoot,
+test('audit-reverse-author-roundtrip cli rejects the retired --strict flag', () => {
+  const result = spawnSync(process.execPath, [
+    path.resolve('scripts/audit-reverse-author-roundtrip.js'),
+    '--source', 'x',
+    '--reverse', 'y',
     '--strict',
-    '--json',
   ], { cwd: path.resolve('.'), encoding: 'utf8', windowsHide: true });
-  const strictReport = JSON.parse(strict.stdout);
 
-  assert.equal(strict.status, 1);
-  assert.equal(strictReport.ok, false);
-  assert.deepEqual(strictReport.errors.map((issue) => issue.code), ['ROUNDTRIP_TEXT_CHANGED']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unknown argument: --strict/);
 });
 
 test('audit-reverse-author-roundtrip cli can fail on exact source drift', () => {

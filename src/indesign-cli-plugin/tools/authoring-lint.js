@@ -9,6 +9,17 @@ async function call(args, context) {
     gridTolerance: args.gridTolerance,
   });
 
+  if (result && result.ok === false) {
+    return {
+      status: 'error',
+      error: {
+        code: 'AUTHORING_LINT_FAILED',
+        message: 'Authoring lint reported errors; fix the package before compiling.',
+        details: result,
+      },
+    };
+  }
+
   return {
     status: 'complete',
     data: result,

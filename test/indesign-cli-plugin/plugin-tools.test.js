@@ -36,6 +36,31 @@ test('html.authoring_lint reports missing package without pretending success', (
   assert.equal(response.error.code, 'AUTHOR_PACKAGE_CONFIG_MISSING');
 });
 
+test('html.authoring_lint lint 失败 invalid-input 必须 fail 而不是包进 complete', () => {
+  const root = path.join(repoRoot, 'test', 'workspace', 'plugin-lint-failing-package');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'lint-failing',
+    entry: 'deck.html',
+    styles: [],
+    pages: [{ id: 'page-1', file: 'pages/01-page.html' }],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'pages/01-page.html'), '<section class="page"><p>缺网格缺边距的页面</p></section>', 'utf8');
+
+  const response = callPlugin('tools/call', {
+    id: 'html.authoring_lint',
+    args: {
+      package: 'test/workspace/plugin-lint-failing-package/deck.config.json',
+    },
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'AUTHORING_LINT_FAILED');
+  assert.equal(response.error.details.ok, false);
+});
+
 test('html.compile_instructions writes validated instructions and summary', () => {
   const outDir = path.join('test', 'workspace', 'plugin-compile-smoke');
   fs.rmSync(path.join(repoRoot, outDir), { recursive: true, force: true });

@@ -17,8 +17,6 @@ function parseArgs(argv) {
       options.reverseRoot = argv[++index];
     } else if (arg.startsWith('--reverse=')) {
       options.reverseRoot = arg.slice('--reverse='.length);
-    } else if (arg === '--strict') {
-      options.strict = true;
     } else if (arg === '--drift') {
       options.drift = true;
     } else if (arg === '--fail-on-drift') {
@@ -37,10 +35,10 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    'Usage: node scripts/audit-reverse-author-roundtrip.js --source <source-author-root> --reverse <reverse-author-root> [--strict] [--drift] [--fail-on-drift] [--json]',
+    'Usage: node scripts/audit-reverse-author-roundtrip.js --source <source-author-root> --reverse <reverse-author-root> [--drift] [--fail-on-drift] [--json]',
     '',
-    'Default mode reports source-level losses as warnings and exits 0.',
-    'Strict mode reports source-level losses as errors and exits 1.',
+    'Source-level losses (page/text/resource/tag-sequence/style spans) are always errors and exit 1.',
+    'Only config metadata normalization stays a warning.',
     '--drift adds an exact file-level source drift report.',
     '--fail-on-drift exits 1 when any comparable author source file changed exactly.',
   ].join('\n');

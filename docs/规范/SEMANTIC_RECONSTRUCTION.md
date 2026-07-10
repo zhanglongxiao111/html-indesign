@@ -268,11 +268,11 @@ InDesign
 
 人工 InDesign 反向作者包进入 `HTML -> InDesign -> HTML` 回环时，必须生成以下作者包审计报告：
 
-- `source-roundtrip-report.json`：源码 exact diff 和格式漂移报告，作为辅助信号。
-- `content-inventory-report.json`：页面、文字、资源和关键内容库存对照，是无丢失硬门槛。
+- `source-roundtrip-report.json`：源码级语义对照与格式漂移报告。
+- `content-inventory-report.json`：页面、文字、资源、母版家具、几何对象与角色计数库存对照。
 - `structure-signature-report.json`：作者 HTML 可编辑结构签名对照。
 
-首轮从人工 InDesign 重建出的作者包，允许源码 exact diff 和源作者结构差异作为 advisory warning 写入报告；这类差异不能掩盖内容丢失。硬失败条件是内容库存丢页、丢文字、丢资源或真实 InDesign 构建出现 overset / unresolved text fit。
+三份报告都是首轮硬门槛。内容库存覆盖页面文本、资源身份与内容 hash、母版家具、几何对象 id、角色计数和计数守恒；结构签名覆盖节点存在、层级、顺序、class、文本与资源；源码回环的丢失类差异（页面缺失、文本变化、资源变化、tag 序列、字符样式 span、关键内联样式、回读记账泄漏）一律为 error，只有 config 元数据规范化保留为 warning。首轮源码 byte 级漂移（sourceDrift）仍是辅助度量，不单独拦截。硬失败条件还包括真实 InDesign 构建出现 overset / unresolved text fit。
 
 二次回环验证第一轮作者包是否稳定。`--second-pass-roundtrip` 必须写出：
 

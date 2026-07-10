@@ -88,6 +88,65 @@ test('compareStructureSignatures returns invalid input errors for null and undef
   )), true);
 });
 
+test('compareStructureSignatures 节点 class 丢失 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/structure-signature-class-loss');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(first, '<section class="page"><p id="copy" class="metric-value grid-item">完整文字</p></section>');
+  writeAuthorPackage(second, '<section class="page"><p id="copy" class="grid-item extra-added">完整文字</p></section>');
+
+  const diff = compareStructureSignatures(
+    authorPackageStructureSignature(first),
+    authorPackageStructureSignature(second),
+  );
+
+  assert.equal(diff.ok, false);
+  const removed = diff.errors.find((issue) => issue.code === 'STRUCTURE_NODE_CLASS_REMOVED');
+  assert.ok(removed, 'expected STRUCTURE_NODE_CLASS_REMOVED');
+  assert.deepEqual(removed.removed, ['metric-value']);
+  const added = diff.warnings.find((issue) => issue.code === 'STRUCTURE_NODE_CLASS_ADDED');
+  assert.ok(added, 'class additions stay warnings');
+  assert.deepEqual(added.added, ['extra-added']);
+});
+
+test('compareStructureSignatures 节点文本或资源变化 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/structure-signature-node-content');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(first, '<section class="page"><p id="copy">原始文字</p><img id="photo" src="assets/a.png"></section>');
+  writeAuthorPackage(second, '<section class="page"><p id="copy">改写文字</p><img id="photo" src="assets/b.png"></section>');
+
+  const diff = compareStructureSignatures(
+    authorPackageStructureSignature(first),
+    authorPackageStructureSignature(second),
+  );
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'STRUCTURE_NODE_TEXT_CHANGED'), true);
+  assert.equal(diff.errors.some((issue) => issue.code === 'STRUCTURE_NODE_RESOURCE_CHANGED'), true);
+});
+
+test('compareStructureSignatures records fabricated extra nodes as warnings', () => {
+  const root = path.resolve('test/workspace/structure-signature-extra-nodes');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(first, '<section class="page"><p id="copy">完整文字</p></section>');
+  writeAuthorPackage(second, '<section class="page"><p id="copy">完整文字</p><figure id="ghost"></figure></section>');
+
+  const diff = compareStructureSignatures(
+    authorPackageStructureSignature(first),
+    authorPackageStructureSignature(second),
+  );
+
+  assert.equal(diff.ok, true);
+  const extra = diff.warnings.find((issue) => issue.code === 'STRUCTURE_NODE_EXTRA');
+  assert.ok(extra, 'expected STRUCTURE_NODE_EXTRA warning');
+  assert.equal(extra.extra[0].key, 'id:ghost');
+});
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({

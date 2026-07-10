@@ -580,6 +580,8 @@ function comparePage(expected, actual, errors, options) {
         type: expectedItem.type,
         visualStyle: expectedItem.visualStyle,
         bounds: expectedItem.bounds,
+        text: expectedItem.text || null,
+        asset: expectedItem.asset || null,
       });
       continue;
     }
@@ -596,6 +598,8 @@ function comparePage(expected, actual, errors, options) {
         type: actualItem.type,
         visualStyle: actualItem.visualStyle,
         bounds: actualItem.bounds,
+        text: actualItem.text || null,
+        asset: actualItem.asset || null,
       });
     }
   }

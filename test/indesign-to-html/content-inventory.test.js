@@ -34,11 +34,16 @@ test('compareContentInventories reports text resource page and geometry losses',
   const diff = compareContentInventories(expected, actual, { strictGeometry: true });
 
   assert.equal(diff.ok, false);
-  assert.deepEqual(diff.errors.map((issue) => issue.code).sort(), [
+  const codes = new Set(diff.errors.map((issue) => issue.code));
+  for (const code of [
     'CONTENT_GEOMETRY_CHANGED',
     'CONTENT_RESOURCE_MISSING',
     'CONTENT_TEXT_CHANGED',
-  ].sort());
+    'CONTENT_ROLE_COUNT_REDUCED',
+    'CONTENT_SUMMARY_CHANGED',
+  ]) {
+    assert.equal(codes.has(code), true, `expected error code ${code}`);
+  }
 });
 
 test('documentModelContentInventory preserves visible text and source resource identity', () => {
@@ -93,8 +98,29 @@ test('compareContentInventories treats package-relative preview resources as sta
   assert.equal(diff.ok, true);
 });
 
-test('authorPackageContentInventory excludes parent page furniture from page text', () => {
+test('authorPackageContentInventory excludes parent page furniture from page text but inventories it separately', () => {
   const root = path.resolve('test/workspace/content-inventory-parent-furniture');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  const furnitureHtml = '<section class="page"><p id="title">正文</p><span id="folio" data-id-object data-id-role="text" data-id-placement="parent-page-furniture" data-id-parent-page-item="report-folio">01</span></section>';
+  writeAuthorPackage(sourceRoot, furnitureHtml);
+  writeAuthorPackage(reverseRoot, furnitureHtml);
+
+  const sourceInventory = authorPackageContentInventory(sourceRoot);
+  const diff = compareContentInventories(
+    sourceInventory,
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(sourceInventory.pages[0].textDigest, ['正文']);
+  assert.equal(sourceInventory.summary.furniture, 1);
+  assert.equal(sourceInventory.furniture[0].text, '01');
+});
+
+test('compareContentInventories 母版家具丢失 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/content-inventory-parent-furniture-lost');
   const sourceRoot = path.join(root, 'source');
   const reverseRoot = path.join(root, 'reverse');
   fs.rmSync(root, { recursive: true, force: true });
@@ -106,8 +132,11 @@ test('authorPackageContentInventory excludes parent page furniture from page tex
     authorPackageContentInventory(reverseRoot)
   );
 
-  assert.equal(diff.ok, true);
-  assert.deepEqual(authorPackageContentInventory(sourceRoot).pages[0].textDigest, ['正文']);
+  assert.equal(diff.ok, false);
+  const furnitureError = diff.errors.find((issue) => issue.code === 'CONTENT_FURNITURE_MISSING');
+  assert.ok(furnitureError, 'expected CONTENT_FURNITURE_MISSING');
+  assert.equal(furnitureError.missing[0].text, '01');
+  assert.equal(diff.errors.some((issue) => issue.code === 'CONTENT_SUMMARY_CHANGED'), true);
 });
 
 test('compareContentInventories matches copied package assets to original asset path', () => {
@@ -203,7 +232,7 @@ test('authorPackageContentInventory ignores preview-only resources marked data-i
 
   const inventory = authorPackageContentInventory(root);
 
-  assert.deepEqual(inventory.pages[0].resources, [{ kind: 'object', identity: 'assets\\source.pdf' }]);
+  assert.deepEqual(inventory.pages[0].resources, [{ kind: 'object', identity: 'assets\\source.pdf', contentHash: null }]);
 });
 
 test('compareContentInventories does not treat regenerated preview file names as source content loss', () => {
@@ -235,7 +264,7 @@ test('compareContentInventories treats /nas URLs and UNC paths as the same host 
       size: { width: 0, height: 0 },
       textDigest: [],
       resources: [{ kind: 'image', identity: '\\\\daga-nas5\\share\\中.png' }],
-      itemRoles: [],
+      itemRoles: expected.pages[0].itemRoles,
       geometry: [],
     }],
     summary: { pages: 1, texts: 0, resources: 1, geometryItems: 0 },
@@ -244,6 +273,64 @@ test('compareContentInventories treats /nas URLs and UNC paths as the same host 
   const diff = compareContentInventories(expected, actual);
 
   assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories 同名换图 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/content-inventory-same-name-swap');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="assets/photo.png"></section>');
+  writeAuthorPackage(reverseRoot, '<section class="page"><img src="assets/photo.png"></section>');
+  writeFile(path.join(sourceRoot, 'assets/photo.png'), 'original-image-bytes');
+  writeFile(path.join(reverseRoot, 'assets/photo.png'), 'DIFFERENT-image-bytes');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'CONTENT_RESOURCE_CONTENT_CHANGED'), true);
+});
+
+test('compareContentInventories 重复资源引用丢一份 invalid-input 必须 fail', () => {
+  const root = path.resolve('test/workspace/content-inventory-duplicate-reference');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="assets/photo.png"><img src="assets/photo.png"></section>');
+  writeAuthorPackage(reverseRoot, '<section class="page"><img src="assets/photo.png"></section>');
+  writeFile(path.join(sourceRoot, 'assets/photo.png'), 'image-bytes');
+  writeFile(path.join(reverseRoot, 'assets/photo.png'), 'image-bytes');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, false);
+  const missing = diff.errors.find((issue) => issue.code === 'CONTENT_RESOURCE_MISSING');
+  assert.ok(missing, 'expected CONTENT_RESOURCE_MISSING for the lost duplicate reference');
+  assert.equal(missing.missing[0].expected, 2);
+  assert.equal(missing.missing[0].actual, 1);
+});
+
+test('compareContentInventories warns when both sides produce empty page digests', () => {
+  const root = path.resolve('test/workspace/content-inventory-empty-digest');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<div class="not-a-page"></div>');
+  writeAuthorPackage(reverseRoot, '<div class="not-a-page"></div>');
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.warnings.some((warning) => warning.code === 'CONTENT_PAGE_DIGEST_EMPTY'), true);
+  assert.equal(diff.warnings.some((warning) => warning.code === 'CONTENT_PAGE_SECTION_MISSING'), true);
 });
 
 test('compareContentInventories treats CJK line wrap spaces as equivalent text', () => {
@@ -291,7 +378,7 @@ test('compareContentInventories returns invalid input errors for null and undefi
   )), true);
 });
 
-test('authorPackageContentInventory warns when asset aliases report is malformed', () => {
+test('authorPackageContentInventory 别名报告损坏 invalid-input 必须 fail', () => {
   const root = path.resolve('test/workspace/content-inventory-malformed-asset-report');
   fs.rmSync(root, { recursive: true, force: true });
   writeAuthorPackage(root, '<section class="page"><img src="assets/diagram.svg"></section>');
@@ -299,7 +386,11 @@ test('authorPackageContentInventory warns when asset aliases report is malformed
 
   const inventory = authorPackageContentInventory(root);
 
-  assert.equal(inventory.warnings.some((warning) => warning.code === 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID'), true);
+  assert.equal(inventory.errors.some((error) => error.code === 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID'), true);
+
+  const diff = compareContentInventories(inventory, inventory);
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((error) => error.code === 'CONTENT_INVENTORY_ASSET_ALIAS_INVALID'), true);
 });
 
 test('authorPackageContentInventory warns when a transitive ancestor asset report is malformed', () => {

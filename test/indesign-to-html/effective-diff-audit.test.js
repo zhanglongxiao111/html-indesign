@@ -63,6 +63,61 @@ test('auditEffectiveDiff gates P1 against a baseline budget while P2 remains adv
   assert.equal(passed.p2.ok, true);
 });
 
+test('auditEffectiveDiff 整框文本丢失 invalid-input 必须 fail as P0', () => {
+  const report = auditEffectiveDiff(
+    snapshot([
+      textItem('kept-title', { text: '保留标题' }),
+      textItem('lost-note', { text: '整段真实文字被删' }),
+      vectorItem('lost-rule'),
+    ]),
+    snapshot([
+      textItem('kept-title', { text: '保留标题' }),
+    ]),
+    { p1Budget: 10 },
+  );
+
+  assert.equal(report.ok, false);
+  assert.equal(report.p0.ok, false);
+  const p0Codes = report.p0.issues.map((issue) => issue.code);
+  assert.ok(p0Codes.includes('REVERSE_SNAPSHOT_ITEM_MISSING'), 'content-bearing item loss must be P0');
+  assert.equal(report.p0.issues.find((issue) => issue.code === 'REVERSE_SNAPSHOT_ITEM_MISSING').itemId, 'lost-note');
+  const p1Codes = report.p1.issues.map((issue) => issue.code);
+  assert.ok(p1Codes.includes('REVERSE_SNAPSHOT_ITEM_MISSING'), 'decoration-only item loss stays P1');
+});
+
+test('auditEffectiveDiff defaults the P1 budget to zero instead of advisory', () => {
+  const report = auditEffectiveDiff(
+    snapshot([vectorItem('shape-a', { strokeColor: '#c8102e' })]),
+    snapshot([vectorItem('shape-a', { strokeColor: '#000000' })]),
+  );
+
+  assert.equal(report.p1.budget, 0);
+  assert.equal(report.p1.count, 1);
+  assert.equal(report.p1.ok, false);
+  assert.equal(report.ok, false);
+});
+
+test('auditEffectiveDiff 坏 baseline invalid-input 必须 fail', () => {
+  assert.throws(
+    () => auditEffectiveDiff(snapshot([]), snapshot([]), { baselineReport: { p1: {} } }),
+    (error) => error.code === 'EFFECTIVE_DIFF_BUDGET_INVALID',
+  );
+  assert.throws(
+    () => auditEffectiveDiff(snapshot([]), snapshot([]), { p1Budget: Number.NaN }),
+    (error) => error.code === 'EFFECTIVE_DIFF_BUDGET_INVALID',
+  );
+});
+
+test('auditEffectiveDiff 畸形稳定性审计 invalid-input 必须 fail', () => {
+  const report = auditEffectiveDiff(snapshot([]), snapshot([]), {
+    stabilityAudits: [{}],
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.stability.ok, false);
+  assert.match(report.stability.failures[0].reason, /unrecognizable stability audit shape/);
+});
+
 test('auditEffectiveDiff can require provided second pass stability audits to be clean', () => {
   const clean = auditEffectiveDiff(snapshot([]), snapshot([]), {
     requireStabilityAudits: true,

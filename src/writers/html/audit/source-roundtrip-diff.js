@@ -20,7 +20,7 @@ function auditAuthorSourceRoundtrip(options = {}) {
   const reverseRoot = options.reverseRoot && path.resolve(options.reverseRoot);
   const errors = [];
   const warnings = [];
-  const addIssue = createIssueWriter({ errors, warnings, strict: !!options.strict });
+  const addIssue = createIssueWriter({ errors, warnings });
 
   if (!sourceRoot || !fs.existsSync(path.join(sourceRoot, 'deck.config.json'))) {
     addIssue('ROUNDTRIP_SOURCE_CONFIG_MISSING', 'Source author package deck.config.json is missing.', {
@@ -475,16 +475,21 @@ function longestCommonSubsequenceLength(a, b) {
   return previous[b.length];
 }
 
-function createIssueWriter({ errors, warnings, strict }) {
+const ADVISORY_ROUNDTRIP_CODES = new Set([
+  'ROUNDTRIP_CONFIG_METADATA_CHANGED',
+]);
+
+function createIssueWriter({ errors, warnings }) {
   return function addIssue(code, message, details = {}) {
+    const advisory = ADVISORY_ROUNDTRIP_CODES.has(code);
     const issue = {
       code,
-      severity: strict ? 'error' : 'warning',
+      severity: advisory ? 'warning' : 'error',
       message,
       ...details,
     };
-    if (strict) errors.push(issue);
-    else warnings.push(issue);
+    if (advisory) warnings.push(issue);
+    else errors.push(issue);
   };
 }
 

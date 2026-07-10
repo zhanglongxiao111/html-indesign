@@ -41,7 +41,14 @@ function compareStructureSignatures(expected, actual) {
       errors.push({ code: 'STRUCTURE_PAGE_MISSING', pageId: expectedPage.id });
       continue;
     }
-    comparePageNodes(expectedPage, actualPage, errors);
+    if ((expectedPage.nodes || []).length === 0 && (actualPage.nodes || []).length === 0) {
+      warnings.push({
+        code: 'STRUCTURE_PAGE_NODES_EMPTY',
+        pageId: expectedPage.id,
+        message: 'Both sides produced zero structure nodes for this page; nothing was actually compared.',
+      });
+    }
+    comparePageNodes(expectedPage, actualPage, errors, warnings);
   }
   return {
     ok: errors.length === 0,
@@ -74,14 +81,16 @@ function signaturePages(signature) {
   return signature && Array.isArray(signature.pages) ? signature.pages : [];
 }
 
-function comparePageNodes(expectedPage, actualPage, errors) {
+function comparePageNodes(expectedPage, actualPage, errors, warnings) {
   const actualByKey = new Map((actualPage.nodes || []).map((node) => [node.key, node]));
+  const matchedKeys = new Set();
   for (const expectedNode of expectedPage.nodes || []) {
     const actualNode = actualByKey.get(expectedNode.key);
     if (!actualNode) {
       errors.push({ code: 'STRUCTURE_NODE_MISSING', pageId: expectedPage.id, node: expectedNode });
       continue;
     }
+    matchedKeys.add(expectedNode.key);
     if (expectedNode.tag !== actualNode.tag) {
       errors.push({
         code: 'STRUCTURE_NODE_TAG_CHANGED',
@@ -109,7 +118,79 @@ function comparePageNodes(expectedPage, actualPage, errors) {
         actual: actualNode.order,
       });
     }
+    compareNodeClasses(expectedPage.id, expectedNode, actualNode, errors, warnings);
+    if (canonicalNodeText(expectedNode.text) !== canonicalNodeText(actualNode.text)) {
+      errors.push({
+        code: 'STRUCTURE_NODE_TEXT_CHANGED',
+        pageId: expectedPage.id,
+        key: expectedNode.key,
+        expected: expectedNode.text,
+        actual: actualNode.text,
+      });
+    }
+    if (!sameNodeResource(expectedNode.resource, actualNode.resource)) {
+      errors.push({
+        code: 'STRUCTURE_NODE_RESOURCE_CHANGED',
+        pageId: expectedPage.id,
+        key: expectedNode.key,
+        expected: expectedNode.resource || null,
+        actual: actualNode.resource || null,
+      });
+    }
   }
+  const extraNodes = (actualPage.nodes || []).filter((node) => !matchedKeys.has(node.key));
+  if (extraNodes.length) {
+    warnings.push({
+      code: 'STRUCTURE_NODE_EXTRA',
+      pageId: expectedPage.id,
+      extra: extraNodes.map((node) => ({ key: node.key, tag: node.tag, parentKey: node.parentKey })),
+    });
+  }
+}
+
+function compareNodeClasses(pageId, expectedNode, actualNode, errors, warnings) {
+  const expectedClasses = new Set(expectedNode.classList || []);
+  const actualClasses = new Set(actualNode.classList || []);
+  const removed = [...expectedClasses].filter((name) => !actualClasses.has(name));
+  const added = [...actualClasses].filter((name) => !expectedClasses.has(name));
+  if (removed.length) {
+    errors.push({
+      code: 'STRUCTURE_NODE_CLASS_REMOVED',
+      pageId,
+      key: expectedNode.key,
+      removed,
+    });
+  }
+  if (added.length) {
+    warnings.push({
+      code: 'STRUCTURE_NODE_CLASS_ADDED',
+      pageId,
+      key: expectedNode.key,
+      added,
+    });
+  }
+}
+
+function canonicalNodeText(value) {
+  return collapseWhitespace(String(value || ''));
+}
+
+function sameNodeResource(expected, actual) {
+  const left = String(expected || '');
+  const right = String(actual || '');
+  if (left === right) return true;
+  if (!left || !right) return false;
+  if (isDerivedPreviewReference(left) && isDerivedPreviewReference(right)) return true;
+  return resourceBasename(left) === resourceBasename(right);
+}
+
+function isDerivedPreviewReference(value) {
+  return /(?:^|[\\/])previews[\\/]/i.test(String(value || ''));
+}
+
+function resourceBasename(value) {
+  const normalized = String(value || '').split(/[\\/]/).filter(Boolean);
+  return (normalized[normalized.length - 1] || '').toLowerCase();
 }
 
 function pageStructureNodes($) {

@@ -10,7 +10,8 @@ const DEFAULT_THRESHOLDS = {
   htmlPageMismatches: 0,
 };
 
-function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath, trustedSourcePath, thresholds }) {
+function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath, trustedSourcePath, thresholds, requiredGates }) {
+  const required = new Set(Array.isArray(requiredGates) ? requiredGates : []);
   const effectiveDiff = readJson(effectiveDiffPath);
   const reverseVisual = readJson(reverseVisualPath);
   const editability = editabilityPath ? readJson(editabilityPath) : null;
@@ -20,15 +21,22 @@ function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath
   if (editability) assertEditabilityReport(editability, editabilityPath);
   if (trustedSource) assertTrustedSourceReport(trustedSource, trustedSourcePath);
   const failures = [];
+  const skipped = [];
   const gates = {
-    effectiveDiff: effectiveDiffGate(effectiveDiff, thresholds, failures),
+    effectiveDiff: effectiveDiffGate(effectiveDiff, thresholds, failures, required),
     reverseVisual: reverseVisualGate(reverseVisual, thresholds, failures),
   };
   if (editability) {
     gates.editability = editabilityGate(editability, failures);
+  } else {
+    skipped.push('editability');
+    requireGateReport(required, 'editability', failures);
   }
   if (trustedSource) {
     gates.trustedSource = trustedSourceGate(trustedSource, failures);
+  } else {
+    skipped.push('trustedSource');
+    requireGateReport(required, 'trustedSource', failures);
   }
   return {
     kind: 'ConversionGateReport',
@@ -40,12 +48,23 @@ function buildGateReport({ effectiveDiffPath, reverseVisualPath, editabilityPath
       editability: editabilityPath || null,
       trustedSource: trustedSourcePath || null,
     },
+    requiredGates: [...required],
+    skipped,
     gates,
     failures,
   };
 }
 
-function effectiveDiffGate(report, thresholds, failures) {
+function requireGateReport(required, gateName, failures) {
+  if (!required.has(gateName)) return;
+  failures.push({
+    code: 'CONVERSION_GATE_REQUIRED_REPORT_MISSING',
+    message: `Required gate report is missing: ${gateName}.`,
+    gate: gateName,
+  });
+}
+
+function effectiveDiffGate(report, thresholds, failures, required = new Set()) {
   const p0 = metric('p0', report && report.p0 && report.p0.count, thresholds.p0);
   const p1 = metric('p1', report && report.p1 && report.p1.count, thresholds.p1);
   const p2 = {
@@ -67,8 +86,16 @@ function effectiveDiffGate(report, thresholds, failures) {
       budget: true,
     });
   }
+  if (required.has('stability') && !stability.available) {
+    failures.push({
+      code: 'CONVERSION_GATE_STABILITY_MISSING',
+      message: 'A second-pass stability audit is required but none was provided to the effective diff.',
+      actual: 0,
+      budget: 1,
+    });
+  }
   return {
-    ok: p0.ok && p1.ok && stability.ok,
+    ok: p0.ok && p1.ok && stability.ok && !(required.has('stability') && !stability.available),
     p0,
     p1,
     p2,
@@ -83,17 +110,26 @@ function reverseVisualGate(report, thresholds, failures) {
   const geometry = metric('geometry', stats.mismatched, thresholds.htmlGeometry);
   const text = metric('text', stats.textMismatches, thresholds.htmlText);
   const pages = metric('pages', stats.pageMismatches, thresholds.htmlPageMismatches);
+  const compared = numberOr(stats.compared, 0);
   addBudgetFailure(failures, 'CONVERSION_GATE_HTML_MISSING_OVER_BUDGET', 'Author HTML is missing visual elements beyond budget.', missing);
   addBudgetFailure(failures, 'CONVERSION_GATE_HTML_GEOMETRY_OVER_BUDGET', 'Author HTML geometry mismatches exceed budget.', geometry);
   addBudgetFailure(failures, 'CONVERSION_GATE_HTML_TEXT_OVER_BUDGET', 'Author HTML text mismatches exceed budget.', text);
   addBudgetFailure(failures, 'CONVERSION_GATE_HTML_PAGE_OVER_BUDGET', 'Author HTML page mismatches exceed budget.', pages);
+  if (compared <= 0) {
+    failures.push({
+      code: 'CONVERSION_GATE_HTML_NOTHING_COMPARED',
+      message: 'Reverse visual report compared zero elements; an empty comparison must not pass as clean.',
+      actual: compared,
+      budget: 1,
+    });
+  }
   return {
-    ok: missing.ok && geometry.ok && text.ok && pages.ok,
+    ok: missing.ok && geometry.ok && text.ok && pages.ok && compared > 0,
     missing,
     geometry,
     text,
     pages,
-    compared: numberOr(stats.compared, 0),
+    compared,
     accepted: numberOr(stats.accepted, 0),
   };
 }

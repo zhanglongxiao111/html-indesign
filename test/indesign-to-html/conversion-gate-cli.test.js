@@ -280,6 +280,73 @@ test('audit-conversion-gate rejects parseable trusted source report with missing
   assert.match(result.stderr, /Trusted source preservation report is missing numeric summary/);
 });
 
+test('audit-conversion-gate 缺失必需报告 invalid-input 必须 fail', () => {
+  const root = fixtureRoot('conversion-gate-required-missing');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({ missing: 0, mismatched: 0, textMismatches: 0 }));
+
+  const report = buildGateReport({
+    effectiveDiffPath: effectiveDiff,
+    reverseVisualPath: reverseVisual,
+    thresholds: DEFAULT_THRESHOLDS,
+    requiredGates: ['editability', 'trustedSource'],
+  });
+
+  assert.equal(report.ok, false);
+  assert.deepEqual(report.skipped.sort(), ['editability', 'trustedSource']);
+  assert.equal(report.failures.filter((failure) => failure.code === 'CONVERSION_GATE_REQUIRED_REPORT_MISSING').length, 2);
+});
+
+test('audit-conversion-gate records skipped optional gates explicitly', () => {
+  const root = fixtureRoot('conversion-gate-skipped-visible');
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({ missing: 0, mismatched: 0, textMismatches: 0 }));
+
+  const report = buildGateReport({
+    effectiveDiffPath: effectiveDiff,
+    reverseVisualPath: reverseVisual,
+    thresholds: DEFAULT_THRESHOLDS,
+  });
+
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.skipped.sort(), ['editability', 'trustedSource']);
+});
+
+test('audit-conversion-gate 空视觉比对 invalid-input 必须 fail', () => {
+  const root = fixtureRoot('conversion-gate-nothing-compared');
+  const emptyVisual = reverseVisualReport({ missing: 0, mismatched: 0, textMismatches: 0 });
+  emptyVisual.stats.compared = 0;
+  const effectiveDiff = writeJson(root, 'effective-diff.json', effectiveDiffReport({ p0: 0, p1: 0, p2: 0 }));
+  const reverseVisual = writeJson(root, 'reverse-visual.json', emptyVisual);
+
+  const report = buildGateReport({
+    effectiveDiffPath: effectiveDiff,
+    reverseVisualPath: reverseVisual,
+    thresholds: DEFAULT_THRESHOLDS,
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.failures.some((failure) => failure.code === 'CONVERSION_GATE_HTML_NOTHING_COMPARED'), true);
+});
+
+test('audit-conversion-gate 缺失稳定性审计在 require-stability 下必须 fail', () => {
+  const root = fixtureRoot('conversion-gate-stability-required');
+  const diffWithoutStability = effectiveDiffReport({ p0: 0, p1: 0, p2: 0 });
+  diffWithoutStability.stability = { ok: true, available: false, auditCount: 0 };
+  const effectiveDiff = writeJson(root, 'effective-diff.json', diffWithoutStability);
+  const reverseVisual = writeJson(root, 'reverse-visual.json', reverseVisualReport({ missing: 0, mismatched: 0, textMismatches: 0 }));
+
+  const report = buildGateReport({
+    effectiveDiffPath: effectiveDiff,
+    reverseVisualPath: reverseVisual,
+    thresholds: DEFAULT_THRESHOLDS,
+    requiredGates: ['stability'],
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.failures.some((failure) => failure.code === 'CONVERSION_GATE_STABILITY_MISSING'), true);
+});
+
 function fixtureRoot(name) {
   const root = path.resolve('test/workspace', name);
   fs.rmSync(root, { recursive: true, force: true });

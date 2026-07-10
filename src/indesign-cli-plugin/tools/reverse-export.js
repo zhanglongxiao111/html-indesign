@@ -93,13 +93,15 @@ async function resume(params) {
   const reverseModelPath = result.files ? result.files.model : path.join(state.outDir, 'reverse-model.json');
   const authorAudit = result.files && result.files.author && result.files.author.audit;
 
-  if (authorAudit && authorAudit.ok === false) {
+  if (!(authorAudit && authorAudit.ok === true)) {
     return {
       status: 'error',
       error: {
         code: 'REVERSE_AUTHOR_AUDIT_FAILED',
-        message: 'Reverse author package audit failed.',
-        details: authorAudit,
+        message: authorAudit
+          ? 'Reverse author package audit failed.'
+          : 'Reverse author package audit evidence is missing; refusing to report success without it.',
+        details: authorAudit || null,
       },
     };
   }

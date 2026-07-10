@@ -203,7 +203,7 @@ async function runIndesignE2E(options = {}) {
     : await renderPdfPreview(context, pdfPath);
 
   const result = {
-    ok: true,
+    ok: aggregateE2EOk({ build: buildResult, exportResult, reverse }),
     runDir: context.runDir,
     htmlPath: context.htmlPath,
     instructionsPath: context.runInstructionsPath,
@@ -215,7 +215,27 @@ async function runIndesignE2E(options = {}) {
     preview,
   };
   fs.writeFileSync(context.resultPath, JSON.stringify(result, null, 2), 'utf8');
+  if (!result.ok) {
+    throw new Error(`E2E gate aggregation failed even though no individual assertion threw; see ${context.resultPath}`);
+  }
   return result;
+}
+
+function aggregateE2EOk({ build, exportResult, reverse }) {
+  const checks = [
+    Boolean(build) && build.ok !== false,
+    Boolean(exportResult) && exportResult.ok !== false,
+  ];
+  if (reverse) {
+    checks.push(Boolean(reverse.author && reverse.author.audit && reverse.author.audit.ok === true));
+    if (reverse.mode !== 'observation' && reverse.html && reverse.html.audit) {
+      checks.push(reverse.html.audit.ok !== false);
+    }
+    if (reverse.canonicalStability) {
+      checks.push(reverse.canonicalStability.ok === true);
+    }
+  }
+  return checks.every(Boolean);
 }
 
 async function runHumanInddRoundtripE2E(options = {}) {
@@ -269,7 +289,9 @@ async function runHumanInddRoundtripE2E(options = {}) {
   }
 
   const result = {
-    ok: true,
+    ok: Boolean(author && author.audit && author.audit.ok === true)
+      && authorRoundtrip.ok === true
+      && stability.ok === true,
     runDir: context.runDir,
     inddPath: context.inddPath,
     reverseSnapshot,
@@ -468,7 +490,6 @@ async function runReverseRoundtrip(context, options = {}) {
   };
   if (sourceRoot) {
     reverseCompileOptions.sourceRoot = sourceRoot;
-    reverseCompileOptions.strictSourceRoundtrip = true;
   }
   const htmlResult = compileReverseSnapshotToHtml(reverseCompileOptions);
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
@@ -511,6 +532,7 @@ async function runReverseRoundtrip(context, options = {}) {
   }
 
   return {
+    mode: reverseMode,
     snapshot: reverseResult,
     html: {
       ...htmlResult,

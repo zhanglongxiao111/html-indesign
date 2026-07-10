@@ -67,7 +67,6 @@ function auditReverseAuthorPackage(author) {
     ? auditAuthorSourceRoundtrip({
       sourceRoot: author.sourceRoot,
       reverseRoot: outDir,
-      strict: !!author.strictSourceRoundtrip,
       includeSourceDrift: true,
     })
     : null;
@@ -94,28 +93,10 @@ function auditReverseAuthorPackage(author) {
     fs.writeFileSync(path.join(reportDir, 'structure-signature-report.json'), JSON.stringify(structureSignature, null, 2), 'utf8');
   }
   const contentOk = contentInventory ? contentInventory.ok : true;
-  const strictStructureSignature = !!author.strictStructureSignature;
-  const structureOk = structureSignature ? (structureSignature.ok || !strictStructureSignature) : true;
-  const sourceRoundtripAdvisoryWarnings = sourceRoundtrip && !sourceRoundtrip.ok
-    ? [{
-      code: 'SOURCE_ROUNDTRIP_DIFF_ADVISORY',
-      severity: 'warning',
-      message: 'Source exact diff changed but content inventory and structure signature remain the hard integrity gates.',
-      errorCount: (sourceRoundtrip.errors || []).length,
-      report: 'reports/source-roundtrip-report.json',
-    }]
-    : [];
-  const structureSignatureAdvisoryWarnings = structureSignature && !structureSignature.ok && !strictStructureSignature
-    ? [{
-      code: 'STRUCTURE_SIGNATURE_DIFF_ADVISORY',
-      severity: 'warning',
-      message: 'Source author structure changed; first-pass structure signature is recorded as advisory and second-pass canonical drift remains the hard stability gate.',
-      errorCount: (structureSignature.errors || []).length,
-      report: 'reports/structure-signature-report.json',
-    }]
-    : [];
+  const structureOk = structureSignature ? structureSignature.ok : true;
+  const sourceRoundtripOk = sourceRoundtrip ? sourceRoundtrip.ok : true;
   return {
-    ok: check.ok && missingPages.length === 0 && editable.ok && contentOk && structureOk,
+    ok: check.ok && missingPages.length === 0 && editable.ok && contentOk && structureOk && sourceRoundtripOk,
     config: author.config,
     entry: check.entryPath,
     pages: pageFiles.length,
@@ -127,12 +108,11 @@ function auditReverseAuthorPackage(author) {
     errors: [
       ...(editable.errors || []),
       ...(contentInventory && !contentInventory.ok ? contentInventory.errors : []),
-      ...(structureSignature && !structureSignature.ok && strictStructureSignature ? structureSignature.errors : []),
+      ...(structureSignature && !structureSignature.ok ? structureSignature.errors : []),
+      ...(sourceRoundtrip && !sourceRoundtrip.ok ? sourceRoundtrip.errors : []),
     ],
     warnings: [
       ...(editable.warnings || []),
-      ...sourceRoundtripAdvisoryWarnings,
-      ...structureSignatureAdvisoryWarnings,
       ...(sourceRoundtrip ? sourceRoundtrip.warnings : []),
       ...(contentInventory ? contentInventory.warnings : []),
       ...(structureSignature ? structureSignature.warnings : []),

@@ -70,7 +70,7 @@ function effectiveDiffReport(comparison, options = {}) {
   }
   groups.p0.ok = groups.p0.count === 0;
   groups.p1.budget = p1BudgetFor(options);
-  groups.p1.ok = groups.p1.budget == null ? true : groups.p1.count <= groups.p1.budget;
+  groups.p1.ok = groups.p1.count <= groups.p1.budget;
   groups.p2.ok = true;
 
   const stability = stabilityGate(options);
@@ -82,7 +82,7 @@ function effectiveDiffReport(comparison, options = {}) {
     weights: WEIGHTS,
     gates: {
       p0: 'must be zero',
-      p1: groups.p1.budget == null ? 'advisory until a budget is provided' : `must be <= ${groups.p1.budget}`,
+      p1: `must be <= ${groups.p1.budget}`,
       p2: 'advisory only',
       stability: options.requireStabilityAudits ? 'at least one clean stability audit required' : 'provided stability audits must be clean',
     },
@@ -104,6 +104,10 @@ function classifyEffectiveDiffIssue(issue = {}) {
   if (issue.code === 'REVERSE_SNAPSHOT_TEXT_CHANGED' && sameEffectiveText(issue.expected, issue.actual)) {
     return { level: 'p2', category: 'normalization-difference', reason: 'text differs only by line indentation or trailing blank content' };
   }
+  if ((issue.code === 'REVERSE_SNAPSHOT_ITEM_MISSING' || issue.code === 'REVERSE_SNAPSHOT_ITEM_EXTRA')
+    && itemCarriesContent(issue)) {
+    return { level: 'p0', category: 'content-loss', reason: 'a whole item carrying real text or a placed asset was lost or fabricated' };
+  }
   if (P0_CODES.has(issue.code)) {
     return { level: 'p0', category: 'content-loss', reason: 'page text or asset identity changed' };
   }
@@ -120,6 +124,12 @@ function classifyEffectiveDiffIssue(issue = {}) {
     return { level: 'p1', category: 'layout-object-loss', reason: 'geometry paint placement or object matching changed' };
   }
   return { level: 'p1', category: 'unclassified-effective-diff', reason: 'unclassified issue defaults to effective layout risk' };
+}
+
+function itemCarriesContent(issue) {
+  const text = typeof issue.text === 'string' ? issue.text.trim() : '';
+  if (text) return true;
+  return Boolean(issue.asset && (issue.asset.path || issue.asset.name));
 }
 
 function sameEffectiveText(expected, actual) {
@@ -149,21 +159,47 @@ function bucket(level) {
 }
 
 function p1BudgetFor(options) {
-  if (typeof options.p1Budget === 'number') return options.p1Budget;
+  if (typeof options.p1Budget === 'number') {
+    if (!Number.isFinite(options.p1Budget) || options.p1Budget < 0) {
+      throw invalidBudget(`p1Budget must be a non-negative finite number, received: ${options.p1Budget}`);
+    }
+    return options.p1Budget;
+  }
   const baseline = options.baselineReport || null;
-  const count = baseline && baseline.p1 && Number(baseline.p1.count);
-  return Number.isFinite(count) ? count : null;
+  if (baseline) {
+    const count = Number(baseline.p1 && baseline.p1.count);
+    if (!Number.isFinite(count)) {
+      throw invalidBudget('baseline report is missing a numeric p1.count; refusing to silently disable the P1 gate');
+    }
+    return count;
+  }
+  return 0;
+}
+
+function invalidBudget(message) {
+  const error = new Error(`EFFECTIVE_DIFF_BUDGET_INVALID: ${message}`);
+  error.code = 'EFFECTIVE_DIFF_BUDGET_INVALID';
+  return error;
 }
 
 function stabilityGate(options) {
   const audits = Array.isArray(options.stabilityAudits) ? options.stabilityAudits : [];
   const failures = [];
   audits.forEach((audit, index) => {
+    if (!isRecognizableStabilityAudit(audit)) {
+      failures.push({
+        index,
+        ok: false,
+        errors: null,
+        reason: 'unrecognizable stability audit shape; refusing to treat missing evidence as clean',
+      });
+      return;
+    }
     const errors = stabilityErrorCount(audit);
-    if (audit && audit.ok !== false && errors === 0) return;
+    if (audit.ok !== false && errors === 0) return;
     failures.push({
       index,
-      ok: audit && audit.ok !== false,
+      ok: audit.ok !== false,
       errors,
     });
   });
@@ -178,8 +214,15 @@ function stabilityGate(options) {
   };
 }
 
+function isRecognizableStabilityAudit(audit) {
+  if (!audit || typeof audit !== 'object' || Array.isArray(audit)) return false;
+  return Array.isArray(audit.errors)
+    || typeof audit.errors === 'number'
+    || (audit.comparison && Array.isArray(audit.comparison.errors))
+    || typeof audit.ok === 'boolean';
+}
+
 function stabilityErrorCount(audit) {
-  if (!audit) return 1;
   if (Array.isArray(audit.errors)) return audit.errors.length;
   if (audit.comparison && Array.isArray(audit.comparison.errors)) return audit.comparison.errors.length;
   if (typeof audit.errors === 'number') return audit.errors;

@@ -17,6 +17,7 @@ function parseArgs(argv) {
     trustedSource: null,
     out: null,
     thresholds: {},
+    requiredGates: [],
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -68,6 +69,12 @@ function parseArgs(argv) {
       options.thresholds.htmlPageMismatches = numberOption(readValue(argv, ++index, arg), arg);
     } else if (arg.startsWith('--html-page-budget=')) {
       options.thresholds.htmlPageMismatches = numberOption(arg.slice('--html-page-budget='.length), '--html-page-budget');
+    } else if (arg === '--require-editability') {
+      options.requiredGates.push('editability');
+    } else if (arg === '--require-trusted-source') {
+      options.requiredGates.push('trustedSource');
+    } else if (arg === '--require-stability') {
+      options.requiredGates.push('stability');
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
     } else {
@@ -87,6 +94,7 @@ function run(options) {
     editabilityPath: resolved.editability,
     trustedSourcePath: resolved.trustedSource,
     thresholds: resolved.thresholds,
+    requiredGates: resolved.requiredGates,
   });
   if (resolved.out) {
     fs.mkdirSync(path.dirname(resolved.out), { recursive: true });
@@ -110,6 +118,10 @@ function resolveOptions(options) {
       ...(caseConfig.thresholds || {}),
       ...definedEntries(options.thresholds),
     },
+    requiredGates: [...new Set([
+      ...(Array.isArray(caseConfig.requiredGates) ? caseConfig.requiredGates : []),
+      ...(options.requiredGates || []),
+    ])],
   };
 }
 
@@ -151,6 +163,7 @@ function usage() {
     '   or: node scripts/audit-conversion-gate.js --effective-diff <report.json> --reverse-visual <report.json> [--editability <report.json>] [--trusted-source <report.json>]',
     '       [--p0-budget 0] [--p1-budget 0] [--html-missing-budget 0]',
     '       [--html-geometry-budget 0] [--html-text-budget 0] [--html-page-budget 0]',
+    '       [--require-editability] [--require-trusted-source] [--require-stability]',
   ].join('\n');
 }
 

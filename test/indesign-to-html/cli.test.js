@@ -141,7 +141,6 @@ test('compileReverseSnapshotToHtml returns src-level author audit gates when sou
     outDir,
     mode: 'structured',
     sourceRoot,
-    strictSourceRoundtrip: true,
   });
 
   assert.equal(result.files.author.audit.sourceRoundtrip.ok, false);
