@@ -1,0 +1,16 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.indd binary
+*.idml binary
+*.ai binary
+*.psd binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
