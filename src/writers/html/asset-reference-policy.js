@@ -210,7 +210,9 @@ function resolveLocalReference(record, sourceRoot) {
 function assetPackagePath(value, resolvedPath, { assetRoot, used }) {
   const root = slash(assetRoot || 'assets').replace(/^\/+|\/+$/g, '') || 'assets';
   const subPath = assetSubPath(value, resolvedPath, root);
-  let relativePath = slash(path.posix.join(root, subPath));
+  let relativePath = /^previews\//i.test(subPath)
+    ? slash(subPath)
+    : slash(path.posix.join(root, subPath));
   const existing = used.get(relativePath);
   if (existing && path.resolve(existing) !== path.resolve(resolvedPath)) {
     const parsed = path.posix.parse(relativePath);

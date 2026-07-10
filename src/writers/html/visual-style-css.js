@@ -95,7 +95,7 @@ function visualStyleCss(visualStyle) {
   const styles = [];
   if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
   if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
-    styles.push(`border:${formatNumber(visualStyle.strokeWeight)}px solid ${visualStyle.strokeColor}`);
+    styles.push(`border:${Math.round(Number(visualStyle.strokeWeight) * 100) / 100}px solid ${visualStyle.strokeColor}`);
   }
   if (Number(visualStyle.cornerRadius) > 0) {
     styles.push(`border-radius:${formatPx(visualStyle.cornerRadius)}`);
