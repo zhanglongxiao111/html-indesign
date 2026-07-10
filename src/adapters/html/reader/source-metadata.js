@@ -16,6 +16,8 @@ function sourcePackageFromDocument(input = {}) {
     assetRoot: input.assetRoot || 'assets',
   };
   if (parentPages.length) out.parentPages = parentPages;
+  const layers = sourceLayers(input.layers || []);
+  if (layers.length) out.layers = layers;
   if (Array.isArray(input.synthesizedStyles) && input.synthesizedStyles.length) {
     out.synthesizedStyles = input.synthesizedStyles.map(synthesizedStyleForSourcePackage).filter(Boolean);
   }
@@ -59,6 +61,16 @@ function sourceParentPages(parentPages = []) {
       if (parentPage.parentPageId) out.parentPageId = String(parentPage.parentPageId);
       if (parentPage.parentPageName) out.parentPageName = String(parentPage.parentPageName);
       return out;
+    })
+    .filter(Boolean);
+}
+
+function sourceLayers(layers = []) {
+  return (Array.isArray(layers) ? layers : [])
+    .map((layer) => {
+      const name = layer && (layer.name != null ? layer.name : layer);
+      if (name == null || String(name).trim() === '') return null;
+      return { name: String(name) };
     })
     .filter(Boolean);
 }

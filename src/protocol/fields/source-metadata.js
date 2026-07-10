@@ -91,6 +91,23 @@ module.exports = [
       writeAttrs: ['data-id-source-package-parent-pages'],
     },
   },
+  {
+    canonicalPath: 'document.sourcePackage.layers',
+    currentPaths: ['sourcePackage.layers', 'sourcePackageInput.layers'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'array',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: ['data-id-source-package-layers'],
+      writeAttrs: ['data-id-source-package-layers'],
+    },
+  },
   documentSourcePackageField(
     'document.semanticPreset.relativePath',
     ['semanticPreset.relativePath', 'labels[].semanticPreset.relativePath', 'sourcePackageInput.attributes.data-id-semantic-preset'],

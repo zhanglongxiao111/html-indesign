@@ -45,6 +45,7 @@
       styleFiles,
       pageFiles,
       parentPages: collectSourcePackageParentPages(),
+      layers: collectSourcePackageLayers(),
       assetRoot: 'assets',
     };
   }
@@ -60,6 +61,19 @@
       throw new Error(`SOURCE_PACKAGE_PARENT_PAGES_INVALID:${error.message}`);
     }
     throw new Error('SOURCE_PACKAGE_PARENT_PAGES_INVALID: parentPages metadata must be an array');
+  }
+
+  function collectSourcePackageLayers() {
+    const dataId = dataIdAttributes();
+    const el = document.querySelector(`script[type="application/json"][${dataId.SOURCE_PACKAGE_LAYERS}]`);
+    if (!el) return [];
+    try {
+      const value = JSON.parse(el.textContent || '[]');
+      if (Array.isArray(value)) return value;
+    } catch (error) {
+      throw new Error(`SOURCE_PACKAGE_LAYERS_INVALID:${error.message}`);
+    }
+    throw new Error('SOURCE_PACKAGE_LAYERS_INVALID: layers metadata must be an array');
   }
 
   function collectPageSnapshot(pageEl, pageIndex, styleRules) {

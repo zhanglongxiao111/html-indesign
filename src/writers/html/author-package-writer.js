@@ -165,6 +165,10 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   const hasPackageProfile = sourcePackage && Object.prototype.hasOwnProperty.call(sourcePackage, 'profile');
   const hasSourceConfig = Boolean(sourceConfig);
   const hasSourceParentPages = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'parentPages');
+  const hasSourceLayers = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'layers');
+  const layers = hasSourceConfig
+    ? sourceConfig.layers
+    : layersConfigFor(model.layers || []);
   const hasSourceSynthesizedStyles = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'synthesizedStyles');
   const parentPages = hasSourceConfig
     ? sourceConfig.parentPages
@@ -194,7 +198,22 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   } else if (Array.isArray(parentPages) && parentPages.length) {
     config.parentPages = parentPages;
   }
+  if (hasSourceLayers) {
+    config.layers = layers;
+  } else if (Array.isArray(layers) && layers.length) {
+    config.layers = layers;
+  }
   return config;
+}
+
+function layersConfigFor(layers = []) {
+  return (Array.isArray(layers) ? layers : [])
+    .map((layer) => {
+      const name = layer && (layer.name != null ? layer.name : layer);
+      if (name == null || String(name).trim() === '') return null;
+      return { name: String(name) };
+    })
+    .filter(Boolean);
 }
 
 function synthesizedStylesConfigFor(styles) {

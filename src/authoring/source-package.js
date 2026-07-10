@@ -105,6 +105,9 @@ function assembleAuthorPackage(configPath) {
   const parentPagesMetadata = sourcePackage.config.parentPages && sourcePackage.config.parentPages.length
     ? `  <script type="application/json" ${HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_PARENT_PAGES}>${jsonScript(sourcePackage.config.parentPages)}</script>`
     : null;
+  const layersMetadata = sourcePackage.config.layers && sourcePackage.config.layers.length
+    ? `  <script type="application/json" ${HTML_DATA_ID_ATTRIBUTES.SOURCE_PACKAGE_LAYERS}>${jsonScript(sourcePackage.config.layers)}</script>`
+    : null;
   const packageAttrs = [
     `${HTML_DATA_ID_ATTRIBUTES.DOCUMENT}="${attr(sourcePackage.config.id)}"`,
     sourcePackage.config.profile ? `${HTML_DATA_ID_ATTRIBUTES.PROFILE}="${attr(sourcePackage.config.profile)}"` : null,
@@ -123,6 +126,7 @@ function assembleAuthorPackage(configPath) {
     '</head>',
     '<body>',
     ...(parentPagesMetadata ? [parentPagesMetadata] : []),
+    ...(layersMetadata ? [layersMetadata] : []),
     `  <main class="deck" ${packageAttrs}>`,
     indent(pages, 4),
     '  </main>',

@@ -198,6 +198,7 @@
 | document.source | source | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage | sourcePackage, labels[].sourcePackage | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.config | sourcePackage.config, labels[].sourcePackage.config, sourcePackageInput.attributes.data-id-source-package-config | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| document.sourcePackage.layers | sourcePackage.layers, sourcePackageInput.layers | source-metadata | active | native/native/native | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.parentPages | sourcePackage.parentPages, sourcePackageInput.parentPages | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.schemaVersion | sourcePackage.schemaVersion, labels[].sourcePackage.schemaVersion, sourcePackageInput.attributes.data-id-source-package-schema | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.styleLayout | styleLayout | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |

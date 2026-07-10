@@ -90,7 +90,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
     })],
     parentPages,
     pages,
-    layers: [],
+    layers: sourcePackage && Array.isArray(sourcePackage.layers) ? sourcePackage.layers : [],
     styles,
     assets: styled.assets || [],
     warnings: (styled.warnings || []).concat(synthesizedWarnings),
