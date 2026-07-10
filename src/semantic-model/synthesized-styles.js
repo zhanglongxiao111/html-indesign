@@ -65,14 +65,34 @@ function buildSynthesizedStyleRegistry(items) {
   }
 
   const counters = new Map();
+  const takenTokens = new Set();
   const styles = [];
   const references = [];
 
   for (const group of orderedGroups) {
-    const count = (counters.get(group.kind) || 0) + 1;
-    counters.set(group.kind, count);
-    const token = `synth_${group.kind}_${String(count).padStart(3, '0')}`;
-    const displayName = `${DISPLAY_NAME_PREFIX[group.kind] || '样式'} ${String(count).padStart(2, '0')}`;
+    const inherited = inheritedGroupToken(group, takenTokens);
+    if (inherited) {
+      group.token = inherited.token;
+      group.number = inherited.number;
+      takenTokens.add(inherited.token);
+    }
+  }
+
+  for (const group of orderedGroups) {
+    if (!group.token) {
+      let count = (counters.get(group.kind) || 0) + 1;
+      let token = `synth_${group.kind}_${String(count).padStart(3, '0')}`;
+      while (takenTokens.has(token)) {
+        count += 1;
+        token = `synth_${group.kind}_${String(count).padStart(3, '0')}`;
+      }
+      counters.set(group.kind, count);
+      takenTokens.add(token);
+      group.token = token;
+      group.number = count;
+    }
+    const token = group.token;
+    const displayName = `${DISPLAY_NAME_PREFIX[group.kind] || '样式'} ${String(group.number).padStart(2, '0')}`;
     const properties = mergeObjects(group.properties, group.overrideBaseline);
 
     styles.push({
@@ -95,6 +115,19 @@ function buildSynthesizedStyleRegistry(items) {
   }
 
   return { styles, references };
+}
+
+function inheritedGroupToken(group, takenTokens) {
+  const pattern = new RegExp(`^synth_${group.kind}_(\\d{3,})$`);
+  for (const entry of group.items) {
+    const refs = entry.item && entry.item.styleRefs;
+    const candidate = refs && refs.synthesizedToken ? String(refs.synthesizedToken) : '';
+    const match = pattern.exec(candidate);
+    if (match && !takenTokens.has(candidate)) {
+      return { token: candidate, number: Number(match[1]) };
+    }
+  }
+  return null;
 }
 
 function synthesizedStyleFingerprint(item) {

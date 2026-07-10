@@ -1864,3 +1864,48 @@ test('reverseSnapshotToSemanticModel drops built-in default style names instead 
   assert.equal(custom.styleRefs.paragraphStyleDisplayName, '正文段落');
   assert.equal(custom.styleRefs.objectStyle, null, '[无] object style must not become a style ref');
 });
+
+test('reverseSnapshotToSemanticModel folds synthesized-style object styles back into tokens', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'synth-styles.indd', mode: 'observation' },
+    document: { name: 'synth-styles.indd', labels: [] },
+    styles: {
+      objectStyles: [{
+        name: '对象样式-7',
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'style',
+          id: 'synth-synth_object_007',
+          source: 'html-to-indesign',
+          styleKind: 'objectStyles',
+          token: 'synth-synth_object_007',
+          displayName: '对象样式-7',
+        }],
+      }],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'synth-styled-shape',
+            type: 'Rectangle',
+            bounds: { x: 10, y: 20, width: 120, height: 40 },
+            labels: [],
+            objectStyleName: '对象样式-7',
+            visualStyle: { fillColor: '#dddddd' },
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.styleRefs.objectStyle, null, 'synthesized object style must not surface as an ostyle ref');
+  assert.equal(item.styleRefs.objectStyleDisplayName, null);
+  assert.equal(item.styleRefs.synthesizedToken, 'synth_object_007', 'token identity must be inherited from the style label');
+});

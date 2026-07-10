@@ -229,7 +229,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     bounds: item.bounds,
     layerName: item.layerName || null,
     layer: item.layerName || null,
-    styleRefs: reverseStyleRefs({
+    styleRefs: foldSynthesizedStyleRefs(reverseStyleRefs({
       ...(isPlainObject(item.styleRefs) ? item.styleRefs : {}),
       ...reverseStyleNamePair(styleMaps, 'paragraphStyles', 'paragraphStyle', item.paragraphStyleName),
       ...reverseStyleNamePair(styleMaps, 'objectStyles', 'objectStyle', item.objectStyleName),
@@ -237,7 +237,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
       tableStyle: table && table.tableStyle ? table.tableStyle : null,
       tableStyleDisplayName: table && table.tableStyleDisplayName ? table.tableStyleDisplayName : null,
       layer: item.layerName || null,
-    }),
+    })),
     content: contentForReverseItem(role, item, effective, styleMaps, table),
     table,
     vectorGeometry,
@@ -270,6 +270,17 @@ function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {
     [refKey]: mapStyleName(styleMaps, kind, rawName),
     [`${refKey}DisplayName`]: rawName || null,
   };
+}
+
+function foldSynthesizedStyleRefs(refs) {
+  for (const key of ['objectStyle', 'frameStyle']) {
+    const match = /^synth-(synth_[a-z]+_\d+)$/.exec(String(refs[key] || ''));
+    if (!match) continue;
+    refs[key] = null;
+    refs[`${key}DisplayName`] = null;
+    if (!refs.synthesizedToken) refs.synthesizedToken = match[1];
+  }
+  return refs;
 }
 
 function reverseStyleRefs(styleRefs) {
