@@ -53,6 +53,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_document.jsxinc': ['HI.prepareDocument', 'HI.ensureLayers', 'HI.getPageForInstruction'],
     'hi_parent_pages.jsxinc': ['HI.ensureParentPages', 'HI.applyParentPageToParentPage', 'HI.buildParentPageItems', 'HI.applyParentPage'],
     'hi_fonts.jsxinc': ['HI.resolveFont', 'HI.fontStyleNameFor', 'HI.fontByName'],
+    'hi_composite_fonts.jsxinc': ['HI.ensureCompositeFonts', 'HI.assignCompositeFontEntries', 'HI.reverseCompositeFonts'],
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
     'hi_blend_modes.jsxinc': ['HI.applyBlendMode', 'HI.blendModeKey', 'HI.blendModeValue'],
     'hi_vector_styles.jsxinc': ['HI.applyStrokeOpacity', 'HI.applyLineMarker', 'HI.lineMarkerName'],

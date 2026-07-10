@@ -20,6 +20,7 @@ const {
 const { vectorFactsFromSvgItem } = require('./svg-vector-geometry');
 const { validateSemanticModel } = require('../../../semantic-model');
 const { normalizeBlendMode } = require('../../../shared/blend-mode');
+const { compositeFontsByName } = require('../../../semantic-model/composite-fonts');
 
 const ITEM_STYLE_REFS_FIELD = fieldRegistry.getByPath('items[].styleRefs');
 if (!ITEM_STYLE_REFS_FIELD || !Array.isArray(ITEM_STYLE_REFS_FIELD.allowedKeys)) {
@@ -58,6 +59,9 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   };
   if (sourcePackage && Array.isArray(sourcePackage.synthesizedStyles)) {
     styles.synthesized = sourcePackage.synthesizedStyles;
+  }
+  if (sourcePackage && Array.isArray(sourcePackage.compositeFonts) && sourcePackage.compositeFonts.length) {
+    styles.compositeFonts = compositeFontsByName(sourcePackage.compositeFonts);
   }
   const synthesizedWarnings = synthesizedStyleReferenceWarnings(pages, parentPages, styles.synthesized);
   if (options.strictSynthesizedStyles && synthesizedWarnings.length > 0) {

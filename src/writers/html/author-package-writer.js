@@ -22,6 +22,7 @@ const {
   parentPageWritebackItemId,
 } = require('../../semantic-model/parent-pages');
 const { boundsIntersectPage } = require('../../shared/geometry');
+const { compositeFontsConfig } = require('../../semantic-model/composite-fonts');
 
 const SEMANTIC_ATTR = htmlWriteAttrFromRegistry('items[].semantic');
 
@@ -172,6 +173,10 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   const layers = hasSourceConfig
     ? sourceConfig.layers
     : layersConfigFor(model.layers || []);
+  const hasSourceCompositeFonts = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'compositeFonts');
+  const compositeFonts = hasSourceConfig
+    ? sourceConfig.compositeFonts
+    : compositeFontsConfig(model.styles && model.styles.compositeFonts);
   const hasSourceSynthesizedStyles = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'synthesizedStyles');
   const parentPages = hasSourceConfig
     ? sourceConfig.parentPages
@@ -205,6 +210,11 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     config.layers = layers;
   } else if (Array.isArray(layers) && layers.length) {
     config.layers = layers;
+  }
+  if (hasSourceCompositeFonts) {
+    config.compositeFonts = compositeFonts;
+  } else if (Array.isArray(compositeFonts) && compositeFonts.length) {
+    config.compositeFonts = compositeFonts;
   }
   return config;
 }

@@ -197,6 +197,7 @@
 | document.semanticPreset.relativePath | semanticPreset.relativePath, labels[].semanticPreset.relativePath, sourcePackageInput.attributes.data-id-semantic-preset | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.source | source | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage | sourcePackage, labels[].sourcePackage | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| document.sourcePackage.compositeFonts | sourcePackage.compositeFonts, sourcePackageInput.compositeFonts | source-metadata | active | native/native/native | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.config | sourcePackage.config, labels[].sourcePackage.config, sourcePackageInput.attributes.data-id-source-package-config | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.layers | sourcePackage.layers, sourcePackageInput.layers | source-metadata | active | native/native/native | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | document.sourcePackage.parentPages | sourcePackage.parentPages, sourcePackageInput.parentPages | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
@@ -359,9 +360,15 @@
 | styles.compositeFonts | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].cjkWeight | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].entries | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.compositeFonts[].entries[].appliedFont | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.compositeFonts[].entries[].baselineShift | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.compositeFonts[].entries[].customCharacters | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].entries[].fontStyle | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.compositeFonts[].entries[].horizontalScale | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].entries[].name | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.compositeFonts[].entries[].scaleOption | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].entries[].size | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
+| styles.compositeFonts[].entries[].verticalScale | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].entries[].weight | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].hasBoldCJK | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |
 | styles.compositeFonts[].name | n/a | document-model | active | observe-only/unsupported/lossless | native/native/native | unsupported/unsupported/lossless | n/a |

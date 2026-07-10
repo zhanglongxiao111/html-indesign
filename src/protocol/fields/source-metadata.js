@@ -108,6 +108,23 @@ module.exports = [
       writeAttrs: ['data-id-source-package-layers'],
     },
   },
+  {
+    canonicalPath: 'document.sourcePackage.compositeFonts',
+    currentPaths: ['sourcePackage.compositeFonts', 'sourcePackageInput.compositeFonts'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'array',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    html: {
+      readAttrs: ['data-id-source-package-composite-fonts'],
+      writeAttrs: ['data-id-source-package-composite-fonts'],
+    },
+  },
   documentSourcePackageField(
     'document.semanticPreset.relativePath',
     ['semanticPreset.relativePath', 'labels[].semanticPreset.relativePath', 'sourcePackageInput.attributes.data-id-semantic-preset'],

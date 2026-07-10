@@ -138,6 +138,59 @@ test('writeReverseAuthorPackage writes observed InDesign layer protocol attr', (
   assert.match(pageHtml, /id="observed-shape"[^>]+data-id-layer="原始图层"/);
 });
 
+test('writeReverseAuthorPackage carries document composite fonts into config and deck metadata', () => {
+  const outDir = path.resolve('test/workspace/reverse-author-composite-fonts-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'composite-font-test',
+    title: 'Composite Font Test',
+    reverseMode: 'observation',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    parentPages: [],
+    pages: [
+      {
+        id: 'page-1',
+        width: 800,
+        height: 450,
+        items: [],
+      },
+    ],
+    styles: {
+      compositeFonts: {
+        '右上角标题': {
+          name: '右上角标题',
+          safeName: '右上角标题',
+          hasBoldCJK: false,
+          cjkWeight: '400',
+          romanWeight: '400',
+          entries: [
+            { name: '汉字', fontStyle: 'Regular', size: 100, weight: '400', appliedFont: '微软雅黑', horizontalScale: 100, verticalScale: 100, baselineShift: 0, scaleOption: true },
+            { name: '罗马字', fontStyle: 'Regular', size: 105, weight: '400', appliedFont: 'Arial', scaleOption: false },
+            { name: '角标数字', fontStyle: 'Bold', size: 80, weight: '700', appliedFont: 'Arial', customCharacters: '①②③' },
+          ],
+        },
+      },
+    },
+    assets: [],
+  }, { outDir, mode: 'observation' });
+
+  const config = JSON.parse(fs.readFileSync(path.join(outDir, 'deck.config.json'), 'utf8'));
+  assert.equal(config.compositeFonts.length, 1);
+  assert.equal(config.compositeFonts[0].name, '右上角标题');
+  assert.equal(config.compositeFonts[0].entries.length, 3);
+  assert.equal(config.compositeFonts[0].entries[0].appliedFont, '微软雅黑');
+  assert.equal(config.compositeFonts[0].entries[0].scaleOption, true);
+  assert.equal(config.compositeFonts[0].entries[1].size, 105);
+  assert.equal(config.compositeFonts[0].entries[2].customCharacters, '①②③');
+
+  const deckHtml = fs.readFileSync(path.join(outDir, 'deck.html'), 'utf8');
+  assert.match(deckHtml, /<script type="application\/json" data-id-source-package-composite-fonts>/);
+  assert.match(deckHtml, /微软雅黑/);
+});
+
 test('writeReverseAuthorPackage preserves applied empty parent page guides on page attrs', () => {
   const outDir = path.resolve('test/workspace/reverse-author-parent-guides-test');
   fs.rmSync(outDir, { recursive: true, force: true });

@@ -3,6 +3,7 @@ HI.ensureStyles = function (doc, styles, report) {
     styles = styles || {};
     return {
         swatches: HI.ensureSwatches(doc, styles.swatches || {}, report),
+        compositeFonts: HI.ensureCompositeFonts(doc, styles.compositeFonts || {}, report),
         paragraphStyles: HI.ensureParagraphStyles(doc, styles.paragraphStyles || {}, report),
         characterStyles: HI.ensureCharacterStyles(doc, styles.characterStyles || {}, report),
         objectStyles: HI.ensureObjectStyles(doc, styles.objectStyles || {}, report),

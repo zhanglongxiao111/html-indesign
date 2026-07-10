@@ -21,6 +21,7 @@
         includeLib("hi_document.jsxinc");
         includeLib("hi_parent_pages.jsxinc");
         includeLib("hi_fonts.jsxinc");
+        includeLib("hi_composite_fonts.jsxinc");
         includeLib("hi_styles.jsxinc");
         includeLib("hi_blend_modes.jsxinc");
         includeLib("hi_vector_styles.jsxinc");

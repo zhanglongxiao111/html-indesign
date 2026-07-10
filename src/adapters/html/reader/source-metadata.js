@@ -1,4 +1,5 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
+const { compositeFontsConfig } = require('../../../semantic-model/composite-fonts');
 const STABLE_ATTRIBUTE_RE = /^(data-|aria-|role$|href$|src$|srcset$|sizes$|alt$|title$|data$|type$|width$|height$|loading$|decoding$|crossorigin$|referrerpolicy$|media$|poster$)/i;
 const GRID_VAR_NAMES = ['--grid-col', '--grid-span', '--grid-row', '--grid-row-span'];
 
@@ -18,6 +19,8 @@ function sourcePackageFromDocument(input = {}) {
   if (parentPages.length) out.parentPages = parentPages;
   const layers = sourceLayers(input.layers || []);
   if (layers.length) out.layers = layers;
+  const compositeFonts = compositeFontsConfig(input.compositeFonts || []);
+  if (compositeFonts.length) out.compositeFonts = compositeFonts;
   if (Array.isArray(input.synthesizedStyles) && input.synthesizedStyles.length) {
     out.synthesizedStyles = input.synthesizedStyles.map(synthesizedStyleForSourcePackage).filter(Boolean);
   }

@@ -56,6 +56,7 @@ HI.makeReport = function () {
             layers: 0,
             guides: 0,
             swatches: 0,
+            compositeFonts: 0,
             paragraphStyles: 0,
             characterStyles: 0,
             objectStyles: 0,

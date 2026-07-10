@@ -329,6 +329,29 @@ test('renderSnapshot preserves hard line breaks from br elements', async () => {
   assert.deepEqual(tail.runs.map((run) => run.text), ['尾行\n']);
 });
 
+test('renderSnapshot collects source package composite fonts metadata', async () => {
+  const outDir = path.resolve('test/workspace/browser-composite-fonts-metadata');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+</style>
+<script type="application/json" data-id-source-package-composite-fonts>[{"name":"右上角标题","entries":[{"name":"汉字","fontStyle":"Regular","size":100,"weight":"400","appliedFont":"微软雅黑","scaleOption":true}]}]</script>
+<main class="deck" data-id-document="composite-font-deck" data-id-source-package-config="deck.config.json" data-id-source-package-schema="1">
+<section class="page" id="page-1">
+  <p data-id-paragraph-style="body">正文</p>
+</section>
+</main>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+
+  assert.equal(snapshot.sourcePackageInput.compositeFonts.length, 1);
+  assert.equal(snapshot.sourcePackageInput.compositeFonts[0].name, '右上角标题');
+  assert.equal(snapshot.sourcePackageInput.compositeFonts[0].entries[0].appliedFont, '微软雅黑');
+});
+
 test('renderSnapshot keeps PDF source node separate from its preview wrapper', async () => {
   const outDir = path.resolve('test/workspace/browser-pdf-source-node');
   fs.rmSync(outDir, { recursive: true, force: true });

@@ -161,6 +161,12 @@ function compositeFontEntries() {
     formatExtension('styles.compositeFonts[].entries[].fontStyle', [], 'string'),
     formatExtension('styles.compositeFonts[].entries[].size', [], 'number'),
     formatExtension('styles.compositeFonts[].entries[].weight', [], 'string'),
+    formatExtension('styles.compositeFonts[].entries[].appliedFont', [], 'string'),
+    formatExtension('styles.compositeFonts[].entries[].horizontalScale', [], 'number'),
+    formatExtension('styles.compositeFonts[].entries[].verticalScale', [], 'number'),
+    formatExtension('styles.compositeFonts[].entries[].baselineShift', [], 'number'),
+    formatExtension('styles.compositeFonts[].entries[].scaleOption', [], 'boolean'),
+    formatExtension('styles.compositeFonts[].entries[].customCharacters', [], 'string'),
   ];
 }
 

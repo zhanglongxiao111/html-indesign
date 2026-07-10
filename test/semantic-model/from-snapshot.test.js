@@ -335,6 +335,52 @@ test('snapshotToSemanticModel does not synthesize CSS grid guides for observed r
   ]);
 });
 
+test('snapshotToSemanticModel restores composite fonts from source package metadata', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'reverse-observation.html' },
+    sourcePackageInput: {
+      attributes: {
+        'data-id-source-package-config': 'deck.config.json',
+        'data-id-source-package-schema': '1',
+      },
+      compositeFonts: [{
+        name: '右上角标题',
+        safeName: '右上角标题',
+        hasBoldCJK: false,
+        cjkWeight: '400',
+        romanWeight: '400',
+        entries: [
+          { name: '汉字', fontStyle: 'Regular', size: 100, weight: '400', appliedFont: '微软雅黑', scaleOption: true },
+          { name: '罗马字', fontStyle: 'Regular', size: 105, weight: '400', appliedFont: 'Arial' },
+        ],
+      }],
+    },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 800,
+      heightMm: 450,
+      rectPx: { x: 0, y: 0, width: 800, height: 450 },
+      classList: ['page'],
+      attributes: {
+        'data-page': '1',
+        'data-id-observed': 'true',
+        'data-id-reverse-mode': 'observation',
+      },
+      computedStyle: {},
+      items: [],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation', targetSize: 'same' });
+
+  const compositeFont = model.styles.compositeFonts['右上角标题'];
+  assert.ok(compositeFont, 'model.styles.compositeFonts carries the source package composite font');
+  assert.equal(compositeFont.entries.length, 2);
+  assert.equal(compositeFont.entries[0].appliedFont, '微软雅黑');
+  assert.equal(compositeFont.entries[0].scaleOption, true);
+  assert.equal(compositeFont.entries[1].size, 105);
+});
+
 test('snapshotToSemanticModel restores nested parent pages from source package metadata', () => {
   const model = snapshotToSemanticModel({
     metadata: { source: 'reverse-observation.html' },

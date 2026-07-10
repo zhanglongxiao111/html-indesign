@@ -179,26 +179,6 @@ HI.reverseNestedStyles = function (style) {
     return out;
 };
 
-HI.reverseCompositeFonts = function (doc) {
-    var out = [];
-    try {
-        for (var i = 0; i < doc.compositeFonts.length; i++) {
-            var cf = doc.compositeFonts[i];
-            if (String(cf.name || "").indexOf("[") === 0) continue;
-            var record = { name: String(cf.name || ""), safeName: HI.safeStyleName(cf.name), hasBoldCJK: false, cjkWeight: "400", romanWeight: "400", entries: [] };
-            for (var j = 0; j < cf.compositeFontEntries.length; j++) {
-                var e = cf.compositeFontEntries[j], weight = HI.fontWeightFor(e.fontStyle) || "400";
-                var name = String(e.name || "");
-                if (name === "\u6c49\u5b57") { record.cjkWeight = weight; record.hasBoldCJK = Number(weight) >= 700; }
-                if (name === "\u7f57\u9a6c\u5b57") record.romanWeight = weight;
-                record.entries.push({ name: name, fontStyle: String(e.fontStyle || ""), size: Number(e.relativeSize || 100), weight: weight });
-            }
-            out.push(record);
-        }
-    } catch (_) {}
-    return out;
-};
-
 HI.paragraphStyleCss = function (style) {
     var css = [], font = HI.reverseFontInfo(style.appliedFont);
     if (font && font.fontFamily) css.push("font-family:'" + font.fontFamily + "',sans-serif");

@@ -192,6 +192,12 @@ const COMPOSITE_FONT_ENTRY_KEYS = new Set([
   'fontStyle',
   'size',
   'weight',
+  'appliedFont',
+  'horizontalScale',
+  'verticalScale',
+  'baselineShift',
+  'scaleOption',
+  'customCharacters',
 ]);
 
 function scanPageEffectiveLabel(paths, seen, value) {
