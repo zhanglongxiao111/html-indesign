@@ -113,7 +113,7 @@ function htmlTextWithBreaks(html) {
 
 function decodeBasicEntities(value) {
   return String(value || '')
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&nbsp;/g, '\u00a0')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')

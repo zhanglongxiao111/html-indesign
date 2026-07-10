@@ -75,7 +75,10 @@ function hasRichRunMarkup(run) {
 }
 
 function plainTextContent(value) {
-  return escapeHtml(value).replace(/\r\n|\r|\n/g, '<br>');
+  return escapeHtml(value)
+    .replace(/\u00a0/g, '&nbsp;')
+    .replace(/(\r\n|\r|\n)( +)/g, (match, lineBreak, spaces) => `\n${'&nbsp;'.repeat(spaces.length)}`)
+    .replace(/\r\n|\r|\n/g, '<br>');
 }
 
 module.exports = {
