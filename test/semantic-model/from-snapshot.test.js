@@ -1086,3 +1086,23 @@ test('snapshotToSemanticModel uses nearest candidate ancestor as structure paren
 
   assert.equal(model.pages[0].items[1].structure.parentId, 'card-1');
 });
+
+test('snapshot keeps zero-dimension declared vector objects instead of dropping them', async () => {
+  const snapshot = await renderSnapshot({
+    htmlPath: path.resolve(__dirname, '../fixtures/fixed-html/zero-dimension-vector.html'),
+  });
+  const items = snapshot.pages[0].items;
+  const guide = items.find((item) => item.id === 'dashed-guide-line');
+  assert.ok(guide, 'zero-width declared vector must survive snapshot capture');
+  assert.equal(guide.rectPx.width, 0);
+
+  const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation' });
+  const modelGuide = model.pages[0].items.find((item) => item.id === 'dashed-guide-line');
+  assert.ok(modelGuide, 'zero-width declared vector must reach the semantic model');
+  assert.equal(modelGuide.bounds.width, 0);
+  assert.ok(modelGuide.bounds.height > 0);
+  assert.ok(modelGuide.vectorGeometry, 'vector geometry must be reconstructed from the svg facts');
+
+  const rule = model.pages[0].items.find((item) => item.id === 'visible-rule');
+  assert.ok(rule, 'zero-height stroked rule must also survive');
+});

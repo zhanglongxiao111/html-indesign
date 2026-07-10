@@ -37,6 +37,7 @@ const {
   filterEffectiveParentPages,
   isParentPagePasteboardItem,
   parentPageKeySet,
+  parentPageWritebackItemId,
 } = require('../../semantic-model/parent-pages');
 const { applySynthesizedStyleInstructions } = require('./synthesized-style-instructions');
 const { bordersAreUniform, visibleBorder } = require('../../style-synthesis/box-model');
@@ -70,7 +71,7 @@ function semanticModelToInstructions(model, options = {}) {
     const items = [
       ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {}, report, page.items)),
     ].filter(Boolean).sort((a, b) => a.zIndex - b.zIndex);
-    const parentPageItemOverrides = parentPageItemOverridesFor(page, parentPageRef, layout, report);
+    const parentPageItemOverrides = parentPageItemOverridesFor(page, parentPageRef, effectiveSourceParentPages, layout, report);
     return {
       id: page.id,
       index: page.index,
@@ -134,7 +135,7 @@ function semanticModelToInstructions(model, options = {}) {
   };
 }
 
-function parentPageItemOverridesFor(page, parentPageRef, layout, report) {
+function parentPageItemOverridesFor(page, parentPageRef, parentPages, layout, report) {
   const instances = Array.isArray(page.parentPageItems) ? page.parentPageItems : [];
   if (!instances.length) return [];
   if (!parentPageRef || !parentPageRef.id) {
@@ -144,9 +145,11 @@ function parentPageItemOverridesFor(page, parentPageRef, layout, report) {
     });
     return [];
   }
+  const parentItems = parentPageItemsForRef(parentPages, parentPageRef);
   const overrides = [];
   for (const item of instances) {
     if (isParentPagePasteboardItem(item)) continue;
+    if (isParentPageWritebackEcho(item, page, parentItems)) continue;
     if (item.role !== 'text') {
       addMessage(report, 'warning', 'PARENT_PAGE_ITEM_OVERRIDE_UNSUPPORTED', 'Only text parent-page furniture supports per-page overrides; non-text furniture keeps the parent page content.', {
         pageId: page.id,
@@ -170,6 +173,37 @@ function parentPageItemOverridesFor(page, parentPageRef, layout, report) {
     });
   }
   return overrides;
+}
+
+function parentPageItemsForRef(parentPages, parentPageRef) {
+  const keys = new Set([parentPageRef.id, parentPageRef.name].filter(Boolean).map(String));
+  const parentPage = (parentPages || []).find((candidate) => candidate
+    && [candidate.id, candidate.name, candidate.semantic].some((key) => key != null && keys.has(String(key))));
+  return parentPage && Array.isArray(parentPage.items) ? parentPage.items : [];
+}
+
+function isParentPageWritebackEcho(item, page, parentItems) {
+  const sourceId = String(item.parentPageSourceId || '');
+  if (!sourceId) return false;
+  const pageKeys = [page.id, page.semantic].filter(Boolean);
+  if (!pageKeys.some((key) => String(item.id) === parentPageWritebackItemId(key, sourceId))) return false;
+  const parentItem = parentItems.find((candidate) => candidate && String(candidate.id) === sourceId);
+  if (!parentItem) return false;
+  if (collapsedInstanceText(item) !== collapsedInstanceText(parentItem)) return false;
+  if (!writebackBoundsMatch(item.bounds, parentItem.bounds)) return false;
+  const itemParagraphStyle = item.styleRefs && item.styleRefs.paragraphStyle || null;
+  const parentParagraphStyle = parentItem.styleRefs && parentItem.styleRefs.paragraphStyle || null;
+  return String(itemParagraphStyle || '') === String(parentParagraphStyle || '');
+}
+
+function collapsedInstanceText(item) {
+  const text = item && item.content && item.content.text || '';
+  return String(text).replace(/\s+/g, ' ').trim();
+}
+
+function writebackBoundsMatch(a, b) {
+  if (!a || !b) return !a === !b;
+  return ['x', 'y', 'width', 'height'].every((key) => Math.abs(Number(a[key] || 0) - Number(b[key] || 0)) <= 0.5);
 }
 
 function parentPageInstructionFor(parentPage, model, layout, options, report) {

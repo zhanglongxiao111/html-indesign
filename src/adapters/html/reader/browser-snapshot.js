@@ -103,7 +103,7 @@ function pageSnapshotToModel(pageInfo) {
   const widthMm = cssPixelsToMm(pageInfo.rectPx.width);
   const heightMm = cssPixelsToMm(pageInfo.rectPx.height);
   const items = pageInfo.items
-    .filter((item) => item.rectPx.width > 0 && item.rectPx.height > 0)
+    .filter((item) => (item.rectPx.width > 0 && item.rectPx.height > 0) || isDeclaredProtocolObject(item))
     .map((item) => itemSnapshotToModel(item, pageInfo, widthMm, heightMm));
   applyNestedPaintOrder(items);
   return {
@@ -122,6 +122,12 @@ function pageSnapshotToModel(pageInfo) {
     mmPerPxY: round(heightMm / pageInfo.rectPx.height),
     items,
   };
+}
+
+function isDeclaredProtocolObject(item) {
+  const attrs = item && item.attributes || {};
+  return Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.OBJECT)
+    || Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.VECTOR);
 }
 
 function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {

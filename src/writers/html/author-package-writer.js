@@ -19,6 +19,7 @@ const {
   filterEffectiveParentPages,
   pageHasEffectiveParentPage,
   parentPageKeySet,
+  parentPageWritebackItemId,
 } = require('../../semantic-model/parent-pages');
 const { boundsIntersectPage } = require('../../shared/geometry');
 
@@ -420,20 +421,13 @@ function parentPageItemForPage(item, parentPage, page, index) {
   const sourceId = String(item.id || `parent-item-${index + 1}`);
   return {
     ...item,
-    id: `${safeDomId(page.id || page.semantic || 'page')}-${safeDomId(sourceId)}`,
+    id: parentPageWritebackItemId(page.id || page.semantic || 'page', sourceId),
     parentPageItem: true,
     parentPageId: parentPage.id || null,
     parentPageName: parentPage.name || parentPage.id || null,
     parentPageSourceId: sourceId,
     structure: null,
   };
-}
-
-function safeDomId(value) {
-  return String(value || 'item')
-    .trim()
-    .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'item';
 }
 
 function pageHtml(page, sourceFile, options) {

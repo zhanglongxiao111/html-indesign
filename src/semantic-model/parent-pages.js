@@ -10,6 +10,17 @@ function isParentPagePasteboardItem(item) {
   return String(placement || '').trim() === PARENT_PAGE_PASTEBOARD_PLACEMENT;
 }
 
+function safeDomId(value) {
+  return String(value || 'item')
+    .trim()
+    .replace(/[^a-zA-Z0-9_\-一-龥]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'item';
+}
+
+function parentPageWritebackItemId(pageKey, sourceId) {
+  return `${safeDomId(pageKey)}-${safeDomId(sourceId)}`;
+}
+
 function filterEffectiveParentPages(parentPages = [], pages = [], hasEffectiveContent = defaultHasContent) {
   const parentPageLookup = parentPageLookupFor(parentPages);
   const usage = expandParentPageUsage(parentPageUsageFor(pages), parentPageLookup);
@@ -145,4 +156,5 @@ module.exports = {
   isParentPagePasteboardItem,
   pageHasEffectiveParentPage,
   parentPageKeySet,
+  parentPageWritebackItemId,
 };

@@ -68,13 +68,13 @@ test('semanticModelToInstructions warns instead of silently dropping non-text fu
       parentPageName: '汇报母版',
       items: [],
       parentPageItems: [{
-        id: 'p1-corner-mark',
+        id: 'hero-corner-mark',
         role: 'shape',
         parentPageItem: 'report-parent',
         parentPageSourceId: 'corner-mark',
         bounds: { x: 10, y: 10, width: 20, height: 20 },
         content: { text: '' },
-        labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'p1-corner-mark', source: 'html-to-indesign', role: 'shape' }],
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'hero-corner-mark', source: 'html-to-indesign', role: 'shape' }],
       }],
     }],
   });
@@ -171,6 +171,69 @@ test('semanticModelToInstructions keeps pasteboard parent items on the parent pa
   const validation = validateInstructions(instructions, {});
   const offPageErrors = validation.errors.filter((error) => error.code === 'PARENT_PAGE_ITEM_OVERRIDE_OFF_PARENT_PAGE');
   assert.equal(offPageErrors.length, 0);
+});
+
+test('semanticModelToInstructions skips writeback-echo furniture instances and keeps authored ones', () => {
+  const parentItem = {
+    id: 'report-folio',
+    role: 'text',
+    bounds: { x: 1515, y: 843, width: 18, height: 13 },
+    content: { text: '00', runs: [] },
+    styleRefs: { paragraphStyle: 'folio' },
+    labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'report-folio', source: 'html-to-indesign', role: 'text' }],
+  };
+  const instanceBase = {
+    role: 'text',
+    parentPageItem: 'report-parent',
+    parentPageSourceId: 'report-folio',
+    bounds: { x: 1515, y: 843, width: 18, height: 13 },
+    styleRefs: { paragraphStyle: 'folio' },
+    labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'x', source: 'html-to-indesign', role: 'text' }],
+  };
+  const instructions = semanticModelToInstructions({
+    kind: 'DocumentModel',
+    id: 'echo-doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    styles: { paragraphStyles: { folio: {} } },
+    parentPages: [{ id: 'report-parent', name: '汇报母版', items: [parentItem] }],
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        width: 1600,
+        height: 900,
+        parentPageId: 'report-parent',
+        items: [],
+        parentPageItems: [{ ...instanceBase, id: '1-report-folio', content: { text: '00', runs: [] } }],
+      },
+      {
+        id: '2',
+        index: 1,
+        width: 1600,
+        height: 900,
+        parentPageId: 'report-parent',
+        items: [],
+        parentPageItems: [{ ...instanceBase, id: '2-report-folio', content: { text: '02', runs: [] } }],
+      },
+      {
+        id: '3',
+        index: 2,
+        width: 1600,
+        height: 900,
+        parentPageId: 'report-parent',
+        items: [],
+        parentPageItems: [{ ...instanceBase, id: 'closing-folio', content: { text: '00', runs: [] } }],
+      },
+    ],
+  });
+
+  const overridesByPage = instructions.pages.map((pageInstruction) => pageInstruction.parentPageItemOverrides || []);
+  assert.equal(overridesByPage[0].length, 0, 'writeback echo identical to the parent item must not be overridden');
+  assert.equal(overridesByPage[1].length, 1, 'writeback instance with changed text must stay an override');
+  assert.equal(overridesByPage[1][0].text, '02');
+  assert.equal(overridesByPage[2].length, 1, 'author-named instance keeps its override even with identical text');
+  assert.equal(overridesByPage[2][0].id, 'closing-folio');
 });
 
 test('validateInstructions rejects overrides targeting pasteboard parent items', () => {

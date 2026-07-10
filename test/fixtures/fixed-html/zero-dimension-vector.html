@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    .page {
+      position: relative;
+      width: 160mm;
+      height: 100mm;
+      overflow: hidden;
+      background: #ffffff;
+    }
+    .headline {
+      position: absolute;
+      left: 10mm;
+      top: 10mm;
+      width: 80mm;
+      height: 12mm;
+      font-size: 18px;
+    }
+    [id="dashed-guide-line"] { position: absolute; left: 120px; top: 40px; width: 0px; height: 200px; overflow: visible; }
+    [id="visible-rule"] { position: absolute; left: 40px; top: 300px; width: 240px; height: 0px; min-height: 2px; overflow: visible; }
+  </style>
+</head>
+<body>
+  <section class="page" data-page="vector-page" id="vector-page">
+    <h1 id="vector-title" class="headline">零尺寸矢量样例</h1>
+    <svg id="dashed-guide-line" data-id-object data-id-role="shape" data-id-vector="polygon" preserveAspectRatio="none" viewBox="0 0 1 200">
+      <path d="M0.5 200 L0.5 0" fill="none" stroke="none" stroke-dasharray="3 2"></path>
+    </svg>
+    <svg id="visible-rule" data-id-object data-id-role="shape" data-id-vector="polygon" data-id-stroke-color="#000000" data-id-stroke-weight="2" preserveAspectRatio="none" viewBox="0 0 240 2">
+      <path d="M0 1 L240 1" fill="none" stroke="#000000" stroke-width="2"></path>
+    </svg>
+  </section>
+</body>
+</html>
