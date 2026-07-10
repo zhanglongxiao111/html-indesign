@@ -74,8 +74,8 @@ function cssVarsStyle(cssVars) {
 }
 
 function addParentPageAttrs(attrs, item) {
-  const parentName = item.parentPageName || item.parentPageId || '';
-  if (parentName) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM] = parentName;
+  const parentRef = item.parentPageId || item.parentPageName || '';
+  if (parentRef) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM] = parentRef;
   if (item.parentPageSourceId) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_SOURCE_ID] = item.parentPageSourceId;
 }
 

@@ -92,6 +92,68 @@ HI.buildParentPageItems = function (parentPages, context, report) {
     }
 };
 
+HI.applyParentPageItemOverrides = function (doc, page, pageInstruction, context, report) {
+    var overrides = pageInstruction.parentPageItemOverrides || [];
+    for (var i = 0; i < overrides.length; i++) {
+        var spec = overrides[i];
+        var masterItem = HI.findAppliedParentPageItem(page, spec.parentPageSourceId);
+        if (!masterItem) {
+            HI.addMessage(report, "error", "PARENT_PAGE_ITEM_OVERRIDE_MISSING", "Parent-page item for per-page override was not found on the applied parent page", { pageId: pageInstruction.id, itemId: spec.id, parentPageSourceId: spec.parentPageSourceId });
+            continue;
+        }
+        var overridden = null;
+        try {
+            overridden = masterItem.override(page);
+        } catch (error) {
+            HI.addMessage(report, "error", "PARENT_PAGE_ITEM_OVERRIDE_FAILED", String(error), { pageId: pageInstruction.id, itemId: spec.id, parentPageSourceId: spec.parentPageSourceId });
+            continue;
+        }
+        if (spec.bounds) {
+            try { overridden.geometricBounds = HI.boundsToGeometricBounds(spec.bounds); } catch (boundsError) {
+                HI.addMessage(report, "warning", "PARENT_PAGE_ITEM_OVERRIDE_BOUNDS_FAILED", String(boundsError), { pageId: pageInstruction.id, itemId: spec.id });
+            }
+        }
+        if (spec.text !== undefined && spec.text !== null) {
+            try {
+                overridden.contents = HI.textFromRuns(spec);
+                if (spec.paragraphStyle) HI.applyParagraphStyle(doc, overridden, spec.paragraphStyle, report);
+                HI.applyRuns(doc, overridden, spec.runs || [], report);
+            } catch (textError) {
+                HI.addMessage(report, "error", "PARENT_PAGE_ITEM_OVERRIDE_TEXT_FAILED", String(textError), { pageId: pageInstruction.id, itemId: spec.id });
+                continue;
+            }
+        }
+        try { overridden.label = HI.itemLabel(spec); } catch (_) {}
+        HI.writeProtocolLabels(overridden, spec.labels || [], report, { itemId: spec.id, critical: true });
+    }
+};
+
+HI.findAppliedParentPageItem = function (page, sourceId) {
+    if (!sourceId) return null;
+    var master = null;
+    try { master = page.appliedMaster; } catch (_) { master = null; }
+    var guard = 0;
+    while (master && guard < 8) {
+        var found = HI.findParentPageItemByLabelId(master, sourceId);
+        if (found) return found;
+        var next = null;
+        try { next = master.appliedMaster; } catch (_) { next = null; }
+        master = next;
+        guard += 1;
+    }
+    return null;
+};
+
+HI.findParentPageItemByLabelId = function (master, sourceId) {
+    var items = [];
+    try { items = master.pageItems.everyItem().getElements(); } catch (_) { items = []; }
+    for (var i = 0; i < items.length; i++) {
+        var label = HI.readProtocolLabel(items[i]);
+        if (label && String(label.id || "") === String(sourceId)) return items[i];
+    }
+    return null;
+};
+
 HI.applyParentPage = function (page, pageInstruction, context, report) {
     var id = pageInstruction.parentPageId;
     if (!id) {

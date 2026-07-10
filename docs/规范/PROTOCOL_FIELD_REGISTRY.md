@@ -279,6 +279,7 @@
 | pages[].effectiveLabel | n/a | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].effectiveLabel.htmlTag | n/a | reverse-model | active | unsupported/unsupported/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].parentPage | labels[].parentPage, pages[].effectiveLabel.parentPage | document-page | active | observe-only/observe-only/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
+| pages[].parentPageItems | pages[].parentPageItems, instructions.pages[].parentPageItemOverrides | source-metadata | active | native/native/native | lossless/lossless/lossless | unsupported/unsupported/lossless | n/a |
 | pages[].parentPageName | labels[].parentPageName, pages[].effectiveLabel.parentPageName | document-page | active | observe-only/observe-only/lossless | lossless/lossless/lossless | unsupported/fallback/lossless (fallbackKind=customData) | n/a |
 | pages[].sourceNode | pages[].effectiveLabel.sourceNode | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | parentPages | n/a | document-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |

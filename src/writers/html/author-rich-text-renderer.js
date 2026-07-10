@@ -7,20 +7,30 @@ const {
   safeInlineTag,
 } = require('./author-render-utils');
 
-function ownContent(item, depth, options = {}) {
-  if (options.preserveTrustedSource && item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== '') {
-    return item.content.sourceHtml;
-  }
+function ownContent(item, depth) {
+  const sourceHtml = item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== ''
+    ? item.content.sourceHtml
+    : null;
+  if (item.role === 'table' && sourceHtml) return tableSourceHtmlContent(sourceHtml, depth);
+  if (sourceHtml) return sourceHtml;
   if (item.role === 'table' && item.table) return `\n${tableContent(item.table, depth + 2)}\n${' '.repeat(depth)}`;
   if (item.authorTextCompanion && item.authorTextCompanion.content) {
     return plainTextContent(item.authorTextCompanion.content.text || '');
   }
-  if (item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== '') {
-    return item.content.sourceHtml;
-  }
   const rich = richTextContent(item);
   if (rich != null) return rich;
   return escapeHtml((item.content && item.content.text) || '').replace(/\r\n|\r|\n/g, '<br>');
+}
+
+function tableSourceHtmlContent(sourceHtml, depth) {
+  const contentLines = String(sourceHtml).split(/\r\n|\r|\n/).filter((line) => line.trim() !== '');
+  if (!contentLines.length) return '';
+  const commonIndent = contentLines.reduce(
+    (min, line) => Math.min(min, /^ */.exec(line)[0].length),
+    Infinity,
+  );
+  const body = contentLines.map((line) => `${' '.repeat(depth + 2)}${line.slice(commonIndent)}`).join('\n');
+  return `\n${body}\n${' '.repeat(depth)}`;
 }
 
 function richTextContent(item) {

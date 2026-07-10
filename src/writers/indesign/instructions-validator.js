@@ -38,6 +38,9 @@ function validateInstructions(instructions, options = {}) {
       validatePlacedAsset(item, assetIds, assetById, errors);
       validateTextFit(item, errors);
     }
+    for (const override of page.parentPageItemOverrides || []) {
+      validateParentPageItemOverride(page, override, styles, errors);
+    }
   }
 
   validateProtocolLabels(instructions, options, errors);
@@ -84,6 +87,36 @@ function resolveInstructionAssetPath(asset, baseDir) {
   if (/^[a-z]+:\/\//i.test(raw)) return raw;
   if (path.isAbsolute(raw)) return raw;
   return path.resolve(baseDir, raw);
+}
+
+function validateParentPageItemOverride(page, override, styles, errors) {
+  if (!override || !override.parentPageSourceId) {
+    errors.push({
+      code: 'PARENT_PAGE_ITEM_OVERRIDE_SOURCE_MISSING',
+      message: `Parent-page item override '${override && override.id || ''}' on page '${page.id}' is missing parentPageSourceId.`,
+      pageId: page.id,
+      itemId: override && override.id || null,
+    });
+    return;
+  }
+  if (override.type !== 'TEXT') {
+    errors.push({
+      code: 'PARENT_PAGE_ITEM_OVERRIDE_TYPE_UNSUPPORTED',
+      message: `Parent-page item override '${override.id}' has unsupported type '${override.type}'.`,
+      pageId: page.id,
+      itemId: override.id,
+    });
+  }
+  validateBounds(override, errors);
+  validateStyleRefs({ ...override, type: 'TEXT' }, styles, errors);
+  if (!hasProtocolLabel(override.labels, 'item')) {
+    errors.push({
+      code: 'PARENT_PAGE_ITEM_OVERRIDE_LABEL_MISSING',
+      message: `Parent-page item override '${override.id}' on page '${page.id}' is missing its item protocol label.`,
+      pageId: page.id,
+      itemId: override.id,
+    });
+  }
 }
 
 function validateBounds(item, errors) {

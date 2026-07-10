@@ -82,6 +82,9 @@ function previewAttrsForPdf(item, sourceNode, options = {}) {
   if (sourceNode.previewNode) {
     const previewAttrs = mergeAttributes(sourceNode.previewNode.attributes);
     rewriteResourceAttrs(previewAttrs, options);
+    const previewId = sourceNode.previewNode.id
+      || (sourceNode.previewNode.attributes && sourceNode.previewNode.attributes.id);
+    if (previewId) previewAttrs.id = previewId;
     const previewClasses = new Set(sourceNode.previewNode.classList || []);
     if (previewClasses.size) previewAttrs.class = Array.from(previewClasses).join(' ');
     if (!previewAttrs.src) previewAttrs.src = pdfPreviewPath(pdfPath, page);

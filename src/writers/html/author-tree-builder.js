@@ -42,7 +42,7 @@ function attachSourceAncestorNodes(nodes, rootId) {
     if (!chain.length) continue;
     let parentId = node.item.structure && node.item.structure.parentId || rootId;
     for (const ancestor of chain) {
-      const key = sourceAncestorKey(ancestor);
+      const key = sourceAncestorKey(ancestor, node.item);
       ensureVirtualAncestorNode(nodes, key, ancestor, node.item, node.sourceIndex);
       if (!parentOverrides.has(key)) parentOverrides.set(key, parentId);
       parentId = key;
@@ -55,11 +55,11 @@ function attachSourceAncestorNodes(nodes, rootId) {
 function sourceAncestorChain(item, nodes) {
   return (item.sourceAncestorNodes || [])
     .filter((ancestor) => ancestor && ancestor.tagName)
-    .filter((ancestor) => !(ancestor.id && nodes.has(ancestor.id)));
+    .filter((ancestor) => !(ancestor.id && ancestor.id !== item.id && nodes.has(ancestor.id)));
 }
 
-function sourceAncestorKey(ancestor) {
-  if (ancestor.id) return String(ancestor.id);
+function sourceAncestorKey(ancestor, item) {
+  if (ancestor.id && ancestor.id !== (item && item.id)) return String(ancestor.id);
   if (ancestor.sourcePath) return `source:${ancestor.sourcePath}`;
   const classes = (ancestor.classList || []).join('.');
   return `source:${ancestor.tagName || 'div'}:${classes}:${JSON.stringify(ancestor.attributes || {})}`;

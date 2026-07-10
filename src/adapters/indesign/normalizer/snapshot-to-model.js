@@ -9,6 +9,7 @@ const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
 const { normalizeLineEndings } = require('../../../shared/text');
 const { validateReverseLabel } = require('./label-whitelist');
+const { tableSourceHtmlMatchesTable } = require('./table-source-html');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
 const SOURCE_FILE_ATTR = htmlReadAttrFromRegistry('items[].sourceFile');
@@ -239,7 +240,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
       tableStyleDisplayName: table && table.tableStyleDisplayName ? table.tableStyleDisplayName : null,
       layer: item.layerName || null,
     }),
-    content: contentForReverseItem(role, item, effective, styleMaps),
+    content: contentForReverseItem(role, item, effective, styleMaps, table),
     table,
     vectorGeometry,
     visualStyle: item.visualStyle || null,
@@ -499,8 +500,18 @@ function mapStyleName(styleMaps, kind, value) {
   return map && map.get(String(value)) || value;
 }
 
-function contentForReverseItem(role, item, label, styleMaps) {
-  const rawText = role === 'table' && item.table ? '' : normalizeReverseText(item.text || '');
+function contentForReverseItem(role, item, label, styleMaps, table = null) {
+  if (role === 'table' && item.table) {
+    const sourceHtml = typeof label.sourceHtml === 'string' ? label.sourceHtml : null;
+    if (sourceHtml && tableSourceHtmlMatchesTable(sourceHtml, table)) {
+      return { text: '', sourceHtml, runs: [] };
+    }
+    return {
+      text: '',
+      runs: reverseTextRuns(item.textRuns || item.runs || [], styleMaps),
+    };
+  }
+  const rawText = normalizeReverseText(item.text || '');
   const sourceText = typeof label.sourceText === 'string' ? label.sourceText : null;
   if (sourceText != null && sourceTextMatchesCurrentText(sourceText, rawText)) {
     return {

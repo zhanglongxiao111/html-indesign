@@ -69,6 +69,7 @@ function semanticModelToInstructions(model, options = {}) {
     const items = [
       ...page.items.flatMap((item) => instructionItemsFor(item, model.assets || [], rawPage, layout, options, model.styles || {}, report, page.items)),
     ].filter(Boolean).sort((a, b) => a.zIndex - b.zIndex);
+    const parentPageItemOverrides = parentPageItemOverridesFor(page, parentPageRef, layout, report);
     return {
       id: page.id,
       index: page.index,
@@ -81,6 +82,7 @@ function semanticModelToInstructions(model, options = {}) {
       guides,
       labels: page.labels || [],
       items,
+      ...(parentPageItemOverrides.length ? { parentPageItemOverrides } : {}),
     };
   });
   const parentPages = effectiveSourceParentPages.map((parentPage) => (
@@ -129,6 +131,43 @@ function semanticModelToInstructions(model, options = {}) {
     warnings: model.warnings || [],
     report,
   };
+}
+
+function parentPageItemOverridesFor(page, parentPageRef, layout, report) {
+  const instances = Array.isArray(page.parentPageItems) ? page.parentPageItems : [];
+  if (!instances.length) return [];
+  if (!parentPageRef || !parentPageRef.id) {
+    addMessage(report, 'warning', 'PARENT_PAGE_ITEM_OVERRIDE_SKIPPED', 'Page declares parent-page furniture but no effective parent page; furniture instances stay page-local facts only.', {
+      pageId: page.id,
+      itemIds: instances.map((item) => item.id),
+    });
+    return [];
+  }
+  const overrides = [];
+  for (const item of instances) {
+    if (item.role !== 'text') {
+      addMessage(report, 'warning', 'PARENT_PAGE_ITEM_OVERRIDE_UNSUPPORTED', 'Only text parent-page furniture supports per-page overrides; non-text furniture keeps the parent page content.', {
+        pageId: page.id,
+        itemId: item.id,
+        role: item.role,
+      });
+      continue;
+    }
+    const content = item.content || { text: '', runs: [] };
+    const text = textForInstruction(item, content);
+    overrides.push({
+      id: item.id,
+      parentPageSourceId: item.parentPageSourceId || item.id,
+      role: 'text',
+      type: 'TEXT',
+      text,
+      runs: runsForInstruction(item, content, text),
+      bounds: textFrameBounds(item, item.bounds, layout),
+      ...(item.styleRefs && item.styleRefs.paragraphStyle ? { paragraphStyle: item.styleRefs.paragraphStyle } : {}),
+      labels: item.labels || [],
+    });
+  }
+  return overrides;
 }
 
 function parentPageInstructionFor(parentPage, model, layout, options, report) {

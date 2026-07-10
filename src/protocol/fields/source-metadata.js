@@ -119,6 +119,22 @@ module.exports = [
     'data-id-parent-page-item',
     'boolean|string',
   ),
+  {
+    canonicalPath: 'pages[].parentPageItems',
+    currentPaths: ['pages[].parentPageItems', 'instructions.pages[].parentPageItemOverrides'],
+    fieldClass: 'sourceMetadata',
+    lifecycle: 'active',
+    owner: 'source-metadata',
+    type: 'array',
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      instructionPaths: ['pages[].parentPageItemOverrides'],
+    },
+  },
   htmlSourceMetadataField(
     'items[].parentPageSourceId',
     ['parentPages[].items[].parentPageSourceId', 'sourceNode.attributes.data-id-parent-page-source-id'],

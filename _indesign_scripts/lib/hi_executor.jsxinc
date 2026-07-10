@@ -40,6 +40,7 @@ HI.runBuildInstructions = function (appRef, instructions, baseFolder) {
         for (var i = 0; i < pages.length; i++) {
             var page = HI.getPageForInstruction(context.doc, pages[i], i, context, report);
             HI.buildInstructionItems(context.doc, page, pages[i], context, report);
+            HI.applyParentPageItemOverrides(context.doc, page, pages[i], context, report);
         }
         HI.removeUnusedDefaultParentPages(context.doc, context.parentPages, report);
 

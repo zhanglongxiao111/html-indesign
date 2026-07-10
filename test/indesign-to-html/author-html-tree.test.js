@@ -1477,7 +1477,8 @@ test('pageItemsToAuthorHtml preserves trusted source table markup without observ
 
   const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
 
-  assert.match(html, new RegExp(`<table id="metrics-table" class="metrics-table" data-id-table="metrics">${sourceHtml.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</table>`));
+  const normalizedSource = '\n  <thead>\n    <tr><th>来源指标</th><th>来源数值</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>结构跨度</td><td>243.75m</td></tr>\n  </tbody>\n';
+  assert.match(html, new RegExp(`<table id="metrics-table" class="metrics-table" data-id-table="metrics">${normalizedSource.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</table>`));
   assert.doesNotMatch(html, /重算指标/);
   assert.doesNotMatch(html, /data-id-style-token=/);
   assert.doesNotMatch(html, /data-id-style-name=/);

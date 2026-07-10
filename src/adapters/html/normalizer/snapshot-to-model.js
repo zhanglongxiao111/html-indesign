@@ -51,7 +51,7 @@ function snapshotToSemanticModel(snapshot, options = {}) {
   const documentId = documentIdFor(styled, options, sourcePackage);
   const pageModels = (styled.pages || []).map((page) => pageModelFor(page, layout));
   const parentPages = parentPagesFor(pageModels, sourcePackage && sourcePackage.parentPages);
-  const pages = pageModels.map(stripParentPageItems);
+  const pages = pageModels;
   const styles = {
     ...(styled.styles || {}),
   };
@@ -289,11 +289,6 @@ function sourceParentPageGuides(guides = []) {
 
 function parentPageItemsFor(items) {
   return (items || []).filter((item) => item && item.parentPageItem);
-}
-
-function stripParentPageItems(page) {
-  const { parentPageItems, ...cleanPage } = page;
-  return cleanPage;
 }
 
 function parentPageModelItemFor(item, parentPage) {

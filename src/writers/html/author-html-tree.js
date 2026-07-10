@@ -36,7 +36,7 @@ function renderNode(node, options, depth) {
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
   if (isVoidTag(tag)) return `${indent(depth)}${open}`;
   const children = node.children.map((child) => renderNode(child, options, depth + 2)).join('\n');
-  const own = ownContent(item, depth, options);
+  const own = ownContent(item, depth);
   if (children) {
     return `${indent(depth)}${open}\n${own ? `${indent(depth + 2)}${own}\n` : ''}${children}\n${indent(depth)}</${tag}>`;
   }

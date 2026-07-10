@@ -311,8 +311,11 @@ function sourceNodeAttribute(page, name) {
 
 function pageWithAppliedParentItems(page, parentPages = []) {
   const parentPage = appliedParentPageFor(page, parentPages);
+  const instantiatedSourceIds = pageFurnitureSourceIds(page);
   const parentItems = parentPage && Array.isArray(parentPage.items)
-    ? parentPage.items.filter(shouldWriteParentPageItem)
+    ? parentPage.items
+      .filter(shouldWriteParentPageItem)
+      .filter((item) => !instantiatedSourceIds.has(String(item.id || '')))
     : [];
   if (!parentItems.length) return page;
   return {
@@ -324,12 +327,33 @@ function pageWithAppliedParentItems(page, parentPages = []) {
   };
 }
 
+function pageFurnitureSourceIds(page) {
+  const out = new Set();
+  for (const item of page && page.items || []) {
+    const sourceId = item && item.parentPageSourceId
+      || item && item.sourceNode && item.sourceNode.attributes
+        && item.sourceNode.attributes[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_SOURCE_ID];
+    if (sourceId) out.add(String(sourceId));
+  }
+  return out;
+}
+
 function shouldWriteParentPageItem(item) {
   if (!item) return false;
   if (isTemplateNotesLayer(item)) return false;
+  if (hasAcceptedItemProtocolLabel(item)) return true;
   if (item.role === 'text') return hasExplicitParentTextSemantic(item);
   if (isUnplacedTemplateFrame(item)) return false;
   return isVisibleParentDecoration(item);
+}
+
+function hasAcceptedItemProtocolLabel(item) {
+  if (item && item.labelStatus && item.labelStatus !== 'accepted') return false;
+  return (item && item.labels || []).some((label) => label
+    && label.protocol === 'html-indesign'
+    && label.kind === 'item'
+    && label.id
+    && label.generated !== true);
 }
 
 function isTemplateNotesLayer(item) {
