@@ -224,6 +224,91 @@ function furnitureModel({ withPageInstance }) {
   };
 }
 
+test('writeReverseAuthorPackage canonicalizes z-index by layer band, master level, and stacking order', () => {
+  const outDir = path.resolve('test/workspace/reverse-z-canonicalization-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const furnitureLabel = (id) => [{
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id,
+    source: 'html-to-indesign',
+    role: 'shape',
+    htmlTag: 'div',
+  }];
+  const model = furnitureModel({ withPageInstance: false });
+  model.layers = [{ name: 'copyright' }, { name: 'text' }, { name: 'deco' }];
+  model.parentPages[0].items = [
+    {
+      id: 'master-caption',
+      role: 'text',
+      tagName: 'p',
+      semantic: 'running-header',
+      layer: 'text',
+      zIndex: 75,
+      bounds: { x: 100, y: 20, width: 300, height: 20 },
+      content: { text: '章节页眉', runs: [] },
+      labelStatus: 'accepted',
+      labels: [{ ...furnitureLabel('master-caption')[0], role: 'text', htmlTag: 'p' }],
+    },
+    {
+      id: 'master-strip',
+      role: 'shape',
+      tagName: 'div',
+      layer: 'deco',
+      zIndex: 13,
+      bounds: { x: 0, y: 0, width: 1587, height: 40 },
+      visualStyle: { fillColor: '#eeeeee' },
+      labelStatus: 'accepted',
+      labels: furnitureLabel('master-strip'),
+    },
+    {
+      id: 'master-mark',
+      role: 'shape',
+      tagName: 'div',
+      layer: 'copyright',
+      zIndex: 12,
+      bounds: { x: 1500, y: 860, width: 60, height: 20 },
+      visualStyle: { fillColor: '#333333' },
+      labelStatus: 'accepted',
+      labels: furnitureLabel('master-mark'),
+    },
+  ];
+  model.pages[0].items = [
+    { ...model.pages[0].items[0], id: 'alpha-title', layer: 'text', zIndex: 19 },
+    {
+      ...model.pages[0].items[0],
+      id: 'beta-note',
+      layer: 'text',
+      zIndex: 18,
+      sourceNode: {
+        tagName: 'h2',
+        id: 'beta-note',
+        classList: ['page-title'],
+        attributes: { id: 'beta-note', class: 'page-title' },
+      },
+      structure: { parentId: 'agenda-page', order: 2, containerPolicy: 'group' },
+    },
+  ];
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'authoring' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  const zFor = (id) => {
+    const tag = pageHtml.match(new RegExp(`<[a-z0-9]+ [^>]*id="${id}"[^>]*>`));
+    assert.ok(tag, `expected element for ${id}`);
+    const z = tag[0].match(/z-index:(-?\d+)/);
+    assert.ok(z, `expected z-index for ${id}`);
+    return Number(z[1]);
+  };
+  assert.equal(zFor('master-strip'), 0, 'deco-layer furniture sits at the bottom band');
+  assert.equal(zFor('master-caption'), 1, 'same-layer master furniture sinks below page items');
+  assert.equal(zFor('beta-note'), 2, 'page items rank above same-layer furniture');
+  assert.equal(zFor('agenda-title'), 3, 'within-group stacking follows observed z order');
+  assert.equal(zFor('master-mark'), 4, 'copyright-layer furniture stays on top despite its low raw z');
+});
+
 test('writeReverseAuthorPackage writes labeled parent-page furniture back into pages', () => {
   const outDir = path.resolve('test/workspace/reverse-furniture-writeback-test');
   fs.rmSync(outDir, { recursive: true, force: true });

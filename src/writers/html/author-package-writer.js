@@ -47,7 +47,10 @@ function writeReverseAuthorPackage(model, options = {}) {
   const pasteboardCarriedParentPages = new Set();
   const pages = pageEntries(model, sourceConfig).map((page) => ({
     ...page,
-    authorPage: pageWithAppliedParentItems(page.modelPage, effectiveParentPages, pasteboardCarriedParentPages),
+    authorPage: withCanonicalItemZIndexes(
+      pageWithAppliedParentItems(page.modelPage, effectiveParentPages, pasteboardCarriedParentPages),
+      model.layers || [],
+    ),
   }));
   const generatedCss = writeAuthorCssFiles({ ...model, pages: pages.map((page) => page.authorPage) });
   const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
@@ -360,6 +363,53 @@ function pageWithAppliedParentItems(page, parentPages = [], pasteboardCarriedPar
       ...(page.items || []),
     ],
   };
+}
+
+function withCanonicalItemZIndexes(page, layers) {
+  const items = Array.isArray(page.items) ? page.items : [];
+  const stacked = items
+    .map((item, index) => ({ item, index }))
+    .filter((entry) => Number.isFinite(Number(entry.item.zIndex)));
+  if (!stacked.length) return page;
+  const bandByLayer = layerBottomFirstPositions(layers);
+  const ordinalByIndex = new Map();
+  stacked
+    .slice()
+    .sort((a, b) => compareIndesignStacking(a, b, bandByLayer))
+    .forEach((entry, position) => ordinalByIndex.set(entry.index, position));
+  return {
+    ...page,
+    items: items.map((item, index) => (ordinalByIndex.has(index)
+      ? { ...item, zIndex: ordinalByIndex.get(index) }
+      : item)),
+  };
+}
+
+function layerBottomFirstPositions(layers) {
+  const names = (Array.isArray(layers) ? layers : [])
+    .map((layer) => String((layer && layer.name) || layer || ''))
+    .filter(Boolean);
+  const positions = new Map();
+  names.forEach((name, index) => positions.set(name, names.length - 1 - index));
+  return positions;
+}
+
+function compareIndesignStacking(a, b, bandByLayer) {
+  const bandA = itemLayerBand(a.item, bandByLayer);
+  const bandB = itemLayerBand(b.item, bandByLayer);
+  if (bandA !== bandB) return bandA - bandB;
+  const pageLevelA = a.item.parentPageItem ? 0 : 1;
+  const pageLevelB = b.item.parentPageItem ? 0 : 1;
+  if (pageLevelA !== pageLevelB) return pageLevelA - pageLevelB;
+  const zA = Number(a.item.zIndex);
+  const zB = Number(b.item.zIndex);
+  if (zA !== zB) return zA - zB;
+  return a.index - b.index;
+}
+
+function itemLayerBand(item, bandByLayer) {
+  const name = String(item.layer || item.layerName || '');
+  return bandByLayer.has(name) ? bandByLayer.get(name) : -1;
 }
 
 function pageFurnitureSourceIds(page) {
