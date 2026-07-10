@@ -41,11 +41,11 @@ function visualStyleCss(visualStyle) {
   const styles = [];
   if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
   if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
-    styles.push(`border:${px(visualStyle.strokeWeight)} solid ${visualStyle.strokeColor}`);
+    styles.push(`border:${geometryPx(visualStyle.strokeWeight)} solid ${visualStyle.strokeColor}`);
   } else if (hasExplicitStrokeFact(visualStyle)) {
     styles.push('border:0 solid transparent');
   }
-  if (Number(visualStyle.cornerRadius) > 0) styles.push(`border-radius:${px(visualStyle.cornerRadius)}`);
+  if (Number(visualStyle.cornerRadius) > 0) styles.push(`border-radius:${geometryPx(visualStyle.cornerRadius)}`);
   const blendMode = blendModeCss(visualStyle.blendMode);
   if (blendMode) styles.push(blendMode);
   const opacity = Number(visualStyle.opacity);
@@ -123,6 +123,11 @@ function cssDeclarations(value) {
 function px(value) {
   const number = Number(value);
   return `${Number.isFinite(number) ? formatNumber(number) : 0}px`;
+}
+
+function geometryPx(value) {
+  const number = Number(value);
+  return `${Number.isFinite(number) ? Math.round(number * 100) / 100 : 0}px`;
 }
 
 function formatNumber(value) {
