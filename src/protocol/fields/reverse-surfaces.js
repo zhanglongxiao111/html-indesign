@@ -102,11 +102,14 @@ module.exports = [
     [],
     'object',
     {
-      description: 'InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. Adapter migration metadata records the old flat source path, while retired lifecycle facts live in retired registry entries.',
+      description: 'InDesign-specific text frame style payload; current structured DocumentModel output uses extensions.indesign.textFrameStyle. The HTML adapter derives verticalJustification from captured flex facts so the InDesign writer can rebuild native vertical justification. Adapter migration metadata records the old flat source path, while retired lifecycle facts live in retired registry entries.',
       migration: {
         from: 'items[].textFrameStyle',
         to: 'items[].extensions.indesign.textFrameStyle',
         status: 'adapter-migrated',
+      },
+      indesign: {
+        instructionPaths: ['textFrameStyle'],
       },
     },
   ),

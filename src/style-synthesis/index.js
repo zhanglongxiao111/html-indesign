@@ -27,6 +27,7 @@ const {
   styleTokenForKind,
   styleIdentityForKind,
   styleProtocolLabel,
+  hasDeclaredStyleIdentity,
 } = require('./style-identities');
 const {
   capitalizationFor,
@@ -126,6 +127,10 @@ function compileItemStyles(item, styles, report, options) {
     compiled.box = compileBoxModel(item, styles, options);
     warnObjectBorderLimitations(item, compiled.box, report);
     compiled.effects = compileEffects(item, report, addMessage);
+  }
+
+  if (item.role === 'line' && hasDeclaredStyleIdentity(item, 'objectStyles')) {
+    styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
   }
 
   if (item.role === 'shape' && shouldCompileObjectText(item)) {

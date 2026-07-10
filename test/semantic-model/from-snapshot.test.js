@@ -282,6 +282,16 @@ test('snapshotToSemanticModel restores parent page items from reverse author HTM
   assert.equal(model.parentPages[0].items.length, 1);
   assert.equal(model.parentPages[0].items[0].id, 'parent-rule');
   assert.equal(model.parentPages[0].items[0].parentPageItem, true);
+
+  const furnitureLabel = model.parentPages[0].items[0].labels[0];
+  assert.equal(furnitureLabel.id, 'parent-rule');
+  assert.equal(furnitureLabel.structure, null);
+  assert.equal(furnitureLabel.sourceNode.tagName, 'svg',
+    'furniture labels must carry the same source payload as page item labels');
+  assert.equal(
+    furnitureLabel.sourceNode.attributes['data-id-parent-page-source-id'],
+    'parent-rule',
+  );
 });
 
 test('snapshotToSemanticModel does not synthesize CSS grid guides for observed reverse pages', () => {
@@ -1151,4 +1161,61 @@ test('snapshot keeps zero-dimension declared vector objects instead of dropping 
 
   const rule = model.pages[0].items.find((item) => item.id === 'visible-rule');
   assert.ok(rule, 'zero-height stroked rule must also survive');
+});
+
+test('snapshotToSemanticModel derives text frame vertical justification from flex facts', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'justified-copy',
+          role: 'text',
+          tagName: 'p',
+          classList: ['id-object'],
+          attributes: { 'data-id-paragraph-style': '正文' },
+          rectPx: { x: 10, y: 10, width: 60, height: 40 },
+          computedStyle: {
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '12px',
+          },
+          text: '第一行\n最后一行',
+          runs: [],
+        },
+        {
+          id: 'top-copy',
+          role: 'text',
+          tagName: 'p',
+          classList: ['id-object'],
+          attributes: { 'data-id-paragraph-style': '正文' },
+          rectPx: { x: 10, y: 55, width: 60, height: 20 },
+          computedStyle: {
+            display: 'block',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '12px',
+          },
+          text: '普通文本',
+          runs: [],
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'print' });
+
+  const justified = model.pages[0].items.find((item) => item.id === 'justified-copy');
+  const top = model.pages[0].items.find((item) => item.id === 'top-copy');
+
+  assert.equal(justified.extensions.indesign.textFrameStyle.verticalJustification, 'space-between');
+  assert.equal(top.extensions?.indesign?.textFrameStyle, undefined,
+    'default top alignment stays implicit');
 });

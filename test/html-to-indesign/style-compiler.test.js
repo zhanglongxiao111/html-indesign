@@ -878,3 +878,166 @@ test('compileStyles warns for border styles that decoration strips cannot preser
   assert.equal(codes.includes('BORDER_DECORATION_LIMITED'), true);
   assert.equal(codes.includes('TABLE_CELL_BORDER_STYLE_UNSUPPORTED'), true);
 });
+
+test('compileStyles maps declared font weights onto native face names', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'light-note',
+        role: 'text',
+        tagName: 'p',
+        classList: ['pstyle-封面页英文段落', 'id-object'],
+        attributes: {
+          'data-id-paragraph-style': '封面页英文段落',
+          'data-id-paragraph-style-name': '封面页英文段落',
+        },
+        text: 'Architecture Design',
+        boundsMm: { x: 0, y: 0, width: 60, height: 10 },
+        computedStyle: {
+          color: 'rgb(0, 0, 0)',
+          fontFamily: '微软雅黑, Arial, sans-serif',
+          fontSize: '12px',
+          fontWeight: '300',
+          fontStyle: 'normal',
+          textAlign: 'right',
+        },
+        ruleStyle: {
+          fontFamily: "'微软雅黑',sans-serif",
+          fontWeight: '300',
+          fontSize: '12px',
+          color: '#000000',
+          textAlign: 'right',
+        },
+        runs: [],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const style = styled.styles.paragraphStyles['封面页英文段落'];
+
+  assert.equal(style.fontWeight, '300');
+  assert.equal(style.fontStyleName, 'Light', 'weight 300 must resolve the Light face, not Regular');
+});
+
+test('compileStyles keeps synthesized token classes out of declared style identities', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'token-only-text',
+        role: 'text',
+        tagName: 'p',
+        classList: ['synth-synth_text_031', 'observed-text', 'id-object'],
+        attributes: {
+          'data-id-style-token': 'synth_text_031',
+          'data-id-style-name': '文字样式 31',
+        },
+        text: '总平面图',
+        boundsMm: { x: 0, y: 0, width: 60, height: 10 },
+        computedStyle: {
+          color: 'rgb(51, 51, 51)',
+          fontFamily: '微软雅黑, Arial, sans-serif',
+          fontSize: '24px',
+          lineHeight: '30px',
+          fontWeight: '700',
+          fontStyle: 'normal',
+          textAlign: 'right',
+          backgroundColor: 'rgb(255, 79, 167)',
+        },
+        ruleStyle: {
+          fontFamily: '"微软雅黑", Arial, sans-serif',
+          fontWeight: '700',
+          fontSize: '24px',
+          lineHeight: '30px',
+          color: '#333333',
+          textAlign: 'right',
+        },
+        runs: [],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const item = styled.pages[0].items[0];
+  const paragraphStyle = styled.styles.paragraphStyles[item.styleRefs.paragraphStyle];
+  const objectStyle = styled.styles.objectStyles[item.styleRefs.objectStyle];
+
+  assert.equal(paragraphStyle.labels[0].token, 'synth_text_031',
+    'paragraph style identity must use the canonical synthesized token, not the class name');
+  assert.equal(paragraphStyle.displayName, '文字样式-31');
+  assert.equal(objectStyle.labels[0].token, 'synth_text_031',
+    'text-frame object style identity must fold back into the same synthesized token');
+});
+
+test('compileStyles compiles declared object styles for line items only', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [
+        {
+          id: 'declared-rule',
+          role: 'line',
+          tagName: 'svg',
+          classList: ['ostyle-装饰线', 'id-object'],
+          attributes: {
+            'data-id-object-style': '装饰线',
+            'data-id-object-style-name': '装饰线',
+            'data-id-role': 'line',
+            'data-id-stroke-color': '#8ca064',
+            'data-id-stroke-weight': '0.5',
+            'data-id-stroke-style': '实底',
+          },
+          text: '',
+          boundsMm: { x: 0, y: 0, width: 0, height: 30 },
+          computedStyle: {},
+          vectorGeometry: { kind: 'line', paths: [] },
+          runs: [],
+        },
+        {
+          id: 'token-only-rule',
+          role: 'line',
+          tagName: 'svg',
+          classList: ['synth-synth_line_007', 'id-object'],
+          attributes: {
+            'data-id-style-token': 'synth_line_007',
+            'data-id-style-name': '线条样式 07',
+            'data-id-role': 'line',
+            'data-id-stroke-color': '#8ca064',
+            'data-id-stroke-weight': '0.5',
+          },
+          text: '',
+          boundsMm: { x: 10, y: 0, width: 0, height: 30 },
+          computedStyle: {},
+          vectorGeometry: { kind: 'line', paths: [] },
+          runs: [],
+        },
+      ],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const declared = styled.pages[0].items[0];
+  const tokenOnly = styled.pages[0].items[1];
+
+  assert.equal(declared.styleRefs.objectStyle, '装饰线');
+  assert.equal(styled.styles.objectStyles['装饰线'].strokeWeight, 0.5);
+  assert.equal(tokenOnly.styleRefs.objectStyle, null,
+    'token-only lines stay on the synthesized style path');
+});

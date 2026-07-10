@@ -273,12 +273,12 @@ function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {
 }
 
 function foldSynthesizedStyleRefs(refs) {
-  for (const key of ['objectStyle', 'frameStyle']) {
-    const match = /^synth-(synth_[a-z]+_\d+)$/.exec(String(refs[key] || ''));
+  for (const key of ['paragraphStyle', 'objectStyle', 'frameStyle']) {
+    const match = /^synth_[a-z]+_\d+$/.exec(String(refs[key] || ''));
     if (!match) continue;
     refs[key] = null;
     refs[`${key}DisplayName`] = null;
-    if (!refs.synthesizedToken) refs.synthesizedToken = match[1];
+    if (!refs.synthesizedToken) refs.synthesizedToken = match[0];
   }
   return refs;
 }

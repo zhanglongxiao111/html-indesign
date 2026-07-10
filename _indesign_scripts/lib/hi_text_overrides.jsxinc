@@ -1,9 +1,11 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 // Apply per-item residual text formatting on top of the declared paragraph
-// style. Paragraph-level properties cover the whole frame text; character
-// level properties only touch ranges not owned by character-styled runs so
-// character styles keep winning where they are declared.
+// style. Paragraph-level properties cover the whole frame text. Character
+// level properties are applied per segment: uncovered gaps take the full
+// residual, while ranges owned by character-styled runs only take the
+// properties their character style definition leaves undefined, so character
+// styles keep winning where they declare a value.
 HI.applyTextOverride = function (doc, frame, override, runs, report) {
     if (!override) return;
     var text = null;
@@ -12,38 +14,77 @@ HI.applyTextOverride = function (doc, frame, override, runs, report) {
     try { if (override.justification) text.justification = HI.justificationFor(override.justification); } catch (_) {}
     try { if (override.spaceBefore !== null && typeof override.spaceBefore !== "undefined") text.spaceBefore = HI.ptValue(override.spaceBefore); } catch (_) {}
     try { if (override.spaceAfter !== null && typeof override.spaceAfter !== "undefined") text.spaceAfter = HI.ptValue(override.spaceAfter); } catch (_) {}
-    var ranges = HI.textOverrideRanges(frame, runs || []);
-    for (var i = 0; i < ranges.length; i++) {
-        HI.applyCharacterLevelOverride(doc, ranges[i], override, report);
+    var segments = HI.textOverrideSegments(frame, runs || []);
+    for (var i = 0; i < segments.length; i++) {
+        var effective = segments[i].characterStyle
+            ? HI.overrideOutsideCharacterStyle(override, segments[i].characterStyle)
+            : override;
+        if (effective) HI.applyCharacterLevelOverride(doc, segments[i].range, effective, report);
     }
 };
 
-HI.textOverrideRanges = function (frame, runs) {
+// Split the frame text into contiguous segments: gaps between runs carry
+// characterStyle null; run-covered stretches carry the run's style name.
+HI.textOverrideSegments = function (frame, runs) {
     var out = [];
     var total = 0;
     try { total = frame.texts[0].characters.length; } catch (_) { return out; }
     if (!total) return out;
-    var covered = [];
+    var cursor = 0;
     var index = 0;
     for (var i = 0; i < runs.length; i++) {
         var length = String(runs[i].text || "").length;
-        if (runs[i].characterStyle && length > 0) covered.push([index, index + length - 1]);
+        if (runs[i].characterStyle && length > 0) {
+            if (index > cursor) HI.pushOverrideSegment(out, frame, cursor, index - 1, null, total);
+            HI.pushOverrideSegment(out, frame, index, index + length - 1, String(runs[i].characterStyle), total);
+            cursor = index + length;
+        }
         index += length;
     }
-    var cursor = 0;
-    for (var c = 0; c < covered.length; c++) {
-        if (covered[c][0] > cursor) out.push(HI.textRangeFor(frame, cursor, covered[c][0] - 1));
-        cursor = covered[c][1] + 1;
-    }
-    if (cursor < total) out.push(HI.textRangeFor(frame, cursor, total - 1));
-    var filtered = [];
-    for (var f = 0; f < out.length; f++) { if (out[f]) filtered.push(out[f]); }
-    return filtered;
+    if (cursor < total) HI.pushOverrideSegment(out, frame, cursor, total - 1, null, total);
+    return out;
+};
+
+HI.pushOverrideSegment = function (out, frame, start, end, characterStyle, total) {
+    if (start > end || start >= total) return;
+    if (end >= total) end = total - 1;
+    var range = HI.textRangeFor(frame, start, end);
+    if (range) out.push({ range: range, characterStyle: characterStyle });
 };
 
 HI.textRangeFor = function (frame, start, end) {
     try { return frame.texts[0].characters.itemByRange(start, end); } catch (_) {}
     return null;
+};
+
+// Keep only the override properties the run's character style definition does
+// not declare. Unknown style names stay fully owned by their character style.
+HI.overrideOutsideCharacterStyle = function (override, styleName) {
+    var defs = HI.characterStyleDefs || {};
+    var def = defs.hasOwnProperty(styleName) ? defs[styleName] : null;
+    if (!def) return null;
+    var keys = ["pointSize", "leading", "fillColor", "tracking", "appliedFont", "fontStyleName", "capitalization"];
+    var out = {};
+    var any = false;
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var value = override[key];
+        if (value === null || typeof value === "undefined" || value === "") continue;
+        if (HI.characterStyleDefines(def, key)) continue;
+        out[key] = value;
+        any = true;
+    }
+    if (!any) return null;
+    if (out.appliedFont) {
+        if (override.fontWeight !== null && typeof override.fontWeight !== "undefined") out.fontWeight = override.fontWeight;
+        if (override.fontStyle !== null && typeof override.fontStyle !== "undefined") out.fontStyle = override.fontStyle;
+    }
+    return out;
+};
+
+HI.characterStyleDefines = function (def, key) {
+    var value = def[key];
+    return value !== null && typeof value !== "undefined" && value !== "";
 };
 
 HI.applyCharacterLevelOverride = function (doc, range, override, report) {

@@ -43,8 +43,9 @@ function styleIdentityForKind(item, kind, name, options) {
   const attributes = item && item.attributes || {};
   const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
   const explicitToken = styleTokenForKind(attributes, kind);
+  const synthesizedToken = explicitName(attributes, [HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN]);
   const className = styleClassNameForKind(item, kind);
-  const token = explicitToken || className || name;
+  const token = explicitToken || synthesizedToken || className || name;
   const displayName = explicitDisplay || mappedStyleName(token, kind, options) || name;
   return {
     token: token || name,
@@ -111,7 +112,9 @@ function styleClassNameForKind(item, kind) {
 
 function detectedStyleClassPrefix(className) {
   const lower = String(className || '').toLowerCase();
-  return ['cellstyle-', 'pstyle-', 'cstyle-', 'ostyle-', 'fstyle-', 'tstyle-']
+  // synth- marks a synthesized style token class; it is never a declared
+  // style name for any kind, so detecting it here makes every kind skip it.
+  return ['cellstyle-', 'pstyle-', 'cstyle-', 'ostyle-', 'fstyle-', 'tstyle-', 'synth-']
     .find((prefix) => lower.startsWith(prefix)) || null;
 }
 
@@ -125,6 +128,27 @@ function styleClassPrefix(kind) {
     cellStyles: 'cellstyle-',
   };
   return byKind[kind] || null;
+}
+
+function hasDeclaredStyleIdentity(item, kind) {
+  const attributes = item && item.attributes || {};
+  const dedicatedDisplayAttr = styleDisplayAttributes(kind)[0];
+  const dedicatedTokenAttr = styleTokenAttributes(kind)[0];
+  if (dedicatedDisplayAttr && explicitName(attributes, [dedicatedDisplayAttr])) return true;
+  if (dedicatedTokenAttr && explicitName(attributes, [dedicatedTokenAttr])) return true;
+  return Boolean(declaredStyleClassName(item, kind));
+}
+
+function declaredStyleClassName(item, kind) {
+  const ownPrefix = styleClassPrefix(kind);
+  if (!ownPrefix) return null;
+  for (const value of item && item.classList || []) {
+    const className = sanitizeStyleName(value);
+    if (!className || detectedStyleClassPrefix(className) !== ownPrefix) continue;
+    const stripped = sanitizeStyleName(className.slice(ownPrefix.length));
+    if (stripped) return stripped;
+  }
+  return null;
 }
 
 function isUtilityClass(className) {
@@ -150,4 +174,5 @@ module.exports = {
   styleTokenForKind,
   styleIdentityForKind,
   styleProtocolLabel,
+  hasDeclaredStyleIdentity,
 };

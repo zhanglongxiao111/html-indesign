@@ -298,12 +298,10 @@ function parentPageItemsFor(items) {
 
 function parentPageModelItemFor(item, parentPage) {
   const id = item.parentPageSourceId || item.id;
-  return {
-    ...item,
-    id,
-    parentPageItem: true,
-    structure: null,
-    labels: [createProtocolLabel({
+  const pageItemLabel = Array.isArray(item.labels) && item.labels[0] ? item.labels[0] : null;
+  const labelPayload = pageItemLabel
+    ? { ...pageItemLabel, id, structure: null }
+    : {
       kind: 'item',
       id,
       source: 'html-to-indesign',
@@ -311,7 +309,13 @@ function parentPageModelItemFor(item, parentPage) {
       semantic: item.semantic,
       htmlTag: item.tagName || null,
       className: (item.classList || []).join(' '),
-    })],
+    };
+  return {
+    ...item,
+    id,
+    parentPageItem: true,
+    structure: null,
+    labels: [createProtocolLabel(labelPayload)],
   };
 }
 
@@ -419,8 +423,27 @@ function itemExtensionsFor(item) {
   if (item.effects) {
     indesign.effects = item.effects;
   }
+  const textFrameStyle = textFrameStyleFromComputedStyle(item);
+  if (textFrameStyle) {
+    indesign.textFrameStyle = textFrameStyle;
+  }
   if (!Object.keys(indesign).length) return null;
   return { indesign };
+}
+
+// Mirror of the HTML writer flex encoding for InDesign vertical justification:
+// display:flex + flex-direction:column + justify-content marks a vertically
+// justified text frame; flex-start is the InDesign default and stays implicit.
+function textFrameStyleFromComputedStyle(item) {
+  if (item.role !== 'text') return null;
+  const style = item.computedStyle || {};
+  if (String(style.display || '') !== 'flex') return null;
+  if (String(style.flexDirection || '') !== 'column') return null;
+  const value = String(style.justifyContent || '').toLowerCase();
+  if (value === 'center') return { verticalJustification: 'center' };
+  if (value === 'flex-end' || value === 'end') return { verticalJustification: 'flex-end' };
+  if (value === 'space-between') return { verticalJustification: 'space-between' };
+  return null;
 }
 
 const STYLE_NAME_REF_KEYS = new Set([

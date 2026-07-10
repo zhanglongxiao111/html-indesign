@@ -69,6 +69,7 @@ HI.ensureParagraphStyles = function (doc, paragraphStyles, report) {
 };
 HI.ensureCharacterStyles = function (doc, characterStyles, report) {
     var out = {};
+    HI.characterStyleDefs = characterStyles || {};
     for (var name in characterStyles) {
         if (!characterStyles.hasOwnProperty(name)) continue;
         var def = characterStyles[name];

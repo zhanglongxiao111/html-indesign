@@ -31,6 +31,7 @@ HI.createTextFrame = function (doc, page, item, context, report) {
     HI.applyStyleOverride(doc, frame, item.styleOverride, report);
     HI.disableTextFrameAutoSizing(frame);
     frame.geometricBounds = HI.boundsToGeometricBounds(item.bounds);
+    HI.applyTextFrameStyle(frame, item.textFrameStyle);
     var text = HI.textFromRuns(item);
     frame.contents = text;
     HI.applyParagraphStyle(doc, frame, item.paragraphStyle, report);
@@ -67,6 +68,22 @@ HI.applyRuns = function (doc, frame, runs, report) {
 
 HI.clearTextFrameInsets = function (frame) {
     try { frame.textFramePreferences.insetSpacing = [0, 0, 0, 0]; } catch (_) {}
+};
+
+// Mirror of HI.reverseVerticalJustification in hi_reverse_styles.jsxinc.
+HI.applyTextFrameStyle = function (frame, textFrameStyle) {
+    if (!textFrameStyle || !textFrameStyle.verticalJustification) return;
+    try {
+        frame.textFramePreferences.verticalJustification = HI.verticalJustificationFor(textFrameStyle.verticalJustification);
+    } catch (_) {}
+};
+
+HI.verticalJustificationFor = function (value) {
+    var key = String(value || "").toLowerCase();
+    if (key === "center") return VerticalJustification.CENTER_ALIGN;
+    if (key === "flex-end" || key === "end") return VerticalJustification.BOTTOM_ALIGN;
+    if (key === "space-between") return VerticalJustification.JUSTIFY_ALIGN;
+    return VerticalJustification.TOP_ALIGN;
 };
 
 HI.disableTextFrameAutoSizing = function (frame) {

@@ -2,6 +2,8 @@
   const snapshotStyleProps = [
     'position',
     'display',
+    'flexDirection',
+    'justifyContent',
     'left',
     'top',
     'width',

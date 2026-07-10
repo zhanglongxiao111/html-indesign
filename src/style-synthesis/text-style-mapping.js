@@ -47,13 +47,22 @@ function isCjkFontFamily(family) {
 }
 
 function fontStyleNameFor(style) {
-  const weight = Number(style.fontWeight || 400);
   const italic = /italic|oblique/i.test(String(style.fontStyle || ''));
-  const bold = Number.isFinite(weight) ? weight >= 600 : /bold/i.test(String(style.fontWeight || ''));
-  if (bold && italic) return 'Bold Italic';
-  if (bold) return 'Bold';
-  if (italic) return 'Italic';
-  return 'Regular';
+  const face = fontFaceForWeight(style.fontWeight);
+  if (face === 'Regular') return italic ? 'Italic' : 'Regular';
+  return italic ? `${face} Italic` : face;
+}
+
+function fontFaceForWeight(fontWeight) {
+  const weight = Number(fontWeight || 400);
+  if (!Number.isFinite(weight)) return /bold/i.test(String(fontWeight || '')) ? 'Bold' : 'Regular';
+  if (weight >= 850) return 'Black';
+  if (weight >= 650) return 'Bold';
+  if (weight >= 550) return 'Semibold';
+  if (weight >= 450) return 'Medium';
+  if (weight >= 350) return 'Regular';
+  if (weight >= 200) return 'Light';
+  return 'Thin';
 }
 
 module.exports = {

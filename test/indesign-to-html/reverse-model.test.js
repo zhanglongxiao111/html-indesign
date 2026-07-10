@@ -1865,7 +1865,7 @@ test('reverseSnapshotToSemanticModel drops built-in default style names instead 
   assert.equal(custom.styleRefs.objectStyle, null, '[无] object style must not become a style ref');
 });
 
-test('reverseSnapshotToSemanticModel folds synthesized-style object styles back into tokens', () => {
+test('reverseSnapshotToSemanticModel folds synthesized-style refs back into tokens', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'synth-styles.indd', mode: 'observation' },
     document: { name: 'synth-styles.indd', labels: [] },
@@ -1876,11 +1876,24 @@ test('reverseSnapshotToSemanticModel folds synthesized-style object styles back 
           protocol: 'html-indesign',
           version: 1,
           kind: 'style',
-          id: 'synth-synth_object_007',
+          id: 'synth_object_007',
           source: 'html-to-indesign',
           styleKind: 'objectStyles',
-          token: 'synth-synth_object_007',
+          token: 'synth_object_007',
           displayName: '对象样式-7',
+        }],
+      }],
+      paragraphStyles: [{
+        name: '文字样式-31',
+        labels: [{
+          protocol: 'html-indesign',
+          version: 1,
+          kind: 'style',
+          id: 'synth_text_031',
+          source: 'html-to-indesign',
+          styleKind: 'paragraphStyles',
+          token: 'synth_text_031',
+          displayName: '文字样式-31',
         }],
       }],
     },
@@ -1899,6 +1912,14 @@ test('reverseSnapshotToSemanticModel folds synthesized-style object styles back 
             objectStyleName: '对象样式-7',
             visualStyle: { fillColor: '#dddddd' },
           },
+          {
+            id: 'synth-styled-text',
+            type: 'TextFrame',
+            bounds: { x: 10, y: 80, width: 120, height: 40 },
+            labels: [],
+            text: '样式回读',
+            paragraphStyleName: '文字样式-31',
+          },
         ],
       },
     ],
@@ -1908,4 +1929,9 @@ test('reverseSnapshotToSemanticModel folds synthesized-style object styles back 
   assert.equal(item.styleRefs.objectStyle, null, 'synthesized object style must not surface as an ostyle ref');
   assert.equal(item.styleRefs.objectStyleDisplayName, null);
   assert.equal(item.styleRefs.synthesizedToken, 'synth_object_007', 'token identity must be inherited from the style label');
+
+  const textItem = model.pages[0].items[1];
+  assert.equal(textItem.styleRefs.paragraphStyle, null, 'synthesized paragraph style must not surface as a pstyle ref');
+  assert.equal(textItem.styleRefs.paragraphStyleDisplayName, null);
+  assert.equal(textItem.styleRefs.synthesizedToken, 'synth_text_031', 'token identity must be inherited from the paragraph style label');
 });

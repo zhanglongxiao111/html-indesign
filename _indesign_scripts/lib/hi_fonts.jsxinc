@@ -26,11 +26,20 @@ HI.fontByName = function (name) {
 HI.fontStyleNameFor = function (def) {
     var explicit = String(def.fontStyleName || "");
     if (explicit) return explicit;
-    var weight = Number(def.fontWeight || 400);
     var italic = /italic|oblique/i.test(String(def.fontStyle || ""));
-    var bold = isFinite(weight) ? weight >= 600 : /bold/i.test(String(def.fontWeight || ""));
-    if (bold && italic) return "Bold Italic";
-    if (bold) return "Bold";
-    if (italic) return "Italic";
-    return "Regular";
+    var face = HI.fontFaceForWeight(def.fontWeight);
+    if (face === "Regular") return italic ? "Italic" : "Regular";
+    return italic ? face + " Italic" : face;
+};
+
+HI.fontFaceForWeight = function (fontWeight) {
+    var weight = Number(fontWeight || 400);
+    if (!isFinite(weight)) return /bold/i.test(String(fontWeight || "")) ? "Bold" : "Regular";
+    if (weight >= 850) return "Black";
+    if (weight >= 650) return "Bold";
+    if (weight >= 550) return "Semibold";
+    if (weight >= 450) return "Medium";
+    if (weight >= 350) return "Regular";
+    if (weight >= 200) return "Light";
+    return "Thin";
 };

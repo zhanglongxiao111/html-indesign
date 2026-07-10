@@ -331,6 +331,7 @@ function textInstructionItemFor({
   const textFit = textFitPolicy(modelItem, options);
   const text = textForInstruction(modelItem, content);
   const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
+  const textFrameStyle = textFrameStyleForInstruction(modelItem);
   return {
     ...base,
     type: 'TEXT',
@@ -341,10 +342,18 @@ function textInstructionItemFor({
     frameStyle: styleRefs.frameStyle,
     runs: runsForInstruction(modelItem, content, text),
     ...(modelItem.textOverride ? { textOverride: modelItem.textOverride } : {}),
+    ...(textFrameStyle ? { textFrameStyle } : {}),
     ...(textFit ? { textFit } : {}),
     ...(visualStyle ? { visualStyle } : {}),
     ...(styleOverride ? { styleOverride } : {}),
   };
+}
+
+function textFrameStyleForInstruction(modelItem) {
+  const style = modelItem.extensions?.indesign?.textFrameStyle;
+  const vertical = style && style.verticalJustification;
+  if (!vertical || vertical === 'flex-start') return null;
+  return { verticalJustification: vertical };
 }
 
 function graphicInstructionItemFor({

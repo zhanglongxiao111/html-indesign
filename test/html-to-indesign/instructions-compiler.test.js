@@ -1056,3 +1056,39 @@ test('compileInstructions emits editable text for textual annotation objects', a
   assert.equal(annotationText.bounds.x, 89);
   assert.equal(annotationText.paragraphStyle, 'annotation');
 });
+
+test('compileInstructions carries vertical justification into text instructions', () => {
+  const instructions = compileInstructions({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 80,
+      rectPx: { x: 0, y: 0, width: 100, height: 80 },
+      attributes: { 'data-page': 'page-1' },
+      computedStyle: {},
+      items: [{
+        id: 'justified-copy',
+        role: 'text',
+        tagName: 'p',
+        classList: ['id-object'],
+        attributes: { 'data-id-paragraph-style': '正文' },
+        rectPx: { x: 10, y: 10, width: 60, height: 40 },
+        computedStyle: {
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          fontFamily: 'Arial, sans-serif',
+          fontSize: '12px',
+        },
+        text: '居中文本',
+        runs: [],
+      }],
+    }],
+    assets: [],
+  }, { mode: 'editable-first', unitMode: 'print' });
+
+  const item = instructions.pages[0].items.find((candidate) => candidate.type === 'TEXT');
+  assert.deepEqual(item.textFrameStyle, { verticalJustification: 'center' });
+});
