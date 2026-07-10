@@ -6,6 +6,17 @@ const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tr
 const { ownContent } = require('../../src/writers/html/author-rich-text-renderer');
 const { tableSourceHtmlMatchesTable } = require('../../src/adapters/indesign/normalizer/table-source-html');
 const { writeReverseAuthorPackage } = require('../../src/writers/html');
+const { boundsIntersectPage } = require('../../src/shared/geometry');
+
+test('boundsIntersectPage separates on-page bounds from pasteboard bounds', () => {
+  const page = { width: 100, height: 50 };
+  assert.equal(boundsIntersectPage({ x: 10, y: 10, width: 10, height: 10 }, page), true);
+  assert.equal(boundsIntersectPage({ x: -5, y: -5, width: 10, height: 10 }, page), true);
+  assert.equal(boundsIntersectPage({ x: 0, y: -20, width: 10, height: 10 }, page), false);
+  assert.equal(boundsIntersectPage({ x: 120, y: 10, width: 10, height: 10 }, page), false);
+  assert.equal(boundsIntersectPage({ x: 0, y: 60, width: 10, height: 10 }, page), false);
+  assert.equal(boundsIntersectPage({ x: 0, y: -20, width: 10, height: 10 }, {}), true);
+});
 
 const TABLE_SOURCE_HTML = [
   '',
@@ -222,6 +233,57 @@ test('writeReverseAuthorPackage writes labeled parent-page furniture back into p
   const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
   assert.match(pageHtml, /<span[^>]+data-id-parent-page-item="report-parent"[^>]*>00<\/span>/);
   assert.match(pageHtml, /data-id-parent-page-source-id="report-folio"/);
+});
+
+test('writeReverseAuthorPackage carries pasteboard parent items once with explicit placement', () => {
+  const outDir = path.resolve('test/workspace/reverse-furniture-pasteboard-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const model = furnitureModel({ withPageInstance: false });
+  model.parentPages[0].items.push({
+    id: 'section-stash',
+    role: 'text',
+    tagName: 'span',
+    content: { text: '项目现状 /Project status', runs: [] },
+    bounds: { x: 1032, y: -132, width: 430, height: 32 },
+    labelStatus: 'accepted',
+    labels: [{
+      protocol: 'html-indesign',
+      version: 1,
+      kind: 'item',
+      id: 'section-stash',
+      source: 'indesign-reverse',
+      role: 'text',
+    }],
+  });
+  const secondPage = {
+    ...model.pages[0],
+    id: 'agenda-page-2',
+    semantic: 'agenda-2',
+    sourceFile: 'pages/02-agenda.html',
+    sourceNode: {
+      ...model.pages[0].sourceNode,
+      id: 'agenda-page-2',
+      attributes: { 'data-page': 'agenda-2', 'data-id-parent-page': 'report-parent' },
+    },
+    items: [],
+  };
+  model.pages = [model.pages[0], secondPage];
+  model.sourcePackage.pageFiles = [
+    { id: 'agenda', file: 'pages/01-agenda.html' },
+    { id: 'agenda-2', file: 'pages/02-agenda.html' },
+  ];
+
+  writeReverseAuthorPackage(model, { outDir, mode: 'authoring' });
+
+  const page1 = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  const page2 = fs.readFileSync(path.join(outDir, 'pages/02-agenda.html'), 'utf8');
+  const stashSpans1 = page1.match(/data-id-parent-page-source-id="section-stash"/g) || [];
+  assert.equal(stashSpans1.length, 1, 'pasteboard item must be carried exactly once on the first page of its parent');
+  assert.match(page1, /data-id-placement="parent-page-pasteboard"/);
+  assert.doesNotMatch(page2, /section-stash/);
+  assert.match(page1, /data-id-parent-page-source-id="report-folio"/);
+  assert.match(page2, /data-id-parent-page-source-id="report-folio"/, 'on-page furniture must still reach every page');
 });
 
 test('writeReverseAuthorPackage keeps per-page furniture instances without duplicating the parent item', () => {

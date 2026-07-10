@@ -71,6 +71,9 @@ module.exports = [
     [
       'sourceNode.attributes.data-id-placement',
       'pages[].items[].sourceNode.attributes.data-id-placement',
+      'pages[].items[].placement',
+      'pages[].parentPageItems[].placement',
+      'parentPages[].items[].placement',
     ],
     'data-id-placement',
     'string',

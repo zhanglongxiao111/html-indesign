@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { boundsIntersectPage } = require('../../shared/geometry');
 
 function validateInstructions(instructions, options = {}) {
   const errors = [];
@@ -7,6 +8,10 @@ function validateInstructions(instructions, options = {}) {
   const documentPages = instructions.document && Array.isArray(instructions.document.pages)
     ? instructions.document.pages
     : [];
+  const parentPageItemById = parentPageItemLookupFor(instructions.document);
+  const documentPageSize = documentPages.length
+    ? { width: Number(documentPages[0].width), height: Number(documentPages[0].height) }
+    : null;
   const pageIds = new Set(documentPages.map((page) => page.id));
   const assets = instructions.assets || [];
   const assetIds = new Set(assets.map((asset) => asset.id));
@@ -39,7 +44,7 @@ function validateInstructions(instructions, options = {}) {
       validateTextFit(item, errors);
     }
     for (const override of page.parentPageItemOverrides || []) {
-      validateParentPageItemOverride(page, override, styles, errors);
+      validateParentPageItemOverride(page, override, styles, errors, parentPageItemById, documentPageSize);
     }
   }
 
@@ -89,7 +94,18 @@ function resolveInstructionAssetPath(asset, baseDir) {
   return path.resolve(baseDir, raw);
 }
 
-function validateParentPageItemOverride(page, override, styles, errors) {
+function parentPageItemLookupFor(documentInstruction) {
+  const out = new Map();
+  for (const parentPage of documentInstruction && documentInstruction.parentPages || []) {
+    for (const item of parentPage && parentPage.items || []) {
+      if (!item || item.id == null || out.has(String(item.id))) continue;
+      out.set(String(item.id), item);
+    }
+  }
+  return out;
+}
+
+function validateParentPageItemOverride(page, override, styles, errors, parentPageItemById = new Map(), documentPageSize = null) {
   if (!override || !override.parentPageSourceId) {
     errors.push({
       code: 'PARENT_PAGE_ITEM_OVERRIDE_SOURCE_MISSING',
@@ -105,6 +121,16 @@ function validateParentPageItemOverride(page, override, styles, errors) {
       message: `Parent-page item override '${override.id}' has unsupported type '${override.type}'.`,
       pageId: page.id,
       itemId: override.id,
+    });
+  }
+  const parentPageItem = parentPageItemById.get(String(override.parentPageSourceId));
+  if (parentPageItem && documentPageSize && !boundsIntersectPage(parentPageItem.bounds, documentPageSize)) {
+    errors.push({
+      code: 'PARENT_PAGE_ITEM_OVERRIDE_OFF_PARENT_PAGE',
+      message: `Parent-page item override '${override.id}' on page '${page.id}' targets parent-page item '${override.parentPageSourceId}' that lies entirely on the parent-page pasteboard; InDesign cannot override pasteboard parent items onto pages.`,
+      pageId: page.id,
+      itemId: override.id,
+      parentPageSourceId: override.parentPageSourceId,
     });
   }
   validateBounds(override, errors);

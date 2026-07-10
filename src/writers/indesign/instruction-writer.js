@@ -35,6 +35,7 @@ const { applyBackgroundParentPages } = require('./background-instructions');
 const {
   effectiveParentPageRefForPage,
   filterEffectiveParentPages,
+  isParentPagePasteboardItem,
   parentPageKeySet,
 } = require('../../semantic-model/parent-pages');
 const { applySynthesizedStyleInstructions } = require('./synthesized-style-instructions');
@@ -145,6 +146,7 @@ function parentPageItemOverridesFor(page, parentPageRef, layout, report) {
   }
   const overrides = [];
   for (const item of instances) {
+    if (isParentPagePasteboardItem(item)) continue;
     if (item.role !== 'text') {
       addMessage(report, 'warning', 'PARENT_PAGE_ITEM_OVERRIDE_UNSUPPORTED', 'Only text parent-page furniture supports per-page overrides; non-text furniture keeps the parent page content.', {
         pageId: page.id,

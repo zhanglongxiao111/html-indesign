@@ -1,3 +1,15 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
+
+const PARENT_PAGE_PASTEBOARD_PLACEMENT = 'parent-page-pasteboard';
+
+function isParentPagePasteboardItem(item) {
+  const placement = item && item.placement
+    || item && item.sourceNode && item.sourceNode.attributes
+      && item.sourceNode.attributes[HTML_DATA_ID_ATTRIBUTES.PLACEMENT]
+    || item && item.attributes && item.attributes[HTML_DATA_ID_ATTRIBUTES.PLACEMENT];
+  return String(placement || '').trim() === PARENT_PAGE_PASTEBOARD_PLACEMENT;
+}
+
 function filterEffectiveParentPages(parentPages = [], pages = [], hasEffectiveContent = defaultHasContent) {
   const parentPageLookup = parentPageLookupFor(parentPages);
   const usage = expandParentPageUsage(parentPageUsageFor(pages), parentPageLookup);
@@ -127,8 +139,10 @@ function defaultHasContent(parentPage) {
 }
 
 module.exports = {
+  PARENT_PAGE_PASTEBOARD_PLACEMENT,
   effectiveParentPageRefForPage,
   filterEffectiveParentPages,
+  isParentPagePasteboardItem,
   pageHasEffectiveParentPage,
   parentPageKeySet,
 };

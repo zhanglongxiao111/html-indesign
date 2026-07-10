@@ -81,6 +81,18 @@ function rectPxToMm({ rectPx, pageRectPx, pageWidthMm, pageHeightMm }) {
   };
 }
 
+function boundsIntersectPage(bounds, pageSize) {
+  const pageWidth = Number(pageSize && pageSize.width);
+  const pageHeight = Number(pageSize && pageSize.height);
+  if (!Number.isFinite(pageWidth) || !Number.isFinite(pageHeight) || pageWidth <= 0 || pageHeight <= 0) return true;
+  const left = Number(bounds && bounds.x || 0);
+  const top = Number(bounds && bounds.y || 0);
+  const right = left + Math.max(0, Number(bounds && bounds.width || 0));
+  const bottom = top + Math.max(0, Number(bounds && bounds.height || 0));
+  return Math.max(left, 0) <= Math.min(right, pageWidth)
+    && Math.max(top, 0) <= Math.min(bottom, pageHeight);
+}
+
 function boundsToGeometricBounds(bounds) {
   return [
     bounds.y,
@@ -101,5 +113,6 @@ module.exports = {
   parseStyleDeclarations,
   parsePhysicalSize,
   rectPxToMm,
+  boundsIntersectPage,
   boundsToGeometricBounds,
 };

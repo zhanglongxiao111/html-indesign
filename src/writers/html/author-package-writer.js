@@ -15,10 +15,12 @@ const { loadStandardSemanticPreset } = require('../../semantic-preset');
 const { writeRevealPresentation } = require('./reveal-presentation-writer');
 const { isUsefulSemantic } = require('./author-render-utils');
 const {
+  PARENT_PAGE_PASTEBOARD_PLACEMENT,
   filterEffectiveParentPages,
   pageHasEffectiveParentPage,
   parentPageKeySet,
 } = require('../../semantic-model/parent-pages');
+const { boundsIntersectPage } = require('../../shared/geometry');
 
 const SEMANTIC_ATTR = htmlWriteAttrFromRegistry('items[].semantic');
 
@@ -41,9 +43,10 @@ function writeReverseAuthorPackage(model, options = {}) {
     hasEffectiveAuthorParentPageContent,
   );
   const effectiveParentPageKeys = parentPageKeySet(effectiveParentPages);
+  const pasteboardCarriedParentPages = new Set();
   const pages = pageEntries(model, sourceConfig).map((page) => ({
     ...page,
-    authorPage: pageWithAppliedParentItems(page.modelPage, effectiveParentPages),
+    authorPage: pageWithAppliedParentItems(page.modelPage, effectiveParentPages, pasteboardCarriedParentPages),
   }));
   const generatedCss = writeAuthorCssFiles({ ...model, pages: pages.map((page) => page.authorPage) });
   const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
@@ -309,19 +312,31 @@ function sourceNodeAttribute(page, name) {
     : null;
 }
 
-function pageWithAppliedParentItems(page, parentPages = []) {
+function pageWithAppliedParentItems(page, parentPages = [], pasteboardCarriedParentPages = new Set()) {
   const parentPage = appliedParentPageFor(page, parentPages);
   const instantiatedSourceIds = pageFurnitureSourceIds(page);
-  const parentItems = parentPage && Array.isArray(parentPage.items)
+  const writableItems = parentPage && Array.isArray(parentPage.items)
     ? parentPage.items
       .filter(shouldWriteParentPageItem)
       .filter((item) => !instantiatedSourceIds.has(String(item.id || '')))
     : [];
-  if (!parentItems.length) return page;
+  const parentItems = writableItems.filter((item) => boundsIntersectPage(item.bounds, page));
+  const pasteboardItems = writableItems.filter((item) => !boundsIntersectPage(item.bounds, page));
+  const parentPageKey = parentPage ? String(parentPage.id || parentPage.name || '') : '';
+  let carriedPasteboardItems = [];
+  if (pasteboardItems.length && parentPageKey && !pasteboardCarriedParentPages.has(parentPageKey)) {
+    pasteboardCarriedParentPages.add(parentPageKey);
+    carriedPasteboardItems = pasteboardItems;
+  }
+  if (!parentItems.length && !carriedPasteboardItems.length) return page;
   return {
     ...page,
     items: [
       ...parentItems.map((item, index) => parentPageItemForPage(item, parentPage, page, index)),
+      ...carriedPasteboardItems.map((item, index) => ({
+        ...parentPageItemForPage(item, parentPage, page, parentItems.length + index),
+        placement: PARENT_PAGE_PASTEBOARD_PLACEMENT,
+      })),
       ...(page.items || []),
     ],
   };

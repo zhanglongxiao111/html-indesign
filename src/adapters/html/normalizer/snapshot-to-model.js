@@ -352,6 +352,7 @@ function itemModelFor(item, page, layout) {
   });
   const parentPageName = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM] || null;
   const parentPageSourceId = attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_SOURCE_ID] || null;
+  const placement = attrs[HTML_DATA_ID_ATTRIBUTES.PLACEMENT] || null;
   const extensions = itemExtensionsFor(item);
   const modelItem = {
     id: item.id,
@@ -373,6 +374,7 @@ function itemModelFor(item, page, layout) {
     sourceAncestorNodes,
     parentPageItem: parentPageName || null,
     parentPageSourceId,
+    placement,
     structure,
     layout: itemLayout,
     styleRefs,
@@ -401,6 +403,7 @@ function itemModelFor(item, page, layout) {
   };
   if (!modelItem.parentPageItem) delete modelItem.parentPageItem;
   if (!modelItem.parentPageSourceId) delete modelItem.parentPageSourceId;
+  if (!modelItem.placement) delete modelItem.placement;
   return modelItem;
 }
 

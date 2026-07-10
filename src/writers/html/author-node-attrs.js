@@ -77,6 +77,9 @@ function addParentPageAttrs(attrs, item) {
   const parentRef = item.parentPageId || item.parentPageName || '';
   if (parentRef) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_ITEM] = parentRef;
   if (item.parentPageSourceId) attrs[HTML_DATA_ID_ATTRIBUTES.PARENT_PAGE_SOURCE_ID] = item.parentPageSourceId;
+  if (item.placement && !attrs[HTML_DATA_ID_ATTRIBUTES.PLACEMENT]) {
+    attrs[HTML_DATA_ID_ATTRIBUTES.PLACEMENT] = item.placement;
+  }
 }
 
 function addObservedLabelAttrs(attrs, item) {

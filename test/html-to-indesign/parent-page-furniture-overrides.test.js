@@ -123,3 +123,82 @@ test('validateInstructions parentPageItemOverrides invalid-input 必须 fail', (
   assert.ok(result2.errors.some((error) => error.code === 'INVALID_BOUNDS'));
   assert.ok(result2.errors.some((error) => error.code === 'PARENT_PAGE_ITEM_OVERRIDE_LABEL_MISSING'));
 });
+
+test('semanticModelToInstructions keeps pasteboard parent items on the parent page without emitting overrides', () => {
+  const instructions = semanticModelToInstructions({
+    kind: 'DocumentModel',
+    id: 'pasteboard-doc',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    styles: {},
+    parentPages: [{
+      id: 'report-parent',
+      name: '汇报母版',
+      items: [{
+        id: 'section-stash',
+        role: 'text',
+        bounds: { x: 1032, y: -132, width: 430, height: 32 },
+        content: { text: '项目现状 /Project status', runs: [] },
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'section-stash', source: 'html-to-indesign', role: 'text' }],
+      }],
+    }],
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 800,
+      height: 450,
+      parentPageId: 'report-parent',
+      parentPageName: '汇报母版',
+      items: [],
+      parentPageItems: [{
+        id: 'p1-section-stash',
+        role: 'text',
+        parentPageItem: 'report-parent',
+        parentPageSourceId: 'section-stash',
+        placement: 'parent-page-pasteboard',
+        bounds: { x: 1032, y: -132, width: 430, height: 32 },
+        content: { text: '项目现状 /Project status', runs: [] },
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'p1-section-stash', source: 'html-to-indesign', role: 'text' }],
+      }],
+    }],
+  });
+
+  assert.equal((instructions.pages[0].parentPageItemOverrides || []).length, 0, 'pasteboard furniture must not be overridden onto pages');
+  const stash = instructions.document.parentPages
+    .flatMap((parentPage) => parentPage.items || [])
+    .find((item) => item.id === 'section-stash');
+  assert.ok(stash, 'parent page must keep the pasteboard item for master fidelity');
+  const validation = validateInstructions(instructions, {});
+  const offPageErrors = validation.errors.filter((error) => error.code === 'PARENT_PAGE_ITEM_OVERRIDE_OFF_PARENT_PAGE');
+  assert.equal(offPageErrors.length, 0);
+});
+
+test('validateInstructions rejects overrides targeting pasteboard parent items', () => {
+  const result = validateInstructions({
+    document: {
+      pages: [{ id: 'p1', width: 800, height: 450 }],
+      parentPages: [{
+        id: 'report-parent',
+        name: '汇报母版',
+        items: [{ id: 'section-stash', type: 'TEXT', bounds: { x: 1032, y: -132, width: 430, height: 32 } }],
+      }],
+    },
+    styles: { paragraphStyles: {} },
+    assets: [],
+    pages: [{
+      id: 'p1',
+      items: [],
+      parentPageItemOverrides: [{
+        id: 'p1-section-stash',
+        parentPageSourceId: 'section-stash',
+        type: 'TEXT',
+        text: '项目现状',
+        bounds: { x: 100, y: 20, width: 200, height: 30 },
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'p1-section-stash', source: 'html-to-indesign', role: 'text' }],
+      }],
+    }],
+  }, {});
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.code === 'PARENT_PAGE_ITEM_OVERRIDE_OFF_PARENT_PAGE'));
+});
