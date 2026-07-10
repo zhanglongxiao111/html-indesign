@@ -22,6 +22,10 @@ const G4_RULE_METADATA = {
     reason: 'Audit command wrappers must exit nonzero when required evidence is missing or unknowable.',
     remediation: 'Return a nonzero exit code for missing required inputs instead of printing a success-like result.',
   },
+  'G4.3 src audit module invalid-input coverage': {
+    reason: 'Every src audit module must be exercised by a test file with an invalid-input 必须 fail case, or its fail-closed behavior is unverified.',
+    remediation: 'Add an invalid-input 必须 fail test with real failure evidence to a test file that requires this audit module.',
+  },
 };
 
 test('G4 catches an audit script with no invalid-input 必须 fail test and a silent zero exit', () => {
@@ -50,6 +54,45 @@ test('G4 catches an audit script with no invalid-input 必须 fail test and a si
   assert.match(message, /Rule: G4\.2 audit cli unknown input exits nonzero/);
   assert.match(message, /Reason: Audit gates must have an explicit invalid-input 必须 fail test before they can be trusted as fail-closed\./);
   assert.match(message, new RegExp(`Spec: ${escapeRegExp(SPEC_PATH)}`));
+});
+
+test('G4 catches a src audit module with no invalid-input 必须 fail coverage', () => {
+  const root = makeSampleProject({
+    'src/writers/html/audit/sample-gate.js': 'module.exports = { auditSampleGate: () => { throw new Error("INVALID_INPUT"); } };\n',
+    'test/sample-gate.test.js': [
+      'const test = require("node:test");',
+      'const { auditSampleGate } = require("../src/writers/html/audit/sample-gate.js");',
+      'test("sample-gate happy path", () => { auditSampleGate; });',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, [{
+    rule: 'G4.3 src audit module invalid-input coverage',
+    file: 'src/writers/html/audit/sample-gate.js',
+    detail: 'no test file with an invalid-input 必须 fail case requires this audit module',
+  }]);
+});
+
+test('G4 accepts a src audit module required by a test file with real invalid-input evidence', () => {
+  const root = makeSampleProject({
+    'src/writers/html/audit/sample-gate.js': 'module.exports = { auditSampleGate: () => { throw new Error("INVALID_INPUT"); } };\n',
+    'test/sample-gate.test.js': [
+      'const test = require("node:test");',
+      'const assert = require("node:assert/strict");',
+      'const { auditSampleGate } = require("../src/writers/html/audit/sample-gate.js");',
+      'test("sample-gate invalid-input 必须 fail", () => {',
+      '  assert.throws(() => auditSampleGate());',
+      '});',
+      '',
+    ].join('\n'),
+  });
+
+  const violations = collectG4Violations(root);
+
+  assert.deepEqual(violations, []);
 });
 
 test('G4 ignores invalid-input coverage text in comments and ordinary strings', () => {
@@ -256,6 +299,17 @@ function collectG4Violations(repoRoot) {
   const invalidInputEvidenceNames = collectNodeTestInvalidInputEvidenceNames(repoRoot);
   const violations = [];
 
+  const srcAuditModules = collectSrcAuditModules(repoRoot);
+  const coveredModules = collectInvalidInputCoveredModules(repoRoot);
+  for (const module of srcAuditModules) {
+    if (coveredModules.has(module)) continue;
+    violations.push({
+      rule: 'G4.3 src audit module invalid-input coverage',
+      file: repoRelative(repoRoot, module),
+      detail: 'no test file with an invalid-input 必须 fail case requires this audit module',
+    });
+  }
+
   for (const script of scripts) {
     const basename = path.basename(script, '.js');
     const relativeScript = repoRelative(repoRoot, script);
@@ -292,6 +346,54 @@ function collectAuditScripts(repoRoot) {
     .filter((name) => /^audit-.*\.js$/.test(name))
     .map((name) => path.join(scriptsDir, name))
     .sort();
+}
+
+function collectSrcAuditModules(repoRoot) {
+  const srcDir = path.join(repoRoot, 'src');
+  if (!fs.existsSync(srcDir)) return [];
+  return collectFiles(srcDir, { repoRoot })
+    .filter((file) => /[\\/]audit[\\/][^\\/]+\.js$/.test(file))
+    .sort();
+}
+
+function collectInvalidInputCoveredModules(repoRoot) {
+  const covered = new Set();
+  const testDir = path.join(repoRoot, 'test');
+  if (!fs.existsSync(testDir)) return covered;
+  const testFiles = collectFiles(testDir, {
+    repoRoot,
+    shouldSkipDirectory: (directory) => repoRelative(repoRoot, directory).startsWith('test/workspace'),
+  })
+    .filter((file) => file.endsWith('.test.js'))
+    .filter((file) => !repoRelative(repoRoot, file).startsWith('test/architecture/'));
+
+  for (const file of testFiles) {
+    const source = fs.readFileSync(file, 'utf8');
+    const hasInvalidInputCase = extractNodeTestCases(source).some(
+      (testCase) => testCase.name.includes('invalid-input 必须 fail') && hasInvalidInputFailureEvidence(testCase.body)
+    );
+    if (!hasInvalidInputCase) continue;
+    for (const module of resolveRequiredModules(source, path.dirname(file))) {
+      covered.add(module);
+    }
+  }
+  return covered;
+}
+
+function resolveRequiredModules(source, fromDirectory) {
+  const modules = [];
+  const codeMask = codeMaskFor(source);
+  for (const match of source.matchAll(/require\(\s*['"](\.[^'"]+)['"]\s*\)/g)) {
+    if (!codeMask[match.index]) continue;
+    const base = path.resolve(fromDirectory, match[1]);
+    for (const candidate of [base, `${base}.js`, path.join(base, 'index.js')]) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        modules.push(candidate);
+        break;
+      }
+    }
+  }
+  return modules;
 }
 
 function collectNodeTestInvalidInputEvidenceNames(repoRoot) {
@@ -371,7 +473,8 @@ function hasThrowAssertion(testBody) {
 
 function hasExplicitInvalidResultAssertion(testBody) {
   const hasOkFalse = hasCodeMatch(testBody, /assert\.(?:equal|strictEqual)\s*\([^)]*\.ok\s*,\s*false\b/);
-  const hasSpecificErrorCode = hasCodeMatch(testBody, /assert\.(?:equal|strictEqual|match)\s*\([^)]*\.(?:code|errorCode)\s*,\s*['"][A-Z0-9_-]+['"]/);
+  const hasSpecificErrorCode = hasCodeMatch(testBody, /assert\.(?:equal|strictEqual|match)\s*\([^)]*\.(?:code|errorCode)\s*,\s*['"][A-Z0-9_-]+['"]/)
+    || hasCodeMatch(testBody, /\.(?:code|errorCode)\s*===\s*['"][A-Z0-9_-]+['"]/);
   return hasOkFalse && hasSpecificErrorCode;
 }
 

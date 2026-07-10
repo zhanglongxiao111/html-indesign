@@ -293,3 +293,7 @@ function lossyPageHtml() {
 </section>
 `;
 }
+
+test('auditAuthorSourceRoundtrip invalid-input 必须 fail', () => {
+  assert.throws(() => auditAuthorSourceRoundtrip(null));
+});

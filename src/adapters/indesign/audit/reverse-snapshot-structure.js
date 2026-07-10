@@ -238,8 +238,8 @@ function parentSignature(parent) {
 function protocolItemIdentity(item) {
   const label = firstLabel(item.labels, 'item');
   if (label && label.id) return { kind: 'label', value: String(label.id) };
-  const legacy = String(item.label || '').match(/(?:^|;)id=([^;]+)/);
-  if (legacy) return { kind: 'legacy-label', value: legacy[1] };
+  const labelIdMatch = String(item.label || '').match(/(?:^|;)id=([^;]+)/);
+  if (labelIdMatch) return { kind: 'legacy-label', value: labelIdMatch[1] };
   return { kind: 'fingerprint', value: null };
 }
 

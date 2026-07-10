@@ -607,3 +607,15 @@ function writeMinimalAuthorPackage(root, pageHtml) {
   const { writeAuthorPackageEntry } = require('../src/authoring');
   writeAuthorPackageEntry(configPath);
 }
+
+test('auditSecondPassAuthorStability invalid-input 必须 fail', () => {
+  assert.throws(() => auditSecondPassAuthorStability(null));
+});
+
+test('assertNoTextOverset invalid-input 必须 fail', () => {
+  assert.throws(() => assertNoTextOverset(null));
+});
+
+test('assertPanelNameAuditOk invalid-input 必须 fail', () => {
+  assert.throws(() => assertPanelNameAuditOk(null));
+});

@@ -2,6 +2,7 @@ const fs = require('fs');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 
 function assertPanelNameAuditOk(result, options = {}) {
+  assertResultInputValid(result, 'assertPanelNameAuditOk');
   const allowed = panelNameSet(options.allowedPanelNames || []);
   const asciiNames = (result && result.audit && result.audit.panelAsciiNames || [])
     .filter((entry) => !isAllowedBuiltInPanelName(entry.kind, entry.name))
@@ -35,6 +36,7 @@ function observedPanelNamesForHtml(htmlPath) {
 }
 
 function assertNoTextOverset(result) {
+  assertResultInputValid(result, 'assertNoTextOverset');
   const count = Number(result && result.counts && result.counts.oversetTextFrames || 0);
   const directFrames = result && Array.isArray(result.oversetTextFrames) ? result.oversetTextFrames : [];
   const messages = [
@@ -58,6 +60,14 @@ function assertNoTextOverset(result) {
 
 function isAllowedBuiltInPanelName(kind, name) {
   return kind === 'swatches' && ['None', 'Registration', 'Paper', 'Black'].includes(String(name));
+}
+
+function assertResultInputValid(result, gateName) {
+  if (result === null || typeof result !== 'object' || Array.isArray(result)) {
+    const error = new Error(`${gateName} requires an E2E result object; refusing to pass on missing evidence`);
+    error.code = 'E2E_RESULT_INPUT_INVALID';
+    throw error;
+  }
 }
 
 function panelNameSet(entries) {

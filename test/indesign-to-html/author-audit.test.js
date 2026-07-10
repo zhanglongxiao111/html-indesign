@@ -259,3 +259,7 @@ test('auditReverseAuthorPackage does not warn for degenerate invisible vector le
   assert.equal(audit.ok, true);
   assert.equal(audit.warnings.some((warning) => warning.code === 'AUTHOR_UNSUPPORTED_VECTOR_FALLBACK'), false);
 });
+
+test('auditReverseAuthorPackage invalid-input 必须 fail', () => {
+  assert.throws(() => auditReverseAuthorPackage(null));
+});

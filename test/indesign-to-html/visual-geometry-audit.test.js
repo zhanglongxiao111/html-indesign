@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { compareVisualGeometry } = require('../../src/writers/html/audit/visual-geometry-audit');
 const {
   enrichCaptureWithReverseModelSourceMetadata,
+  loadReverseHtmlEvidence,
 } = require('../../src/writers/html/audit/reverse-visual-evidence');
 
 test('compareVisualGeometry reports missing and shifted author elements', () => {
@@ -482,4 +483,12 @@ test('compareVisualGeometry rejects page-number class-only text metrics drift', 
   assert.equal(report.errors.some((issue) => issue.code === 'AUTHOR_VISUAL_GEOMETRY_MISMATCH' && issue.id === 'folio'), true);
   assert.equal(report.stats.mismatched, 1);
   assert.equal(report.stats.accepted, 0);
+});
+
+test('compareVisualGeometry invalid-input 必须 fail', () => {
+  assert.throws(() => compareVisualGeometry(null, null));
+});
+
+test('loadReverseHtmlEvidence invalid-input 必须 fail', () => {
+  assert.throws(() => loadReverseHtmlEvidence({}));
 });

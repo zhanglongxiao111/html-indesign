@@ -67,3 +67,10 @@ test('audit fails for duplicate tokens and missing Chinese display names', () =>
   assert.equal(report.issues.some((issue) => issue.code === 'SYNTHESIZED_STYLE_DISPLAY_NAME_MISSING'), true);
   assert.equal(report.issues.some((issue) => issue.code === 'SYNTHESIZED_STYLE_TOKEN_DUPLICATED'), true);
 });
+
+test('auditSynthesizedStyles invalid-input 必须 fail', () => {
+  const report = auditSynthesizedStyles(null);
+
+  assert.equal(report.ok, false);
+  assert.equal(report.issues.some((item) => item.code === 'SYNTHESIZED_STYLE_AUDIT_INPUT_INVALID'), true);
+});

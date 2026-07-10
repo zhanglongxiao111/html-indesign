@@ -12,7 +12,7 @@ const SPEC_PATH = 'docs/superpowers/specs/2026-07-06-architecture-hardening-guar
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const BASELINE_PATH = path.join(__dirname, 'baselines', 'G5.json');
 const APPROVED_BASELINE = { exemptions: [] };
-const RETIRED_PATTERN = /\blegacy\b|pagedHtml|paged-html/gi;
+const RETIRED_PATTERN = /legacy|paged[-_]?html/gi;
 
 const G5_RULE_METADATA = {
   'G5.1 retired naming is blocked': {
@@ -24,6 +24,9 @@ const G5_RULE_METADATA = {
 test('G5 catches retired names outside the allowed observation and legacy-doc zones', () => {
   const root = makeSampleProject({
     'src/example/old.js': 'const pagedHtml = require("./legacy");\n',
+    'src/example/runner.js': 'function runLegacyExport() {}\n',
+    'src/adapters/indesign/audit/reverse-snapshot-structure.js': 'const legacy = 1;\n',
+    'scripts/audit-old-path.js': 'const legacyMode = 1;\n',
     '_indesign_scripts/lib/hi_old.jsxinc': 'var source = "pagedHtml";\n',
     'test/examples/paged-html-case.test.js': 'test path names are scanned even though test file contents are not.\n',
     'docs/legacy/history.md': 'legacy and paged-html are historical here.\n',
@@ -43,6 +46,16 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
     },
     {
       rule: 'G5.1 retired naming is blocked',
+      file: 'scripts/audit-old-path.js',
+      detail: 'line 1 contains legacy',
+    },
+    {
+      rule: 'G5.1 retired naming is blocked',
+      file: 'src/adapters/indesign/audit/reverse-snapshot-structure.js',
+      detail: 'line 1 contains legacy',
+    },
+    {
+      rule: 'G5.1 retired naming is blocked',
       file: 'src/example/old.js',
       detail: 'line 1 contains legacy',
     },
@@ -50,6 +63,11 @@ test('G5 catches retired names outside the allowed observation and legacy-doc zo
       rule: 'G5.1 retired naming is blocked',
       file: 'src/example/old.js',
       detail: 'line 1 contains pagedHtml',
+    },
+    {
+      rule: 'G5.1 retired naming is blocked',
+      file: 'src/example/runner.js',
+      detail: 'line 1 contains Legacy',
     },
     {
       rule: 'G5.1 retired naming is blocked',
@@ -158,7 +176,6 @@ function allowedOccurrence(relativeFile, line, token) {
   if (allowedPath(relativeFile, token)) return true;
   if (String(token).toLowerCase() === 'legacy' && line.includes('legacy-label')) return true;
   if (token === 'legacy-label') return true;
-  if (relativeFile === 'src/adapters/indesign/audit/reverse-snapshot-structure.js' && String(token).toLowerCase() === 'legacy') return true;
   if (isProtocolLifecycleVocabulary(relativeFile, line, token)) return true;
   return false;
 }
@@ -181,6 +198,7 @@ function shouldSkip(relativeFile) {
 function isGuardrailScope(relativeFile) {
   return [
     'src/',
+    'scripts/',
     '_indesign_scripts/',
     'test/',
   ].some((prefix) => relativeFile.startsWith(prefix));

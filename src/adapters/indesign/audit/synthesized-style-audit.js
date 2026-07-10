@@ -1,4 +1,12 @@
 function auditSynthesizedStyles(model) {
+  if (!isPlainObject(model)) {
+    return {
+      kind: 'SynthesizedStyleAuditReport',
+      ok: false,
+      summary: { styleCount: 0, referenceCount: 0, issueCount: 1 },
+      issues: [issue('SYNTHESIZED_STYLE_AUDIT_INPUT_INVALID', { received: model === null ? 'null' : typeof model })],
+    };
+  }
   const issues = [];
   const styles = Array.isArray(model && model.styles && model.styles.synthesized)
     ? model.styles.synthesized
