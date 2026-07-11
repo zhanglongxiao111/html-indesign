@@ -187,3 +187,59 @@ test('author package preserves inline facts and reports a missing synth rule', (
   const report = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/authoring-report.json'), 'utf8'));
   assert.deepEqual(report.styleResidual.missingSynthRules, [{ itemId: 'copy-a', token: 'missing-token' }]);
 });
+
+test('author package uses copied source synthesized rules when the reverse model no longer carries the registry', () => {
+  const root = path.resolve('test/workspace/source-synthesized-style-author-package');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'author');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(path.join(sourceRoot, 'styles'), { recursive: true });
+  fs.writeFileSync(path.join(sourceRoot, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'source-synth-doc',
+    title: '来源样式规则测试',
+    entry: 'deck.html',
+    styles: ['styles/components.css'],
+    pages: [{ id: 'p1', file: 'pages/00-p1.html' }],
+    assets: { root: 'assets' },
+    synthesizedStyles: [{
+      token: 'synth_text_001',
+      displayName: '文字样式 01',
+      kind: 'text',
+      properties: { pointSize: 24, fillColor: '#123456' },
+    }],
+  }, null, 2));
+  fs.writeFileSync(path.join(sourceRoot, 'styles/components.css'), '.synth-synth_text_001{font-size:24px;color:#123456}\n');
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'source-synth-doc',
+    title: '来源样式规则测试',
+    reverseMode: 'observation',
+    styles: { synthesized: [] },
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 800,
+      height: 450,
+      items: [{
+        id: 'copy-a',
+        role: 'text',
+        bounds: { x: 100, y: 120, width: 400, height: 80 },
+        content: { text: '样式来自上一轮作者包' },
+        styleRefs: { synthesizedToken: 'synth_text_001' },
+        textStyle: { pointSize: 24, fillColor: '#123456' },
+      }],
+    }],
+  }, { outDir, sourceRoot, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-p1.html'), 'utf8');
+  const copyTag = /<p[^>]+id="copy-a"[^>]*>/.exec(pageHtml)[0];
+  assert.doesNotMatch(copyTag, /font-size:24px|color:#123456/);
+  const report = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/authoring-report.json'), 'utf8'));
+  assert.deepEqual(report.styleResidual, {
+    removedProperties: 2,
+    itemsReduced: 1,
+    missingSynthRules: [],
+  });
+});

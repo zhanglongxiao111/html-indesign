@@ -96,6 +96,23 @@ test('parseArgs rejects --reconstruct outside experimental profile', () => {
   ]), /only valid with the experimental profile/);
 });
 
+test('parseArgs accepts PowerShell npm whitespace forwarding for reconstruction algorithms', () => {
+  const args = parseArgs([
+    '--snapshot', 'reverse.json',
+    '--out', 'out-dir',
+    '--reconstruction-profile', 'experimental',
+    '--reconstruct', 'reading-order-lite figure-grid text-block',
+  ]);
+
+  assert.deepEqual(args.reconstructionProfile.algorithms, [
+    'page-object-graph',
+    'caption-structure',
+    'figure-grid',
+    'text-block',
+    'reading-order-lite',
+  ]);
+});
+
 test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   const outDir = path.resolve('test/workspace/reverse-cli-test');
   fs.rmSync(outDir, { recursive: true, force: true });

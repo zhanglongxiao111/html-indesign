@@ -345,6 +345,37 @@ test('pageItemsToAuthorHtml can preserve trusted source markup without observati
   assert.doesNotMatch(html, /z-index:7/);
 });
 
+test('pageItemsToAuthorHtml keeps accepted source inline style exact in observation mode', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'page',
+    items: [{
+      id: 'copy-a',
+      role: 'text',
+      labelStatus: 'accepted',
+      sourceNode: {
+        tagName: 'p',
+        id: 'copy-a',
+        classList: ['synth-synth_text_001'],
+        attributes: { style: 'border:0 solid transparent;z-index:2' },
+      },
+      styleRefs: { synthesizedToken: 'synth_text_001' },
+      textStyle: { pointSize: 24, fillColor: '#123456' },
+      structure: { parentId: 'page', order: 1 },
+      content: { text: 'Trusted roundtrip copy' },
+    }],
+  }, {
+    mode: 'observation',
+    synthesizedStyles: [{
+      token: 'synth_text_001',
+      kind: 'text',
+      properties: { pointSize: 24, fillColor: '#123456' },
+    }],
+  });
+
+  assert.match(html, /id="copy-a"[^>]+style="border:0 solid transparent;z-index:2"/);
+  assert.doesNotMatch(html, /font-size:24px|color:#123456/);
+});
+
 test('pageItemsToAuthorHtml restores InDesign character styles as inline character tags', () => {
   const page = {
     id: 'agenda-page',
@@ -456,6 +487,87 @@ test('pageItemsToAuthorHtml restores missing nonvisual source ancestor wrappers'
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
   assert.match(html, /<div class="legend-item">\n\s+<span class="swatch" style="background:var\(--accent\)"><\/span>\n\s+<span>Service rooms<\/span>\n<\/div>/);
+});
+
+test('pageItemsToAuthorHtml keeps every sibling inside the same identified virtual source ancestor', () => {
+  const ancestor = {
+    sourcePath: 'section>section:nth-of-type(1)',
+    tagName: 'section',
+    id: 'page-text-block-1',
+    classList: ['text-block', 'id-object'],
+    attributes: { id: 'page-text-block-1', class: 'text-block id-object' },
+  };
+  const page = {
+    id: 'page',
+    items: [
+      {
+        id: 'copy-a',
+        role: 'text',
+        sourceNode: { tagName: 'p', id: 'copy-a', classList: [], attributes: {} },
+        sourceAncestorNodes: [ancestor],
+        structure: { parentId: 'page', order: 1 },
+        content: { text: 'First' },
+      },
+      {
+        id: 'copy-b',
+        role: 'text',
+        sourceNode: { tagName: 'p', id: 'copy-b', classList: [], attributes: {} },
+        sourceAncestorNodes: [ancestor],
+        structure: { parentId: 'page', order: 2 },
+        content: { text: 'Second' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<section id="page-text-block-1" class="text-block id-object">\n\s+<p id="copy-a">First<\/p>\n\s+<p id="copy-b">Second<\/p>\n<\/section>/);
+});
+
+test('pageItemsToAuthorHtml keeps a physical child under its physical parent when they share an outer virtual ancestor', () => {
+  const grid = {
+    sourcePath: 'section:nth-of-type(1)',
+    tagName: 'section',
+    id: 'page-figure-grid-1',
+    classList: ['figure-grid', 'id-object'],
+    attributes: { id: 'page-figure-grid-1', class: 'figure-grid id-object' },
+  };
+  const page = {
+    id: 'page',
+    items: [
+      {
+        id: 'figure-a',
+        role: 'graphic',
+        sourceNode: {
+          tagName: 'figure',
+          id: 'figure-a',
+          classList: [],
+          attributes: {},
+          sourcePath: 'section:nth-of-type(1)>figure:nth-of-type(1)',
+        },
+        sourceAncestorNodes: [grid],
+        structure: { parentId: 'page', order: 1 },
+      },
+      {
+        id: 'caption-a',
+        role: 'text',
+        sourceNode: {
+          tagName: 'figcaption',
+          id: 'caption-a',
+          classList: [],
+          attributes: {},
+          sourcePath: 'section:nth-of-type(1)>figure:nth-of-type(1)>figcaption:nth-of-type(1)',
+        },
+        sourceAncestorNodes: [grid],
+        structure: { parentId: 'figure-a', order: 2 },
+        content: { text: 'Caption' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
+
+  assert.match(html, /<section id="page-figure-grid-1" class="figure-grid id-object">\n\s+<figure id="figure-a">\n\s+<figcaption id="caption-a">Caption<\/figcaption>\n\s+<\/figure>\n<\/section>/);
 });
 
 test('pageItemsToAuthorHtml does not emit non-semantic automatic character spans', () => {

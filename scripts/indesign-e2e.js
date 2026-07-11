@@ -673,7 +673,7 @@ function withResolvedReconstructionProfile(options) {
 
 function parseAlgorithmList(value) {
   return String(value || '')
-    .split(',')
+    .split(/[\s,]+/)
     .map((entry) => entry.trim())
     .filter(Boolean);
 }

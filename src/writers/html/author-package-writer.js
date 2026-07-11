@@ -68,13 +68,14 @@ function writeReverseAuthorPackage(model, options = {}) {
     itemsReduced: 0,
     missingSynthRules: [],
   };
+  const synthesizedStyles = effectiveSynthesizedStyles(model, sourceConfig);
   const renderOptions = {
     ...options,
     sourceRoot,
     preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
     assetPathMap: assetCopy.pathMap,
     effectiveParentPageKeys,
-    synthesizedStyles: model.styles && model.styles.synthesized || [],
+    synthesizedStyles,
     styleResidualReport,
   };
   const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
@@ -111,6 +112,13 @@ function writeReverseAuthorPackage(model, options = {}) {
     report,
     semanticCandidates,
   };
+}
+
+function effectiveSynthesizedStyles(model, sourceConfig) {
+  if (sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'synthesizedStyles')) {
+    return Array.isArray(sourceConfig.synthesizedStyles) ? sourceConfig.synthesizedStyles : [];
+  }
+  return model.styles && Array.isArray(model.styles.synthesized) ? model.styles.synthesized : [];
 }
 
 function firstPageSize(pages) {

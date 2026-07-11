@@ -304,7 +304,7 @@ test('parseArgs resolves one reconstruction profile for all E2E rounds', () => {
   const options = parseArgs([
     '--reverse-roundtrip',
     '--reconstruction-profile=experimental',
-    '--reconstruct=reading-order-lite,figure-grid,figure-grid,text-block',
+    '--reconstruct=reading-order-lite figure-grid figure-grid text-block',
   ], 'D:/AI/html-indesign');
 
   assert.deepEqual(options.reconstructionProfile, {

@@ -39,10 +39,10 @@ function attrsForItem(item, sourceNode, options) {
   }
   if (!classes.size && !hasSourceNode(sourceNode)) classes.add(classForRole(item.role));
   const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
-  const mergedStyle = preserveTrustedSource ? sourceStyle : authorInlineStyleForItem(item, sourceStyle, {
+  const preserveAcceptedSourceStyle = item && item.labelStatus === 'accepted' && hasSourceNode(sourceNode);
+  const mergedStyle = preserveTrustedSource || preserveAcceptedSourceStyle ? sourceStyle : authorInlineStyleForItem(item, sourceStyle, {
     synthesizedStyles: options.synthesizedStyles,
     styleResidualReport: options.styleResidualReport,
-    disableSynthResidual: item && item.labelStatus === 'accepted' && hasSourceNode(sourceNode),
   });
   if (mergedStyle) attrs.style = mergedStyle;
   if (classes.size) attrs.class = Array.from(classes).join(' ');

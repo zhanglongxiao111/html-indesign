@@ -56,6 +56,27 @@ test('reading-order-lite preserves trusted structures while ordering observed si
   assert.equal(pass.skipped.filter((entry) => entry.reason === 'trusted-source-protected').length, 2);
 });
 
+test('reading-order-lite preserves parent-page furniture positions while ordering page content around them', () => {
+  const furniture = {
+    ...item('parent-furniture', { x: 40, y: 20, width: 100, height: 40 }),
+    parentPageItem: true,
+    parentPageSourceId: 'furniture-source',
+    structure: null,
+  };
+  const model = documentModel([
+    item('observed-lower', { x: 40, y: 320, width: 100, height: 40 }),
+    furniture,
+    item('observed-upper', { x: 40, y: 120, width: 100, height: 40 }),
+  ]);
+  const furnitureBefore = JSON.stringify(furniture);
+
+  const pass = applyReadingOrderLite(model);
+
+  assert.equal(JSON.stringify(findItem(model, 'parent-furniture')), furnitureBefore);
+  assert.deepEqual(orders(model, ['observed-upper', 'observed-lower']), [1, 3]);
+  assert.equal(pass.skipped.filter((entry) => entry.reason === 'parent-page-furniture-protected').length, 1);
+});
+
 test('reading-order-lite is byte-stable and reports already stable items as skipped', () => {
   const model = documentModel([
     item('second', { x: 40, y: 240, width: 100, height: 40 }),

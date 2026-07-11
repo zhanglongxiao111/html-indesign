@@ -20,15 +20,16 @@ function applyReadingOrderLite(model) {
       })
       .sort((left, right) => compareReadingOrderTuples(left.tuple, right.tuple));
     const occupiedOrders = new Set(entries
-      .filter(({ item }) => isTrustedSourceEntity(item))
-      .map(({ item }) => explicitOrder(item))
+      .filter(({ item }) => protectedReason(item))
+      .map(({ item, tuple }) => explicitOrder(item) == null ? tuple.originalIndex + 1 : explicitOrder(item))
       .filter((order) => order != null));
     let nextOrder = 1;
 
     for (const entry of entries) {
       const { item, tuple } = entry;
-      if (isTrustedSourceEntity(item)) {
-        skipped.push(skippedItem(page, item, 'trusted-source-protected'));
+      const reason = protectedReason(item);
+      if (reason) {
+        skipped.push(skippedItem(page, item, reason));
         continue;
       }
       while (occupiedOrders.has(nextOrder)) nextOrder += 1;
@@ -73,6 +74,12 @@ function applyReadingOrderLite(model) {
     applied,
     skipped,
   };
+}
+
+function protectedReason(item) {
+  if (isTrustedSourceEntity(item)) return 'trusted-source-protected';
+  if (item && item.parentPageItem === true) return 'parent-page-furniture-protected';
+  return null;
 }
 
 function explicitOrder(item) {

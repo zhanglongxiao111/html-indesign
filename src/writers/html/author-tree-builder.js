@@ -38,9 +38,10 @@ function buildAuthorTree(page) {
 function attachSourceAncestorNodes(nodes, rootId) {
   const parentOverrides = new Map();
   for (const node of Array.from(nodes.values())) {
-    const chain = sourceAncestorChain(node.item, nodes);
+    const structureParentId = node.item.structure && node.item.structure.parentId || rootId;
+    const chain = sourceAncestorChain(node.item, nodes, structureParentId);
     if (!chain.length) continue;
-    let parentId = node.item.structure && node.item.structure.parentId || rootId;
+    let parentId = structureParentId;
     for (const ancestor of chain) {
       const key = sourceAncestorKey(ancestor, node.item);
       ensureVirtualAncestorNode(nodes, key, ancestor, node.item, node.sourceIndex);
@@ -52,10 +53,24 @@ function attachSourceAncestorNodes(nodes, rootId) {
   return parentOverrides;
 }
 
-function sourceAncestorChain(item, nodes) {
-  return (item.sourceAncestorNodes || [])
+function sourceAncestorChain(item, nodes, structureParentId) {
+  const chain = (item.sourceAncestorNodes || [])
     .filter((ancestor) => ancestor && ancestor.tagName)
-    .filter((ancestor) => !(ancestor.id && ancestor.id !== item.id && nodes.has(ancestor.id)));
+    .filter((ancestor) => {
+      if (!ancestor.id || ancestor.id === item.id) return true;
+      const existing = nodes.get(String(ancestor.id));
+      return !existing || existing.item && existing.item.virtual === true;
+    });
+  const structureParent = nodes.get(structureParentId);
+  if (!structureParent || structureParent.item && structureParent.item.virtual === true) return chain;
+  const parentPath = sourcePathForItem(structureParent.item);
+  if (!parentPath) return [];
+  return chain.filter((ancestor) => ancestor.sourcePath && ancestor.sourcePath.startsWith(`${parentPath}>`));
+}
+
+function sourcePathForItem(item) {
+  const sourceNode = item && item.effectiveLabel && item.effectiveLabel.sourceNode || item && item.sourceNode;
+  return sourceNode && sourceNode.sourcePath || '';
 }
 
 function sourceAncestorKey(ancestor, item) {
