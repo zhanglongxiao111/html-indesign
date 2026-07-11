@@ -304,12 +304,30 @@ function observedAuthoredBounds(item, page, layout) {
   const style = item && item.authoredStyle || {};
   if (String(style.position || '').toLowerCase() !== 'absolute') return null;
   if (![style.left, style.top, style.width, style.height].every((value) => String(value || '').trim())) return null;
+  const ancestorOffset = observedAncestorOffset(item, page, layout);
   return {
-    x: cssLengthToTarget(style.left, layout),
-    y: cssLengthToTarget(style.top, layout),
+    x: round(cssLengthToTarget(style.left, layout) + ancestorOffset.x, 2),
+    y: round(cssLengthToTarget(style.top, layout) + ancestorOffset.y, 2),
     width: cssLengthToTarget(style.width, layout),
     height: cssLengthToTarget(style.height, layout),
   };
+}
+
+function observedAncestorOffset(item, page, layout) {
+  const ids = Array.isArray(item && item.ancestorCandidateIds) ? item.ancestorCandidateIds : [];
+  if (!ids.length) return { x: 0, y: 0 };
+  const itemsById = new Map((page && page.items || []).map((candidate) => [candidate && candidate.id, candidate]));
+  let x = 0;
+  let y = 0;
+  for (const id of ids) {
+    const ancestor = itemsById.get(id);
+    const style = ancestor && ancestor.authoredStyle || {};
+    if (String(style.position || '').toLowerCase() !== 'absolute') continue;
+    if (!String(style.left || '').trim() || !String(style.top || '').trim()) continue;
+    x += cssLengthToTarget(style.left, layout);
+    y += cssLengthToTarget(style.top, layout);
+  }
+  return { x, y };
 }
 
 function isObservedReverseItem(item, page) {

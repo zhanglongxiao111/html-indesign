@@ -1149,6 +1149,49 @@ test('snapshotToSemanticModel uses nearest candidate ancestor as structure paren
   assert.equal(model.pages[0].items[1].structure.parentId, 'card-1');
 });
 
+test('snapshotToSemanticModel restores page bounds from nested observed author coordinates', () => {
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      rectPx: { x: 0, y: 0, width: 1000, height: 600 },
+      widthMm: 264,
+      heightMm: 158,
+      attributes: { 'data-page': 'page-1', 'data-id-observed': 'true' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'figure-a',
+          role: 'graphic',
+          tagName: 'figure',
+          classList: ['id-object'],
+          attributes: { 'data-id-object': '' },
+          documentOrder: 1,
+          rectPx: { x: 100, y: 80, width: 240, height: 160 },
+          authoredStyle: { position: 'absolute', left: '100px', top: '80px', width: '240px', height: '160px' },
+        },
+        {
+          id: 'caption-a',
+          role: 'text',
+          tagName: 'figcaption',
+          classList: ['observed-text'],
+          attributes: {},
+          ancestorCandidateIds: ['figure-a'],
+          documentOrder: 2,
+          text: 'Caption',
+          rectPx: { x: 130, y: 210, width: 180, height: 24 },
+          authoredStyle: { position: 'absolute', left: '30px', top: '130px', width: '180px', height: '24px' },
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation' });
+
+  const caption = model.pages[0].items.find((item) => item.id === 'caption-a');
+  assert.deepEqual(caption.bounds, { x: 130, y: 210, width: 180, height: 24 });
+});
+
 test('snapshot keeps zero-dimension declared vector objects instead of dropping them', async () => {
   const snapshot = await renderSnapshot({
     htmlPath: path.resolve(__dirname, '../fixtures/fixed-html/zero-dimension-vector.html'),
