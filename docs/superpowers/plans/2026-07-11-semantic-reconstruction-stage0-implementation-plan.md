@@ -113,12 +113,12 @@ npm test
 
 **目标：** `none / experimental / safe`、依赖和执行顺序只定义一次，并在 snapshot CLI、`--indd`、插件和底层 pipeline 中一致生效。
 
-- [ ] 新建 `profiles.js`，集中定义规范顺序、依赖闭包、去重、未知名称拒绝以及 profile 解析结果。
-- [ ] 规范顺序固定为 `page-object-graph → caption-structure → figure-grid → text-block → reading-order-lite`；重复名称只执行一次，缺失依赖自动补齐后按规范顺序执行。
-- [ ] 底层 `compileReverseSnapshotToHtml` 必须收到显式 `reconstructionProfile`；不再把缺参静默解释为空列表。
-- [ ] CLI 新增 `--reconstruction-profile none|safe|experimental`；`--reconstruct` 仅在 experimental 下有效。
-- [ ] E2E 参数、递归第二轮、插件 schema、state 和 resume 全量透传相同字段；0F 前用户入口默认解析为 `none`，`safe` 列表暂不包含未准入 pass。
-- [ ] 更新帮助文本和测试，删除各入口自带的第二份默认列表或排序逻辑。
+- [x] 新建 `profiles.js`，集中定义规范顺序、依赖闭包、去重、未知名称拒绝以及 profile 解析结果。
+- [x] 规范顺序固定为 `page-object-graph → caption-structure → figure-grid → text-block → reading-order-lite`；重复名称只执行一次，缺失依赖自动补齐后按规范顺序执行。
+- [x] 底层 `compileReverseSnapshotToHtml` 必须收到显式 `reconstructionProfile`；不再把缺参静默解释为空列表。
+- [x] CLI 新增 `--reconstruction-profile none|safe|experimental`；`--reconstruct` 仅在 experimental 下有效。
+- [x] E2E 参数、递归第二轮、插件 schema、state 和 resume 全量透传相同字段；0F 前用户入口默认解析为 `none`，`safe` 列表暂不包含未准入 pass。
+- [x] 更新帮助文本和测试，删除各入口自带的第二份默认列表或排序逻辑。
 
 验证：
 

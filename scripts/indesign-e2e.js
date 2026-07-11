@@ -10,6 +10,11 @@ const { validateInstructions } = require('../src/writers/indesign');
 const { readAuthorPackage } = require('../src/authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../src/semantic-preset');
 const {
+  resolveReconstructionProfile,
+  assertResolvedReconstructionProfile,
+  RECONSTRUCTION_PROFILE_NAMES,
+} = require('../src/semantic-reconstruction');
+const {
   assertPanelNameAuditOk,
   observedPanelNamesForHtml,
   assertNoTextOverset,
@@ -82,7 +87,7 @@ function timestampFor(date) {
 }
 
 function parseArgs(argv, repoRoot) {
-  const options = { repoRoot };
+  const options = { repoRoot, reconstructAlgorithms: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--html') {
@@ -117,6 +122,14 @@ function parseArgs(argv, repoRoot) {
       options.reverseMode = parseReverseMode(argv[++index]);
     } else if (arg.startsWith('--reverse-mode=')) {
       options.reverseMode = parseReverseMode(arg.slice('--reverse-mode='.length));
+    } else if (arg === '--reconstruction-profile') {
+      options.reconstructionProfileName = argv[++index];
+    } else if (arg.startsWith('--reconstruction-profile=')) {
+      options.reconstructionProfileName = arg.slice('--reconstruction-profile='.length);
+    } else if (arg === '--reconstruct') {
+      options.reconstructAlgorithms = parseAlgorithmList(argv[++index]);
+    } else if (arg.startsWith('--reconstruct=')) {
+      options.reconstructAlgorithms = parseAlgorithmList(arg.slice('--reconstruct='.length));
     } else if (arg === '--second-pass-roundtrip') {
       options.secondPassRoundtrip = true;
     } else if (arg === '--help' || arg === '-h') {
@@ -130,12 +143,18 @@ function parseArgs(argv, repoRoot) {
     options.secondPassRoundtrip = true;
     if (!options.reverseMode) options.reverseMode = 'observation';
   }
+  options.reconstructionProfile = resolveReconstructionProfile({
+    profile: options.reconstructionProfileName,
+    algorithms: options.reconstructAlgorithms,
+  });
+  delete options.reconstructionProfileName;
+  delete options.reconstructAlgorithms;
   return options;
 }
 
 function usage() {
   return [
-    'Usage: node scripts/indesign-e2e.js [--html <deck.html> | --indd <document.indd>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--reverse-mode structured|inferred|observation] [--second-pass-roundtrip]',
+    `Usage: node scripts/indesign-e2e.js [--html <deck.html> | --indd <document.indd>] [--target-size qhd|2560x1440|same] [--run-dir <dir>] [--skip-preview] [--reverse-roundtrip] [--reverse-mode structured|inferred|observation] [--second-pass-roundtrip] [--reconstruction-profile ${RECONSTRUCTION_PROFILE_NAMES.join('|')}] [--reconstruct <algorithms>]`,
     'npm: npm run e2e:indesign -- -- --target-size qhd --reverse-roundtrip --second-pass-roundtrip',
     'human INDD: npm run e2e:indesign -- -- --indd <document.indd> --run-dir test/workspace/human-indd-e2e',
     '',
@@ -153,6 +172,7 @@ function parseReverseMode(value) {
 }
 
 async function runIndesignE2E(options = {}) {
+  options = withResolvedReconstructionProfile(options);
   const context = createRunContext(options);
   fs.mkdirSync(context.runDir, { recursive: true });
 
@@ -239,6 +259,7 @@ function aggregateE2EOk({ build, exportResult, reverse }) {
 }
 
 async function runHumanInddRoundtripE2E(options = {}) {
+  options = withResolvedReconstructionProfile(options);
   const context = createHumanInddRunContext(options);
   fs.mkdirSync(context.runDir, { recursive: true });
 
@@ -263,6 +284,7 @@ async function runHumanInddRoundtripE2E(options = {}) {
     outDir: context.reverseOutDir,
     mode: options.reverseMode || 'observation',
     assetPolicy: options.assetPolicy || 'reference',
+    reconstructionProfile: options.reconstructionProfile,
   });
   assertReverseCompilationOk(reverseHtml, 'Human InDesign reverse compilation failed');
   const author = reverseHtml.files && reverseHtml.files.author;
@@ -282,6 +304,7 @@ async function runHumanInddRoundtripE2E(options = {}) {
     secondPassRoundtrip: true,
     reverseMode: options.reverseMode || 'observation',
     styleNameMap: options.styleNameMap,
+    reconstructionProfile: options.reconstructionProfile,
   });
 
   const stability = authorRoundtrip.reverse && authorRoundtrip.reverse.canonicalStability;
@@ -488,6 +511,7 @@ async function runReverseRoundtrip(context, options = {}) {
     snapshotPath: context.reverseSnapshotPath,
     outDir: context.reverseOutDir,
     mode: reverseMode,
+    reconstructionProfile: options.reconstructionProfile,
   };
   if (sourceRoot) {
     reverseCompileOptions.sourceRoot = sourceRoot;
@@ -520,6 +544,7 @@ async function runReverseRoundtrip(context, options = {}) {
       secondPassRoundtrip: false,
       reverseMode,
       styleNameMap: options.styleNameMap,
+      reconstructionProfile: options.reconstructionProfile,
     })
     const reportDir = path.join(htmlResult.files.author.outDir, 'reports');
     canonicalStability = auditSecondPassAuthorStability({
@@ -637,6 +662,20 @@ function assertReverseCompilationOk(result, message) {
   if (result && result.ok === true) return;
   const evidence = result && result.report ? result.report : result || null;
   throw new Error(`${message}: ${JSON.stringify(evidence, null, 2)}`);
+}
+
+function withResolvedReconstructionProfile(options) {
+  const reconstructionProfile = options && options.reconstructionProfile
+    ? assertResolvedReconstructionProfile(options.reconstructionProfile)
+    : resolveReconstructionProfile({});
+  return { ...(options || {}), reconstructionProfile };
+}
+
+function parseAlgorithmList(value) {
+  return String(value || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 async function main() {

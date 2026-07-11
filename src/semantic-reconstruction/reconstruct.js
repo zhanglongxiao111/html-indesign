@@ -4,8 +4,9 @@ const { applyFigureGrid } = require('./figure-grid');
 const { applyTextBlock } = require('./text-block');
 const { applyReadingOrderLite } = require('./reading-order-lite');
 const { auditTrustedSourcePreservation } = require('./trusted-source-preservation');
+const { CANONICAL_ALGORITHM_ORDER } = require('./profiles');
 
-const SUPPORTED_ALGORITHMS = new Set(['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite']);
+const SUPPORTED_ALGORITHMS = new Set(CANONICAL_ALGORITHM_ORDER);
 
 function reconstructSemanticModel(observedModel, options = {}) {
   assertDocumentModel(observedModel);
@@ -28,6 +29,7 @@ function reconstructSemanticModel(observedModel, options = {}) {
     mode,
     sourceModelId: model.id || null,
     profile: model.profile || null,
+    reconstructionProfile: options.reconstructionProfile || null,
     algorithms,
     passes,
     summary: {
@@ -55,10 +57,7 @@ function normalizeAlgorithms(algorithms) {
       throw new Error(`Unknown semantic reconstruction algorithm: ${algorithm}`);
     }
   }
-  return [
-    ...normalized.filter((algorithm) => algorithm !== 'reading-order-lite'),
-    ...normalized.filter((algorithm) => algorithm === 'reading-order-lite'),
-  ];
+  return normalized;
 }
 
 function runAlgorithms(algorithms, model, options) {

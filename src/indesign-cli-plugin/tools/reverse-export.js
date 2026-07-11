@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { compileReverseSnapshotToHtml } = require('../../reverse-pipeline');
+const { resolveReconstructionProfile } = require('../../semantic-reconstruction');
 const { buildReverseSnapshotJsx } = require('../host-jsx');
 const { ensureOutputDir, getCwd, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
@@ -17,6 +18,10 @@ async function call(args, context) {
   const outDir = ensureOutputDir(context, args.outDir, 'html-plugin-reverse');
   const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
   const reverseScriptPath = path.join(outDir, 'reverse-snapshot.jsx');
+  const reconstructionProfile = resolveReconstructionProfile({
+    profile: args.reconstructionProfile,
+    algorithms: args.reconstruct,
+  });
 
   fs.writeFileSync(reverseScriptPath, buildReverseSnapshotJsx({
     repoRoot: cwd,
@@ -37,6 +42,7 @@ async function call(args, context) {
       assetPolicy: args.assetPolicy || 'reference',
       sourceRoot: args.sourceRoot ? resolveProjectPath(context, args.sourceRoot, 'sourceRoot') : null,
       nasPublicRoot: args.nasPublicRoot || '/nas',
+      reconstructionProfile,
     },
     actions: [
       {
@@ -85,6 +91,7 @@ async function resume(params) {
     sourceRoot: state.sourceRoot || undefined,
     assetPolicy: state.assetPolicy || 'reference',
     nasPublicRoot: state.nasPublicRoot || '/nas',
+    reconstructionProfile: state.reconstructionProfile,
   });
   const authorDeckPath = result.files && result.files.author ? result.files.author.entry : path.join(state.outDir, 'author', 'deck.html');
   const visualDeckPath = result.files ? result.files.visualHtml : path.join(state.outDir, 'deck.visual.html');

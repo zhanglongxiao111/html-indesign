@@ -14,6 +14,9 @@ test('manifest declares html-indesign as a host-only html domain plugin', () => 
   assert.equal(manifest.domain, 'html');
   assert.equal(manifest.entry, 'src/indesign-cli-plugin/index.js');
   assert.equal(manifest.permissions.indesign, 'host_only');
+  assert.equal(manifest.timeout_default_ms, 30000);
+  assert.equal(manifest.document_state_policy, 'host_reported');
+  assert.deepEqual(manifest.host_actions, ['script.run', 'export.verify', 'session.show']);
   assert.deepEqual(manifest.capabilities.host_actions, ['script.run', 'export.verify', 'session.show']);
 });
 

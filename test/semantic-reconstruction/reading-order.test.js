@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   applyReadingOrderLite,
   reconstructSemanticModel,
+  resolveReconstructionProfile,
 } = require('../../src/semantic-reconstruction');
 
 test('reading-order-lite compares wide-page positions as y then x', () => {
@@ -76,9 +77,13 @@ test('reconstructSemanticModel executes reading-order-lite after structure passe
     textItem('copy-1', 80, 140, '第一段'),
   ]);
 
+  const reconstructionProfile = resolveReconstructionProfile({
+    profile: 'experimental',
+    algorithms: ['reading-order-lite', 'text-block'],
+  });
   const result = reconstructSemanticModel(model, {
     mode: 'observation',
-    algorithms: ['reading-order-lite', 'text-block'],
+    algorithms: reconstructionProfile.algorithms,
   });
 
   assert.deepEqual(result.report.algorithms, ['text-block', 'reading-order-lite']);

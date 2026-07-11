@@ -297,6 +297,27 @@ test('parseArgs accepts reverse roundtrip flag', () => {
 
   assert.equal(options.reverseRoundtrip, true);
   assert.equal(options.targetSize, 'qhd');
+  assert.deepEqual(options.reconstructionProfile, { name: 'none', algorithms: [] });
+});
+
+test('parseArgs resolves one reconstruction profile for all E2E rounds', () => {
+  const options = parseArgs([
+    '--reverse-roundtrip',
+    '--reconstruction-profile=experimental',
+    '--reconstruct=reading-order-lite,figure-grid,figure-grid,text-block',
+  ], 'D:/AI/html-indesign');
+
+  assert.deepEqual(options.reconstructionProfile, {
+    name: 'experimental',
+    algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite'],
+  });
+});
+
+test('parseArgs rejects E2E reconstruct lists outside experimental profile', () => {
+  assert.throws(() => parseArgs([
+    '--reverse-roundtrip',
+    '--reconstruct=text-block',
+  ], 'D:/AI/html-indesign'), /only valid with the experimental profile/);
 });
 
 test('parseArgs accepts explicit reverse roundtrip mode', () => {

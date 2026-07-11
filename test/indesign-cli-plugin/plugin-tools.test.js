@@ -177,9 +177,34 @@ test('html.reverse_export returns script.run host action for an INDD file', () =
 
   assert.equal(response.status, 'requires_host_actions');
   assert.equal(response.state.tool_id, 'html.reverse_export');
+  assert.deepEqual(response.state.reconstructionProfile, { name: 'none', algorithms: [] });
   assert.equal(fs.existsSync(response.state.reverseScriptPath), true);
   assert.equal(response.actions.length, 1);
   assert.equal(response.actions[0].tool_id, 'script.run');
+});
+
+test('html.reverse_export stores the resolved experimental profile for resume', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-reverse-experimental-profile');
+  const absoluteOutDir = path.join(repoRoot, outDir);
+  fs.rmSync(absoluteOutDir, { recursive: true, force: true });
+  fs.mkdirSync(absoluteOutDir, { recursive: true });
+  const fakeIndd = path.join(absoluteOutDir, 'input.indd');
+  fs.writeFileSync(fakeIndd, 'fake');
+
+  const response = callPlugin('tools/call', {
+    id: 'html.reverse_export',
+    args: {
+      indd: fakeIndd,
+      outDir,
+      reconstructionProfile: 'experimental',
+      reconstruct: ['reading-order-lite', 'figure-grid', 'figure-grid', 'text-block'],
+    },
+  });
+
+  assert.deepEqual(response.state.reconstructionProfile, {
+    name: 'experimental',
+    algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite'],
+  });
 });
 
 test('html.reverse_export resume writes author html from reverse snapshot', () => {
@@ -199,6 +224,7 @@ test('html.reverse_export resume writes author html from reverse snapshot', () =
       assetPolicy: 'reference',
       sourceRoot: null,
       nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
     },
     host_results: [
       { id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } },
@@ -249,6 +275,7 @@ test('html.reverse_export resume fails visibly when reverse author audit fails',
       assetPolicy: 'reference',
       sourceRoot,
       nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
     },
     host_results: [
       { id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } },

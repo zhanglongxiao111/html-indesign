@@ -1,3 +1,9 @@
+const {
+  CANONICAL_ALGORITHM_ORDER,
+  DEFAULT_RECONSTRUCTION_PROFILE,
+  RECONSTRUCTION_PROFILE_NAMES,
+} = require('../semantic-reconstruction');
+
 const tools = [
   {
     id: 'html.authoring_lint',
@@ -15,6 +21,9 @@ const tools = [
     target_scope: 'project',
     needs_indesign: false,
     produces_artifacts: false,
+    preconditions: ['package 必须指向可读取的 deck.config.json。'],
+    return_example: { status: 'complete', data: { ok: true, issueCount: 0 }, artifacts: [] },
+    failure_example: { code: 'AUTHORING_LINT_FAILED', message: 'Authoring lint reported errors.' },
   },
   {
     id: 'html.compile_instructions',
@@ -32,6 +41,13 @@ const tools = [
     target_scope: 'project',
     needs_indesign: false,
     produces_artifacts: true,
+    preconditions: ['package 必须是已组装且可读取的作者源码包。'],
+    return_example: {
+      status: 'complete',
+      data: { ok: true, pageCount: 1 },
+      artifacts: [{ kind: 'json', path: 'test/workspace/html-plugin-compile/instructions.json' }],
+    },
+    failure_example: { code: 'INSTRUCTIONS_VALIDATION_FAILED', message: 'Compiled instructions failed validation.' },
   },
   {
     id: 'html.build_indesign',
@@ -49,13 +65,20 @@ const tools = [
     target_scope: 'project',
     needs_indesign: true,
     produces_artifacts: true,
+    preconditions: ['package 必须可编译。', '宿主必须允许 manifest 声明的 script.run 和 export.verify actions。'],
+    return_example: {
+      status: 'requires_host_actions',
+      actions: [{ id: 'html-build-script', tool_id: 'script.run' }],
+      resume: { method: 'tools/resume' },
+    },
+    failure_example: { code: 'HOST_ACTION_FAILED', message: 'Host action failed.' },
   },
   {
     id: 'html.reverse_export',
     domain: 'html',
     name: 'InDesign 反向导出 HTML',
     one_line_purpose: '从 INDD 生成 reverse snapshot，再写出固定语义 HTML 作者包。',
-    arg_names: ['indd', 'outDir', 'mode', 'assetPolicy'],
+    arg_names: ['indd', 'outDir', 'mode', 'assetPolicy', 'reconstructionProfile', 'reconstruct'],
     rank: 40,
     schema_size: 'medium',
     callable: true,
@@ -66,6 +89,13 @@ const tools = [
     target_scope: 'project',
     needs_indesign: true,
     produces_artifacts: true,
+    preconditions: ['indd 必须指向可读取的 InDesign 文档。', '宿主必须允许 script.run action。'],
+    return_example: {
+      status: 'requires_host_actions',
+      actions: [{ id: 'html-reverse-snapshot', tool_id: 'script.run' }],
+      resume: { method: 'tools/resume' },
+    },
+    failure_example: { code: 'REVERSE_PIPELINE_FAILED', message: 'Reverse pipeline failed.' },
   },
 ];
 
@@ -117,6 +147,19 @@ const schemas = {
       assetPolicy: { type: 'string', enum: ['reference', 'copy'], default: 'reference' },
       sourceRoot: { type: 'string', description: '可选的原作者包目录，用于源码回环辅助报告。' },
       nasPublicRoot: { type: 'string', default: '/nas' },
+      reconstructionProfile: {
+        type: 'string',
+        enum: [...RECONSTRUCTION_PROFILE_NAMES],
+        default: DEFAULT_RECONSTRUCTION_PROFILE,
+      },
+      reconstruct: {
+        type: 'array',
+        items: {
+          type: 'string',
+          enum: [...CANONICAL_ALGORITHM_ORDER],
+        },
+        description: '仅 experimental profile 可用的显式算法列表。',
+      },
       timeout: { type: 'integer', default: 300, minimum: 1 },
     },
   },

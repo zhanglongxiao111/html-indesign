@@ -5,13 +5,17 @@ const {
   reverseSnapshotToSemanticModel,
   blueprintMigrationToSemanticModel,
 } = require('../adapters/indesign');
-const { reconstructSemanticModel } = require('../semantic-reconstruction');
+const {
+  reconstructSemanticModel,
+  assertResolvedReconstructionProfile,
+} = require('../semantic-reconstruction');
 const { semanticModelToHtml } = require('../writers/html/visual-html-writer');
 const { writeReverseAuthorPackage } = require('../writers/html/author-package-writer');
 const { auditReverseAuthorPackage } = require('../writers/html/audit/reverse-roundtrip');
 
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
+  const reconstructionProfile = assertResolvedReconstructionProfile(options.reconstructionProfile);
 
   const inputFormat = options.blueprintPath ? 'historical-blueprint' : 'reverse-snapshot';
   const observedModel = options.blueprintPath
@@ -20,7 +24,8 @@ function compileReverseSnapshotToHtml(options) {
   const reconstruction = reconstructSemanticModel(observedModel, {
     mode: options.mode,
     inputFormat,
-    algorithms: options.reconstructAlgorithms || [],
+    reconstructionProfile: reconstructionProfile.name,
+    algorithms: reconstructionProfile.algorithms,
   });
   const model = reconstruction.model;
   const outDir = path.resolve(options.outDir);

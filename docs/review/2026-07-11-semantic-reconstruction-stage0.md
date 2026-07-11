@@ -69,6 +69,8 @@
 
 起点提交：`7c43bbd`
 
+实施提交：`e7f1e09`
+
 本阶段先用双跑测试复现 `caption-structure` 会把同一图注 order 从 1 增到 2，再完成以下收口：
 
 - 已经是同一 `figure + figcaption` 父子结构的候选记录为 `caption-already-structured`，不再重复写回。
@@ -79,6 +81,23 @@
 
 定向语义重建测试 27 项通过；完整测试 1044 项通过。
 
-## 0D–0F
+## 0D：统一 reconstruction profile 与入口
+
+起点提交：`e7f1e09`
+
+收口结果：
+
+- `src/semantic-reconstruction/profiles.js` 成为 profile 名称、算法规范顺序、依赖、去重和 safe 列表的唯一事实源。
+- `none` 明确解析为空列表；`safe` 在 0F 前也保持空列表；`experimental` 必须显式提供至少一个算法。
+- `caption-structure` 自动补 `page-object-graph`；`figure-grid` 自动补 `caption-structure` 及其依赖；结果按统一顺序去重。
+- 底层 reverse pipeline 必须收到已解析的 `reconstructionProfile`，缺失或非规范顺序直接失败，不再静默当成空列表。
+- snapshot CLI、真实 INDD E2E、递归第二轮和插件 call/state/resume 全部透传同一份已解析对象；`--reconstruct` 在非 experimental 下直接拒绝。
+- 插件 schema 和 CLI 帮助直接引用统一算法清单，没有维护第二份顺序。
+
+本机新版 `indesign-cli plugin validate` 同时暴露了既有插件 manifest/tool catalog 缺少新版必填元数据。已按本机 CLI 规范补齐顶层 timeout、document-state、host-actions，以及四个工具的 preconditions、成功示例和失败示例；插件校验通过，4 个正式工具、2 个 InDesign 工具、0 error / 0 warning。
+
+定向 profile、CLI、E2E 和插件测试 106 项通过；完整测试 1054 项通过。
+
+## 0E–0F
 
 尚未实施。后续每个阶段完成后在本文件追加提交、验证命令、结果和剩余非阻塞项。

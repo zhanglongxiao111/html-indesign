@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
 const { compileReverseSnapshotToHtml } = require('../src/reverse-pipeline');
+const {
+  CANONICAL_ALGORITHM_ORDER,
+  RECONSTRUCTION_PROFILE_NAMES,
+  resolveReconstructionProfile,
+} = require('../src/semantic-reconstruction');
 
 function parseArgs(argv) {
   const out = {
@@ -11,6 +16,7 @@ function parseArgs(argv) {
     sourceRoot: null,
     assetPolicy: 'reference',
     nasPublicRoot: '/nas',
+    reconstructionProfileName: undefined,
     reconstructAlgorithms: [],
     help: false,
   };
@@ -54,6 +60,11 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg.startsWith('--nas-public-root=')) {
       out.nasPublicRoot = arg.slice('--nas-public-root='.length);
+    } else if (arg === '--reconstruction-profile') {
+      out.reconstructionProfileName = readValue(argv, index, arg);
+      index += 1;
+    } else if (arg.startsWith('--reconstruction-profile=')) {
+      out.reconstructionProfileName = arg.slice('--reconstruction-profile='.length);
     } else if (arg === '--reconstruct') {
       out.reconstructAlgorithms = parseAlgorithmList(readValue(argv, index, arg));
       index += 1;
@@ -64,6 +75,12 @@ function parseArgs(argv) {
     }
   }
 
+  out.reconstructionProfile = resolveReconstructionProfile({
+    profile: out.reconstructionProfileName,
+    algorithms: out.reconstructAlgorithms,
+  });
+  delete out.reconstructionProfileName;
+  delete out.reconstructAlgorithms;
   return out;
 }
 
@@ -101,7 +118,7 @@ function parseAlgorithmList(value) {
 }
 
 function usage() {
-  return 'Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <historical-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas] [--reconstruct page-object-graph,caption-structure,figure-grid,text-block]';
+  return `Usage: node scripts/indesign-reverse-export.js (--snapshot <reverse-snapshot.json> | --blueprint <historical-blueprint.json>) --out <dir> [--mode structured|inferred|observation] [--source-root <author-package-root>] [--asset-policy reference|copy] [--nas-public-root /nas] [--reconstruction-profile ${RECONSTRUCTION_PROFILE_NAMES.join('|')}] [--reconstruct ${CANONICAL_ALGORITHM_ORDER.join(',')}]`;
 }
 
 if (require.main === module) {

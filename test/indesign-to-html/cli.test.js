@@ -11,6 +11,7 @@ const {
   compileReverseSnapshotToHtml,
   reconstructionPassedTrustedSourceGate,
 } = require('../../src/reverse-pipeline');
+const { resolveReconstructionProfile } = require('../../src/semantic-reconstruction');
 
 test('reverse export CLI reuses the src reverse pipeline entry', () => {
   assert.equal(compileReverseSnapshotToHtmlFromCli, compileReverseSnapshotToHtml);
@@ -27,12 +28,21 @@ test('reverse pipeline fails closed unless trusted source preservation explicitl
   assert.equal(reconstructionPassedTrustedSourceGate(null), false);
 });
 
+test('reverse pipeline requires an explicit resolved reconstruction profile', () => {
+  assert.throws(() => compileReverseSnapshotToHtml({
+    snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
+    outDir: path.resolve('test/workspace/reverse-cli-missing-profile-test'),
+    mode: 'structured',
+  }), /requires an explicit resolved reconstructionProfile/);
+});
+
 test('parseArgs accepts mode, snapshot and out dir', () => {
   const args = parseArgs(['--mode', 'structured', '--snapshot', 'reverse.json', '--out', 'out-dir']);
 
   assert.equal(args.mode, 'structured');
   assert.equal(args.snapshotPath, 'reverse.json');
   assert.equal(args.outDir, 'out-dir');
+  assert.deepEqual(args.reconstructionProfile, { name: 'none', algorithms: [] });
 });
 
 test('parseArgs accepts historical blueprint input', () => {
@@ -67,10 +77,23 @@ test('parseArgs accepts reconstruction algorithms', () => {
   const args = parseArgs([
     '--snapshot', 'reverse.json',
     '--out', 'out-dir',
-    '--reconstruct', 'page-object-graph,caption-structure,figure-grid,text-block',
+    '--reconstruction-profile', 'experimental',
+    '--reconstruct', 'text-block,figure-grid,figure-grid',
   ]);
 
-  assert.deepEqual(args.reconstructAlgorithms, ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block']);
+  assert.deepEqual(args.reconstructionProfile, {
+    name: 'experimental',
+    algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block'],
+  });
+  assert.equal(args.reconstructAlgorithms, undefined);
+});
+
+test('parseArgs rejects --reconstruct outside experimental profile', () => {
+  assert.throws(() => parseArgs([
+    '--snapshot', 'reverse.json',
+    '--out', 'out-dir',
+    '--reconstruct', 'text-block',
+  ]), /only valid with the experimental profile/);
 });
 
 test('compileReverseSnapshotToHtml writes deck, model and report', () => {
@@ -81,6 +104,7 @@ test('compileReverseSnapshotToHtml writes deck, model and report', () => {
     snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
     outDir,
     mode: 'structured',
+    reconstructionProfile: resolveReconstructionProfile({ profile: 'none' }),
   });
 
   assert.equal(result.ok, true);
@@ -90,6 +114,7 @@ test('compileReverseSnapshotToHtml writes deck, model and report', () => {
   assert.equal(fs.existsSync(path.join(outDir, 'report.json')), true);
   assert.equal(result.files.reconstructionReport, path.join(outDir, 'reconstruction-report.json'));
   assert.equal(result.report.reconstruction.status, 'observed-only');
+  assert.equal(result.report.reconstruction.reconstructionProfile, 'none');
   assert.equal(result.report.reconstruction.summary.reconstructedItems, 0);
 });
 
@@ -101,6 +126,7 @@ test('compileReverseSnapshotToHtml writes visual HTML and author package', () =>
     snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
     outDir,
     mode: 'structured',
+    reconstructionProfile: resolveReconstructionProfile({ profile: 'none' }),
   });
 
   assert.equal(result.ok, true);
@@ -132,6 +158,7 @@ test('compileReverseSnapshotToHtml forwards source root into the author package 
     snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
     outDir,
     mode: 'structured',
+    reconstructionProfile: resolveReconstructionProfile({ profile: 'none' }),
     sourceRoot,
   });
 
@@ -152,6 +179,7 @@ test('compileReverseSnapshotToHtml returns src-level author audit gates when sou
     snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
     outDir,
     mode: 'structured',
+    reconstructionProfile: resolveReconstructionProfile({ profile: 'none' }),
     sourceRoot,
   });
 
@@ -196,6 +224,7 @@ test('compileReverseSnapshotToHtml writes historical blueprint through reverse p
     blueprintPath: path.resolve('test/artifacts/blueprint.json'),
     outDir,
     mode: 'inferred',
+    reconstructionProfile: resolveReconstructionProfile({ profile: 'none' }),
   });
 
   assert.equal(result.ok, true);
@@ -222,10 +251,14 @@ test('compileReverseSnapshotToHtml can run page object graph reconstruction', ()
     snapshotPath: path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'),
     outDir,
     mode: 'observation',
-    reconstructAlgorithms: ['page-object-graph'],
+    reconstructionProfile: resolveReconstructionProfile({
+      profile: 'experimental',
+      algorithms: ['page-object-graph'],
+    }),
   });
 
   assert.deepEqual(result.report.reconstruction.algorithms, ['page-object-graph']);
+  assert.equal(result.report.reconstruction.reconstructionProfile, 'experimental');
   assert.equal(result.report.reconstruction.passes[0].name, 'page-object-graph');
   assert.equal(fs.existsSync(path.join(outDir, 'reconstruction-report.json')), true);
 });

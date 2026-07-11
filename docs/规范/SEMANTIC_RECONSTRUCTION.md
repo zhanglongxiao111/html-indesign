@@ -177,6 +177,18 @@ InDesign
 - `figure-grid` 和 `text-block` 不得隐式触发全页排序。调用方需要阅读顺序时必须显式执行本 pass，并把它放在全部结构写回 pass 之后。
 - 本 pass 只解决当前页面级几何顺序，不替代 R7 的串接文本框、story 原生顺序和更完整阅读顺序算法。
 
+### 2.6 Reconstruction profile
+
+所有正式入口使用同一个 reconstruction profile 解析器，不得各自维护默认算法列表、依赖或顺序：
+
+- `none`：明确不运行重建算法，输出 `observed-only`。阶段 0F 通过前，这是用户入口默认值。
+- `safe`：只运行已经通过真实门禁的算法。阶段 0F 通过前列表为空，不得提前放入候选 pass。
+- `experimental`：仅用于显式候选验证，必须同时提供算法列表；`--reconstruct` 在其他 profile 下属于非法输入。
+
+规范顺序固定为 `page-object-graph → caption-structure → figure-grid → text-block → reading-order-lite`。解析器负责去重和依赖闭包：caption 自动补对象图，figure-grid 自动补 caption 及其依赖；reading-order-lite 若被选择，始终位于结构写回之后。
+
+底层 `compileReverseSnapshotToHtml` 只接受已经解析、依赖完整且按规范顺序排列的 `reconstructionProfile` 对象。独立 CLI、真实 INDD E2E、递归第二轮和插件 resume 必须透传同一个对象；底层缺参不得回退为空列表。
+
 ## 3. 报告
 
 `reconstruction-report.json` 是语义重建层的固定输出。
@@ -191,6 +203,7 @@ InDesign
   "mode": "observation",
   "sourceModelId": "indesign-document",
   "profile": "architecture-report",
+  "reconstructionProfile": "none",
   "algorithms": [],
   "passes": [],
   "summary": {
