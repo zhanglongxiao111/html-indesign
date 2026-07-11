@@ -51,11 +51,11 @@
 
 **目标：** 在不启用重建算法的条件下，把当前绿色状态保存成后续候选运行必须复用的机器证据。
 
-- [ ] 确认本机已设置 `$env:HUMAN_INDD_GATE_SOURCE`，值指向当前 47 页门禁源文件；路径不写入任何仓库文件。
-- [ ] 用当前 observed-only 行为运行真实人类文件 E2E，输出到 `test/workspace/semantic-reconstruction-stage0/baseline/`。
-- [ ] 生成 author-editability、reverse-visual、reverse-snapshot stability 和 effective-diff 报告。
-- [ ] 写入本地 `conversion-gate.case.json`：`requiredGates` 固定为 `editability`、`trustedSource`、`stability`；P0、HTML 缺失、HTML 文本和页面差异预算为 0；P1 与 HTML 几何预算固定为人工复核后的 baseline 实值。
-- [ ] 在 review 文档记录 Git commit、页数、对象数、资源数、算法列表为空、六份回环报告和 conversion gate 结果；不记录客户路径和内容。
+- [x] 确认本机已设置 `$env:HUMAN_INDD_GATE_SOURCE`，值指向当前 47 页门禁源文件；路径不写入任何仓库文件。
+- [x] 用当前 observed-only 行为运行真实人类文件 E2E，输出到 `test/workspace/semantic-reconstruction-stage0/baseline/`。
+- [x] 生成 author-editability、reverse-visual、reverse-snapshot stability 和 effective-diff 报告。
+- [x] 写入本地 `conversion-gate.case.json`：`requiredGates` 固定为 `editability`、`trustedSource`、`stability`；P0、HTML 缺失、HTML 文本和页面差异预算为 0；P1 与 HTML 几何预算固定为人工复核后的 baseline 实值。
+- [x] 在 review 文档记录 Git commit、页数、对象数、资源数、算法列表为空、六份回环报告和 conversion gate 结果；不记录客户路径和内容。
 
 验证：
 
@@ -183,4 +183,3 @@ npm run plugin:validate
 - [ ] `npm run plugin:validate` 通过。
 - [ ] review 文档列出 0A–0F 每阶段提交、命令、结果和剩余非阻塞项。
 - [ ] 路线图只把阶段 0 标记为已实施；A0 及以后仍保持未实施。
-
