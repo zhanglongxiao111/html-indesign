@@ -53,6 +53,44 @@ test('writeAuthorCssFiles emits valid fallback selectors for numeric InDesign id
   assert.doesNotMatch(css, /#1712\s*\{/);
 });
 
+test('writeAuthorCssFiles converts nested fallback geometry from page coordinates to positioned-parent coordinates', () => {
+  const css = writeAuthorCssFiles({
+    pages: [{
+      id: 'page',
+      items: [
+        {
+          id: 'figure-a',
+          role: 'graphic',
+          bounds: { x: 100, y: 80, width: 240, height: 160 },
+          structure: { parentId: 'page', order: 1 },
+        },
+        {
+          id: 'caption-a',
+          role: 'text',
+          bounds: { x: 130, y: 210, width: 180, height: 24 },
+          structure: { parentId: 'figure-a', order: 1 },
+        },
+        {
+          id: 'virtual-group',
+          role: 'container',
+          virtual: true,
+          structure: { parentId: 'page', order: 2 },
+        },
+        {
+          id: 'grouped-figure',
+          role: 'graphic',
+          bounds: { x: 500, y: 100, width: 240, height: 160 },
+          structure: { parentId: 'virtual-group', order: 1 },
+        },
+      ],
+    }],
+  })['styles/reverse-overrides.css'];
+
+  assert.match(css, /\[id="figure-a"\] \{[^}]*left:100px; top:80px/);
+  assert.match(css, /\[id="caption-a"\] \{[^}]*left:30px; top:130px/);
+  assert.match(css, /\[id="grouped-figure"\] \{[^}]*left:500px; top:100px/);
+});
+
 test('writeAuthorCssFiles omits degenerate invisible vector leftovers', () => {
   const css = writeAuthorCssFiles({
     pages: [

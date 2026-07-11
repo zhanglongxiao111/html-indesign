@@ -74,14 +74,16 @@ function reverseOverridesCss(model) {
     for (const item of page.items || []) itemIds.add(item.id);
   }
   for (const page of model.pages || []) {
+    const itemById = new Map((page.items || []).map((item) => [item && item.id, item]));
     for (const item of page.items || []) {
       if (shouldOmitAuthorOverride(item, itemIds)) continue;
       if (item.layout && item.layout.grid) continue;
       if (!item.bounds) continue;
+      const position = authorPosition(item, itemById, itemIds);
       const declarations = [
         'position:absolute',
-        `left:${px(item.bounds.x)}`,
-        `top:${px(item.bounds.y)}`,
+        `left:${px(position.x)}`,
+        `top:${px(position.y)}`,
         `width:${px(item.bounds.width)}`,
         `height:${px(item.bounds.height)}`,
       ];
@@ -91,6 +93,29 @@ function reverseOverridesCss(model) {
   }
   lines.push('');
   return lines.join('\n');
+}
+
+function authorPosition(item, itemById, itemIds) {
+  const position = {
+    x: Number(item && item.bounds && item.bounds.x) || 0,
+    y: Number(item && item.bounds && item.bounds.y) || 0,
+  };
+  const parentId = item && item.structure && item.structure.parentId;
+  const parent = parentId && itemById.get(parentId);
+  if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, itemIds)) {
+    return position;
+  }
+  return {
+    x: position.x - (Number(parent.bounds.x) || 0),
+    y: position.y - (Number(parent.bounds.y) || 0),
+  };
+}
+
+function establishesAuthorPositioning(item, itemIds) {
+  if (!item || !item.bounds || item.layout && item.layout.grid) return false;
+  if (!shouldOmitAuthorOverride(item, itemIds)) return true;
+  const style = item.sourceNode && item.sourceNode.attributes && item.sourceNode.attributes.style || '';
+  return /(?:^|;)\s*position\s*:\s*(?:absolute|relative|fixed|sticky)\b/i.test(style);
 }
 
 function shouldOmitAuthorOverride(item, itemIds) {
