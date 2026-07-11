@@ -280,7 +280,7 @@ InDesign
 - `canonical-content-inventory-report.json`
 - `canonical-structure-signature-report.json`
 
-二次回环的硬门槛是 `canonical-content-inventory-report.json` 和 `canonical-structure-signature-report.json` 均为 `ok: true`。源码 exact drift 继续保留为辅助报告；PSD 预览缓存文件名变化、极小浮点排版数值漂移等不改变内容库存和结构签名的变化，不得单独导致二次回环失败。
+二次回环的硬门槛是三份 canonical 报告全部通过：`canonical-content-inventory-report.json` 与 `canonical-structure-signature-report.json` 均为 `ok: true`，且 `canonical-source-drift-report.json` 必须为逐字节稳定（`stable: true`，`lineEditDistance: 0`）。首轮 `sourceDrift` 仍是辅助度量；但二次回环代表规范作者包已经收敛，任何源码漂移都说明写出、组装或重建不幂等，必须失败。PSD 预览缓存名和浮点值若需要规范化，应在第一次作者包生成时一次性收敛，不能作为二次漂移豁免。
 
 ### 5.2 有效 diff 门禁
 

@@ -15,3 +15,6 @@
 | `2026-05-27-indesign-cli-plugin-integration-design.md` | html-indesign 作为 indesign-cli 插件和可选发行包的集成设计 |
 | `2026-05-31-protocol-field-registry-architecture-design.md` | 协议字段注册表、多格式能力矩阵和未来 PPTX 适配架构设计 |
 | `2026-06-03-semantic-object-graph-evidence-layer-design.md` | 语义重建第一阶段页面对象图证据层可实施设计 |
+| `2026-07-06-agent-editability-benchmark-design.md` | 用可复现 Agent 编辑任务校准语义重建可编辑性的行为基准设计 |
+| `2026-07-06-architecture-hardening-guardrails-design.md` | 架构依赖、协议、失败可见性和文档同步护栏设计 |
+| `2026-07-06-semantic-reconstruction-algorithm-roadmap.md` | 阶段 0 准入收口、R1–R9 算法依赖和验收切换路线图 |

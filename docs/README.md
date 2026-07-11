@@ -27,6 +27,9 @@
 | `规范/SEMANTIC_RECONSTRUCTION.md` | 语义重建层、算法边界、报告和候选算法 |
 | `规范/SEMANTIC_OBJECT_GRAPH.md` | 语义重建第一阶段页面对象图证据层规范 |
 | `规范/FONT_POLICY.md` | 项目公共字体库、字体 token、映射和预检规范 |
+| `superpowers/specs/2026-07-06-semantic-reconstruction-algorithm-roadmap.md` | 语义重建阶段 0 准入、R1–R9 依赖、验收切换和前置条件路线图 |
+| `superpowers/plans/2026-07-11-semantic-reconstruction-stage0-implementation-plan.md` | 语义重建阶段 0A–0F 的轻量实施步骤、文件范围和验证命令 |
+| `superpowers/specs/2026-07-06-agent-editability-benchmark-design.md` | 语义重建算法的 Agent 编辑任务行为基准设计 |
 | `superpowers/specs/2026-05-31-protocol-field-registry-architecture-design.md` | 已落地的协议字段注册表、多格式能力矩阵和 PPTX 适配边界设计，作为追溯和边界参考 |
 | `superpowers/specs/2026-06-03-semantic-object-graph-evidence-layer-design.md` | 页面对象图证据层可实施设计，作为语义重建第一阶段算法实施依据 |
 | `AI协作/README.md` | AI 协作材料的分类、命名和流转规则 |
