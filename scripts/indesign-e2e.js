@@ -264,6 +264,7 @@ async function runHumanInddRoundtripE2E(options = {}) {
     mode: options.reverseMode || 'observation',
     assetPolicy: options.assetPolicy || 'reference',
   });
+  assertReverseCompilationOk(reverseHtml, 'Human InDesign reverse compilation failed');
   const author = reverseHtml.files && reverseHtml.files.author;
   if (!author || !author.audit || !author.audit.ok) {
     throw new Error(`Human InDesign reverse author package audit failed: ${JSON.stringify(author && author.audit || null, null, 2)}`);
@@ -492,6 +493,7 @@ async function runReverseRoundtrip(context, options = {}) {
     reverseCompileOptions.sourceRoot = sourceRoot;
   }
   const htmlResult = compileReverseSnapshotToHtml(reverseCompileOptions);
+  assertReverseCompilationOk(htmlResult, 'InDesign reverse compilation failed');
   const reverseHtmlPath = path.join(context.reverseOutDir, 'deck.html');
   const reverseHtml = fs.readFileSync(reverseHtmlPath, 'utf8');
   const htmlAudit = reverseMode === 'observation'
@@ -631,6 +633,12 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+function assertReverseCompilationOk(result, message) {
+  if (result && result.ok === true) return;
+  const evidence = result && result.report ? result.report : result || null;
+  throw new Error(`${message}: ${JSON.stringify(evidence, null, 2)}`);
+}
+
 async function main() {
   const repoRoot = path.resolve(__dirname, '..');
   const options = parseArgs(process.argv.slice(2), repoRoot);
@@ -692,4 +700,5 @@ module.exports = {
   runIndesignE2E,
   runHumanInddRoundtripE2E,
   resolveReverseSourceRootForHtml,
+  assertReverseCompilationOk,
 };

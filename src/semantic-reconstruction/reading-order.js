@@ -1,7 +1,10 @@
+const { isTrustedSourceEntity } = require('./trusted-source-preservation');
+
 function normalizePageLevelReadingOrder(page) {
   const roots = pageLevelItems(page);
   const ordered = roots.slice().sort((a, b) => readingOrderKey(page, a) - readingOrderKey(page, b));
   ordered.forEach((item, index) => {
+    if (isTrustedSourceEntity(item)) return;
     if (!item.virtual && hasExplicitOrder(item)) return;
     item.structure = {
       ...(item.structure || {}),

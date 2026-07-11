@@ -291,6 +291,24 @@ test('reconstructSemanticModel does not regroup accepted source items into algor
   assert.equal(result.report.summary.reconstructedItems, 0);
 });
 
+test('reconstructSemanticModel keeps trusted page-level structure unchanged when generated groups need ordering', () => {
+  const observedModel = trustedDocumentModel([
+    trustedText('trusted-copy', 40, 40, '可信作者正文', undefined),
+    textFrame('copy-1', 80, 140, 280, 72, '观察正文第一段', undefined),
+    textFrame('copy-2', 80, 224, 280, 72, '观察正文第二段', undefined),
+  ]);
+  const trustedBefore = JSON.parse(JSON.stringify(observedModel.pages[0].items[0]));
+
+  const result = reconstructSemanticModel(observedModel, {
+    mode: 'structured',
+    algorithms: ['text-block'],
+  });
+  const trustedAfter = result.model.pages[0].items.find((item) => item.id === 'trusted-copy');
+
+  assert.deepEqual(trustedAfter, trustedBefore);
+  assert.equal(result.report.trustedSourcePreservation.ok, true);
+});
+
 test('reconstructSemanticModel can group captioned figures into an editable figure grid', () => {
   const observedModel = {
     kind: 'DocumentModel',

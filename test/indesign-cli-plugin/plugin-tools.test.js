@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
 const { callPlugin, repoRoot, workspaceRoot } = require('./plugin-test-helper');
+const { reversePipelineFailureResponse } = require('../../src/indesign-cli-plugin/tools/reverse-export');
 
 test('html.authoring_lint validates the architecture report author package', () => {
   const response = callPlugin('tools/call', {
@@ -209,6 +210,24 @@ test('html.reverse_export resume writes author html from reverse snapshot', () =
   assert.equal(fs.existsSync(path.join(outDir, 'author', 'deck.html')), true);
   assert.equal(response.artifacts.some((item) => item.kind === 'html'
     && (item.path.endsWith('author\\deck.html') || item.path.endsWith('author/deck.html'))), true);
+});
+
+test('html.reverse_export resume maps a failed trusted-source gate to an error response', () => {
+  const response = reversePipelineFailureResponse({
+    ok: false,
+    report: {
+      reconstruction: {
+        trustedSourcePreservation: {
+          ok: false,
+          failures: [{ code: 'TRUSTED_SOURCE_STRUCTURE_MUTATED' }],
+        },
+      },
+    },
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'REVERSE_PIPELINE_FAILED');
+  assert.equal(response.error.details.reconstruction.trustedSourcePreservation.ok, false);
 });
 
 test('html.reverse_export resume fails visibly when reverse author audit fails', () => {

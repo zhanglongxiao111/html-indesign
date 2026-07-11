@@ -75,10 +75,10 @@ npm run audit:conversion-gate -- -- --case test/workspace/semantic-reconstructio
 
 **目标：** 任何结构 pass 都不能改可信作者结构；只要审计失败，底层 pipeline、CLI、插件和 E2E 必须统一失败。
 
-- [ ] 在 `test/semantic-reconstruction/reconstruct.test.js` 增加“trusted 页级对象没有 order，旁边非 trusted 对象触发分组”的失败测试，证明当前 helper 会误写 `structure.order`。
-- [ ] 修改共享排序/分组调用，保证 trusted 对象字段和相对顺序保持原样；补混合 trusted/untrusted 正反例。
-- [ ] 修改 `src/reverse-pipeline/index.js`，把 `trustedSourcePreservation.ok` 合并进最终 `ok`，缺失或非 `true` 均 fail-closed。
-- [ ] 补 CLI、插件 resume 和 E2E 回归，证明失败报告不能被包装成成功状态。
+- [x] 在 `test/semantic-reconstruction/reconstruct.test.js` 增加“trusted 页级对象没有 order，旁边非 trusted 对象触发分组”的失败测试，证明当前 helper 会误写 `structure.order`。
+- [x] 修改共享排序/分组调用，保证 trusted 对象字段和相对顺序保持原样；补混合 trusted/untrusted 正反例。
+- [x] 修改 `src/reverse-pipeline/index.js`，把 `trustedSourcePreservation.ok` 合并进最终 `ok`，缺失或非 `true` 均 fail-closed。
+- [x] 补 CLI、插件 resume 和 E2E 回归，证明失败报告不能被包装成成功状态。
 
 验证：
 

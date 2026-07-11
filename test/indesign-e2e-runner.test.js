@@ -16,6 +16,7 @@ const {
   resolveIndesignCliCommand,
   parseTargetSize,
   resolveReverseSourceRootForHtml,
+  assertReverseCompilationOk,
 } = require('../scripts/indesign-e2e');
 const scriptExports = require('../scripts/indesign-e2e');
 const {
@@ -144,6 +145,20 @@ test('indesign e2e first-pass author audit is owned by the reverse pipeline', ()
   const script = fs.readFileSync(path.resolve('scripts/indesign-e2e.js'), 'utf8');
 
   assert.equal(script.includes('auditReverseAuthorPackage({'), false);
+});
+
+test('indesign e2e rejects reverse compilation when trusted-source preservation fails', () => {
+  assert.throws(() => assertReverseCompilationOk({
+    ok: false,
+    report: {
+      reconstruction: {
+        trustedSourcePreservation: {
+          ok: false,
+          failures: [{ code: 'TRUSTED_SOURCE_STRUCTURE_MUTATED' }],
+        },
+      },
+    },
+  }, 'Reverse compilation failed'), /TRUSTED_SOURCE_STRUCTURE_MUTATED/);
 });
 
 test('reverse roundtrip source root is only explicit or a real author package root', () => {

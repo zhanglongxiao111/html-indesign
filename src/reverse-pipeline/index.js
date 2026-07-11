@@ -51,7 +51,13 @@ function compileReverseSnapshotToHtml(options) {
   fs.writeFileSync(path.join(outDir, 'deck.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, reconstructionReportName), JSON.stringify(reconstruction.report, null, 2), 'utf8');
-  const finalReport = { ...report, ok: report.ok && authorAudit.ok, authorAudit };
+  const finalReport = {
+    ...report,
+    ok: report.ok
+      && authorAudit.ok
+      && reconstructionPassedTrustedSourceGate(reconstruction.report),
+    authorAudit,
+  };
   fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(finalReport, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(finalReport, null, 2), 'utf8');
 
@@ -116,6 +122,13 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8'));
 }
 
+function reconstructionPassedTrustedSourceGate(report) {
+  return Boolean(report
+    && report.trustedSourcePreservation
+    && report.trustedSourcePreservation.ok === true);
+}
+
 module.exports = {
   compileReverseSnapshotToHtml,
+  reconstructionPassedTrustedSourceGate,
 };

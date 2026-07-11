@@ -86,7 +86,6 @@ async function resume(params) {
     assetPolicy: state.assetPolicy || 'reference',
     nasPublicRoot: state.nasPublicRoot || '/nas',
   });
-
   const authorDeckPath = result.files && result.files.author ? result.files.author.entry : path.join(state.outDir, 'author', 'deck.html');
   const visualDeckPath = result.files ? result.files.visualHtml : path.join(state.outDir, 'deck.visual.html');
   const reportPath = result.files ? result.files.report : path.join(state.outDir, 'report.json');
@@ -105,6 +104,9 @@ async function resume(params) {
       },
     };
   }
+
+  const pipelineFailure = reversePipelineFailureResponse(result);
+  if (pipelineFailure) return pipelineFailure;
 
   if (!fs.existsSync(authorDeckPath)) {
     return {
@@ -148,7 +150,20 @@ function firstFailedHostResult(hostResults) {
   }) || null;
 }
 
+function reversePipelineFailureResponse(result) {
+  if (result && result.ok === true) return null;
+  return {
+    status: 'error',
+    error: {
+      code: 'REVERSE_PIPELINE_FAILED',
+      message: 'Reverse pipeline failed; refusing to report a successful export.',
+      details: result && result.report ? result.report : result || null,
+    },
+  };
+}
+
 module.exports = {
   call,
   resume,
+  reversePipelineFailureResponse,
 };

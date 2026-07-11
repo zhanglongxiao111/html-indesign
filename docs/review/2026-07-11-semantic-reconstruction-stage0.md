@@ -46,6 +46,23 @@
 
 人工复核后将现存 3 个几何差异固定为 baseline 预算：1 个对象宽度差 5px，2 个对象高度差 7px。该预算只允许保持或收紧；候选运行不得改写 baseline 报告、扩大预算或隐藏差异。
 
-## 0B–0F
+## 0B：可信来源保护与 fail-closed
+
+起点提交：`6690eaf`
+
+本阶段先用失败测试证明两条现存问题，再修改实现：
+
+- 当可信页级对象没有显式 `order`、旁边观察对象触发 text-block 分组时，共享排序函数会擅自给可信对象补 `order`。
+- 底层语义重建即使报告可信结构审计失败，插件 resume 和 E2E 仍只检查作者包审计，存在包装成成功的路径。
+
+收口结果：
+
+- 共享排序跳过全部可信来源对象，混合 trusted/untrusted 分组不再改变可信对象任何字段。
+- reverse pipeline 只有在 `trustedSourcePreservation.ok === true` 时才允许最终成功；报告缺失、值缺失或 false 都失败。
+- standalone CLI 继承底层退出状态；插件 resume 返回 `REVERSE_PIPELINE_FAILED`；E2E 在继续回环前直接抛出原始失败证据。
+- 作者包自身失败仍保留更具体的 `REVERSE_AUTHOR_AUDIT_FAILED`，没有被总门禁掩盖。
+- 语义重建定向测试 20 项通过；CLI、插件和 E2E 定向测试 63 项通过；完整测试 1037 项通过。
+
+## 0C–0F
 
 尚未实施。后续每个阶段完成后在本文件追加提交、验证命令、结果和剩余非阻塞项。

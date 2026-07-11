@@ -9,10 +9,22 @@ const {
 } = require('../../scripts/indesign-reverse-export');
 const {
   compileReverseSnapshotToHtml,
+  reconstructionPassedTrustedSourceGate,
 } = require('../../src/reverse-pipeline');
 
 test('reverse export CLI reuses the src reverse pipeline entry', () => {
   assert.equal(compileReverseSnapshotToHtmlFromCli, compileReverseSnapshotToHtml);
+});
+
+test('reverse pipeline fails closed unless trusted source preservation explicitly passes', () => {
+  assert.equal(reconstructionPassedTrustedSourceGate({
+    trustedSourcePreservation: { ok: true },
+  }), true);
+  assert.equal(reconstructionPassedTrustedSourceGate({
+    trustedSourcePreservation: { ok: false },
+  }), false);
+  assert.equal(reconstructionPassedTrustedSourceGate({}), false);
+  assert.equal(reconstructionPassedTrustedSourceGate(null), false);
 });
 
 test('parseArgs accepts mode, snapshot and out dir', () => {
