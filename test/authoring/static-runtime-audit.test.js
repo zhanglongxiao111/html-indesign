@@ -45,6 +45,32 @@ test('static authoring allows application/json protocol payloads', () => {
   assert.deepEqual(audit.warnings, []);
 });
 
+test('strict static authoring rejects every non-JSON script type and classifies remote src first', () => {
+  const audit = auditStaticAuthoringRuntime(`
+    <script type="text/babel">renderDeck()</script>
+    <script type="text/babel" src="https://cdn.example.com/deck.jsx"></script>
+    <script type="application/x-javascript" src="./legacy.js"></script>
+  `, { strict: true });
+
+  assert.deepEqual(audit.errors.map((issue) => ({ code: issue.code, type: issue.type, src: issue.src })), [
+    {
+      code: 'AUTHOR_EXECUTABLE_SCRIPT_FORBIDDEN',
+      type: 'text/babel',
+      src: undefined,
+    },
+    {
+      code: 'AUTHOR_REMOTE_RUNTIME_SCRIPT_FORBIDDEN',
+      type: 'text/babel',
+      src: 'https://cdn.example.com/deck.jsx',
+    },
+    {
+      code: 'AUTHOR_EXECUTABLE_SCRIPT_FORBIDDEN',
+      type: 'application/x-javascript',
+      src: './legacy.js',
+    },
+  ]);
+});
+
 test('non-strict static authoring reports dynamic runtime findings as warnings', () => {
   const audit = auditStaticAuthoringRuntime('<canvas></canvas><script src="./local.js"></script>');
 

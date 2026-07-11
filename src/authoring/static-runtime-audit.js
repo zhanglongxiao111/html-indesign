@@ -27,7 +27,6 @@ function auditStaticAuthoringRuntime(html, options = {}) {
     if (tagName === 'script') {
       const type = String(node.attr('type') || '').trim().toLowerCase();
       if (type === 'application/json') return;
-      if (!isExecutableScriptType(type)) return;
       const src = String(node.attr('src') || '').trim();
       const code = isRemoteReference(src) || /^\/\//.test(src)
         ? 'AUTHOR_REMOTE_RUNTIME_SCRIPT_FORBIDDEN'
@@ -62,12 +61,6 @@ function auditStaticAuthoringRuntime(html, options = {}) {
     warnings,
     messages: errors.concat(warnings),
   };
-}
-
-function isExecutableScriptType(type) {
-  if (!type) return true;
-  return type === 'module'
-    || /^(?:application|text)\/(?:javascript|ecmascript)$/.test(type);
 }
 
 function runtimeIssue(code, file, extra) {
