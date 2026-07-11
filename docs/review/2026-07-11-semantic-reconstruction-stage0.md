@@ -117,4 +117,35 @@
 
 ## 0F
 
-尚未实施。后续每个阶段完成后在本文件追加提交、验证命令、结果和剩余非阻塞项。
+实施提交：`3f21731`、`e08ecf6`、`5822d3e`、`88b6e10`；safe 提升与本节证据更新位于同一收口提交。
+
+真实准入没有放宽 0A 预算。首次运行依次暴露并修复了以下翻译链路问题：PowerShell/npm 把逗号列表转为空格后的参数解析；同一虚拟祖先只接回首个兄弟对象；实体父级与外层虚拟祖先的父子关系混淆；上一轮 synth registry 未参与残差判断；母版家具与正文 order 混排；嵌套对象的作者 CSS 局部坐标与统一模型页面绝对坐标未在 HTML adapter 边界还原。每项均先添加失败测试，再修实现；门禁和视觉预算未被扩大。
+
+最终候选使用同一 47 页真实人类文件，以 `experimental` 运行规范有序列表：
+
+```text
+page-object-graph
+→ caption-structure
+→ figure-grid
+→ text-block
+→ reading-order-lite
+```
+
+最终结果：
+
+| 门禁 | 结果 |
+| --- | --- |
+| 首轮 E2E / 作者三报告 | 通过；0 error / 0 warning，源码回环与结构签名均 0 error |
+| 二轮 E2E / canonical 三报告 | 通过；内容、结构、源码漂移全部通过，canonical 源码漂移为 0 |
+| trusted-source | 通过；0 mutation / 0 missing |
+| reverse-snapshot stability | 通过；0 error / 0 warning |
+| effective-diff | 通过；P0=0，P1=0，P2=467（仅统计，与 baseline 相同） |
+| reverse-visual | 通过；缺失 0、文字 0、页面 0、几何差异 3，未超过冻结 baseline |
+| author-editability | 通过；语义容器覆盖率 0.1158 → 0.1389，顶层散落对象 528 → 514；inline 741、低层几何 774、vector 276 均未增加 |
+| conversion-gate | 通过；required editability / trustedSource / stability 全部满足 |
+| 全量测试 | `npm test` 通过；1069/1069，0 fail / 0 skipped |
+| 插件校验 | `npm run plugin:validate` 通过；4 个正式工具，0 error / 0 warning |
+
+准入结论：`safe` 使用上述同一有序列表，并成为 snapshot CLI、真实 INDD E2E 和插件的统一默认值；纯观察诊断必须显式选择 `none`。阶段 A0 及以后未在本轮实施。
+
+剩余非阻塞项：P2=467 继续仅作为规范化差异统计；reverse-visual 的 3 项几何差异沿用 0A 冻结预算。两者均未因本轮准入扩大，后续阶段应在不放宽门禁的前提下继续收紧。

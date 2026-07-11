@@ -6,14 +6,14 @@ const {
   resolveReconstructionProfile,
 } = require('../../src/semantic-reconstruction');
 
-test('reconstruction profile defaults to explicit none and keeps safe empty before 0F', () => {
+test('reconstruction profile defaults to the admitted safe list after 0F', () => {
   assert.deepEqual(resolveReconstructionProfile({}), {
-    name: 'none',
-    algorithms: [],
+    name: 'safe',
+    algorithms: [...CANONICAL_ALGORITHM_ORDER],
   });
   assert.deepEqual(resolveReconstructionProfile({ profile: 'safe' }), {
     name: 'safe',
-    algorithms: [],
+    algorithms: [...CANONICAL_ALGORITHM_ORDER],
   });
 });
 

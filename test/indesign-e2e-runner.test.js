@@ -297,7 +297,10 @@ test('parseArgs accepts reverse roundtrip flag', () => {
 
   assert.equal(options.reverseRoundtrip, true);
   assert.equal(options.targetSize, 'qhd');
-  assert.deepEqual(options.reconstructionProfile, { name: 'none', algorithms: [] });
+  assert.deepEqual(options.reconstructionProfile, {
+    name: 'safe',
+    algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite'],
+  });
 });
 
 test('parseArgs resolves one reconstruction profile for all E2E rounds', () => {

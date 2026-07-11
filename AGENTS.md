@@ -265,7 +265,7 @@ indesign-cli plugin install $pluginRoot
 | 协议字段注册表与多格式扩展 | 已由 `src/protocol/` 注册表集中维护，并生成 `docs/规范/PROTOCOL_FIELD_REGISTRY.md`；新增字段、生命周期或格式能力必须先改 registry，再同步生成文档和测试 |
 | 标签协议 | 以 `docs/规范/LABEL_PROTOCOL.md` 为当前说明，前向导出应写入可反向读取的 `html_indesign` 标签 |
 | 反向导出 | 以 `docs/规范/REVERSE_EXPORT.md` 为当前说明，先支持带标签结构化回读和未标注观察 HTML |
-| 语义重建 | 以 `docs/规范/SEMANTIC_RECONSTRUCTION.md` 为当前说明；阶段顺序和实施准入以 `docs/superpowers/specs/2026-07-06-semantic-reconstruction-algorithm-roadmap.md` 为当前方案；现有 pass 在进入默认链路前必须先通过幂等、trusted-source、统一 profile 与真实人类文件门禁 |
+| 语义重建 | 以 `docs/规范/SEMANTIC_RECONSTRUCTION.md` 为当前说明；阶段顺序和实施准入以 `docs/superpowers/specs/2026-07-06-semantic-reconstruction-algorithm-roadmap.md` 为当前方案；阶段 0 五个 pass 已通过幂等、trusted-source、统一 profile、47 页真实人类文件首轮/二轮回环与 conversion gate，并按规范顺序进入默认 `safe`；`none` 仅用于显式观察诊断，A0 及以后仍未实施 |
 | 页面对象图 | 以 `docs/规范/SEMANTIC_OBJECT_GRAPH.md` 为当前说明；不得把 InDesign 文档图层作为语义证据 |
 | HTML 与 InDesign 视觉差异 | 进入 `docs/review/` 或缺陷记录，按可验证问题修 |
 | 真实测试输出 | 统一放 `test/workspace/`，不进版本库 |

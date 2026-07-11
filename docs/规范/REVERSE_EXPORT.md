@@ -240,6 +240,8 @@ PDF 反向导出必须保留：
 </main>
 ```
 
+观察作者 HTML 与统一模型使用不同坐标语境：`reverse-model.json` 和 InDesign instructions 中的 `bounds` 始终是页面绝对坐标；当实体子对象嵌入一个会建立 CSS 定位上下文的实体父对象时，作者 HTML 的 `left/top` 必须写成父级局部坐标。HTML adapter 回读该作者包时必须沿已捕获的实体祖先恢复页面绝对坐标。虚拟容器不建立新的坐标原点，也不得导致重复平移。
+
 ### 4.2 `reverse-model.json`
 
 完整中间模型。

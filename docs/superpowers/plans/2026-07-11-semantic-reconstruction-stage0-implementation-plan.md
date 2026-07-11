@@ -155,11 +155,11 @@ npm test
 
 **目标：** 在真实 47 页文档上证明目标列表可发布，然后让所有用户入口统一默认 safe。
 
-- [ ] 以 experimental 和目标有序列表运行 candidate，确保首轮和递归第二轮都实际携带同一 profile 与算法列表。
-- [ ] 使用 0A 的同一 snapshot、预算和 required gates 生成 candidate 全套报告；不得更新 baseline 输入或放宽预算。
-- [ ] 对比 author-editability：覆盖率不得下降，散落对象、inline 和低层几何不得增加；目标改善项写入 review 文档。
-- [ ] 全部门禁通过后，把目标有序列表加入 safe；snapshot CLI、`--indd` 和插件默认 safe，诊断必须显式选择 none。
-- [ ] 更新 `AGENTS.md`、路线图状态、插件帮助和 review 结论；不把真实源路径或客户内容写入文档。
+- [x] 以 experimental 和目标有序列表运行 candidate，确保首轮和递归第二轮都实际携带同一 profile 与算法列表。
+- [x] 使用 0A 的同一 snapshot、预算和 required gates 生成 candidate 全套报告；不得更新 baseline 输入或放宽预算。
+- [x] 对比 author-editability：覆盖率不得下降，散落对象、inline 和低层几何不得增加；目标改善项写入 review 文档。
+- [x] 全部门禁通过后，把目标有序列表加入 safe；snapshot CLI、`--indd` 和插件默认 safe，诊断必须显式选择 none。
+- [x] 更新 `AGENTS.md`、路线图状态、插件帮助和 review 结论；不把真实源路径或客户内容写入文档。
 
 验证：
 
@@ -178,8 +178,10 @@ npm run plugin:validate
 
 ## Final Checkpoint
 
-- [ ] `git diff --check` 通过，工作区只包含本阶段预期文件。
-- [ ] `npm test` 全绿。
-- [ ] `npm run plugin:validate` 通过。
-- [ ] review 文档列出 0A–0F 每阶段提交、命令、结果和剩余非阻塞项。
-- [ ] 路线图只把阶段 0 标记为已实施；A0 及以后仍保持未实施。
+- [x] `git diff --check` 通过，工作区只包含本阶段预期文件。
+- [x] `npm test` 全绿（1069/1069）。
+- [x] `npm run plugin:validate` 通过（0 error / 0 warning）。
+- [x] review 文档列出 0A–0F 每阶段提交、命令、结果和剩余非阻塞项。
+- [x] 路线图只把阶段 0 标记为已实施；A0 及以后仍保持未实施。
+
+最终验证日期：2026-07-11。真实候选 conversion gate 重新计算通过，required editability / trustedSource / stability 全部满足；P0=0、P1=0，reverse-visual 几何差异 3 与冻结 baseline 相同。

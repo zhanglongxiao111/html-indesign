@@ -1,4 +1,4 @@
-const DEFAULT_RECONSTRUCTION_PROFILE = 'none';
+const DEFAULT_RECONSTRUCTION_PROFILE = 'safe';
 const RECONSTRUCTION_PROFILE_NAMES = Object.freeze(['none', 'safe', 'experimental']);
 
 const CANONICAL_ALGORITHM_ORDER = Object.freeze([
@@ -17,7 +17,7 @@ const ALGORITHM_DEPENDENCIES = Object.freeze({
   'reading-order-lite': Object.freeze([]),
 });
 
-const SAFE_ALGORITHMS = Object.freeze([]);
+const SAFE_ALGORITHMS = Object.freeze([...CANONICAL_ALGORITHM_ORDER]);
 const PROFILE_NAMES = new Set(RECONSTRUCTION_PROFILE_NAMES);
 const ALGORITHM_NAMES = new Set(CANONICAL_ALGORITHM_ORDER);
 

@@ -177,7 +177,10 @@ test('html.reverse_export returns script.run host action for an INDD file', () =
 
   assert.equal(response.status, 'requires_host_actions');
   assert.equal(response.state.tool_id, 'html.reverse_export');
-  assert.deepEqual(response.state.reconstructionProfile, { name: 'none', algorithms: [] });
+  assert.deepEqual(response.state.reconstructionProfile, {
+    name: 'safe',
+    algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite'],
+  });
   assert.equal(fs.existsSync(response.state.reverseScriptPath), true);
   assert.equal(response.actions.length, 1);
   assert.equal(response.actions[0].tool_id, 'script.run');

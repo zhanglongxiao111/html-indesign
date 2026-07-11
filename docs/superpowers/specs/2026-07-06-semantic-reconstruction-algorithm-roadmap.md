@@ -1,7 +1,7 @@
 # 语义重建算法路线图（InDesign → HTML）
 
 - 日期：2026-07-06（2026-07-11 第二次修订：实施准入收口）
-- 状态：修订提案（阶段 0 边界已收口，尚未实施；阶段 A–F 按前置任务逐阶段解锁）
+- 状态：阶段 0 已实施并通过真实准入；阶段 A–F 按前置任务逐阶段解锁
 - 类型：方案设计（过程文档，不自动等同长期规范；算法逐条落地后按规则沉淀进 `docs/规范/SEMANTIC_RECONSTRUCTION.md` §4/§2.5）
 - 关联：`docs/规范/SEMANTIC_RECONSTRUCTION.md`、`docs/规范/SEMANTIC_OBJECT_GRAPH.md`、`docs/superpowers/plans/2026-07-11-semantic-reconstruction-stage0-implementation-plan.md`（0A–0F 轻量实施计划）、`docs/superpowers/specs/2026-07-06-agent-editability-benchmark-design.md`（基准是目标层验收，尚未实施，见 §4）、`docs/superpowers/specs/2026-07-06-architecture-hardening-guardrails-design.md`
 
@@ -24,6 +24,8 @@
 - 增加 A0、B0、D0、E0 前置任务：补齐文字证据、原生结构采集与裁决规则 schema，再进入对应算法。
 - 编辑任务基准改为 Phase 2 形成基线后才切换主判据，Phase 3 接入棘轮后才作为阶段收口硬门槛。
 - 二次回环的 canonical 作者包源码零漂移与当前代码、AGENTS 统一为硬门槛。
+
+2026-07-11 阶段 0 实施结果：目标五 pass 已按规范顺序通过模型双跑、trusted-source、全量测试、插件校验、同一 47 页真实人类文件首轮/二轮回环、effective-diff、reverse-visual、author-editability 与 conversion gate。`safe` 已提升为正式默认；`none` 保留为显式观察诊断。阶段 A0 及以后仍未实施。
 
 ## 1. 问题定性
 

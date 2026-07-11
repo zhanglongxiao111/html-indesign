@@ -173,7 +173,7 @@ InDesign
 
 - 排序键固定为 `(y, x, originalIndex)`，不得把二维坐标压成单个数值近似比较。
 - 有 bounds 的页级对象排在无 bounds 对象之前；同坐标和无 bounds 对象按原始数组位置稳定排序。虚拟容器可以使用其直接子对象的联合 bounds。
-- 只写非可信页级对象的 `structure.order`，并避开可信对象已经占用的 order；可信对象无论是否已有 order 都保持逐字段不变。
+- 只写非可信、非母版家具的页级对象 `structure.order`，并避开可信对象和母版家具占用的位置；可信对象与母版家具无论是否已有 order 都保持逐字段不变。
 - `figure-grid` 和 `text-block` 不得隐式触发全页排序。调用方需要阅读顺序时必须显式执行本 pass，并把它放在全部结构写回 pass 之后。
 - 本 pass 只解决当前页面级几何顺序，不替代 R7 的串接文本框、story 原生顺序和更完整阅读顺序算法。
 
@@ -181,8 +181,8 @@ InDesign
 
 所有正式入口使用同一个 reconstruction profile 解析器，不得各自维护默认算法列表、依赖或顺序：
 
-- `none`：明确不运行重建算法，输出 `observed-only`。阶段 0F 通过前，这是用户入口默认值。
-- `safe`：只运行已经通过真实门禁的算法。阶段 0F 通过前列表为空，不得提前放入候选 pass。
+- `none`：明确不运行重建算法，输出 `observed-only`；用于纯观察诊断，必须由调用方显式选择。
+- `safe`：正式用户入口默认值。当前有序列表为 `page-object-graph → caption-structure → figure-grid → text-block → reading-order-lite`，该列表已经通过阶段 0F 的模型双跑、可信来源、全量测试、47 页真实人类文件首轮/二轮回环、effective-diff、reverse-visual、author-editability 和 conversion gate。
 - `experimental`：仅用于显式候选验证，必须同时提供算法列表；`--reconstruct` 在其他 profile 下属于非法输入。
 
 规范顺序固定为 `page-object-graph → caption-structure → figure-grid → text-block → reading-order-lite`。解析器负责去重和依赖闭包：caption 自动补对象图，figure-grid 自动补 caption 及其依赖；reading-order-lite 若被选择，始终位于结构写回之后。

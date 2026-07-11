@@ -42,7 +42,10 @@ test('parseArgs accepts mode, snapshot and out dir', () => {
   assert.equal(args.mode, 'structured');
   assert.equal(args.snapshotPath, 'reverse.json');
   assert.equal(args.outDir, 'out-dir');
-  assert.deepEqual(args.reconstructionProfile, { name: 'none', algorithms: [] });
+  assert.deepEqual(args.reconstructionProfile, {
+    name: 'safe',
+    algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite'],
+  });
 });
 
 test('parseArgs accepts historical blueprint input', () => {
