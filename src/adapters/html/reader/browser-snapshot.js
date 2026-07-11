@@ -1,5 +1,5 @@
 const path = require('path');
-const { chromium } = require('playwright');
+const { launchEdgeBrowser } = require('../../../shared/edge-browser');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 const { rectPxToMm, round } = require('../../../shared/geometry');
 const { createReport, addMessage } = require('../../../shared/report');
@@ -16,7 +16,9 @@ async function renderSnapshot(options) {
   const pageSelector = options.pageSelector || defaultPageSelector();
   const report = createReport();
   addMessage(report, 'info', 'SNAPSHOT_START', 'Browser snapshot started', { htmlPath });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await (options.launchBrowser || launchEdgeBrowser)({
+    launchOptions: { headless: true },
+  });
   try {
     const page = await browser.newPage({ viewport: { width: 2200, height: 1400 }, deviceScaleFactor: 1 });
     await page.goto('file:///' + htmlPath.replace(/\\/g, '/'), { waitUntil: 'networkidle' });

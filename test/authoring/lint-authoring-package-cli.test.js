@@ -175,6 +175,47 @@ test('lint-authoring --package --strict allows pages without baseline declaratio
   assert.ok(!payload.errors.some((entry) => entry.attribute === 'data-id-baseline'));
 });
 
+test('lint-authoring --package --strict rejects executable source-page scripts before browser snapshot', () => {
+  const root = makePackageFixture({
+    pageHtml: `
+      <section class="page" data-page="cover" data-id-layout="cover" data-id-margin="10mm" data-id-grid="12x8">
+        <script src="https://cdn.example.com/chart.js"></script>
+      </section>
+    `,
+  });
+  const configPath = path.join(root, 'deck.config.json');
+  writeAuthorPackageEntry(configPath);
+
+  const result = runLint(['--package', configPath, '--strict', '--json']);
+  const payload = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 1, result.stderr || result.stdout);
+  assert.equal(payload.ok, false);
+  assert.ok(payload.errors.some((entry) => (
+    entry.code === 'AUTHOR_REMOTE_RUNTIME_SCRIPT_FORBIDDEN'
+    && entry.file === 'pages/00-cover.html'
+  )));
+});
+
+test('lint-authoring --package --strict allows application/json protocol payloads', () => {
+  const root = makePackageFixture({
+    pageHtml: `
+      <section class="page" data-page="cover" data-id-layout="cover" data-id-margin="10mm" data-id-grid="12x8">
+        <script type="application/json" data-id-source-package-layers>[{"id":"content"}]</script>
+      </section>
+    `,
+  });
+  const configPath = path.join(root, 'deck.config.json');
+  writeAuthorPackageEntry(configPath);
+
+  const result = runLint(['--package', configPath, '--strict', '--json']);
+  const payload = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.errors.some((entry) => /SCRIPT_FORBIDDEN/.test(entry.code)), false);
+});
+
 function runLint(args) {
   return spawnSync(process.execPath, ['scripts/lint-authoring.js', ...args], {
     cwd: path.resolve(__dirname, '../..'),

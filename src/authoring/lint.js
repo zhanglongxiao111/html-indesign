@@ -12,6 +12,7 @@ const {
   validateDataIdFields,
 } = require('../protocol');
 const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../semantic-preset');
+const { auditStaticAuthoringRuntime } = require('./static-runtime-audit');
 
 async function lintAuthoringPackage(options = {}) {
   const packagePath = path.resolve(requiredPath(options.packagePath, 'packagePath'));
@@ -99,6 +100,20 @@ async function lintAuthoringHtml(options = {}) {
   }
 
   const dataIdAudit = auditHtmlDataIdFields(htmlPath, { strict: options.strict });
+  const runtimeAudit = auditStaticAuthoringRuntime(fs.readFileSync(htmlPath, 'utf8'), {
+    strict: options.strict,
+    file: htmlPath,
+  });
+  if (!runtimeAudit.valid) {
+    return normalizeLintPayload({
+      ok: false,
+      htmlPath,
+      dataIdAudit,
+      runtimeAudit,
+      errors: dataIdAudit.errors.concat(runtimeAudit.errors),
+      warnings: dataIdAudit.warnings.concat(runtimeAudit.warnings),
+    }, { htmlPath });
+  }
   const snapshot = await renderSnapshot({ htmlPath });
   const result = withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
@@ -109,10 +124,22 @@ async function lintAuthoringHtml(options = {}) {
     ok: result.valid,
     htmlPath,
     dataIdAudit,
-    ...result,
+    runtimeAudit,
+    ...withRuntimeAudit(result, runtimeAudit),
   }, {
     htmlPath,
   });
+}
+
+function withRuntimeAudit(result, runtimeAudit) {
+  const errors = result.errors.concat(runtimeAudit.errors);
+  const warnings = result.warnings.concat(runtimeAudit.warnings);
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    messages: errors.concat(warnings),
+  };
 }
 
 function requiredPath(value, name) {

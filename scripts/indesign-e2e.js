@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { pathToFileURL } = require('url');
+const { EDGE_NOT_AVAILABLE, launchEdgeBrowser } = require('../src/shared/edge-browser');
 
 const { renderSnapshot } = require('../src/adapters/html');
 const hostJsx = require('../src/indesign-cli-plugin/host-jsx');
@@ -596,13 +597,13 @@ async function renderPdfPreview(context, pdfPath) {
   fs.writeFileSync(htmlPath, contactSheetHtml(pages), 'utf8');
 
   try {
-    const { chromium } = require('playwright');
-    const browser = await chromium.launch();
+    const browser = await launchEdgeBrowser();
     const page = await browser.newPage({ viewport: { width: 1400, height: 1800 }, deviceScaleFactor: 1 });
     await page.goto(pathToFileURL(htmlPath).href);
     await page.screenshot({ path: pngPath, fullPage: true });
     await browser.close();
   } catch (error) {
+    if (error && error.code === EDGE_NOT_AVAILABLE) throw error;
     return {
       ok: false,
       pages: pages.map((name) => path.join(context.previewDir, name)),

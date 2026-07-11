@@ -1,12 +1,12 @@
 const fs = require('fs');
+const { launchEdgeBrowser } = require('../../../shared/edge-browser');
 const {
   HTML_DATA_ID_ATTRIBUTES,
   HTML_DATA_ID_ATTRIBUTE_NAMES,
 } = require('../../../protocol');
 
-async function captureHtmlGeometry(htmlFile) {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+async function captureHtmlGeometry(htmlFile, options = {}) {
+  const browser = await (options.launchBrowser || launchEdgeBrowser)();
   try {
     const page = await browser.newPage({ viewport: { width: 2200, height: 1400 }, deviceScaleFactor: 1 });
     await page.route('**/*', (route) => {
