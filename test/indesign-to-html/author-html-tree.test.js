@@ -570,6 +570,44 @@ test('pageItemsToAuthorHtml keeps a physical child under its physical parent whe
   assert.match(html, /<section id="page-figure-grid-1" class="figure-grid id-object">\n\s+<figure id="figure-a">\n\s+<figcaption id="caption-a">Caption<\/figcaption>\n\s+<\/figure>\n<\/section>/);
 });
 
+test('pageItemsToAuthorHtml keeps all parent-page furniture before explicitly ordered page content', () => {
+  const page = {
+    id: 'page',
+    items: [
+      {
+        id: 'furniture-a',
+        role: 'text',
+        parentPageItem: true,
+        content: { text: 'Furniture A' },
+      },
+      {
+        id: 'furniture-b',
+        role: 'text',
+        parentPageItem: true,
+        content: { text: 'Furniture B' },
+      },
+      {
+        id: 'page-copy',
+        role: 'text',
+        structure: { parentId: 'page', order: 2 },
+        content: { text: 'Page copy' },
+      },
+      {
+        id: 'furniture-c',
+        role: 'text',
+        parentPageItem: true,
+        content: { text: 'Furniture C' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.ok(html.indexOf('Furniture A') < html.indexOf('Furniture B'));
+  assert.ok(html.indexOf('Furniture B') < html.indexOf('Furniture C'));
+  assert.ok(html.indexOf('Furniture C') < html.indexOf('Page copy'));
+});
+
 test('pageItemsToAuthorHtml does not emit non-semantic automatic character spans', () => {
   const page = {
     id: 'agenda-page',

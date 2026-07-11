@@ -32,7 +32,14 @@ function buildAuthorTree(page) {
     }
   }
   for (const node of nodes.values()) node.children.sort((a, b) => nodeOrder(a) - nodeOrder(b));
-  return roots.sort((a, b) => nodeOrder(a) - nodeOrder(b));
+  return roots.sort(compareRootNodes);
+}
+
+function compareRootNodes(left, right) {
+  const leftFurniture = left.item && left.item.parentPageItem === true;
+  const rightFurniture = right.item && right.item.parentPageItem === true;
+  if (leftFurniture !== rightFurniture) return leftFurniture ? -1 : 1;
+  return nodeOrder(left) - nodeOrder(right);
 }
 
 function attachSourceAncestorNodes(nodes, rootId) {
