@@ -1,12 +1,13 @@
-# Agent 作者 Skill 与动态库边界设计
+# 统一出版 Skill 与动态库边界设计
 
 ## 目标
 
-让 Agent 直接从作者 Skill 得到可执行规则，并明确 React、Vue、图表库等动态创作方式何时可以直接转换、何时必须先生成静态作者包。
+让 Agent 从统一的 InDesign/HTML 出版 Skill 得到可执行规则，并明确 React、Vue、图表库等动态创作方式何时可以直接转换、何时必须先生成静态作者包。
 
 ## 职责
 
-- `html-indesign-authoring` Skill 是 Agent 开工时的操作说明书，必须区分硬要求、条件性硬要求和建议。
+- 唯一发布版 Skill 位于 `D:\AI\mcp-indesign\skills\indesign-cli\`；顶层 `SKILL.md` 负责选择 HTML 或直接操作 InDesign 的路线，`references/html-authoring.md` 负责 HTML 作者规则，并必须区分硬要求、条件性硬要求和建议。
+- 本仓库不保留第二份可发布 Skill；HTML 协议、作者规范或转换能力改变 Agent 工作方法时，应同步更新上述统一 Skill reference。
 - `AGENT_HTML_AUTHORING_GUIDE.md` 是长期规则底稿，解释边界和原因，不重复全部操作流程。
 - `lint:authoring --strict` 自动拦截能够静态判断的硬错误；真实无损能力仍由 InDesign 双回环证明。
 
@@ -31,7 +32,7 @@
 
 ## 验收
 
-- Skill 能让 Agent 正确区分单次转换与无损回环。
-- Skill 明确由 Agent 完成静态导出，并正确处理 React、SVG、Canvas、动画和异步数据。
+- 统一 Skill 能让 Agent 先选择正确制作路线，并正确区分单次转换与无损回环。
+- 统一 Skill 的 HTML 作者 reference 明确由 Agent 完成静态导出，并正确处理 React、SVG、Canvas、动画和异步数据。
 - 严格检查对违规动态作者包失败，对纯静态作者包和项目协议 JSON 通过。
 - 现有作者包测试和全量测试不回退。
