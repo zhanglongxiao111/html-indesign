@@ -1,4 +1,3 @@
-const { normalizePageLevelReadingOrder } = require('./reading-order');
 const { isTrustedSourceEntity } = require('./trusted-source-preservation');
 
 const DEFAULT_TEXT_BLOCK_OPTIONS = {
@@ -26,7 +25,6 @@ function applyTextBlock(model, options = {}) {
         continue;
       }
       const result = createTextBlock(page, group, groupIndex);
-      normalizePageLevelReadingOrder(page);
       groupIndex += 1;
       applied.push({
         pageId: page.id || null,

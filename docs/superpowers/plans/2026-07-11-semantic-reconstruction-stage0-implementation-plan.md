@@ -94,11 +94,11 @@ npm test
 
 **目标：** 五个目标 pass 各自可重复执行，组合运行两次也不改变模型；阅读顺序成为显式、可报告的最后一步。
 
-- [ ] 为 `caption-structure` 增加同一模型连续运行两次的失败测试，固定当前图注 order 从 1 变 2 的缺陷。
-- [ ] 修复同一 figure/caption 已建立父子关系时的处理：第二次运行记录为已满足或 skipped，不再次增加 order。
-- [ ] 新建 `reading-order-lite` pass，排序键固定为 `(y, x, originalIndex)`，处理无 bounds、相同坐标、宽页面和 trusted 混排。
-- [ ] 从 `figure-grid.js`、`text-block.js` 移除隐式全页排序；在 `reconstruct.js` 注册 reading-order-lite，并让它在所有结构写回后执行。
-- [ ] 增加四个已落地 pass、reading-order-lite 和目标组合列表的模型级双跑字节稳定测试。
+- [x] 为 `caption-structure` 增加同一模型连续运行两次的失败测试，固定当前图注 order 从 1 变 2 的缺陷。
+- [x] 修复同一 figure/caption 已建立父子关系时的处理：第二次运行记录为已满足或 skipped，不再次增加 order。
+- [x] 新建 `reading-order-lite` pass，排序键固定为 `(y, x, originalIndex)`，处理无 bounds、相同坐标、宽页面和 trusted 混排。
+- [x] 从 `figure-grid.js`、`text-block.js` 移除隐式全页排序；在 `reconstruct.js` 注册 reading-order-lite，并让它在所有结构写回后执行。
+- [x] 增加四个已落地 pass、reading-order-lite 和目标组合列表的模型级双跑字节稳定测试。
 
 验证：
 

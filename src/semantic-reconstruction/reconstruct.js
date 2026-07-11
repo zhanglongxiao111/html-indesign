@@ -2,9 +2,10 @@ const { buildDocumentObjectGraph } = require('./object-graph');
 const { applyCaptionStructure } = require('./caption-structure');
 const { applyFigureGrid } = require('./figure-grid');
 const { applyTextBlock } = require('./text-block');
+const { applyReadingOrderLite } = require('./reading-order-lite');
 const { auditTrustedSourcePreservation } = require('./trusted-source-preservation');
 
-const SUPPORTED_ALGORITHMS = new Set(['page-object-graph', 'caption-structure', 'figure-grid', 'text-block']);
+const SUPPORTED_ALGORITHMS = new Set(['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite']);
 
 function reconstructSemanticModel(observedModel, options = {}) {
   assertDocumentModel(observedModel);
@@ -54,7 +55,10 @@ function normalizeAlgorithms(algorithms) {
       throw new Error(`Unknown semantic reconstruction algorithm: ${algorithm}`);
     }
   }
-  return normalized;
+  return [
+    ...normalized.filter((algorithm) => algorithm !== 'reading-order-lite'),
+    ...normalized.filter((algorithm) => algorithm === 'reading-order-lite'),
+  ];
 }
 
 function runAlgorithms(algorithms, model, options) {
@@ -76,6 +80,9 @@ function runAlgorithms(algorithms, model, options) {
     }
     if (algorithm === 'text-block') {
       return applyTextBlock(model, options.textBlock || {});
+    }
+    if (algorithm === 'reading-order-lite') {
+      return applyReadingOrderLite(model);
     }
     throw new Error(`Unknown semantic reconstruction algorithm: ${algorithm}`);
   });

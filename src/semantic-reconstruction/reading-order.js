@@ -1,18 +1,3 @@
-const { isTrustedSourceEntity } = require('./trusted-source-preservation');
-
-function normalizePageLevelReadingOrder(page) {
-  const roots = pageLevelItems(page);
-  const ordered = roots.slice().sort((a, b) => readingOrderKey(page, a) - readingOrderKey(page, b));
-  ordered.forEach((item, index) => {
-    if (isTrustedSourceEntity(item)) return;
-    if (!item.virtual && hasExplicitOrder(item)) return;
-    item.structure = {
-      ...(item.structure || {}),
-      order: index + 1,
-    };
-  });
-}
-
 function pageLevelItems(page) {
   return (page.items || []).filter((item) => {
     if (!item) return false;
@@ -21,32 +6,47 @@ function pageLevelItems(page) {
   });
 }
 
-function readingOrderKey(page, item) {
-  if (hasBounds(item)) return boundsKey(item.bounds);
+function readingOrderTuple(page, item, originalIndex) {
+  const bounds = effectiveBounds(page, item);
+  return {
+    bounded: Boolean(bounds),
+    y: bounds ? Number(bounds.y) : null,
+    x: bounds ? Number(bounds.x) : null,
+    originalIndex,
+  };
+}
+
+function compareReadingOrderTuples(left, right) {
+  if (left.bounded !== right.bounded) return left.bounded ? -1 : 1;
+  if (left.bounded && left.y !== right.y) return left.y - right.y;
+  if (left.bounded && left.x !== right.x) return left.x - right.x;
+  return left.originalIndex - right.originalIndex;
+}
+
+function effectiveBounds(page, item) {
+  if (hasBounds(item)) return normalizedBounds(item.bounds);
   const childBounds = (page.items || [])
     .filter((child) => child && child.structure && child.structure.parentId === item.id)
     .filter(hasBounds)
-    .map((child) => child.bounds);
-  if (childBounds.length) return boundsKey(unionBounds(childBounds));
-  const index = (page.items || []).indexOf(item);
-  return 1000000000000 + (index >= 0 ? index : 0);
+    .map((child) => normalizedBounds(child.bounds));
+  return childBounds.length ? unionBounds(childBounds) : null;
 }
 
-function boundsKey(bounds) {
-  return Number(bounds.y) * 1000000 + Number(bounds.x) * 1000;
+function normalizedBounds(bounds) {
+  return {
+    x: Number(bounds.x),
+    y: Number(bounds.y),
+    width: Number(bounds.width),
+    height: Number(bounds.height),
+  };
 }
 
 function unionBounds(boundsList) {
-  const left = Math.min(...boundsList.map((bounds) => Number(bounds.x)));
-  const top = Math.min(...boundsList.map((bounds) => Number(bounds.y)));
-  const right = Math.max(...boundsList.map((bounds) => Number(bounds.x) + Number(bounds.width)));
-  const bottom = Math.max(...boundsList.map((bounds) => Number(bounds.y) + Number(bounds.height)));
+  const left = Math.min(...boundsList.map((bounds) => bounds.x));
+  const top = Math.min(...boundsList.map((bounds) => bounds.y));
+  const right = Math.max(...boundsList.map((bounds) => bounds.x + bounds.width));
+  const bottom = Math.max(...boundsList.map((bounds) => bounds.y + bounds.height));
   return { x: left, y: top, width: right - left, height: bottom - top };
-}
-
-function hasExplicitOrder(item) {
-  const order = item && item.structure && Number(item.structure.order);
-  return Number.isFinite(order);
 }
 
 function hasBounds(item) {
@@ -59,5 +59,7 @@ function hasBounds(item) {
 }
 
 module.exports = {
-  normalizePageLevelReadingOrder,
+  pageLevelItems,
+  readingOrderTuple,
+  compareReadingOrderTuples,
 };

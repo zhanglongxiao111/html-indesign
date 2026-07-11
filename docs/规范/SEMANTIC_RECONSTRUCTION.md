@@ -17,7 +17,7 @@ InDesign
 -> 作者源码包
 ```
 
-当前实现包含四类 pass：
+当前实现包含五类 pass：
 
 - `src/semantic-reconstruction/` 提供模型变换入口。
 - `reconstructSemanticModel(model, options)` 返回 `{ model, report }`。
@@ -26,6 +26,7 @@ InDesign
 - `caption-structure` 使用对象图中的高置信 `caption-candidate` 关系，把图像/置入资源和短说明文字写成作者 HTML 可编辑的 `figure + figcaption` 父子结构。
 - `figure-grid` 使用已结构化的 captioned figure，把同页同尺寸、行列关系明确的多个 figure 包成作者 HTML 可编辑的 `section.figure-grid`。
 - `text-block` 把同页、同列、同文字样式、垂直连续的页级文字框包成作者 HTML 可编辑的 `section.text-block`。
+- `reading-order-lite` 在所有结构写回完成后，以稳定的 `(y, x, originalIndex)` 顺序整理非可信页级对象；它不改写可信作者结构，也不做跨页、串接文本框或语义阅读顺序推断。
 - 反向导出会写出 `reconstruction-report.json`。
 - `labelStatus: "accepted"` 且带 `sourceNode` 的页面或对象是可信作者结构，语义重建算法不得改写其 `tagName`、`sourceNode`、`sourceAncestorNodes`、`structure` 或既有 `semantic`。
 
@@ -51,7 +52,7 @@ InDesign
 - 只输出 `Reconstructed Author Model` 和结构化报告。
 - 每个推断必须有置信度、证据和来源。
 - 低置信度结果只能进入 `unresolved` 或候选报告，不能写成有效语义。
-- 可信作者结构只能作为上下文观察，不得被 caption、grid、text-block 或后续算法移动、重包、改标签或替换 source node；需要改动时必须先降级为非 accepted 观察事实，并在报告中说明。
+- 可信作者结构只能作为上下文观察，不得被 caption、grid、text-block、reading-order-lite 或后续算法移动、重包、改标签、补 order 或替换 source node；需要改动时必须先降级为非 accepted 观察事实，并在报告中说明。
 
 ### 2.3 HTML Writer
 
@@ -167,6 +168,14 @@ InDesign
 ```
 
 这一步只表达“这些文字框属于同一个可编辑文本块”，不判断页面是材料页、说明页或其他页面类型。
+
+`reading-order-lite` 是结构写回后的显式轻量排序 pass。
+
+- 排序键固定为 `(y, x, originalIndex)`，不得把二维坐标压成单个数值近似比较。
+- 有 bounds 的页级对象排在无 bounds 对象之前；同坐标和无 bounds 对象按原始数组位置稳定排序。虚拟容器可以使用其直接子对象的联合 bounds。
+- 只写非可信页级对象的 `structure.order`，并避开可信对象已经占用的 order；可信对象无论是否已有 order 都保持逐字段不变。
+- `figure-grid` 和 `text-block` 不得隐式触发全页排序。调用方需要阅读顺序时必须显式执行本 pass，并把它放在全部结构写回 pass 之后。
+- 本 pass 只解决当前页面级几何顺序，不替代 R7 的串接文本框、story 原生顺序和更完整阅读顺序算法。
 
 ## 3. 报告
 

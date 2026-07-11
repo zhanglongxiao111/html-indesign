@@ -165,6 +165,39 @@ test('reconstructSemanticModel can apply high-confidence caption structure to au
   assert.doesNotMatch(html, /<figure[^>]+id="image-1"[\s\S]*body-1[\s\S]*<\/figure>/);
 });
 
+test('caption structure is byte-stable when the reconstructed model is processed again', () => {
+  const observedModel = {
+    kind: 'DocumentModel',
+    id: 'observed-deck',
+    reverseMode: 'observation',
+    parentPages: [],
+    pages: [{
+      id: 'page-1',
+      width: 1000,
+      height: 1000,
+      items: [
+        graphic('image-1', 100, 100, 300, 180, 1),
+        caption('caption-1', 100, 285, '总平面效果图', 2),
+      ],
+    }],
+    assets: [],
+  };
+  const first = reconstructSemanticModel(observedModel, {
+    mode: 'observation',
+    algorithms: ['caption-structure'],
+  });
+  const firstBytes = JSON.stringify(first.model);
+
+  const second = reconstructSemanticModel(first.model, {
+    mode: 'observation',
+    algorithms: ['caption-structure'],
+  });
+
+  assert.equal(JSON.stringify(second.model), firstBytes);
+  assert.equal(second.report.passes[0].summary.applied, 0);
+  assert.equal(second.report.passes[0].skipped[0].reason, 'caption-already-structured');
+});
+
 test('reconstructSemanticModel does not apply low-confidence caption candidates to author HTML', () => {
   const observedModel = {
     kind: 'DocumentModel',
@@ -421,7 +454,7 @@ test('reconstructSemanticModel can group adjacent same-style text frames into an
   assert.doesNotMatch(html, /<section[^>]+id="page-1-text-block-1"[\s\S]*side-note[\s\S]*<\/section>/);
 });
 
-test('reconstructSemanticModel keeps text block source order when observed items have no explicit structure order', () => {
+test('reading-order-lite keeps generated text blocks in geometric source order', () => {
   const intro = textFrame('intro', 80, 40, 280, 48, '前置说明', undefined);
   const copy1 = textFrame('copy-1', 80, 140, 280, 72, '正文第一段', undefined);
   const copy2 = textFrame('copy-2', 80, 224, 280, 72, '正文第二段', undefined);
@@ -444,7 +477,7 @@ test('reconstructSemanticModel keeps text block source order when observed items
 
   const result = reconstructSemanticModel(observedModel, {
     mode: 'observation',
-    algorithms: ['text-block'],
+    algorithms: ['text-block', 'reading-order-lite'],
   });
 
   const html = pageItemsToAuthorHtml(result.model.pages[0], { mode: 'authoring' });
@@ -461,6 +494,83 @@ test('reconstructSemanticModel fails visibly for unknown algorithms', () => {
     /Unknown semantic reconstruction algorithm: unknown-algorithm/,
   );
 });
+
+test('implemented reconstruction passes and the target combination are model-level byte-stable', () => {
+  const cases = [
+    {
+      name: 'page-object-graph',
+      algorithms: ['page-object-graph'],
+      model: modelWithFiguresAndText,
+    },
+    {
+      name: 'caption-structure',
+      algorithms: ['caption-structure'],
+      model: modelWithFiguresAndText,
+    },
+    {
+      name: 'figure-grid',
+      algorithms: ['figure-grid'],
+      model: () => reconstructSemanticModel(modelWithFiguresAndText(), {
+        algorithms: ['caption-structure'],
+      }).model,
+    },
+    {
+      name: 'text-block',
+      algorithms: ['text-block'],
+      model: modelWithFiguresAndText,
+    },
+    {
+      name: 'reading-order-lite',
+      algorithms: ['reading-order-lite'],
+      model: modelWithFiguresAndText,
+    },
+    {
+      name: 'target-combination',
+      algorithms: ['page-object-graph', 'caption-structure', 'figure-grid', 'text-block', 'reading-order-lite'],
+      model: modelWithFiguresAndText,
+    },
+  ];
+
+  for (const entry of cases) {
+    const first = reconstructSemanticModel(entry.model(), {
+      mode: 'observation',
+      algorithms: entry.algorithms,
+    });
+    const firstBytes = JSON.stringify(first.model);
+    const second = reconstructSemanticModel(first.model, {
+      mode: 'observation',
+      algorithms: entry.algorithms,
+    });
+    assert.equal(JSON.stringify(second.model), firstBytes, entry.name);
+  }
+});
+
+function modelWithFiguresAndText() {
+  return {
+    kind: 'DocumentModel',
+    id: 'combined-deck',
+    reverseMode: 'observation',
+    parentPages: [],
+    pages: [{
+      id: 'page-1',
+      width: 1000,
+      height: 1000,
+      items: [
+        graphic('image-1', 100, 100, 180, 100, 1),
+        caption('caption-1', 100, 204, '材料一', 2),
+        graphic('image-2', 320, 100, 180, 100, 3),
+        caption('caption-2', 320, 204, '材料二', 4),
+        graphic('image-3', 100, 260, 180, 100, 5),
+        caption('caption-3', 100, 364, '材料三', 6),
+        graphic('image-4', 320, 260, 180, 100, 7),
+        caption('caption-4', 320, 364, '材料四', 8),
+        textFrame('copy-1', 650, 120, 220, 72, '正文第一段', 9),
+        textFrame('copy-2', 650, 216, 220, 72, '正文第二段', 10),
+      ],
+    }],
+    assets: [],
+  };
+}
 
 function graphic(id, x, y, width, height, order) {
   return {

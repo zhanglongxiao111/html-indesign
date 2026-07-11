@@ -50,6 +50,8 @@
 
 起点提交：`6690eaf`
 
+实施提交：`7c43bbd`
+
 本阶段先用失败测试证明两条现存问题，再修改实现：
 
 - 当可信页级对象没有显式 `order`、旁边观察对象触发 text-block 分组时，共享排序函数会擅自给可信对象补 `order`。
@@ -63,6 +65,20 @@
 - 作者包自身失败仍保留更具体的 `REVERSE_AUTHOR_AUDIT_FAILED`，没有被总门禁掩盖。
 - 语义重建定向测试 20 项通过；CLI、插件和 E2E 定向测试 63 项通过；完整测试 1037 项通过。
 
-## 0C–0F
+## 0C：pass 幂等与 reading-order-lite
+
+起点提交：`7c43bbd`
+
+本阶段先用双跑测试复现 `caption-structure` 会把同一图注 order 从 1 增到 2，再完成以下收口：
+
+- 已经是同一 `figure + figcaption` 父子结构的候选记录为 `caption-already-structured`，不再重复写回。
+- 新增独立 `reading-order-lite` pass，以 `(y, x, originalIndex)` 稳定排序；宽页面、相同坐标、无 bounds 和 trusted 混排均有回归测试。
+- `figure-grid` 和 `text-block` 不再隐式修改全页 order；需要排序时由调用方显式选择 `reading-order-lite`，且执行器把它放在结构 pass 之后。
+- reading-order-lite 只改非可信页级对象，并避开可信对象已有 order；可信对象逐字段保持不变。
+- `page-object-graph`、`caption-structure`、`figure-grid`、`text-block`、`reading-order-lite` 和目标组合列表全部通过模型级双跑字节稳定测试。
+
+定向语义重建测试 27 项通过；完整测试 1044 项通过。
+
+## 0D–0F
 
 尚未实施。后续每个阶段完成后在本文件追加提交、验证命令、结果和剩余非阻塞项。

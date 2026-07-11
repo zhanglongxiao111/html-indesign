@@ -1,4 +1,3 @@
-const { normalizePageLevelReadingOrder } = require('./reading-order');
 const { isTrustedSourceEntity } = require('./trusted-source-preservation');
 
 const DEFAULT_FIGURE_GRID_OPTIONS = {
@@ -26,7 +25,6 @@ function applyFigureGrid(model, options = {}) {
         continue;
       }
       const result = createFigureGrid(page, cluster, groupIndex);
-      normalizePageLevelReadingOrder(page);
       groupIndex += 1;
       applied.push({
         pageId: page.id || null,

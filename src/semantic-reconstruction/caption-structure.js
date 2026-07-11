@@ -67,10 +67,22 @@ function captionDecision({ page, figure, caption, edge, usedFigureIds, usedCapti
   if (!isGraphicCaptionHost(figure)) return { ok: false, reason: 'figure-not-graphic' };
   if (caption.role !== 'text') return { ok: false, reason: 'caption-not-text' };
   if (isTrustedSourceEntity(figure) || isTrustedSourceEntity(caption)) return { ok: false, reason: 'trusted-source-protected' };
+  if (captionAlreadyStructured(caption, figure)) return { ok: false, reason: 'caption-already-structured' };
   if (Number(edge.score || 0) < config.minimumScore) return { ok: false, reason: 'score-too-low' };
   if (captionText(caption).length > config.maxCaptionTextLength) return { ok: false, reason: 'caption-too-long' };
   if (captionAlreadyNestedUnderOther(page, caption, figure)) return { ok: false, reason: 'caption-already-nested' };
   return { ok: true };
+}
+
+function captionAlreadyStructured(caption, figure) {
+  const parentId = caption && caption.structure && caption.structure.parentId;
+  return parentId === figure.id
+    && tagNameOf(figure) === 'figure'
+    && tagNameOf(caption) === 'figcaption';
+}
+
+function tagNameOf(item) {
+  return String(item && (item.tagName || item.sourceNode && item.sourceNode.tagName) || '').toLowerCase();
 }
 
 function structureCaption({ page, figure, caption }) {

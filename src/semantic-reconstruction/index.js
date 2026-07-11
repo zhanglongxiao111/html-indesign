@@ -7,6 +7,7 @@ const {
   auditTrustedSourcePreservation,
   isTrustedSourceEntity,
 } = require('./trusted-source-preservation');
+const { applyReadingOrderLite } = require('./reading-order-lite');
 
 module.exports = {
   reconstructSemanticModel,
@@ -14,4 +15,5 @@ module.exports = {
   buildDocumentObjectGraph,
   auditTrustedSourcePreservation,
   isTrustedSourceEntity,
+  applyReadingOrderLite,
 };
