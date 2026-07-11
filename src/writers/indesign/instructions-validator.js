@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { boundsIntersectPage } = require('../../shared/geometry');
+const { resolveLocalAssetReference } = require('../../shared/assets');
 
 function validateInstructions(instructions, options = {}) {
   const errors = [];
@@ -89,9 +90,7 @@ function validateAssetFiles(assets, options, errors) {
 function resolveInstructionAssetPath(asset, baseDir) {
   const raw = asset && (asset.resolvedPath || asset.src);
   if (!raw) return null;
-  if (/^[a-z]+:\/\//i.test(raw)) return raw;
-  if (path.isAbsolute(raw)) return raw;
-  return path.resolve(baseDir, raw);
+  return resolveLocalAssetReference(raw, { baseDir }) || raw;
 }
 
 function parentPageItemLookupFor(documentInstruction) {

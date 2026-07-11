@@ -3,8 +3,9 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { copyAuthorAssets } = require('./author-asset-packager');
-const { toBrowserAssetPath } = require('../../shared/nas-paths');
+const { toBrowserAssetPath, isNasReference } = require('../../shared/nas-paths');
 const {
   normalizePathKey,
   sourceFileKey,
@@ -38,7 +39,6 @@ function referenceAuthorAssets(model, options = {}) {
   const pathMap = new Map();
   const entries = [];
   const seen = new Set();
-  const copied = [];
   const generated = [];
   const missing = [];
   const copiedBySource = new Map();
@@ -57,20 +57,13 @@ function referenceAuthorAssets(model, options = {}) {
     }
     let htmlPath = toBrowserAssetPath(record.value, { nasRoot: options.nasPublicRoot || '/nas' });
     let reason = reasonForReference(record.value, htmlPath);
-    if (shouldCopyLocalReference(record.value, htmlPath, options)) {
-      const copiedPath = copyLocalReference(record, {
-        outDir: options.outDir,
-        sourceRoot: options.sourceRoot,
-        assetRoot: options.assetRoot,
-        copied,
-        copiedBySource,
-        used,
-        pathMap,
-        missing,
-      });
-      if (copiedPath) {
-        htmlPath = copiedPath;
-        reason = 'local-copy-for-preview';
+    if (shouldResolveLocalReference(record.value, options)) {
+      const resolved = resolveLocalReference(record, options.sourceRoot);
+      if (resolved) {
+        htmlPath = pathToFileURL(resolved).href;
+        reason = 'local-file-reference';
+      } else {
+        missing.push({ path: record.value, reason: 'local-reference-missing' });
       }
     }
     if (!htmlPath) continue;
@@ -89,8 +82,8 @@ function referenceAuthorAssets(model, options = {}) {
     report: {
       policy: 'reference',
       referenced: entries.length,
-      copied: copied.length,
-      copiedFiles: copied.map((entry) => entry.path),
+      copied: 0,
+      copiedFiles: [],
       generated: generated.length,
       generatedFiles: generated.map((entry) => entry.path),
       missing,
@@ -99,37 +92,10 @@ function referenceAuthorAssets(model, options = {}) {
   };
 }
 
-function shouldCopyLocalReference(original, htmlPath, options = {}) {
-  if (!options.outDir || !options.sourceRoot) return false;
-  if (!htmlPath || String(htmlPath).startsWith('/nas/')) return false;
+function shouldResolveLocalReference(original, options = {}) {
   if (isRemoteReference(original)) return false;
-  return true;
-}
-
-function copyLocalReference(record, context) {
-  const resolved = resolveLocalReference(record, context.sourceRoot);
-  if (!resolved) {
-    context.missing.push({ path: record.value, reason: 'local-reference-missing' });
-    return '';
-  }
-  const sourceKey = sourceFileKey(resolved);
-  let relativePath = context.copiedBySource.get(sourceKey);
-  if (!relativePath) {
-    relativePath = assetPackagePath(record.value, resolved, {
-      assetRoot: context.assetRoot || 'assets',
-      used: context.used,
-    });
-    const target = path.join(context.outDir, relativePath);
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.copyFileSync(resolved, target);
-    context.copied.push({ source: resolved, path: relativePath });
-    context.copiedBySource.set(sourceKey, relativePath);
-  }
-  addPathMap(context.pathMap, record.value, relativePath);
-  addPathMap(context.pathMap, resolved, relativePath);
-  for (const alias of record.aliases || []) addPathMap(context.pathMap, alias, relativePath);
-  copyLocalPdfPreview(record, resolved, relativePath, context);
-  return relativePath;
+  if (isNasReference(original)) return false;
+  return Boolean(options.sourceRoot) || /^file:/i.test(String(original || '')) || path.isAbsolute(String(original || ''));
 }
 
 function copyGeneratedPreview(record, context) {
@@ -207,59 +173,6 @@ function resolveLocalReference(record, sourceRoot) {
   return '';
 }
 
-function assetPackagePath(value, resolvedPath, { assetRoot, used }) {
-  const root = slash(assetRoot || 'assets').replace(/^\/+|\/+$/g, '') || 'assets';
-  const subPath = assetSubPath(value, resolvedPath, root);
-  let relativePath = /^previews\//i.test(subPath)
-    ? slash(subPath)
-    : slash(path.posix.join(root, subPath));
-  const existing = used.get(relativePath);
-  if (existing && path.resolve(existing) !== path.resolve(resolvedPath)) {
-    const parsed = path.posix.parse(relativePath);
-    let index = 2;
-    do {
-      relativePath = slash(path.posix.join(parsed.dir, `${parsed.name}-${index}${parsed.ext}`));
-      index += 1;
-    } while (used.has(relativePath));
-  }
-  used.set(relativePath, resolvedPath);
-  return relativePath;
-}
-
-function assetSubPath(value, resolvedPath, assetRoot) {
-  const normalized = slash(value || '');
-  if (normalized && !/^file:/i.test(normalized) && !path.isAbsolute(value) && !isRemoteReference(value)) {
-    const parts = normalized.split('/').filter((part) => part && part !== '.');
-    while (parts[0] === '..') parts.shift();
-    if (parts[0] === assetRoot) parts.shift();
-    if (parts.length) return sanitizeRelative(parts.join('/'));
-  }
-  return sanitizeRelative(path.basename(resolvedPath));
-}
-
-function copyLocalPdfPreview(record, resolvedPath, relativePath, context) {
-  if (!/\.pdf$/i.test(resolvedPath)) return;
-  const pageNumber = normalizePositiveInteger(record.pdfPageNumber);
-  if (pageNumber == null) return;
-  const originalPreview = pdfPreviewPath(record.value, pageNumber);
-  const sourcePreview = resolvedPath.replace(/\.pdf$/i, `-page${pageNumber}.png`);
-  if (!fs.existsSync(sourcePreview)) return;
-  const targetRelative = relativePath.replace(/\.pdf$/i, `-page${pageNumber}.png`);
-  const target = path.join(context.outDir, targetRelative);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.copyFileSync(sourcePreview, target);
-  addPathMap(context.pathMap, originalPreview, targetRelative);
-  addPathMap(context.pathMap, sourcePreview, targetRelative);
-}
-
-function pdfPreviewPath(pdfPath, page) {
-  const value = String(pdfPath || '');
-  const pageNumber = normalizePositiveInteger(page);
-  if (pageNumber == null) return '';
-  if (!/\.pdf(?:[?#].*)?$/i.test(value)) return '';
-  return value.replace(/\.pdf(?:[?#].*)?$/i, `-page${pageNumber}.png`);
-}
-
 function collectAssetReferences(model) {
   const records = [];
   const seen = new Set();
@@ -272,7 +185,6 @@ function collectAssetReferences(model) {
       pushAssetRecord(records, seen, {
         value,
         fallback: value,
-        pdfPageNumber: pdfPageNumberForAsset(asset, {}),
       });
     }
   }
@@ -280,18 +192,16 @@ function collectAssetReferences(model) {
 }
 
 function collectAssetReferencesForItem(item, records, seen) {
-  const sourceNode = item.sourceNode || {};
+  const sourceNode = item && item.effectiveLabel && item.effectiveLabel.sourceNode || item.sourceNode || {};
   const attrs = sourceNode.attributes || {};
   const asset = item.sourceAsset || item.asset || item.placedAsset || {};
   const assetPath = asset.path || '';
-  const pdfPageNumber = pdfPageNumberForAsset(asset, attrs);
   for (const name of ['src', 'data', 'href', HTML_DATA_ID_ATTRIBUTES.SOURCE_CSV, HTML_DATA_ID_ATTRIBUTES.SOURCE_XML]) {
     if (!attrs[name]) continue;
     pushAssetRecord(records, seen, {
       value: attrs[name],
       fallback: assetPath,
       aliases: assetPath ? [assetPath] : [],
-      pdfPageNumber,
     });
   }
   if (sourceNode.previewNode && sourceNode.previewNode.attributes && sourceNode.previewNode.attributes.src) {
@@ -323,7 +233,7 @@ function collectAssetReferencesForItem(item, records, seen) {
       });
     }
   }
-  if (assetPath) pushAssetRecord(records, seen, { value: assetPath, fallback: assetPath, pdfPageNumber });
+  if (assetPath) pushAssetRecord(records, seen, { value: assetPath, fallback: assetPath });
 }
 
 function pushAssetRecord(records, seen, record) {
@@ -356,28 +266,8 @@ function isSkippedReference(value) {
   return isRemoteReference(input);
 }
 
-function isNasReference(value) {
-  const input = slash(String(value || ''));
-  return /^\/\/[^/]+\/.+/.test(input) || input.startsWith('/nas/');
-}
-
 function unique(values) {
   return Array.from(new Set(values.filter((value) => value != null && value !== '')));
-}
-
-function pdfPageNumberForAsset(asset = {}, attrs = {}) {
-  return normalizePositiveInteger(
-    attrs[HTML_DATA_ID_ATTRIBUTES.PDF_PAGE]
-      ?? (asset.placement && asset.placement.pageNumber)
-      ?? asset.pageNumber
-  );
-}
-
-function normalizePositiveInteger(value) {
-  if (value == null || value === '') return null;
-  const number = Number(value);
-  if (!Number.isInteger(number) || number < 1) return null;
-  return number;
 }
 
 module.exports = {

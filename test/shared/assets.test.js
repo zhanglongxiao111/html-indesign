@@ -14,6 +14,7 @@ const {
   sanitizeRelative,
   isRemoteReference,
   resolveLocalAssetReference,
+  resourceReferenceIdentity,
 } = require('../../src/shared/assets');
 
 test('inferAssetKind maps architecture presentation asset extensions', () => {
@@ -122,4 +123,13 @@ test('local asset references convert file URLs to filesystem paths', () => {
   assert.equal(resolveLocalAssetReference(pathToFileURL(assetPath).href), assetPath);
   assert.equal(resolveLocalAssetReference('素材 图.png', { sourceRoot: root }), assetPath);
   assert.equal(resolveLocalAssetReference('https://example.test/素材 图.png', { sourceRoot: root }), null);
+});
+
+test('resource identities treat UNC NAS URLs and hosted file URLs as the same original resource', () => {
+  const unc = '\\\\daga-nas5\\share\\项目 A\\图纸 01.pdf';
+  const nas = '/nas/daga-nas5/share/%E9%A1%B9%E7%9B%AE%20A/%E5%9B%BE%E7%BA%B8%2001.pdf';
+  const fileUrl = 'file://daga-nas5/share/%E9%A1%B9%E7%9B%AE%20A/%E5%9B%BE%E7%BA%B8%2001.pdf';
+
+  assert.equal(resourceReferenceIdentity(unc), resourceReferenceIdentity(nas));
+  assert.equal(resourceReferenceIdentity(fileUrl), resourceReferenceIdentity(nas));
 });

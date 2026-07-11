@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { validateInstructions } = require('../../src/writers/indesign');
 const { writeExecutorSmokeWorkspace } = require('./executor-fixture-writer');
 
@@ -62,4 +63,19 @@ test('validateInstructions reports missing asset files when asset preflight is e
 
   assert.equal(result.valid, false);
   assert.equal(result.errors.some((error) => error.code === 'ASSET_FILE_NOT_FOUND'), true);
+});
+
+test('validateInstructions accepts existing local file URL assets during preflight', () => {
+  const workspaceDir = path.resolve(__dirname, '../workspace/indesign-executor-file-url');
+  const result = writeExecutorSmokeWorkspace(workspaceDir);
+  const pdfAsset = result.instructions.assets.find((asset) => asset.kind === 'pdf');
+  pdfAsset.resolvedPath = pathToFileURL(path.resolve(workspaceDir, pdfAsset.resolvedPath)).href;
+
+  const validation = validateInstructions(result.instructions, {
+    checkAssetFiles: true,
+    baseDir: workspaceDir,
+  });
+
+  assert.equal(validation.valid, true);
+  assert.deepEqual(validation.errors, []);
 });

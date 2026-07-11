@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { renderSnapshot } = require('../../src/adapters/html');
 const { detectAssetsFromItems } = require('../../src/adapters/html/reader/asset-detector');
 
@@ -140,6 +141,17 @@ test('detectAssetsFromItems keeps same-basename assets from different folders di
   assert.equal(assets.length, 2);
   assert.equal(new Set(assets.map((asset) => asset.id)).size, 2);
   assert.deepEqual(assets.map((asset) => asset.src), ['./assets/a/plan.pdf', './assets/b/plan.pdf']);
+});
+
+test('detectAssetsFromItems resolves local file URLs to placeable filesystem paths', () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/asset-deck.html');
+  const assetPath = path.resolve(__dirname, '../fixtures/fixed-html/assets/site-plan.pdf');
+  const assetUrl = pathToFileURL(assetPath).href;
+  const assets = detectAssetsFromItems([assetItem('file-url-pdf', assetUrl)], htmlPath);
+
+  assert.equal(assets.length, 1);
+  assert.equal(assets[0].src, assetUrl);
+  assert.equal(assets[0].resolvedPath, assetPath);
 });
 
 test('detectAssetsFromItems treats css background-image urls as placed assets', () => {

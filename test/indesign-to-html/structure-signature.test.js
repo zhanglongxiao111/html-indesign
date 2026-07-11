@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const {
   authorPackageStructureSignature,
@@ -128,6 +129,46 @@ test('compareStructureSignatures 节点文本或资源变化 invalid-input 必�
   assert.equal(diff.errors.some((issue) => issue.code === 'STRUCTURE_NODE_RESOURCE_CHANGED'), true);
 });
 
+test('compareStructureSignatures accepts different references to the same original resource', () => {
+  const root = path.resolve('test/workspace/structure-signature-resource-identity');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  const resourcePath = path.join(root, 'assets/路径 测试/滨水 图片.jpg');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(resourcePath, 'same-image-bytes');
+  writeAuthorPackage(first, '<section class="page"><img id="photo" src="../assets/路径 测试/滨水 图片.jpg"></section>');
+  writeAuthorPackage(second, `<section class="page"><img id="photo" src="${pathToFileURL(resourcePath).href}"></section>`);
+
+  const diff = compareStructureSignatures(
+    authorPackageStructureSignature(first),
+    authorPackageStructureSignature(second),
+  );
+
+  assert.equal(diff.ok, true);
+  assert.deepEqual(diff.errors, []);
+});
+
+test('compareStructureSignatures rejects resource references with different file content', () => {
+  const root = path.resolve('test/workspace/structure-signature-resource-content-change');
+  const first = path.join(root, 'first');
+  const second = path.join(root, 'second');
+  const firstResource = path.join(root, 'first-assets/photo.jpg');
+  const secondResource = path.join(root, 'second-assets/photo.jpg');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(firstResource, 'first-image-bytes');
+  writeFixtureFile(secondResource, 'second-image-bytes');
+  writeAuthorPackage(first, `<section class="page"><img id="photo" src="${pathToFileURL(firstResource).href}"></section>`);
+  writeAuthorPackage(second, `<section class="page"><img id="photo" src="${pathToFileURL(secondResource).href}"></section>`);
+
+  const diff = compareStructureSignatures(
+    authorPackageStructureSignature(first),
+    authorPackageStructureSignature(second),
+  );
+
+  assert.equal(diff.ok, false);
+  assert.equal(diff.errors.some((issue) => issue.code === 'STRUCTURE_NODE_RESOURCE_CHANGED'), true);
+});
+
 test('compareStructureSignatures records fabricated extra nodes as warnings', () => {
   const root = path.resolve('test/workspace/structure-signature-extra-nodes');
   const first = path.join(root, 'first');
@@ -158,4 +199,9 @@ function writeAuthorPackage(root, pageHtml) {
     pages: [{ id: 'page-1', file: 'pages/01-page.html' }],
   }, null, 2), 'utf8');
   fs.writeFileSync(path.join(root, 'pages/01-page.html'), pageHtml, 'utf8');
+}
+
+function writeFixtureFile(filePath, content) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content, 'utf8');
 }

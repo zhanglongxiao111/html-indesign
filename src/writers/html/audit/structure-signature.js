@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
+const { resourceReferenceIdentity } = require('../../../shared/assets');
 
 const STRUCTURE_TAGS = 'section,figure,figcaption,p,h1,h2,h3,h4,h5,h6,ul,ol,li,table,thead,tbody,tr,td,th,img,object,svg';
 
@@ -15,7 +16,7 @@ function authorPackageStructureSignature(root) {
     const $ = cheerio.load(html, { decodeEntities: false });
     return {
       id: page.id || page.file,
-      nodes: pageStructureNodes($),
+      nodes: pageStructureNodes($, packageRoot),
     };
   });
   return {
@@ -128,7 +129,7 @@ function comparePageNodes(expectedPage, actualPage, errors, warnings) {
         actual: actualNode.text,
       });
     }
-    if (!sameNodeResource(expectedNode.resource, actualNode.resource)) {
+    if (!sameNodeResource(expectedNode, actualNode)) {
       errors.push({
         code: 'STRUCTURE_NODE_RESOURCE_CHANGED',
         pageId: expectedPage.id,
@@ -175,25 +176,24 @@ function canonicalNodeText(value) {
   return collapseWhitespace(String(value || ''));
 }
 
-function sameNodeResource(expected, actual) {
-  const left = String(expected || '');
-  const right = String(actual || '');
+function sameNodeResource(expectedNode, actualNode) {
+  const left = String(expectedNode.resource || '');
+  const right = String(actualNode.resource || '');
   if (left === right) return true;
   if (!left || !right) return false;
-  if (isDerivedPreviewReference(left) && isDerivedPreviewReference(right)) return true;
-  return resourceBasename(left) === resourceBasename(right);
+  const leftIdentity = expectedNode.resourceIdentity || `path:${left.replace(/\\/g, '/')}`;
+  const rightIdentity = actualNode.resourceIdentity || `path:${right.replace(/\\/g, '/')}`;
+  if (leftIdentity === rightIdentity) return true;
+  if (isDerivedPreviewReference(left) && isDerivedPreviewReference(right)
+      && !leftIdentity.startsWith('sha256:') && !rightIdentity.startsWith('sha256:')) return true;
+  return false;
 }
 
 function isDerivedPreviewReference(value) {
   return /(?:^|[\\/])previews[\\/]/i.test(String(value || ''));
 }
 
-function resourceBasename(value) {
-  const normalized = String(value || '').split(/[\\/]/).filter(Boolean);
-  return (normalized[normalized.length - 1] || '').toLowerCase();
-}
-
-function pageStructureNodes($) {
+function pageStructureNodes($, packageRoot) {
   const structureElements = $(STRUCTURE_TAGS).toArray()
     .filter((element) => !isIgnoredStructureElement($, element));
   const orderByParent = structureOrderByParent($, structureElements);
@@ -201,6 +201,7 @@ function pageStructureNodes($) {
   for (const element of structureElements) {
     const node = $(element);
     const key = nodeKey($, element);
+    const resource = node.attr('src') || node.attr('data') || null;
     nodes.push({
       key,
       id: node.attr('id') || null,
@@ -209,7 +210,8 @@ function pageStructureNodes($) {
       parentKey: parentStructureKey($, element),
       order: orderByParent.get(element) || 0,
       text: collapseWhitespace(node.children().length ? '' : node.text()),
-      resource: node.attr('src') || node.attr('data') || null,
+      resource,
+      resourceIdentity: resourceReferenceIdentity(resource, { sourceRoot: packageRoot }),
     });
   }
   return nodes;

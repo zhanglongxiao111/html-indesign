@@ -4,6 +4,7 @@ const {
   assetSourceFromElementLike,
   createAssetId,
   placementFromAttributes,
+  resolveLocalAssetReference,
 } = require('../../../shared/assets');
 
 function detectAssetsFromItems(items, htmlPath) {
@@ -70,9 +71,7 @@ function shortHash(value) {
 }
 
 function resolveAssetPath(src, htmlPath) {
-  if (/^[a-z]+:\/\//i.test(src)) return src;
-  if (/^[a-zA-Z]:[\\/]/.test(src) || src.startsWith('\\\\')) return src;
-  return path.resolve(path.dirname(htmlPath), src);
+  return resolveLocalAssetReference(src, { baseDir: path.dirname(htmlPath) }) || src;
 }
 
 module.exports = {

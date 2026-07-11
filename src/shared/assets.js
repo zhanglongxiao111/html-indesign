@@ -1,4 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
+const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const { fileURLToPath } = require('url');
 
@@ -184,6 +186,53 @@ function resolveLocalAssetReference(value, options = {}) {
   return root ? path.resolve(root, input) : null;
 }
 
+function resourceReferenceIdentity(value, options = {}) {
+  const raw = String(value || '');
+  if (!raw) return null;
+  const networkKey = networkResourceKey(raw);
+  if (networkKey) return `network:${networkKey}`;
+  const filePath = resolveLocalAssetReference(raw, options);
+  if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+    return `sha256:${hash}`;
+  }
+  return `path:${slash(raw)}`;
+}
+
+function networkResourceKey(value) {
+  const raw = String(value || '').trim();
+  let host = '';
+  let parts = [];
+  if (/^file:/i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      if (!parsed.hostname) return null;
+      host = parsed.hostname;
+      parts = parsed.pathname.split('/').filter(Boolean);
+    } catch (_error) {
+      return null;
+    }
+  } else {
+    const normalized = slash(raw);
+    const withoutPrefix = normalized.startsWith('/nas/')
+      ? normalized.slice('/nas/'.length)
+      : normalized.startsWith('//') ? normalized.slice(2) : '';
+    if (!withoutPrefix) return null;
+    const segments = withoutPrefix.split('/').filter(Boolean);
+    host = segments.shift() || '';
+    parts = segments;
+  }
+  if (!host || parts.length === 0) return null;
+  const decoded = parts.map((part) => {
+    try {
+      return decodeURIComponent(part);
+    } catch (_error) {
+      return part;
+    }
+  });
+  return `//${host}/${decoded.join('/')}`.toLowerCase();
+}
+
 function sanitizeRelative(value) {
   return slash(value)
     .split('/')
@@ -216,6 +265,7 @@ module.exports = {
   normalizePathKey,
   sourceFileKey,
   resolveLocalAssetReference,
+  resourceReferenceIdentity,
   sanitizeRelative,
   isRemoteReference,
 };

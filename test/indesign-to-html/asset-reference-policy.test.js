@@ -24,7 +24,7 @@ test('prepareAuthorAssets references NAS assets by default without copying sourc
   assert.equal(fs.existsSync(path.join(outDir, 'assets')), false);
 });
 
-test('prepareAuthorAssets copies local relative assets in reference mode for portable previews', () => {
+test('prepareAuthorAssets keeps local relative assets in place in reference mode', () => {
   const root = path.resolve('test/workspace/asset-reference-local-copy-test');
   const sourceRoot = path.join(root, 'source');
   const outDir = path.join(root, 'author');
@@ -39,13 +39,13 @@ test('prepareAuthorAssets copies local relative assets in reference mode for por
   });
 
   assert.equal(result.report.policy, 'reference');
-  assert.equal(result.report.copied, 1);
-  assert.equal(result.report.entries[0].reason, 'local-copy-for-preview');
-  assert.equal(result.pathMap.get('../assets/site.png'), 'assets/site.png');
-  assert.equal(fs.existsSync(path.join(outDir, 'assets/site.png')), true);
+  assert.equal(result.report.copied, 0);
+  assert.equal(result.report.entries[0].reason, 'local-file-reference');
+  assert.equal(result.pathMap.get('../assets/site.png'), pathToFileURL(imagePath).href);
+  assert.equal(fs.existsSync(path.join(outDir, 'assets')), false);
 });
 
-test('prepareAuthorAssets copies file URL assets in reference mode for portable previews', () => {
+test('prepareAuthorAssets keeps file URL assets in place in reference mode', () => {
   const root = path.resolve('test/workspace/asset-reference-file-url-copy-test');
   const sourceRoot = path.join(root, 'source');
   const outDir = path.join(root, 'author');
@@ -61,11 +61,36 @@ test('prepareAuthorAssets copies file URL assets in reference mode for portable 
   });
 
   assert.equal(result.report.policy, 'reference');
-  assert.equal(result.report.copied, 1);
+  assert.equal(result.report.copied, 0);
   assert.deepEqual(result.report.missing, []);
-  assert.equal(result.report.entries[0].reason, 'local-copy-for-preview');
-  assert.equal(result.pathMap.get(imageUrl.replace(/\\/g, '/').toLowerCase()), 'assets/site.png');
-  assert.equal(fs.readFileSync(path.join(outDir, 'assets/site.png'), 'utf8'), 'image-bytes');
+  assert.equal(result.report.entries[0].reason, 'local-file-reference');
+  assert.equal(result.pathMap.get(imageUrl.replace(/\\/g, '/').toLowerCase()), imageUrl);
+  assert.equal(fs.existsSync(path.join(outDir, 'assets')), false);
+});
+
+test('prepareAuthorAssets rewrites trusted effective-label resource paths through the current original asset', () => {
+  const root = path.resolve('test/workspace/asset-reference-effective-label-test');
+  const sourceRoot = path.join(root, 'first-reverse-author');
+  const outDir = path.join(root, 'second-reverse-author');
+  const imagePath = path.join(root, 'original-assets', 'svg', 'diagram.svg');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(path.dirname(imagePath), { recursive: true });
+  fs.mkdirSync(sourceRoot, { recursive: true });
+  fs.writeFileSync(imagePath, '<svg/>');
+  const imageUrl = pathToFileURL(imagePath).href;
+  const model = modelWithAssets(imageUrl);
+  model.pages[0].items[0].effectiveLabel = {
+    sourceNode: {
+      tagName: 'img',
+      attributes: { src: '../original-assets/svg/diagram.svg' },
+    },
+  };
+
+  const result = prepareAuthorAssets(model, { outDir, sourceRoot });
+
+  assert.equal(result.pathMap.get('../original-assets/svg/diagram.svg'), imageUrl);
+  assert.deepEqual(result.report.missing, []);
+  assert.equal(result.report.copied, 0);
 });
 
 test('prepareAuthorAssets reports missing file URL assets in reference mode', () => {
@@ -87,7 +112,7 @@ test('prepareAuthorAssets reports missing file URL assets in reference mode', ()
   ]);
 });
 
-test('prepareAuthorAssets does not copy first-page PDF previews without explicit page facts', () => {
+test('prepareAuthorAssets references PDFs in place without packaging undeclared previews', () => {
   const root = path.resolve('test/workspace/asset-reference-pdf-no-page-test');
   const sourceRoot = path.join(root, 'source');
   const outDir = path.join(root, 'author');
@@ -103,12 +128,13 @@ test('prepareAuthorAssets does not copy first-page PDF previews without explicit
     sourceRoot,
   });
 
-  assert.equal(result.pathMap.get('../assets/drawing.pdf'), 'assets/drawing.pdf');
+  assert.equal(result.pathMap.get('../assets/drawing.pdf'), pathToFileURL(pdfPath).href);
   assert.equal(result.pathMap.get('../assets/drawing-page1.png'), undefined);
+  assert.equal(result.report.copied, 0);
   assert.equal(fs.existsSync(path.join(outDir, 'assets/drawing-page1.png')), false);
 });
 
-test('prepareAuthorAssets copies explicit PDF page previews only for the declared page', () => {
+test('prepareAuthorAssets does not package source-side PDF previews in reference mode', () => {
   const root = path.resolve('test/workspace/asset-reference-pdf-page-test');
   const sourceRoot = path.join(root, 'source');
   const outDir = path.join(root, 'author');
@@ -124,8 +150,10 @@ test('prepareAuthorAssets copies explicit PDF page previews only for the declare
     sourceRoot,
   });
 
-  assert.equal(result.pathMap.get('../assets/drawing-page3.png'), 'assets/drawing-page3.png');
-  assert.equal(fs.readFileSync(path.join(outDir, 'assets/drawing-page3.png'), 'utf8'), 'preview-bytes');
+  assert.equal(result.pathMap.get('../assets/drawing.pdf'), pathToFileURL(pdfPath).href);
+  assert.equal(result.pathMap.get('../assets/drawing-page3.png'), undefined);
+  assert.equal(result.report.copied, 0);
+  assert.equal(fs.existsSync(path.join(outDir, 'assets/drawing-page3.png')), false);
 });
 
 test('prepareAuthorAssets copy policy does not package first-page PDF previews without explicit page facts', () => {

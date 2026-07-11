@@ -65,6 +65,42 @@ test('auditAuthorSourceRoundtrip accepts self-contained copied resources when fi
   assert.deepEqual(audit.warnings, []);
 });
 
+test('auditAuthorSourceRoundtrip accepts relocated PDF previews when file content is equivalent', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-pdf-preview-relocated');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(root, 'reference-pdfs/drawing.pdf'), 'same-pdf-bytes');
+  writeFixtureFile(path.join(root, 'reference-pdfs/drawing-page1.png'), 'same-preview-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'assets/drawing.pdf'), 'same-pdf-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'previews/drawing.png'), 'same-preview-bytes');
+  writePackage(sourceRoot, '<section class="page"><img class="pdf-preview" src="../reference-pdfs/drawing-page1.png" alt="Preview"><object class="pdf-source" data="../reference-pdfs/drawing.pdf" type="application/pdf"></object></section>');
+  writePackage(reverseRoot, '<section class="page"><img class="pdf-preview" src="previews/drawing.png" alt="Preview"><object class="pdf-source" data="assets/drawing.pdf" type="application/pdf"></object></section>');
+
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
+
+  assert.equal(audit.ok, true);
+  assert.deepEqual(audit.errors, []);
+});
+
+test('auditAuthorSourceRoundtrip rejects relocated PDF previews when file content changes', () => {
+  const root = path.resolve('test/workspace/source-roundtrip-pdf-preview-changed');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(root, 'reference-pdfs/drawing.pdf'), 'same-pdf-bytes');
+  writeFixtureFile(path.join(root, 'reference-pdfs/drawing-page1.png'), 'expected-preview-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'assets/drawing.pdf'), 'same-pdf-bytes');
+  writeFixtureFile(path.join(reverseRoot, 'previews/drawing.png'), 'different-preview-bytes');
+  writePackage(sourceRoot, '<section class="page"><img class="pdf-preview" src="../reference-pdfs/drawing-page1.png" alt="Preview"><object class="pdf-source" data="../reference-pdfs/drawing.pdf" type="application/pdf"></object></section>');
+  writePackage(reverseRoot, '<section class="page"><img class="pdf-preview" src="previews/drawing.png" alt="Preview"><object class="pdf-source" data="assets/drawing.pdf" type="application/pdf"></object></section>');
+
+  const audit = auditAuthorSourceRoundtrip({ sourceRoot, reverseRoot });
+
+  assert.equal(audit.ok, false);
+  assert.deepEqual(audit.errors.map((issue) => issue.code), ['ROUNDTRIP_RESOURCE_CHANGED']);
+});
+
 test('auditAuthorSourceRoundtrip resolves Windows absolute resource paths as files', () => {
   const root = path.resolve('test/workspace/source-roundtrip-absolute-resource');
   const sourceRoot = path.join(root, 'source');

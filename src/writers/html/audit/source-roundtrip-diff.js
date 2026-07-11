@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
-const { isRemoteReference, resolveLocalAssetReference } = require('../../../shared/assets');
+const { resourceReferenceIdentity } = require('../../../shared/assets');
 
 const EMPTY_PROJECT_BOOLEAN_ATTRIBUTES = Object.freeze([
   HTML_DATA_ID_ATTRIBUTES.OBJECT,
@@ -300,9 +300,7 @@ function emptyProjectBooleanAttributes(html) {
 function comparableResourceEntry(entry, root) {
   const out = { ...entry };
   if (Object.prototype.hasOwnProperty.call(out, 'src')) {
-    out.src = isDerivedPreviewEntry(out)
-      ? `path:${String(out.src || '').replace(/\\/g, '/')}`
-      : resourceIdentity(root, out.src);
+    out.src = resourceIdentity(root, out.src);
   }
   if (Object.prototype.hasOwnProperty.call(out, 'data')) {
     out.data = resourceIdentity(root, out.data);
@@ -310,23 +308,8 @@ function comparableResourceEntry(entry, root) {
   return out;
 }
 
-function isDerivedPreviewEntry(entry) {
-  return /(^| )placed-asset-preview( |$)|(^| )pdf-preview( |$)/.test(String(entry.className || ''));
-}
-
 function resourceIdentity(root, value) {
-  const raw = String(value || '');
-  const filePath = resolveResourcePath(root, raw);
-  if (!filePath || !fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-    return `path:${raw.replace(/\\/g, '/')}`;
-  }
-  const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
-  return `sha256:${hash}`;
-}
-
-function resolveResourcePath(root, value) {
-  if (!value || isRemoteReference(value)) return null;
-  return resolveLocalAssetReference(value, { sourceRoot: root });
+  return resourceReferenceIdentity(value, { sourceRoot: root });
 }
 
 function slashPath(value) {
