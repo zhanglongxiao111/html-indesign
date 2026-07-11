@@ -1,6 +1,38 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { writeAuthorCssFiles } = require('../../src/writers/html/author-css-writer');
+const { chromium } = require('playwright');
+
+test('synth rules follow declared style rules and win class conflicts in the browser', async () => {
+  const css = writeAuthorCssFiles({
+    styles: {
+      paragraphStyles: {
+        body: { safeName: 'body', css: 'font-size:18pt;color:#ff0000' },
+      },
+      synthesized: [{
+        token: 'synth_text_001',
+        displayName: '文字样式 01',
+        kind: 'text',
+        properties: { pointSize: 24, fillColor: '#0000ff' },
+      }],
+    },
+    pages: [],
+  })['styles/components.css'];
+
+  assert.ok(css.indexOf('.pstyle-body') < css.indexOf('.synth-synth_text_001'));
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`<style>${css}</style><p id="target" class="pstyle-body synth-synth_text_001">正文</p>`);
+    const computed = await page.$eval('#target', (element) => {
+      const style = getComputedStyle(element);
+      return { fontSize: style.fontSize, color: style.color };
+    });
+    assert.deepEqual(computed, { fontSize: '24px', color: 'rgb(0, 0, 255)' });
+  } finally {
+    await browser.close();
+  }
+});
 
 test('writeAuthorCssFiles emits valid fallback selectors for numeric InDesign ids', () => {
   const css = writeAuthorCssFiles({

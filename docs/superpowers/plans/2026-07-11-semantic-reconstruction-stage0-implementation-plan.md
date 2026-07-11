@@ -135,12 +135,12 @@ npm test
 
 **目标：** 降低重复 item inline style，同时保证浏览器最终有效格式和 InDesign 回读事实不变。
 
-- [ ] 先增加 CSS 级联负例：同一对象同时具有 synth 与 paragraph/object class，声明样式与 synth 在字号、行高、颜色或对齐上冲突；直接删除 inline 必须被测试判为视觉事实回退。
-- [ ] 新建 `author-style-residual.js`，集中处理声明解析、单位/颜色/精度规范化、synth rule 存在性和属性级残差。
-- [ ] 调整 `components.css` 输出顺序：声明式 paragraph/character/object style 在前，synth 在后。
-- [ ] item inline 只删除被实际 synth rule 等价覆盖的属性；保留 source style、grid 变量、文本框属性、z-index、styleOverrides 和所有不同值残差。
-- [ ] trusted source、rich-text run、table cell、vector 和 PDF wrapper 不进入本轮 item 级去重；找不到 synth rule 时保留并报告。
-- [ ] 补作者包写出、结构签名、可编辑性计数和浏览器计算样式回归。
+- [x] 先增加 CSS 级联负例：同一对象同时具有 synth 与 paragraph/object class，声明样式与 synth 在字号、行高、颜色或对齐上冲突；直接删除 inline 必须被测试判为视觉事实回退。
+- [x] 新建 `author-style-residual.js`，集中处理声明解析、单位/颜色/精度规范化、synth rule 存在性和属性级残差。
+- [x] 调整 `components.css` 输出顺序：声明式 paragraph/character/object style 在前，synth 在后。
+- [x] item inline 只删除被实际 synth rule 等价覆盖的属性；保留 source style、grid 变量、文本框属性、z-index、styleOverrides 和所有不同值残差。
+- [x] trusted source、rich-text run、table cell、vector 和 PDF wrapper 不进入本轮 item 级去重；找不到 synth rule 时保留并报告。
+- [x] 补作者包写出、结构签名、可编辑性计数和浏览器计算样式回归。
 
 验证：
 

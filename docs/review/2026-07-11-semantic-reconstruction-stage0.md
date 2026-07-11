@@ -85,6 +85,8 @@
 
 起点提交：`e7f1e09`
 
+实施提交：`e54cd8c`
+
 收口结果：
 
 - `src/semantic-reconstruction/profiles.js` 成为 profile 名称、算法规范顺序、依赖、去重和 safe 列表的唯一事实源。
@@ -98,6 +100,21 @@
 
 定向 profile、CLI、E2E 和插件测试 106 项通过；完整测试 1054 项通过。
 
-## 0E–0F
+## 0E：synth 覆盖与 inline 残差
+
+起点提交：`e54cd8c`
+
+收口结果：
+
+- 新增 `author-style-residual.js`，统一生成 synth CSS 声明、解析声明、规范化颜色/数值精度并计算属性级残差。
+- `components.css` 改为 paragraph/character/object 声明样式在前、synth 在后；真实 Chromium 计算样式证明 class 冲突时 synth 的字号和颜色生效。
+- source style、grid 变量、不同值 override、文本框属性、z-index 和 synth 未覆盖属性保持 inline；只有同 token 的实际 synth rule 中存在且等值的属性才删除。
+- 找不到 synth rule 时保留全部 inline，并在 `authoring-report.json.styleResidual.missingSynthRules` 记录 item 和 token；报告同时统计删除属性数和被精简对象数。
+- accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参加本轮 item 残差去重；vector opacity 不再因为只有 token 就被提前删除。
+- 合成文字样例删除 7 个重复 inline 属性，作者 HTML 最终格式由 synth class 提供；CSS、作者包、结构签名、可编辑性和视觉 writer 定向测试 88 项通过。
+
+完整测试 1060 项通过。
+
+## 0F
 
 尚未实施。后续每个阶段完成后在本文件追加提交、验证命令、结果和剩余非阻塞项。

@@ -63,12 +63,19 @@ function writeReverseAuthorPackage(model, options = {}) {
     nasPublicRoot: options.nasPublicRoot || '/nas',
     assetRoot: (model.sourcePackage && model.sourcePackage.assetRoot) || 'assets',
   });
+  const styleResidualReport = {
+    removedProperties: 0,
+    itemsReduced: 0,
+    missingSynthRules: [],
+  };
   const renderOptions = {
     ...options,
     sourceRoot,
     preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
     assetPathMap: assetCopy.pathMap,
     effectiveParentPageKeys,
+    synthesizedStyles: model.styles && model.styles.synthesized || [],
+    styleResidualReport,
   };
   const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
@@ -85,6 +92,7 @@ function writeReverseAuthorPackage(model, options = {}) {
   const report = authoringReport(model, pages, options, {
     assets: assetCopy.report,
     sourceCss: sourceCss.report,
+    styleResidual: styleResidualReport,
   });
   const semanticCandidates = collectSemanticCandidates(model, semanticPreset);
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
@@ -645,6 +653,7 @@ function authoringReport(model, pages, options, extras = {}) {
     },
     assets: extras.assets || { copied: 0, missing: [] },
     sourceCss: extras.sourceCss || { copied: 0, missing: [] },
+    styleResidual: extras.styleResidual || { removedProperties: 0, itemsReduced: 0, missingSynthRules: [] },
     labels: labelReport(model),
   };
 }

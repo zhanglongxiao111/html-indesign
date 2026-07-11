@@ -988,7 +988,7 @@ test('pageItemsToAuthorHtml renders observed InDesign vector paths as editable s
   assert.doesNotMatch(html, /background-color:#8ca064/);
 });
 
-test('pageItemsToAuthorHtml does not duplicate synthesized vector opacity on path output', () => {
+test('pageItemsToAuthorHtml preserves synthesized vector opacity outside item residual dedup', () => {
   const html = pageItemsToAuthorHtml({
     id: 'page-1',
     items: [
@@ -1027,7 +1027,7 @@ test('pageItemsToAuthorHtml does not duplicate synthesized vector opacity on pat
   }, { mode: 'observation' });
 
   assert.match(html, /class="[^"]*synth-synth_object_028/);
-  assert.doesNotMatch(html, /<svg[^>]+style="[^"]*opacity:0\.6/);
+  assert.match(html, /<svg[^>]+style="[^"]*opacity:0\.6/);
   assert.doesNotMatch(html, /<path[^>]+\sopacity=/);
 });
 

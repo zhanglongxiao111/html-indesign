@@ -80,8 +80,6 @@ function zIndexStyle(zIndex) {
 
 function vectorOpacityStyle(item) {
   const visualStyle = item && item.visualStyle || {};
-  const refs = item && item.styleRefs || {};
-  if (refs.synthesizedToken) return '';
   const opacity = Number(visualStyle.opacity);
   if (!Number.isFinite(opacity) || opacity < 0 || opacity >= 100) return '';
   return `opacity:${formatNumber(opacity / 100)}`;

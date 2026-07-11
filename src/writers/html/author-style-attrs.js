@@ -3,17 +3,41 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 
 const { blendModeCss } = require('./css-blend-mode');
 const { safeAuthorClassToken } = require('../../shared/style-utils');
+const { inlineResidualForSynth } = require('./author-style-residual');
 
-function authorInlineStyleForItem(item, sourceStyle) {
+function authorInlineStyleForItem(item, sourceStyle, options = {}) {
   const indesign = item && item.extensions && item.extensions.indesign || {};
-  return mergeCss([
-    sourceStyle,
+  const generatedStyle = mergeCss([
     visualStyleCss(item && item.visualStyle),
     textStyleCss(item && item.textStyle),
     textFrameStyleCss(indesign.textFrameStyle),
     cssForHtml(item && item.inlineStyle),
     zIndexCss(item && item.zIndex),
   ]);
+  if (options.disableSynthResidual) return mergeCss([sourceStyle, generatedStyle]);
+  const token = item && item.styleRefs && item.styleRefs.synthesizedToken;
+  const residual = inlineResidualForSynth({
+    inlineCss: generatedStyle,
+    token,
+    synthesizedStyles: options.synthesizedStyles,
+  });
+  recordResidual(options.styleResidualReport, item, token, residual);
+  return mergeCss([sourceStyle, residual.css]);
+}
+
+function recordResidual(report, item, token, residual) {
+  if (!report || typeof report !== 'object') return;
+  if (residual.removed.length) {
+    report.removedProperties = Number(report.removedProperties || 0) + residual.removed.length;
+    report.itemsReduced = Number(report.itemsReduced || 0) + 1;
+  }
+  if (token && residual.reason === 'synth-rule-missing') {
+    if (!Array.isArray(report.missingSynthRules)) report.missingSynthRules = [];
+    const key = `${item && item.id || ''}:${token}`;
+    if (!report.missingSynthRules.some((entry) => `${entry.itemId || ''}:${entry.token}` === key)) {
+      report.missingSynthRules.push({ itemId: item && item.id || null, token });
+    }
+  }
 }
 
 function authorClassesForItem(item, sourceClasses, sourceAttrs = {}) {

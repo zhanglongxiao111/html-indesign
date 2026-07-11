@@ -68,7 +68,7 @@ function wrapperAttrsForPdf(item, sourceNode) {
     [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '',
   };
   const sourceStyle = item.layout && item.layout.cssVars ? cssVarsStyle(item.layout.cssVars) : '';
-  const mergedStyle = authorInlineStyleForItem(item, sourceStyle);
+  const mergedStyle = authorInlineStyleForItem(item, sourceStyle, { disableSynthResidual: true });
   if (mergedStyle) attrs.style = mergedStyle;
   return attrsToHtml(orderAttrs(attrs));
 }

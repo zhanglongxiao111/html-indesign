@@ -146,4 +146,44 @@ test('author package writes synthesized text fill as color instead of background
   assert.match(componentsCss, /\/\* 文字样式 01 \*\//);
   assert.match(componentsCss, /\.synth-synth_text_001\s*\{[^}]*color:#0d0d0d/);
   assert.doesNotMatch(componentsCss, /\.synth-synth_text_001\s*\{[^}]*background-color:/);
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-p1.html'), 'utf8');
+  const titleTag = /<p[^>]+id="title-a"[^>]*>/.exec(pageHtml)[0];
+  assert.doesNotMatch(titleTag, /font-family|font-weight|font-size|line-height|color:|letter-spacing|text-align/);
+  const report = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/authoring-report.json'), 'utf8'));
+  assert.deepEqual(report.styleResidual, {
+    removedProperties: 7,
+    itemsReduced: 1,
+    missingSynthRules: [],
+  });
+});
+
+test('author package preserves inline facts and reports a missing synth rule', () => {
+  const outDir = path.resolve('test/workspace/missing-synth-style-author-package');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage({
+    kind: 'DocumentModel',
+    id: 'missing-synth-style-doc',
+    reverseMode: 'observation',
+    styles: { synthesized: [] },
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 800,
+      height: 450,
+      items: [{
+        id: 'copy-a',
+        role: 'text',
+        bounds: { x: 100, y: 120, width: 400, height: 80 },
+        content: { text: '缺失样式仍须保留格式' },
+        styleRefs: { synthesizedToken: 'missing-token' },
+        textStyle: { pointSize: 24, fillColor: '#123456' },
+      }],
+    }],
+  }, { outDir, mode: 'observation' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/00-p1.html'), 'utf8');
+  assert.match(pageHtml, /id="copy-a"[^>]+style="[^"]*font-size:24px[^"]*color:#123456/);
+  const report = JSON.parse(fs.readFileSync(path.join(outDir, 'reports/authoring-report.json'), 'utf8'));
+  assert.deepEqual(report.styleResidual.missingSynthRules, [{ itemId: 'copy-a', token: 'missing-token' }]);
 });
