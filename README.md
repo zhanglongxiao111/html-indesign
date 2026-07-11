@@ -29,7 +29,10 @@ indesign-cli server health
 
 - Node.js `>=20.18.1`
 - npm
+- Microsoft Edge（浏览器快照默认使用系统 `msedge` 通道）
 - 需要真实构建或反向导出时，本机必须能正常启动 Adobe InDesign
+
+IT 如需固定受控 Edge，可设置 `HTML_INDESIGN_BROWSER_EXECUTABLE` 为 `msedge.exe` 的绝对路径。Edge 不可用时插件返回 `EDGE_NOT_AVAILABLE`，不会静默改用 Playwright Chromium。
 
 ### 安装插件
 
@@ -109,7 +112,10 @@ You also need:
 
 - Node.js `>=20.18.1`
 - npm
+- Microsoft Edge (browser snapshots use the system `msedge` channel by default)
 - Adobe InDesign available on the same machine when building or reverse-exporting real documents
+
+IT may set `HTML_INDESIGN_BROWSER_EXECUTABLE` to an approved absolute `msedge.exe` path. If Edge cannot launch, the plugin returns `EDGE_NOT_AVAILABLE` and does not silently fall back to Playwright Chromium.
 
 ### Install
 

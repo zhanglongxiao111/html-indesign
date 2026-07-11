@@ -1,6 +1,6 @@
 {
   "name": "@sa/html-indesign",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sa fixed semantic HTML and InDesign bidirectional translation plugin",
   "main": "index.js",
   "files": [
@@ -16,7 +16,8 @@
     "docs/规范/SEMANTIC_PROTOCOL.md",
     "docs/规范/LABEL_PROTOCOL.md",
     "docs/规范/REVERSE_EXPORT.md",
-    "docs/规范/FONT_POLICY.md"
+    "docs/规范/FONT_POLICY.md",
+    "docs/规范/AGENT_HTML_AUTHORING_GUIDE.md"
   ],
   "scripts": {
     "assemble:authoring": "node scripts/assemble-authoring.js",

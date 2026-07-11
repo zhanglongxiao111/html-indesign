@@ -9,6 +9,21 @@ description: 当 Agent 编写或修改 html-indesign 固定分页 HTML 作者包
 
 写作者源码包，不要写一次性的巨大 HTML 文件。HTML 必须能自然浏览器预览，同时用稳定语义和网格规则让翻译层能生成高质量 InDesign 文档。
 
+## 规则级别
+
+- **硬要求**：作者包结构、协议字段、真实资源、静态交付和严格检查必须满足。`lint:authoring --strict` 的错误不能带病交付。
+- **条件硬要求**：普通单次转换只要求当前静态页面可编译；只有要作出无损回环声明时，才必须运行真实 InDesign 双回环并满足零漂移门禁。
+- **建议**：组件拆分、CSS 组织和创作工具由页面复杂度决定，只要最终作者包自然、清楚、可维护即可。
+
+React、Vue 和图表库可以用于创作阶段，但交给 html-indesign 前必须导出不依赖浏览器运行时的静态作者包。交付版不得包含可执行脚本；远程运行时脚本和远程样式也不得成为页面成立的前提。
+
+- `<canvas>` 必须转换成可回读的 SVG 或原生 HTML/InDesign 结构。
+- 动画必须固定到明确帧或最终状态。
+- 异步数据必须固定为作者包内的确定内容；不能依赖转换时请求接口。
+- `application/json` 协议载荷不是可执行脚本，允许保留。
+
+严格检查的稳定错误码包括 `AUTHOR_EXECUTABLE_SCRIPT_FORBIDDEN`、`AUTHOR_CANVAS_FORBIDDEN`、`AUTHOR_REMOTE_RUNTIME_SCRIPT_FORBIDDEN` 和 `AUTHOR_REMOTE_STYLESHEET_FORBIDDEN`。
+
 ## 作者包结构
 
 使用这个结构：
@@ -94,7 +109,7 @@ npm run lint:authoring -- -- --package <deck.config.json> --strict
 npm run lint:authoring -- -- --package <deck.config.json> --strict --json
 ```
 
-`lint:authoring` 会检查作者包源码格式、`deck.html` 是否同步、浏览器快照规则、网格对齐和语义 token 覆盖。
+`lint:authoring` 会检查作者包源码格式、静态化边界、`deck.html` 是否同步、浏览器快照规则、网格对齐和语义 token 覆盖。
 
 ## 互转流程
 

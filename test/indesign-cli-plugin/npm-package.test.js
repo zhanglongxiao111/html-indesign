@@ -14,6 +14,7 @@ test('npm package metadata publishes html-indesign as the Sa scoped plugin packa
   const manifest = readJson('src/indesign-cli-plugin/manifest.json');
 
   assert.equal(pkg.name, '@sa/html-indesign');
+  assert.equal(pkg.version, '0.2.0');
   assert.equal(pkg.version, manifest.version);
   assert.equal(pkg.description, 'Sa fixed semantic HTML and InDesign bidirectional translation plugin');
   assert.equal(pkg.main, 'index.js');
@@ -40,9 +41,12 @@ test('npm package ships only runtime plugin files and keeps workspace artifacts 
     'docs/规范/LABEL_PROTOCOL.md',
     'docs/规范/REVERSE_EXPORT.md',
     'docs/规范/FONT_POLICY.md',
+    'docs/规范/AGENT_HTML_AUTHORING_GUIDE.md',
   ]);
   assert.equal(pkg.files.includes('test/'), false);
   assert.equal(pkg.files.includes('test/workspace/'), false);
+  assert.equal(pkg.files.includes('.indesign-cli/'), false);
+  assert.equal(pkg.files.includes('test/'), false);
   for (const command of Object.values(pkg.scripts)) {
     const match = /^node scripts\/([^ ]+\.js)/.exec(command);
     if (match) {
@@ -80,4 +84,6 @@ test('npm package has a bilingual root README with Sa install commands', () => {
   assert.match(readme, /Sa's internal/);
   assert.match(readme, /indesign-cli plugin validate/);
   assert.match(readme, /indesign-cli plugin install/);
+  assert.match(readme, /Microsoft Edge/);
+  assert.match(readme, /HTML_INDESIGN_BROWSER_EXECUTABLE/);
 });

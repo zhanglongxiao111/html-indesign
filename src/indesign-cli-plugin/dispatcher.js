@@ -3,6 +3,7 @@ const authoringLint = require('./tools/authoring-lint');
 const compileInstructionsTool = require('./tools/compile-instructions');
 const buildIndesign = require('./tools/build-indesign');
 const reverseExport = require('./tools/reverse-export');
+const manifest = require('./manifest.json');
 
 const callers = {
   'html.authoring_lint': authoringLint,
@@ -34,13 +35,13 @@ async function dispatch(request) {
     const tools = listTools();
     return {
       id: 'html-indesign',
-      version: '0.1.0',
+      version: manifest.version,
       protocol: 'indesign-cli-plugin.v1',
       domain: 'html',
       plugin: {
         id: 'html-indesign',
         name: 'html-indesign',
-        version: '0.1.0',
+        version: manifest.version,
         domain: 'html',
       },
       capabilities: {

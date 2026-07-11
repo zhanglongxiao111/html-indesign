@@ -21,8 +21,11 @@ test('manifest declares html-indesign as a host-only html domain plugin', () => 
 });
 
 test('plugin handshake returns protocol and public tool count', () => {
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   const response = callPlugin('plugin/handshake');
   assert.equal(response.id, 'html-indesign');
+  assert.equal(response.version, manifest.version);
+  assert.equal(response.plugin.version, manifest.version);
   assert.equal(response.protocol, 'indesign-cli-plugin.v1');
   assert.equal(response.plugin.id, 'html-indesign');
   assert.equal(response.capabilities.tools, true);
