@@ -3,11 +3,10 @@ const path = require('node:path');
 const { compileReverseSnapshotToHtml } = require('../../reverse-pipeline');
 const { resolveReconstructionProfile } = require('../../semantic-reconstruction');
 const { buildReverseSnapshotJsx } = require('../host-jsx');
-const { ensureOutputDir, getCwd, resolveProjectPath } = require('../path-policy');
+const { ensureOutputDir, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
 
 async function call(args, context) {
-  const cwd = getCwd(context);
   const inddPath = resolveProjectPath(context, args.indd, 'indd');
   if (!fs.existsSync(inddPath)) {
     const err = new Error(`INDD file not found: ${inddPath}`);
@@ -24,7 +23,8 @@ async function call(args, context) {
   });
 
   fs.writeFileSync(reverseScriptPath, buildReverseSnapshotJsx({
-    repoRoot: cwd,
+    // _indesign_scripts 随插件包分发，必须以插件根定位（同 build-indesign.js）。
+    repoRoot: path.resolve(__dirname, '..', '..', '..'),
     inddPath,
     outputPath: snapshotPath,
     closeDocument: true,
