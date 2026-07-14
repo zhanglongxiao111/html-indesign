@@ -97,6 +97,7 @@ function parsePathPoints(d, bounds, viewBox) {
   let command = '';
   let current = { x: 0, y: 0 };
   while (index < tokens.length) {
+    const indexBefore = index;
     if (isCommand(tokens[index])) command = tokens[index++];
     if (!command || /[zZ]/.test(command)) break;
     if (/[mM]/.test(command)) {
@@ -141,18 +142,21 @@ function parsePathPoints(d, bounds, viewBox) {
         index += 6;
       }
     } else {
-      break;
+      // 不支持的路径命令（A/Q/H/V/S/T…）：跳过其全部数字参数后继续处理后续段。
+      // 严禁 break 后残留数字，也严禁让 index 停滞——否则奇数个残留参数会造成死循环。
+      while (hasNumbers(tokens, index, 1)) index += 1;
     }
+    if (index === indexBefore) index += 1; // 兜底：任何分支未消费 token 时强制推进，杜绝停滞
   }
   return points;
 }
 
 function pathTokens(value) {
-  return String(value || '').match(/[mMlLcCzZ]|[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/g) || [];
+  return String(value || '').match(/[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/g) || [];
 }
 
 function isCommand(token) {
-  return /^[mMlLcCzZ]$/.test(String(token || ''));
+  return /^[a-zA-Z]$/.test(String(token || ''));
 }
 
 function hasNumbers(tokens, index, count) {
