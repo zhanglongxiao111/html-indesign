@@ -1,6 +1,6 @@
 const path = require('node:path');
 
-function buildBuildJsx({ repoRoot, instructionsPath }) {
+function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-indesign-e2e' }) {
   const base = toJsxPath(repoRoot);
   const instructions = toJsxPath(instructionsPath);
   return `(function () {
@@ -27,20 +27,36 @@ function buildBuildJsx({ repoRoot, instructionsPath }) {
     includeLib("hi_items.jsxinc");
     includeLib("hi_executor.jsxinc");
 
-    var marker = "html-indesign-indesign-e2e";
-    var doc = app.documents.add();
-    doc.insertLabel("html_indesign_e2e_marker", marker);
-    var report = HI.runBuildFromInstructions(app, ${JSON.stringify(instructions)});
-    doc.insertLabel("html_indesign_e2e_report", JSON.stringify(report));
+    var marker = ${JSON.stringify(String(marker))};
+    var doc = null;
+    var result = { ok: false, marker: marker, pageCount: 0, counts: {}, errors: [], warnings: [], closedOnFailure: false };
+    try {
+        doc = app.documents.add();
+        doc.insertLabel("html_indesign_e2e_marker", marker);
+        var report = HI.runBuildFromInstructions(app, ${JSON.stringify(instructions)});
+        doc.insertLabel("html_indesign_e2e_report", JSON.stringify(report));
+        result.ok = report.ok !== false;
+        result.pageCount = doc.pages.length;
+        result.counts = report.counts || {};
+        result.errors = report.errors || [];
+        result.warnings = report.warnings || [];
+    } catch (error) {
+        result.ok = false;
+        result.errors.push({ code: "INDESIGN_BUILD_EXCEPTION", message: String(error) });
+    } finally {
+        if (!result.ok && doc) {
+            try {
+                if (doc.isValid !== false && doc.extractLabel("html_indesign_e2e_marker") === marker) {
+                    doc.close(SaveOptions.NO);
+                    result.closedOnFailure = true;
+                }
+            } catch (closeError) {
+                result.warnings.push({ code: "FAILED_BUILD_DOC_CLOSE_FAILED", message: String(closeError) });
+            }
+        }
+    }
 
-    return JSON.stringify({
-        ok: report.ok !== false,
-        marker: marker,
-        pageCount: doc.pages.length,
-        counts: report.counts,
-        errors: report.errors,
-        warnings: report.warnings
-    });
+    return JSON.stringify(result);
 })();`;
 }
 
@@ -50,6 +66,7 @@ function buildExportJsx({
   exportPdf = true,
   exportIdml = true,
   closeDocument = true,
+  expectedMarker = null,
 }) {
   const outDir = toJsxPath(runDir);
   const baseName = String(outputBaseName || 'html-indesign-output');
@@ -105,6 +122,11 @@ function buildExportJsx({
     }
 
     var doc = app.activeDocument;
+    var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
+    if (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker) {
+        add("error", "ACTIVE_DOCUMENT_MISMATCH", "The active InDesign document does not belong to this build run.");
+        return JSON.stringify(result);
+    }
     var indd = File(runDir + "/${escapeJsxString(baseName)}.indd");
 ${pdfDeclaration}
 ${idmlDeclaration}
@@ -183,7 +205,14 @@ ${closeBlock}
 })();`;
 }
 
-function buildReverseSnapshotJsx({ repoRoot, outputPath, inddPath = null, closeDocument = true }) {
+function buildReverseSnapshotJsx({
+  repoRoot,
+  outputPath,
+  inddPath = null,
+  closeDocument = true,
+  expectedMarker = null,
+  closeOnFailure = false,
+}) {
   const base = toJsxPath(repoRoot);
   const output = toJsxPath(outputPath);
   const openBlock = inddPath ? `
@@ -202,7 +231,14 @@ function buildReverseSnapshotJsx({ repoRoot, outputPath, inddPath = null, closeD
 ` : '';
   return `(function () {
     var result = { ok: false, outputPath: ${JSON.stringify(output)}, errors: [], warnings: [] };
+    var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
+    var ownedDocument = null;
     try {${openBlock}
+        if (app.documents.length < 1) throw new Error("NO_ACTIVE_DOCUMENT");
+        ownedDocument = app.activeDocument;
+        if (expectedMarker && ownedDocument.extractLabel("html_indesign_e2e_marker") !== expectedMarker) {
+            throw new Error("ACTIVE_DOCUMENT_MISMATCH: The active document does not belong to this build run.");
+        }
         app.insertLabel("html_indesign_reverse_output", ${JSON.stringify(output)});
         var raw = $.evalFile(File(${JSON.stringify(base + "/_indesign_scripts/export_to_html_snapshot.jsx")}));
         if (!raw) throw new Error("Reverse snapshot script returned an empty result.");
@@ -217,8 +253,42 @@ function buildReverseSnapshotJsx({ repoRoot, outputPath, inddPath = null, closeD
         result.errors.push({ code: "REVERSE_SNAPSHOT_FAILED", message: String(error) });
     } finally {
         app.insertLabel("html_indesign_reverse_output", "");
+        if (result.ok === false && ${closeOnFailure ? 'true' : 'false'} && ownedDocument && expectedMarker) {
+            try {
+                if (ownedDocument.isValid !== false && ownedDocument.extractLabel("html_indesign_e2e_marker") === expectedMarker) {
+                    ownedDocument.close(SaveOptions.NO);
+                    result.closedOnFailure = true;
+                }
+            } catch (failureCloseError) {
+                result.warnings.push({ code: "FAILED_SNAPSHOT_DOC_CLOSE_FAILED", message: String(failureCloseError) });
+            }
+        }
     }
 ${closeBlock}
+    return JSON.stringify(result);
+})();`;
+}
+
+function buildCloseJsx({ expectedMarker }) {
+  const marker = String(expectedMarker || '');
+  return `(function () {
+    var result = { ok: false, closed: false, errors: [], warnings: [] };
+    if (app.documents.length < 1) {
+        result.ok = true;
+        return JSON.stringify(result);
+    }
+    var doc = app.activeDocument;
+    if (${JSON.stringify(marker)} && doc.extractLabel("html_indesign_e2e_marker") !== ${JSON.stringify(marker)}) {
+        result.errors.push({ code: "ACTIVE_DOCUMENT_MISMATCH", message: "Refusing to close a document not created by this build run." });
+        return JSON.stringify(result);
+    }
+    try {
+        doc.close(SaveOptions.NO);
+        result.ok = true;
+        result.closed = true;
+    } catch (error) {
+        result.errors.push({ code: "BUILD_DOCUMENT_CLOSE_FAILED", message: String(error) });
+    }
     return JSON.stringify(result);
 })();`;
 }
@@ -233,6 +303,7 @@ function toJsxPath(value) {
 
 module.exports = {
   buildBuildJsx,
+  buildCloseJsx,
   buildExportJsx,
   buildReverseSnapshotJsx,
 };

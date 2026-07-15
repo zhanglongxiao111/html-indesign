@@ -20,6 +20,8 @@ test('agent authoring guide distinguishes static handoff requirements from creat
   assert.match(guide, /Canvas[^\n]*SVG/);
   assert.match(guide, /动画[^\n]*固定/);
   assert.match(guide, /异步数据[^\n]*固定/);
-  assert.match(guide, /普通单次转换/);
-  assert.match(guide, /无损回环声明/);
+  assert.match(guide, /正式单次构建/);
+  assert.match(guide, /再次回到 HTML 仍零漂移/);
+  assert.match(guide, /verified: true/);
+  assert.match(guide, /不包含浏览器截图与导出 PDF 的图片视觉对比/);
 });

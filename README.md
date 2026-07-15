@@ -15,44 +15,26 @@
 
 项目内部的回环审计、结构 diff、视觉 diff 和 P0/P1 门禁是研发测试工具，不作为普通插件工具暴露给日常使用者。
 
-### 安装前准备
+### 公司用户安装
 
-本插件需要先安装并配置 `indesign-cli`。如果本机还没有配置过：
+公司提供的 `indesign-cli-agent-setup.exe` 已包含 CLI、Node、HTML 插件和生产依赖。用户只需安装 Adobe InDesign；系统 Microsoft Edge 用于 HTML 快照，不需要另装 Node、Python、npm 或 Git。
 
 ```powershell
-pip install "git+https://github.com/zhanglongxiao111/indesign-cli.git"
-indesign-cli server setup
-indesign-cli server health
+& "<setup-path>\indesign-cli-agent-setup.exe"
+indesign-cli-agent tool list --domain html
 ```
 
-同时需要：
+普通命令启动前会自动检查运行环境更新。IT 如需固定受控 Edge，可设置 `HTML_INDESIGN_BROWSER_EXECUTABLE` 为 `msedge.exe` 的绝对路径；Edge 不可用时返回 `EDGE_NOT_AVAILABLE`，不会静默换用其他浏览器。
 
-- Node.js `>=20.18.1`
-- npm
-- Microsoft Edge（浏览器快照默认使用系统 `msedge` 通道）
-- 需要真实构建或反向导出时，本机必须能正常启动 Adobe InDesign
+### 独立开发安装
 
-IT 如需固定受控 Edge，可设置 `HTML_INDESIGN_BROWSER_EXECUTABLE` 为 `msedge.exe` 的绝对路径。Edge 不可用时插件返回 `EDGE_NOT_AVAILABLE`，不会静默改用 Playwright Chromium。
-
-### 安装插件
+仓库开发者可以使用 Node.js `>=20.18.1` 和 npm 单独安装插件：
 
 ```powershell
 npm install -g @sa/html-indesign
-```
-
-当前 `indesign-cli plugin install` 还没有直接支持 npm 包名，因此先解析全局 npm 安装目录，再把插件目录交给 `indesign-cli`：
-
-```powershell
 $pluginRoot = Join-Path (npm root -g) "@sa/html-indesign"
 indesign-cli plugin validate $pluginRoot
 indesign-cli plugin install $pluginRoot
-indesign-cli tool list --domain html
-```
-
-以后 `indesign-cli` 支持 npm 包名解析后，目标安装方式会收敛为：
-
-```powershell
-indesign-cli plugin install @sa/html-indesign
 ```
 
 ### 可用工具
@@ -61,7 +43,7 @@ indesign-cli plugin install @sa/html-indesign
 | ---- | ---- |
 | `html.authoring_lint` | 检查 HTML 作者包是否符合项目协议 |
 | `html.compile_instructions` | 把固定语义 HTML 编译为 InDesign 构建指令 |
-| `html.build_indesign` | 请求宿主执行 InDesign 构建，生成 INDD/PDF/IDML |
+| `html.build_indesign` | 严格检查并构建 INDD/PDF/IDML；正式模式核对真实 InDesign 对象后才返回已验证 |
 | `html.reverse_export` | 请求宿主从 INDD 反向导出 HTML 作者包 |
 
 查看工具和参数：
@@ -98,44 +80,26 @@ It is built for two workflows:
 
 Internal roundtrip audits, structural diffs, visual diffs, and P0/P1 gates are project verification tools. They are not exposed as normal plugin tools for daily users.
 
-### Prerequisites
+### Company Installation
 
-Install and configure `indesign-cli` first:
+The company-provided `indesign-cli-agent-setup.exe` already contains the CLI, Node, the HTML plugin, and production dependencies. Users only need Adobe InDesign; system Microsoft Edge is used for HTML snapshots. Node, Python, npm, and Git are not required on user workstations.
 
 ```powershell
-pip install "git+https://github.com/zhanglongxiao111/indesign-cli.git"
-indesign-cli server setup
-indesign-cli server health
+& "<setup-path>\indesign-cli-agent-setup.exe"
+indesign-cli-agent tool list --domain html
 ```
 
-You also need:
+Normal commands check for runtime updates automatically. IT may set `HTML_INDESIGN_BROWSER_EXECUTABLE` to an approved absolute `msedge.exe` path. If Edge cannot launch, the plugin returns `EDGE_NOT_AVAILABLE` and does not silently change browsers.
 
-- Node.js `>=20.18.1`
-- npm
-- Microsoft Edge (browser snapshots use the system `msedge` channel by default)
-- Adobe InDesign available on the same machine when building or reverse-exporting real documents
+### Standalone Development Install
 
-IT may set `HTML_INDESIGN_BROWSER_EXECUTABLE` to an approved absolute `msedge.exe` path. If Edge cannot launch, the plugin returns `EDGE_NOT_AVAILABLE` and does not silently fall back to Playwright Chromium.
-
-### Install
+Repository developers may install the plugin separately with Node.js `>=20.18.1` and npm:
 
 ```powershell
 npm install -g @sa/html-indesign
-```
-
-`indesign-cli plugin install` does not yet resolve npm package names directly. For now, resolve the global npm package directory and install from that path:
-
-```powershell
 $pluginRoot = Join-Path (npm root -g) "@sa/html-indesign"
 indesign-cli plugin validate $pluginRoot
 indesign-cli plugin install $pluginRoot
-indesign-cli tool list --domain html
-```
-
-After npm package-name resolution is added to `indesign-cli`, the target flow will be:
-
-```powershell
-indesign-cli plugin install @sa/html-indesign
 ```
 
 ### Tools
@@ -144,7 +108,7 @@ indesign-cli plugin install @sa/html-indesign
 | ---- | ------- |
 | `html.authoring_lint` | Check whether an HTML authoring package follows the project protocol |
 | `html.compile_instructions` | Compile fixed semantic HTML into InDesign build instructions |
-| `html.build_indesign` | Ask the host to build INDD/PDF/IDML through InDesign |
+| `html.build_indesign` | Strict-check and build INDD/PDF/IDML; final mode verifies the real InDesign objects before reporting success |
 | `html.reverse_export` | Ask the host to reverse-export an INDD file into an HTML authoring package |
 
 Inspect available tools and schemas:

@@ -19,6 +19,7 @@ const {
   assertReverseCompilationOk,
 } = require('../scripts/indesign-e2e');
 const scriptExports = require('../scripts/indesign-e2e');
+const { buildCloseJsx } = require('../src/indesign-cli-plugin/host-jsx');
 const {
   assertPanelNameAuditOk,
   assertNoTextOverset,
@@ -60,6 +61,9 @@ test('buildBuildJsx creates an isolated document and loads executor libs', () =>
   assert.match(jsx, /includeLib\("hi_fonts\.jsxinc"\)/);
   assert.match(jsx, /includeLib\("hi_tables\.jsxinc"\)/);
   assert.match(jsx, /html-indesign-indesign-e2e/);
+  assert.match(jsx, /doc\.extractLabel\("html_indesign_e2e_marker"\) === marker/);
+  assert.match(jsx, /doc\.close\(SaveOptions\.NO\)/);
+  assert.match(jsx, /closedOnFailure/);
 });
 
 test('buildExportJsx exports IDD PDF IDML and closes the temporary document', () => {
@@ -77,6 +81,23 @@ test('buildExportJsx exports IDD PDF IDML and closes the temporary document', ()
   assert.match(jsx, /var oldPdfPageRange/);
   assert.match(jsx, /app\.pdfExportPreferences\.pageRange\s*=\s*PageRange\.ALL_PAGES/);
   assert.match(jsx, /app\.pdfExportPreferences\.pageRange\s*=\s*oldPdfPageRange/);
+});
+
+test('buildExportJsx refuses to export a document owned by another build', () => {
+  const jsx = buildExportJsx({
+    runDir: 'D:/AI/html-indesign/test/workspace/run',
+    expectedMarker: 'owned-build',
+  });
+
+  assert.match(jsx, /ACTIVE_DOCUMENT_MISMATCH/);
+  assert.match(jsx, /extractLabel\("html_indesign_e2e_marker"\) !== expectedMarker/);
+});
+
+test('buildCloseJsx only closes the document owned by the failed build', () => {
+  const jsx = buildCloseJsx({ expectedMarker: 'owned-build' });
+
+  assert.match(jsx, /Refusing to close a document not created by this build run/);
+  assert.match(jsx, /doc\.close\(SaveOptions\.NO\)/);
 });
 
 test('parseCliResultJson returns nested result_json from indesign cli output', () => {
@@ -377,6 +398,21 @@ test('build reverse snapshot jsx writes target output label and runs reverse scr
   assert.match(jsx, /html_indesign_reverse_output/);
   assert.match(jsx, /app\.open\(indd\)/);
   assert.match(jsx, /export_to_html_snapshot\.jsx/);
+});
+
+test('build reverse snapshot jsx can check the current owned build and close it on failure', () => {
+  const jsx = buildReverseSnapshotJsx({
+    repoRoot: 'D:/AI/html-indesign',
+    outputPath: 'D:/AI/html-indesign/test/workspace/reverse-snapshot.json',
+    inddPath: null,
+    closeDocument: false,
+    expectedMarker: 'owned-build',
+    closeOnFailure: true,
+  });
+
+  assert.doesNotMatch(jsx, /app\.open\(indd\)/);
+  assert.match(jsx, /ACTIVE_DOCUMENT_MISMATCH/);
+  assert.match(jsx, /ownedDocument\.close\(SaveOptions\.NO\)/);
 });
 
 test('resolveIndesignCliCommand defaults to new command and accepts explicit env override', () => {

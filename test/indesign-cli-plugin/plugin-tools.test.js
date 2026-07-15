@@ -94,7 +94,7 @@ test('html.compile_instructions writes validated instructions and summary', () =
   assert.equal(layerNames.includes('text'), false);
 });
 
-test('html.build_indesign returns script.run host actions instead of calling InDesign directly', () => {
+test('html.build_indesign starts with one build action and defers dependent actions', () => {
   const outDir = path.join('test', 'workspace', 'plugin-build-smoke');
   fs.rmSync(path.join(repoRoot, outDir), { recursive: true, force: true });
 
@@ -113,13 +113,42 @@ test('html.build_indesign returns script.run host actions instead of calling InD
   assert.equal(response.status, 'requires_host_actions');
   assert.equal(response.state.tool_id, 'html.build_indesign');
   assert.equal(fs.existsSync(response.state.instructionsPath), true);
+  assert.equal(fs.existsSync(response.state.expectedModelPath), true);
+  assert.equal(fs.existsSync(response.state.semanticPresetPath), true);
   assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'build.jsx')), true);
   assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'export.jsx')), true);
-  assert.deepEqual(response.actions.map((action) => action.tool_id), ['script.run', 'script.run', 'export.verify']);
-  const verifyAction = response.actions.find((action) => action.tool_id === 'export.verify');
-  assert.equal(verifyAction.args.path.endsWith('plugin-smoke.pdf'), true);
-  assert.equal(Object.prototype.hasOwnProperty.call(verifyAction.args, 'file'), false);
+  assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'fidelity-snapshot.jsx')), true);
+  assert.equal(response.state.stage, 'build');
+  assert.equal(response.state.mode, 'final');
+  assert.deepEqual(response.actions.map((action) => action.id), ['html-build-script']);
+  assert.deepEqual(response.actions.map((action) => action.tool_id), ['script.run']);
   assert.equal(response.resume.method, 'tools/resume');
+});
+
+test('html.build_indesign runs strict authoring checks internally before creating host scripts', () => {
+  const root = path.join(repoRoot, 'test', 'workspace', 'plugin-build-strict-failure');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'build-strict-failure',
+    entry: 'deck.html',
+    styles: [],
+    pages: [{ id: 'page-1', file: 'pages/01-page.html' }],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'pages/01-page.html'), '<section class="page"><p>缺少正式作者契约</p></section>', 'utf8');
+
+  const response = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: path.join(root, 'deck.config.json'),
+      outDir: path.join(root, 'output'),
+    },
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'AUTHORING_LINT_FAILED');
+  assert.equal(fs.existsSync(path.join(root, 'output', 'build.jsx')), false);
 });
 
 test('html.build_indesign resolves executor libraries from the plugin root outside the caller project', () => {
@@ -147,7 +176,7 @@ test('html.build_indesign resolves executor libraries from the plugin root outsi
   assert.doesNotMatch(buildJsx, new RegExp(`var base = ${escapeRegExp(JSON.stringify(callerPath))}`));
 });
 
-test('html.build_indesign resume returns generated artifacts after host success', () => {
+test('html.build_indesign draft mode exports after build and is always marked unverified', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-resume');
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
@@ -163,9 +192,11 @@ test('html.build_indesign resume returns generated artifacts after host success'
   fs.writeFileSync(instructionsPath, '{}');
   fs.writeFileSync(summaryPath, '{}');
 
-  const response = callPlugin('tools/resume', {
+  const afterBuild = callPlugin('tools/resume', {
     state: {
       tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'draft',
       runDir: outDir,
       outputBaseName: 'plugin-smoke',
       exportPdf: true,
@@ -175,16 +206,117 @@ test('html.build_indesign resume returns generated artifacts after host success'
     },
     host_results: [
       { id: 'html-build-script', status: 'complete', data: { ok: true } },
-      { id: 'html-export-script', status: 'complete', data: { ok: true } },
-      { id: 'html-export-verify', status: 'complete', data: { ok: true } },
     ],
+  });
+
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'export');
+  assert.deepEqual(afterBuild.actions.map((action) => action.id), ['html-export-script']);
+
+  const afterExport = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+  assert.deepEqual(afterExport.actions.map((action) => action.id), ['html-export-verify']);
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
   });
 
   assert.equal(response.status, 'complete');
   assert.equal(response.data.ok, true);
+  assert.equal(response.data.verified, false);
+  assert.equal(response.data.verificationStatus, 'not-run-draft');
   assert.equal(response.artifacts.some((item) => item.kind === 'indd' && item.path === inddPath), true);
   assert.equal(response.artifacts.some((item) => item.kind === 'pdf' && item.path === pdfPath), true);
   assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
+});
+
+test('html.build_indesign final mode requests a current-document snapshot after build', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-final-stage');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'final',
+      runDir: outDir,
+      outputBaseName: 'plugin-final',
+      exportPdf: true,
+      exportIdml: true,
+      snapshotScriptPath: path.join(outDir, 'fidelity-snapshot.jsx'),
+      runMarker: 'plugin-final-marker',
+    },
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'requires_host_actions');
+  assert.equal(response.state.stage, 'snapshot');
+  assert.deepEqual(response.actions.map((action) => action.id), ['html-fidelity-snapshot']);
+  assert.equal(response.actions[0].tool_id, 'script.run');
+});
+
+test('html.build_indesign returns the concrete failed stage and does not request the next action', () => {
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'final',
+    },
+    host_results: [{
+      id: 'html-build-script',
+      ok: true,
+      data: {
+        ok: false,
+        errors: [{ code: 'FONT_NOT_FOUND', message: 'Missing font: Example' }],
+      },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'INDESIGN_BUILD_FAILED');
+  assert.equal(response.error.retryable, false);
+  assert.match(response.error.message, /Missing font/);
+});
+
+test('html.build_indesign closes its owned document before returning a fidelity failure', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-fidelity-failure');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const cleanupScriptPath = path.join(outDir, 'cleanup.jsx');
+  fs.writeFileSync(cleanupScriptPath, 'cleanup', 'utf8');
+
+  const afterSnapshot = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'snapshot',
+      mode: 'final',
+      runDir: outDir,
+      expectedModelPath: path.join(outDir, 'missing-model.json'),
+      semanticPresetPath: path.join(outDir, 'missing-preset.json'),
+      instructionsPath: path.join(outDir, 'missing-instructions.json'),
+      snapshotPath: path.join(outDir, 'missing-snapshot.json'),
+      cleanupScriptPath,
+    },
+    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(afterSnapshot.status, 'requires_host_actions');
+  assert.equal(afterSnapshot.state.stage, 'cleanup');
+  assert.equal(afterSnapshot.state.pendingError.code, 'FIDELITY_INPUT_MISSING');
+  assert.deepEqual(afterSnapshot.actions.map((action) => action.id), ['html-build-cleanup']);
+
+  const response = callPlugin('tools/resume', {
+    state: afterSnapshot.state,
+    host_results: [{ id: 'html-build-cleanup', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'FIDELITY_INPUT_MISSING');
+  assert.equal(response.error.retryable, false);
 });
 
 test('html.reverse_export returns script.run host action for an INDD file', () => {

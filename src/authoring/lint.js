@@ -66,6 +66,7 @@ async function lintAuthoringPackage(options = {}) {
     htmlPath: packageCheck.entryPath,
     strict: options.strict,
     gridTolerance: options.gridTolerance,
+    includeSnapshot: options.includeSnapshot,
   });
 
   const errors = (sourceFormat.errors || [])
@@ -85,6 +86,7 @@ async function lintAuthoringPackage(options = {}) {
     errors,
     warnings,
     messages: errors.concat(warnings),
+    ...(options.includeSnapshot ? { snapshot: htmlResult.snapshot } : {}),
   }, {
     packagePath,
     htmlPath: packageCheck.entryPath,
@@ -114,7 +116,7 @@ async function lintAuthoringHtml(options = {}) {
       warnings: dataIdAudit.warnings.concat(runtimeAudit.warnings),
     }, { htmlPath });
   }
-  const snapshot = await renderSnapshot({ htmlPath });
+  const snapshot = options.snapshot || await renderSnapshot({ htmlPath });
   const result = withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
@@ -125,6 +127,7 @@ async function lintAuthoringHtml(options = {}) {
     htmlPath,
     dataIdAudit,
     runtimeAudit,
+    ...(options.includeSnapshot ? { snapshot } : {}),
     ...withRuntimeAudit(result, runtimeAudit),
   }, {
     htmlPath,

@@ -1,14 +1,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { renderSnapshot } = require('../../adapters/html');
-const { compileInstructions } = require('../../indesign-pipeline');
+const { compileDocument } = require('../../indesign-pipeline');
 const { validateInstructions } = require('../../writers/indesign');
 const { checkAuthorPackageEntry, readAuthorPackage } = require('../../authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../../semantic-preset');
 const { resolveProjectPath, ensureOutputDir } = require('../path-policy');
 const { artifact } = require('../artifacts');
 
-async function compileAuthoringPackage(args, context, prefix = 'html-plugin-compile') {
+async function compileAuthoringPackage(args, context, prefix = 'html-plugin-compile', internal = {}) {
   const packagePath = resolveProjectPath(context, args.package, 'package');
   const sourcePackage = readAuthorPackage(packagePath);
   const packageCheck = checkAuthorPackageEntry(packagePath);
@@ -23,15 +23,16 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   const instructionsPath = path.join(outDir, outputName);
   const summaryPath = path.join(outDir, 'compile-summary.json');
 
-  const snapshot = await renderSnapshot({ htmlPath: sourcePackage.entryPath });
+  const snapshot = internal.snapshot || await renderSnapshot({ htmlPath: sourcePackage.entryPath });
   const styleNameMap = loadStyleNameMap(sourcePackage);
-  const instructions = compileInstructions(snapshot, {
+  const compiled = compileDocument(snapshot, {
     mode: 'editable-first',
     unitMode: args.unitMode || 'presentation',
     targetSize: args.targetSize || 'same',
     styleNameMap,
     preserveObservedLayerNames: false,
   });
+  const { model, instructions } = compiled;
 
   const validation = validateInstructions(instructions, {
     checkAssetFiles: true,
@@ -46,9 +47,16 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   }
 
   fs.writeFileSync(instructionsPath, JSON.stringify(instructions, null, 2), 'utf8');
+  const expectedModelName = internal.expectedModelName || null;
+  const expectedModelPath = expectedModelName ? path.join(outDir, expectedModelName) : null;
+  if (expectedModelPath) {
+    fs.writeFileSync(expectedModelPath, JSON.stringify(model, null, 2), 'utf8');
+  }
   const summary = compileSummary({
     sourcePackage,
     instructions,
+    model,
+    expectedModelPath,
     instructionsPath,
     summaryPath,
     validation,
@@ -62,6 +70,8 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     instructionsPath,
     summaryPath,
     instructions,
+    model,
+    expectedModelPath,
     summary,
     validation,
   };

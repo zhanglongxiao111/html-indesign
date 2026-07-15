@@ -32,7 +32,7 @@ test('public API does not expose retired facades historical template or semantic
   assert.equal(api.adapters.pptx.writePptxPackage, undefined);
   assert.equal(api.adapters.pptx.readPptx, undefined);
   assert.equal(api.adapters.pptx.writePptx, undefined);
-  assert.deepEqual(Object.keys(api.semanticModel), ['validateSemanticModel']);
+  assert.deepEqual(Object.keys(api.semanticModel), ['auditForwardFidelity', 'validateSemanticModel']);
   assert.equal(api.semanticModel.snapshotToSemanticModel, undefined);
   assert.equal(api.semanticModel.semanticModelToInstructions, undefined);
 });

@@ -67,6 +67,10 @@ test('tools/schema returns stable schemas for every public tool', () => {
     assert.equal(response.inputSchema.type, 'object');
     assert.equal(response.inputSchema.additionalProperties, false);
   }
+
+  const build = callPlugin('tools/schema', { id: 'html.build_indesign' });
+  assert.deepEqual(build.inputSchema.properties.mode.enum, ['final', 'draft']);
+  assert.equal(build.inputSchema.properties.mode.default, 'final');
 });
 
 test('unknown method and unknown tool fail explicitly', () => {

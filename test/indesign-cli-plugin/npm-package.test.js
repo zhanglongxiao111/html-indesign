@@ -14,7 +14,7 @@ test('npm package metadata publishes html-indesign as the Sa scoped plugin packa
   const manifest = readJson('src/indesign-cli-plugin/manifest.json');
 
   assert.equal(pkg.name, '@sa/html-indesign');
-  assert.equal(pkg.version, '0.2.1');
+  assert.equal(pkg.version, '0.2.2');
   assert.equal(pkg.version, manifest.version);
   assert.equal(pkg.description, 'Sa fixed semantic HTML and InDesign bidirectional translation plugin');
   assert.equal(pkg.main, 'index.js');
