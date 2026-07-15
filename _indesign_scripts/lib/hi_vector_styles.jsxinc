@@ -4,16 +4,91 @@ HI.clearDefaultStroke = function (doc, pageItem) {
     HI.applyStrokePaint(doc, pageItem, null, 0);
 };
 
+HI.clearDefaultVectorPaint = function (doc, pageItem) {
+    HI.clearDefaultStroke(doc, pageItem);
+    var none = HI.noneSwatch(doc);
+    try { if (none) pageItem.fillColor = none; } catch (_) {}
+};
+
 HI.applyVectorStrokeStyleOverride = function (doc, pageItem, override, report) {
     override = override || {};
     HI.applyStrokeOpacity(pageItem, override.strokeOpacity);
-    try { if (override.strokeStyle) pageItem.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(override.strokeStyle)); } catch (_) {}
+    if (override.strokeStyle) {
+        var nativeStrokeStyle = HI.vectorStrokeStyleFor(doc, override.strokeStyle, report);
+        if (nativeStrokeStyle) {
+            try { pageItem.strokeType = nativeStrokeStyle; } catch (strokeError) {
+                if (report) HI.addMessage(report, "error", "VECTOR_STROKE_STYLE_APPLY_FAILED", String(strokeError), { strokeStyle: override.strokeStyle });
+            }
+        }
+    }
     HI.applyStrokeLineCap(pageItem, override.strokeLineCap);
     HI.applyStrokeLineJoin(pageItem, override.strokeLineJoin);
     try { if (override.strokeMiterLimit !== null && typeof override.strokeMiterLimit !== "undefined") pageItem.miterLimit = Number(override.strokeMiterLimit); } catch (_) {}
     HI.applyStrokeAlignment(pageItem, override.strokeAlignment);
     HI.applyLineMarker(pageItem, "leftLineEnd", override.lineStartMarker, report);
     HI.applyLineMarker(pageItem, "rightLineEnd", override.lineEndMarker, report);
+};
+
+HI.dashPatternFromStrokeStyle = function (value) {
+    var text = String(value || "").replace(/^\s+|\s+$/g, "");
+    if (!text) return null;
+    var numericOnly = /^\s*(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?(?:\s*(?:,\s*|\s+)(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?)+\s*$/i.test(text);
+    if (!numericOnly && !/dash|虚线|点线/i.test(text)) return null;
+    var matches = text.match(/(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?/gi) || [];
+    if (matches.length < 2 || matches.length > 10) return null;
+    var pattern = [], hasPositive = false;
+    for (var i = 0; i < matches.length; i++) {
+        var match = /^((?:\d+(?:\.\d+)?|\.\d+))\s*(px|pt|mm)?$/i.exec(matches[i].replace(/^\s+|\s+$/g, ""));
+        if (!match) return null;
+        var number = Number(match[1]);
+        if (!isFinite(number) || number < 0) return null;
+        if (String(match[2] || "").toLowerCase() === "mm") number = number * 72 / 25.4;
+        if (number > 0) hasPositive = true;
+        pattern.push(number);
+    }
+    if (!hasPositive) return null;
+    if (pattern.length % 2 === 1) {
+        if (pattern.length * 2 > 10) return null;
+        pattern = pattern.concat(pattern);
+    }
+    return pattern;
+};
+
+HI.vectorDashNumber = function (value) {
+    var rounded = Math.round(Number(value) * 1000000) / 1000000;
+    return String(rounded);
+};
+
+HI.vectorDashStyleName = function (pattern) {
+    var parts = [];
+    for (var i = 0; i < pattern.length; i++) parts.push(HI.vectorDashNumber(pattern[i]));
+    return "虚线（" + parts.join(" 和 ") + "）";
+};
+
+HI.vectorStrokeStyleFor = function (doc, value, report) {
+    var pattern = HI.dashPatternFromStrokeStyle(value);
+    if (pattern) {
+        var name = HI.vectorDashStyleName(pattern);
+        try {
+            var existing = doc.dashedStrokeStyles.itemByName(name);
+            if (existing && existing.isValid) return existing;
+        } catch (_) {}
+        try {
+            return doc.dashedStrokeStyles.add({ name: name, dashArray: pattern });
+        } catch (createError) {
+            if (report) HI.addMessage(report, "error", "VECTOR_DASH_STYLE_CREATE_FAILED", String(createError), { strokeStyle: value, dashArray: pattern });
+            return null;
+        }
+    }
+    try {
+        var fallback = doc.strokeStyles.itemByName(HI.strokeStyleName(value));
+        if (fallback && fallback.isValid) return fallback;
+    } catch (resolveError) {
+        if (report) HI.addMessage(report, "error", "VECTOR_STROKE_STYLE_RESOLVE_FAILED", String(resolveError), { strokeStyle: value });
+        return null;
+    }
+    if (report) HI.addMessage(report, "error", "VECTOR_STROKE_STYLE_RESOLVE_FAILED", "Native InDesign stroke style was not found.", { strokeStyle: value });
+    return null;
 };
 
 HI.applyStrokeOpacity = function (target, opacity) {
@@ -96,4 +171,59 @@ HI.arrowHeadEnumByName = function (name) {
     if (key === "BAR") key = "BAR_ARROW_HEAD";
     try { if (ArrowHead[key]) return ArrowHead[key]; } catch (_) {}
     return null;
+};
+
+HI.createVectorGroupFrame = function (doc, page, item, context, report) {
+    var paths = item && item.vectorGeometry && item.vectorGeometry.paths || [];
+    var children = [];
+    for (var i = 0; i < paths.length; i++) {
+        var path = paths[i];
+        var child = null;
+        try { child = path.closed ? page.polygons.add() : page.graphicLines.add(); } catch (_) { child = null; }
+        if (!child) {
+            HI.addMessage(report, "error", "VECTOR_GROUP_CHILD_CREATE_FAILED", "Could not create a native InDesign path item", { itemId: item.id, pathIndex: i });
+            HI.removeVectorChildren(children);
+            return null;
+        }
+        HI.clearDefaultVectorPaint(doc, child);
+        var targetPath = null;
+        try { targetPath = child.paths[0]; } catch (_) { targetPath = null; }
+        if (!targetPath || !HI.applyVectorPath(targetPath, path, report, item)) {
+            try { child.remove(); } catch (_) {}
+            HI.addMessage(report, "error", "VECTOR_GROUP_PATH_APPLY_FAILED", "Could not apply one SVG path to its native InDesign item", { itemId: item.id, pathIndex: i });
+            HI.removeVectorChildren(children);
+            return null;
+        }
+        HI.assignLayer(child, context, item.layer);
+        try { child.insertLabel("html_indesign_vector_path_index", String(i)); } catch (_) {}
+        children.push(child);
+    }
+    if (children.length !== paths.length || children.length < 2) {
+        HI.addMessage(report, "error", "VECTOR_GROUP_INCOMPLETE", "Native InDesign vector group did not preserve every SVG path", { itemId: item.id, expected: paths.length, actual: children.length });
+        HI.removeVectorChildren(children);
+        return null;
+    }
+    var group = null;
+    try { group = page.groups.add(children); } catch (error) {
+        HI.addMessage(report, "error", "VECTOR_GROUP_CREATE_FAILED", String(error), { itemId: item.id, pathCount: paths.length });
+        HI.removeVectorChildren(children);
+        return null;
+    }
+    HI.assignLayer(group, context, item.layer);
+    HI.applyObjectStyle(doc, group, item.objectStyle, report);
+    for (var j = 0; j < children.length; j++) {
+        HI.applyObjectStyle(doc, children[j], item.objectStyle, report);
+        HI.applyFrameStyle(doc, children[j], item.frameStyle, report);
+        HI.applyStyleOverride(doc, children[j], paths[j].styleOverride || item.styleOverride, report);
+    }
+    HI.applyItemEffects(group, item.effects, item.bounds, report);
+    try { group.label = HI.itemLabel(item); } catch (_) {}
+    HI.writeProtocolLabels(group, item.labels || [], report, { itemId: item.id, critical: true });
+    return group;
+};
+
+HI.removeVectorChildren = function (children) {
+    for (var i = children.length - 1; i >= 0; i--) {
+        try { if (children[i] && children[i].isValid !== false) children[i].remove(); } catch (_) {}
+    }
 };

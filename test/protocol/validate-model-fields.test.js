@@ -1107,6 +1107,46 @@ test('visualStyle/vectorGeometry domain strict rejects unsupported visual fields
   assert.deepEqual(formatExtension.accepted, []);
 });
 
+test('per-path vector paint is a registered canonical model surface', () => {
+  const model = {
+    kind: 'DocumentModel',
+    pages: [{
+      id: 'p1',
+      items: [{
+        id: 'multi-vector',
+        vectorGeometry: {
+          kind: 'path',
+          paths: [{
+            closed: true,
+            points: [],
+            visualStyle: {
+              fillColor: '#e2231a',
+              fillOpacity: 60,
+              strokeColor: '#111111',
+              strokeWeight: 2,
+            },
+          }],
+        },
+      }],
+    }],
+  };
+
+  const paths = scanModelPaths(model);
+  for (const path of [
+    'items[].vectorGeometry.paths[].visualStyle.fillColor',
+    'items[].vectorGeometry.paths[].visualStyle.fillOpacity',
+    'items[].vectorGeometry.paths[].visualStyle.strokeColor',
+    'items[].vectorGeometry.paths[].visualStyle.strokeWeight',
+  ]) {
+    assert.equal(paths.includes(path), true, `${path} must be scanned`);
+  }
+  const result = validateModelFields(fieldRegistry, model, {
+    strict: true,
+    domains: ['visualStyle/vectorGeometry'],
+  });
+  assert.equal(result.valid, true, JSON.stringify(result.errors, null, 2));
+});
+
 test('strict DocumentModel validation rejects retired flat InDesign surface paths', () => {
   const model = minimalDocumentModel({
     effects: { gradientFeather: { scope: 'fill' } },

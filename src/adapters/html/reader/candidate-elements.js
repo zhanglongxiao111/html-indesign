@@ -13,7 +13,12 @@ function roleFromItem(item) {
     authoredStyle: item.authoredStyle,
   });
   const hasAssetSource = source.src && inferAssetKind(source.src, source.explicitKind) !== 'unknown';
-  return htmlItemRoleFromElementFacts({ tagName, attributes, hasAssetSource });
+  return htmlItemRoleFromElementFacts({
+    tagName,
+    attributes,
+    hasAssetSource,
+    naturalTextElement: item.naturalTextElement === true,
+  });
 }
 
 function selectorFor(item) {

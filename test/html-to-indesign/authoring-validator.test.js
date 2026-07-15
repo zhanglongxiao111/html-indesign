@@ -438,8 +438,11 @@ test('validateAuthoringRules rejects composite layout containers declared as tex
   const result = validateAuthoringRules(snapshot);
 
   assert.equal(result.valid, false);
-  assert.equal(result.errors.some((entry) => entry.code === 'TEXT_CONTAINER_HAS_CHILD_OBJECTS'
-    && entry.itemId === 'metric-card'), true);
+  const issue = result.errors.find((entry) => entry.code === 'TEXT_CONTAINER_HAS_CHILD_OBJECTS'
+    && entry.itemId === 'metric-card');
+  assert.ok(issue);
+  assert.match(issue.suggestedFix, /metric-card/);
+  assert.match(issue.suggestedFix, /data-id-role="container"/);
 });
 
 test('validateAuthoringRules allows a semantic container to follow its child content height', () => {

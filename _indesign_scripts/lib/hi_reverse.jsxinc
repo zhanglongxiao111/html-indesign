@@ -197,6 +197,9 @@ HI.isTopLevelReverseItem = function (item) {
 };
 
 HI.reversePageItem = function (item, index, total, layerOrder, context) {
+    var vectorGeometry = HI.reverseVectorGeometry(item);
+    var visualStyle = HI.reverseVisualStyle(item);
+    if (vectorGeometry) visualStyle.strokeWeight = HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight"));
     return {
         id: String(item.id || ("item-" + (index + 1))),
         type: HI.reverseItemType(item),
@@ -208,7 +211,7 @@ HI.reversePageItem = function (item, index, total, layerOrder, context) {
         parent: HI.reverseItemParentInfo(item),
         paragraphStyleName: HI.appliedParagraphStyleName(item),
         objectStyleName: HI.appliedObjectStyleName(item),
-        visualStyle: HI.reverseVisualStyle(item),
+        visualStyle: visualStyle,
         effects: HI.reverseEffects(item),
         textStyle: HI.reverseTextStyle(item),
         textFrameStyle: HI.reverseTextFrameStyle(item),
@@ -216,13 +219,25 @@ HI.reversePageItem = function (item, index, total, layerOrder, context) {
         textRuns: HI.reverseTextRuns(item),
         firstLineFont: HI.reverseFirstLineFont(item),
         table: HI.reverseTableData(item),
-        vectorGeometry: HI.reverseVectorGeometry(item),
+        vectorGeometry: vectorGeometry,
+        vectorPathIndex: HI.reverseVectorPathIndex(item),
         zIndex: HI.reverseItemZIndex(item, index, total, layerOrder),
         placedAsset: HI.reversePlacedAsset(item, context),
         text: HI.itemText(item),
         label: String(item.label || ""),
         labels: HI.reverseLabels(item)
     };
+};
+
+HI.reverseVectorPathIndex = function (item) {
+    try {
+        var raw = item.extractLabel("html_indesign_vector_path_index");
+        if (raw === undefined || raw === null || String(raw) === "") return null;
+        var index = Number(raw);
+        if (!isFinite(index) || index < 0 || Math.floor(index) !== index) return null;
+        return index;
+    } catch (_) {}
+    return null;
 };
 
 HI.reverseItemParentInfo = function (item) {

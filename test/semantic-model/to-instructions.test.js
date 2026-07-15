@@ -1016,6 +1016,64 @@ test('semanticModelToInstructions preserves observed vector paths and paint as n
   assert.equal(instructions.styles.swatches['颜色-255-147-57'].value, '#ff9339');
 });
 
+test('semanticModelToInstructions emits native per-path paint for multi-path SVG geometry', () => {
+  const point = (x, y) => ({
+    anchor: { x, y },
+    leftDirection: { x, y },
+    rightDirection: { x, y },
+    pointType: 'PLAIN',
+  });
+  const model = {
+    kind: 'DocumentModel',
+    id: 'multi-path-vector-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'multi-path-svg',
+        role: 'line',
+        bounds: { x: 20, y: 30, width: 200, height: 100 },
+        visualStyle: { fillColor: null, strokeColor: '#111111', strokeWeight: 2 },
+        vectorGeometry: {
+          kind: 'line',
+          paths: [{
+            closed: false,
+            points: [point(20, 30), point(80, 30)],
+            visualStyle: { fillColor: null, strokeColor: '#111111', strokeWeight: 2, strokeStyle: '6px, 6px' },
+          }, {
+            closed: true,
+            points: [point(100, 30), point(140, 30), point(140, 70)],
+            visualStyle: { fillColor: '#e2231a', strokeColor: null, strokeWeight: 0 },
+          }],
+        },
+        styleRefs: {},
+        labels: [],
+      }],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'multi-path-svg');
+
+  assert.equal(item.type, 'SHAPE');
+  assert.equal(item.shapeKind, 'polygon');
+  assert.equal(item.vectorGeometry.paths.length, 2);
+  assert.deepEqual(item.vectorGeometry.paths[0].visualStyle, model.pages[0].items[0].vectorGeometry.paths[0].visualStyle);
+  assert.equal(item.vectorGeometry.paths[0].styleOverride.fillColor, null);
+  assert.equal(item.vectorGeometry.paths[0].styleOverride.strokeColor, '颜色-17-17-17');
+  assert.equal(item.vectorGeometry.paths[0].styleOverride.strokeWeight, 2);
+  assert.equal(item.vectorGeometry.paths[0].styleOverride.strokeStyle, '6px, 6px');
+  assert.equal(item.vectorGeometry.paths[1].styleOverride.fillColor, '颜色-226-35-26');
+  assert.equal(item.vectorGeometry.paths[1].styleOverride.strokeWeight, 0);
+});
+
 test('semanticModelToInstructions keeps open observed polygon paths as native shapes', () => {
   const model = {
     kind: 'DocumentModel',
@@ -1152,6 +1210,43 @@ test('semanticModelToInstructions emits line-like open polygon markers as native
   assert.deepEqual(item.vectorGeometry, model.pages[0].items[0].vectorGeometry);
   assert.deepEqual(item.styleOverride.lineEndMarker, { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' });
   assert.equal(item.styleOverride.strokeWeight, 0);
+});
+
+test('semanticModelToInstructions does not clear an object-style stroke for an opacity-only override', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'opacity-shape-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 100,
+      height: 100,
+      items: [{
+        id: 'swatch',
+        role: 'shape',
+        bounds: { x: 10, y: 10, width: 14, height: 14 },
+        visualStyle: { opacity: 55 },
+        styleRefs: { objectStyle: 'swatch-style' },
+        labels: [],
+      }],
+    }],
+    styles: {
+      swatches: { black: { name: 'black', value: '#000000' } },
+      objectStyles: {
+        'swatch-style': { name: 'swatch-style', strokeColor: 'black', strokeWeight: 1 },
+      },
+    },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'swatch');
+
+  assert.equal(item.styleOverride.opacity, 55);
+  assert.equal(Object.prototype.hasOwnProperty.call(item.styleOverride, 'strokeWeight'), false);
 });
 
 test('semanticModelToInstructions can preserve explicit observed layer names without style map translation', () => {

@@ -13,6 +13,7 @@ const GRID_ALIGNMENT_OFF = 'GRID_ALIGNMENT_OFF';
 const SEMANTIC_TOKEN_MISSING = 'SEMANTIC_TOKEN_MISSING';
 const GRAPHIC_ASSET_REFERENCE_MISSING = 'GRAPHIC_ASSET_REFERENCE_MISSING';
 const TEXT_CONTAINER_HAS_CHILD_OBJECTS = 'TEXT_CONTAINER_HAS_CHILD_OBJECTS';
+const HTML_TEXT_NOT_CONVERTIBLE = 'HTML_TEXT_NOT_CONVERTIBLE';
 
 function validateAuthoringRules(snapshot, options = {}) {
   const pages = Array.isArray(snapshot && snapshot.pages) ? snapshot.pages : [];
@@ -35,6 +36,16 @@ function validateAuthoringRules(snapshot, options = {}) {
     }
 
     const items = Array.isArray(page.items) ? page.items : [];
+    for (const issue of Array.isArray(page.uncapturedText) ? page.uncapturedText : []) {
+      const itemId = issue.id || issue.sourcePath || null;
+      errors.push(message(
+        'error',
+        HTML_TEXT_NOT_CONVERTIBLE,
+        pageId,
+        itemId,
+        'Visible HTML text cannot be assigned safely to an InDesign text object. Put it in a leaf text element such as p, a heading, or a text-only div; keep layout containers separate.',
+      ));
+    }
     if (grid.valid && grid.lines) {
       items.forEach((item, itemIndex) => {
         if (!shouldCheckGrid(item, page)) return;
@@ -49,13 +60,18 @@ function validateAuthoringRules(snapshot, options = {}) {
 
     items.forEach((item, itemIndex) => {
       if (isCompositeTextContainer(item, itemIndex, items)) {
-        errors.push(message(
+        const itemId = itemIdFor(item, itemIndex);
+        errors.push({
+          ...message(
           'error',
           TEXT_CONTAINER_HAS_CHILD_OBJECTS,
           pageId,
-          itemIdFor(item, itemIndex),
+          itemId,
           `A layout container with child objects cannot use ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.TEXT}". Use ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.CONTAINER}" and keep text semantics on the leaf text elements.`,
-        ));
+          ),
+          suggestedFix: `Change #${itemId} to ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.CONTAINER}"; keep ${HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE} on its child text elements.`,
+          ...(page && page.sourceFile ? { sourceFile: page.sourceFile } : {}),
+        });
       }
       if (isGraphicWithoutOwnResource(item)) {
         errors.push(message(

@@ -164,7 +164,7 @@ npm run assemble:authoring -- -- --package <deck.config.json>
 - 图片说明使用 `figure + figcaption`。
 - 多图矩阵使用容器类，例如 `figure-grid`、`image-grid`、`material-grid`。
 - 多段连续正文使用容器类，例如 `text-block`。
-- 含有独立文字子对象的布局容器使用 `data-id-role="container"`，不得使用 `text`；`text` 和段落样式只写在实际文字元素上。
+- 含有独立文字子对象的布局容器使用 `data-id-role="container"`，不得使用 `text`；子级 `p`、标题或 `span` 只要带 `data-id-paragraph-style`，就是独立文字对象。HTML/CSS 结构不用改，只把外层标成 `container`，把文字角色和段落样式留在实际文字元素上。
 - 表格用真实 `table`，不要用一堆绝对定位 div 假装表格。
 
 回读保护依赖原始结构能被保存为 `sourceNode`。如果对象没有稳定 `id` 或结构只是视觉碎片，系统只能把它当观察对象。

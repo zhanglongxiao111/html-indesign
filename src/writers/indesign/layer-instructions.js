@@ -21,8 +21,14 @@ function layerForItem(item, options) {
 
 function collectLayers(pages, options, observedLayers = []) {
   const names = new Map();
+  const map = configuredLayerNameMap(options);
   for (const token of ['background', 'image', 'drawing', 'graphics', 'content', 'overlay', 'tables', 'text', 'annotation', 'annotations']) {
-    names.set(mappedLayerName(token, options), names.size);
+    if (!map || !Object.prototype.hasOwnProperty.call(map, token) || !map[token]) continue;
+    names.set(map[token], names.size);
+  }
+  for (const layer of Array.isArray(observedLayers) ? observedLayers : []) {
+    const name = layer && (layer.name || layer);
+    if (name != null && !names.has(String(name))) names.set(String(name), names.size);
   }
   for (const page of pages) {
     for (const item of page.items) {
@@ -96,10 +102,14 @@ function layerRank(name) {
 }
 
 function mappedLayerName(token, options) {
-  const map = (options && options.layerNameMap)
+  const map = configuredLayerNameMap(options);
+  return map && map[token] ? map[token] : token;
+}
+
+function configuredLayerNameMap(options) {
+  return (options && options.layerNameMap)
     || (options && options.styleNameMap && options.styleNameMap.layers)
     || null;
-  return map && map[token] ? map[token] : token;
 }
 
 module.exports = {

@@ -10,8 +10,9 @@ function vectorFactsFromSvgItem(item, bounds) {
   const pathTags = pathTagsFromHtml(sourceHtml);
   if (!pathTags.length) return null;
   const viewBox = parseViewBox(attrs.viewBox || attrs.viewbox, bounds);
+  const capturedPaths = Array.isArray(item && item.vectorPaths) ? item.vectorPaths : [];
   const paths = pathTags
-    .map((tag) => pathFromPathTag(tag, bounds, viewBox))
+    .flatMap((tag, index) => pathsFromPathTag(tag, bounds, viewBox, capturedPaths[index], sourceHtml))
     .filter(Boolean);
   if (!paths.length) return null;
   return {
@@ -19,7 +20,7 @@ function vectorFactsFromSvgItem(item, bounds) {
       kind: vectorKind || 'path',
       paths,
     },
-    visualStyle: visualStyleFromPath(pathTags[0], sourceHtml),
+    visualStyle: paths[0].visualStyle || visualStyleFromPath(pathTags[0], sourceHtml, capturedPaths[0] && capturedPaths[0].computedStyle),
   };
 }
 
@@ -48,15 +49,23 @@ function parseAttributes(tag) {
   return out;
 }
 
-function pathFromPathTag(attrs, bounds, viewBox) {
-  const points = parseVectorPointsAttr(attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS], bounds, viewBox)
-    || parsePathPoints(attrs.d || '', bounds, viewBox);
-  if (!points.length) return null;
-  applyPointTypes(points, attrs[HTML_DATA_ID_ATTRIBUTES.POINT_TYPES]);
-  return {
-    closed: /\b[zZ]\b|[zZ]\s*$/.test(String(attrs.d || '').trim()),
-    points,
-  };
+function pathsFromPathTag(attrs, bounds, viewBox, capturedPath, sourceHtml) {
+  const visualStyle = visualStyleFromPath(
+    attrs,
+    sourceHtml,
+    capturedPath && capturedPath.computedStyle,
+  );
+  const metadataPoints = parseVectorPointsAttr(attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR_POINTS], bounds, viewBox);
+  const paths = metadataPoints
+    ? [{
+      closed: /\b[zZ]\b|[zZ]\s*$/.test(String(attrs.d || '').trim()),
+      points: metadataPoints,
+    }]
+    : parsePathSubpaths(attrs.d || '', bounds, viewBox);
+  applyPointTypesToPaths(paths, attrs[HTML_DATA_ID_ATTRIBUTES.POINT_TYPES]);
+  return paths
+    .filter((path) => path && Array.isArray(path.points) && path.points.length)
+    .map((path) => ({ ...path, visualStyle: { ...visualStyle } }));
 }
 
 function parseVectorPointsAttr(value, bounds, viewBox) {
@@ -90,12 +99,14 @@ function pointTypeFromMetadata(value) {
   return ['CORNER', 'SMOOTH', 'SYMMETRICAL', 'PLAIN'].includes(token) ? token : 'PLAIN';
 }
 
-function parsePathPoints(d, bounds, viewBox) {
+function parsePathSubpaths(d, bounds, viewBox) {
   const tokens = pathTokens(d);
-  const points = [];
+  const paths = [];
   let index = 0;
   let command = '';
   let current = { x: 0, y: 0 };
+  let start = null;
+  let active = null;
   while (index < tokens.length) {
     const iterationStart = index;
     if (isCommand(tokens[index])) {
@@ -107,27 +118,53 @@ function parsePathPoints(d, bounds, viewBox) {
         );
       }
     }
-    if (!command || /[zZ]/.test(command)) break;
-    if (/[mM]/.test(command)) {
-      while (hasNumbers(tokens, index, 2)) {
-        const local = command === 'm'
-          ? { x: current.x + number(tokens[index]), y: current.y + number(tokens[index + 1]) }
-          : { x: number(tokens[index]), y: number(tokens[index + 1]) };
-        current = local;
-        points.push(vectorPoint(mapPoint(local, bounds, viewBox)));
-        index += 2;
-        command = command === 'm' ? 'l' : 'L';
+    if (!command) break;
+    if (/[zZ]/.test(command)) {
+      if (!active || !active.points.length) {
+        throw svgPathError('INVALID_SVG_PATH_DATA', 'SVG close-path command has no active subpath.');
       }
-    } else if (/[lL]/.test(command)) {
+      active.closed = true;
+      paths.push(active);
+      active = null;
+      if (start) current = start;
+      start = null;
+      command = '';
+      continue;
+    }
+    if (/[mM]/.test(command)) {
+      if (!hasNumbers(tokens, index, 2)) {
+        throw svgPathError('INVALID_SVG_PATH_DATA', 'SVG move command requires a coordinate pair.');
+      }
+      if (active && active.points.length) paths.push(active);
+      const moveCommand = command;
+      const local = moveCommand === 'm'
+        ? { x: current.x + number(tokens[index]), y: current.y + number(tokens[index + 1]) }
+        : { x: number(tokens[index]), y: number(tokens[index + 1]) };
+      current = local;
+      start = { ...local };
+      active = { closed: false, points: [vectorPoint(mapPoint(local, bounds, viewBox))] };
+      index += 2;
+      command = moveCommand === 'm' ? 'l' : 'L';
       while (hasNumbers(tokens, index, 2)) {
         const local = command === 'l'
           ? { x: current.x + number(tokens[index]), y: current.y + number(tokens[index + 1]) }
           : { x: number(tokens[index]), y: number(tokens[index + 1]) };
         current = local;
-        points.push(vectorPoint(mapPoint(local, bounds, viewBox)));
+        active.points.push(vectorPoint(mapPoint(local, bounds, viewBox)));
+        index += 2;
+      }
+    } else if (/[lL]/.test(command)) {
+      assertActiveSubpath(active, command);
+      while (hasNumbers(tokens, index, 2)) {
+        const local = command === 'l'
+          ? { x: current.x + number(tokens[index]), y: current.y + number(tokens[index + 1]) }
+          : { x: number(tokens[index]), y: number(tokens[index + 1]) };
+        current = local;
+        active.points.push(vectorPoint(mapPoint(local, bounds, viewBox)));
         index += 2;
       }
     } else if (/[cC]/.test(command)) {
+      assertActiveSubpath(active, command);
       while (hasNumbers(tokens, index, 6)) {
         const c1 = command === 'c'
           ? { x: current.x + number(tokens[index]), y: current.y + number(tokens[index + 1]) }
@@ -138,9 +175,9 @@ function parsePathPoints(d, bounds, viewBox) {
         const end = command === 'c'
           ? { x: current.x + number(tokens[index + 4]), y: current.y + number(tokens[index + 5]) }
           : { x: number(tokens[index + 4]), y: number(tokens[index + 5]) };
-        if (points.length) points[points.length - 1].rightDirection = mapPoint(c1, bounds, viewBox);
+        if (active.points.length) active.points[active.points.length - 1].rightDirection = mapPoint(c1, bounds, viewBox);
         const anchor = mapPoint(end, bounds, viewBox);
-        points.push({
+        active.points.push({
           anchor,
           leftDirection: mapPoint(c2, bounds, viewBox),
           rightDirection: anchor,
@@ -162,7 +199,13 @@ function parsePathPoints(d, bounds, viewBox) {
       );
     }
   }
-  return points;
+  if (active && active.points.length) paths.push(active);
+  return paths;
+}
+
+function assertActiveSubpath(active, command) {
+  if (active && active.points && active.points.length) return;
+  throw svgPathError('INVALID_SVG_PATH_DATA', `SVG path command '${command}' has no active subpath.`);
 }
 
 function pathTokens(value) {
@@ -208,6 +251,18 @@ function applyPointTypes(points, value) {
   }
 }
 
+function applyPointTypesToPaths(paths, value) {
+  const pointTypes = pointTypesFromAttr(value);
+  if (!pointTypes.length) return;
+  let index = 0;
+  for (const path of paths || []) {
+    for (const point of path && path.points || []) {
+      if (index >= pointTypes.length) return;
+      point.pointType = pointTypes[index++];
+    }
+  }
+}
+
 function pointTypesFromAttr(value) {
   return String(value || '')
     .trim()
@@ -237,25 +292,29 @@ function parseViewBox(value, bounds = {}) {
   return { x: 0, y: 0, width: Number(bounds.width || 0), height: Number(bounds.height || 0) };
 }
 
-function visualStyleFromPath(attrs, sourceHtml) {
+function visualStyleFromPath(attrs, sourceHtml, computedStyle = {}) {
   const style = {};
   if (visiblePaint(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_COLOR])) style.fillColor = normalizeHexColor(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_COLOR]);
+  else if (visiblePaint(computedStyle.fill)) style.fillColor = normalizeHexColor(computedStyle.fill);
   else if (visiblePaint(attrs.fill)) style.fillColor = normalizeHexColor(attrs.fill);
   else style.fillColor = null;
-  style.fillOpacity = opacityPercent(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY] || attrs['fill-opacity']);
-  if (visiblePaint(attrs.stroke)) style.strokeColor = normalizeHexColor(attrs.stroke);
+  style.fillOpacity = opacityPercent(attrs[HTML_DATA_ID_ATTRIBUTES.FILL_OPACITY] || computedStyle['fill-opacity'] || attrs['fill-opacity']);
+  if (visiblePaint(computedStyle.stroke)) style.strokeColor = normalizeHexColor(computedStyle.stroke);
+  else if (visiblePaint(attrs.stroke)) style.strokeColor = normalizeHexColor(attrs.stroke);
   else style.strokeColor = null;
-  const strokeWeight = positiveNumber(attrs['stroke-width']);
+  const strokeWeight = positiveNumber(computedStyle['stroke-width'] || attrs['stroke-width']);
   style.strokeWeight = strokeWeight;
-  style.strokeOpacity = opacityPercent(attrs['stroke-opacity']);
-  const opacity = opacityPercent(attrs.opacity);
+  style.strokeOpacity = opacityPercent(computedStyle['stroke-opacity'] || attrs['stroke-opacity']);
+  const opacity = opacityPercent(computedStyle.opacity || attrs.opacity);
   if (opacity !== null) style.opacity = opacity;
-  if (attrs['stroke-linecap']) style.strokeLineCap = attrs['stroke-linecap'];
-  if (attrs['stroke-linejoin']) style.strokeLineJoin = attrs['stroke-linejoin'];
-  const miter = positiveNumber(attrs['stroke-miterlimit']);
+  const lineCap = computedStyle['stroke-linecap'] || attrs['stroke-linecap'];
+  const lineJoin = computedStyle['stroke-linejoin'] || attrs['stroke-linejoin'];
+  if (lineCap) style.strokeLineCap = lineCap;
+  if (lineJoin) style.strokeLineJoin = lineJoin;
+  const miter = positiveNumber(computedStyle['stroke-miterlimit'] || attrs['stroke-miterlimit']);
   if (miter !== null) style.strokeMiterLimit = miter;
   const rawStrokeStyle = String(attrs[HTML_DATA_ID_ATTRIBUTES.STROKE_STYLE] || '').trim();
-  const dash = String(attrs['stroke-dasharray'] || '').trim();
+  const dash = String(computedStyle['stroke-dasharray'] || attrs['stroke-dasharray'] || '').trim();
   if (rawStrokeStyle) style.strokeStyle = rawStrokeStyle;
   else if (dash) style.strokeStyle = dash;
   const start = markerFromUrl(attrs['marker-start'], sourceHtml, attrs[HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME]);
@@ -276,9 +335,9 @@ function normalizeHexColor(value) {
   if (short) return `#${short[1].split('').map((char) => `${char}${char}`).join('')}`.toLowerCase();
   const full = text.match(/^#([0-9a-f]{6})$/i);
   if (full) return `#${full[1].toLowerCase()}`;
-  const rgb = text.match(/^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/);
-  if (!rgb) return text;
-  return `#${hexByte(rgb[1])}${hexByte(rgb[2])}${hexByte(rgb[3])}`;
+  const rgb = /^rgba?\(/.test(text) ? text.match(/\d+(?:\.\d+)?/g) : null;
+  if (!rgb || rgb.length < 3) return text;
+  return `#${hexByte(rgb[0])}${hexByte(rgb[1])}${hexByte(rgb[2])}`;
 }
 
 function hexByte(value) {
@@ -294,7 +353,7 @@ function opacityPercent(value) {
 }
 
 function positiveNumber(value) {
-  const parsed = Number(value);
+  const parsed = Number.parseFloat(String(value == null ? '' : value));
   return Number.isFinite(parsed) && parsed > 0 ? round(parsed) : null;
 }
 

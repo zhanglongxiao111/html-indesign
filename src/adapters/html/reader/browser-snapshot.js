@@ -120,6 +120,7 @@ function pageSnapshotToModel(pageInfo) {
     rectPx: pageInfo.rectPx,
     computedStyle: pageInfo.computedStyle || {},
     authoredStyle: pageInfo.authoredStyle || {},
+    uncapturedText: pageInfo.uncapturedText || [],
     mmPerPxX: round(widthMm / pageInfo.rectPx.width),
     mmPerPxY: round(heightMm / pageInfo.rectPx.height),
     items,
@@ -143,6 +144,7 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     sourceNode: item.sourceNode || null,
     sourceAncestorNodes: item.sourceAncestorNodes || [],
     cssVars: item.cssVars || {},
+    vectorPaths: item.vectorPaths || [],
     text: item.text,
     rectPx: item.rectPx,
     boundsMm: roundBounds(rectPxToMm({

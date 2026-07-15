@@ -284,7 +284,7 @@ function instructionItemFor(modelItem, assets, page, layout, options, styles, re
 function instructionItemContextFor(modelItem, assets, page, layout, options, styles, report) {
   const styleRefs = modelItem.styleRefs || {};
   const content = modelItem.content || { text: '', runs: [] };
-  const vectorGeometry = vectorGeometryFor(modelItem);
+  const vectorGeometry = vectorGeometryFor(modelItem, styles, report);
   const visualStyle = modelItem.visualStyle || null;
   const indesignEffects = modelItem.extensions?.indesign?.effects ?? null;
   return {
@@ -430,6 +430,7 @@ function lineInstructionItemFor({
   visualStyle,
   base,
 }) {
+  if (vectorGeometry && Array.isArray(vectorGeometry.paths) && vectorGeometry.paths.length > 1) return null;
   const line = nativeLineFor(modelItem, base.bounds, layout, styles, vectorGeometry, visualStyle);
   if (!line) return null;
   const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
@@ -533,14 +534,20 @@ function nativeLineFor(item, baseBounds, layout, styles, vectorGeometry = null, 
   return out;
 }
 
-function vectorGeometryFor(modelItem) {
+function vectorGeometryFor(modelItem, styles, report) {
   const vector = modelItem && modelItem.vectorGeometry || null;
   if (!vector || !Array.isArray(vector.paths)) return null;
   const paths = vector.paths
-    .map((path) => ({
-      closed: Boolean(path && path.closed),
-      points: (path && Array.isArray(path.points) ? path.points : []).map(vectorPointForInstruction).filter(Boolean),
-    }))
+    .map((path) => {
+      const visualStyle = path && path.visualStyle || null;
+      const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
+      return {
+        closed: Boolean(path && path.closed),
+        points: (path && Array.isArray(path.points) ? path.points : []).map(vectorPointForInstruction).filter(Boolean),
+        ...(visualStyle ? { visualStyle: { ...visualStyle } } : {}),
+        ...(styleOverride ? { styleOverride } : {}),
+      };
+    })
     .filter((path) => path.points.length >= 2);
   return paths.length ? { kind: vector.kind || 'path', paths } : null;
 }
@@ -673,7 +680,7 @@ function normalizeLineStrokeColor(value) {
 function shapeKindFor(item, vectorGeometry = null) {
   if (vectorGeometry) {
     const kind = String(vectorGeometry.kind || '').toLowerCase();
-    if (kind === 'polygon' || kind === 'path') return 'polygon';
+    if ((vectorGeometry.paths || []).length || kind === 'polygon' || kind === 'path') return 'polygon';
   }
   if (!item || item.role !== 'shape') return 'rectangle';
   const radius = styleValue(item, 'borderRadius');
@@ -687,16 +694,23 @@ function shapeKindFor(item, vectorGeometry = null) {
 function vectorStyleOverride(visualStyle, styles, report, item) {
   if (!visualStyle) return null;
   const out = {};
+  const hasFillColor = Object.prototype.hasOwnProperty.call(visualStyle, 'fillColor');
+  const hasStrokeColor = Object.prototype.hasOwnProperty.call(visualStyle, 'strokeColor');
+  const hasStrokeWeight = Object.prototype.hasOwnProperty.call(visualStyle, 'strokeWeight');
+  const objectStyleName = item && item.styleRefs && item.styleRefs.objectStyle;
+  const objectStyle = objectStyleName && styles && styles.objectStyles && styles.objectStyles[objectStyleName];
+  const objectStyleHasStroke = Boolean(objectStyle && objectStyle.strokeColor && Number(objectStyle.strokeWeight) > 0);
   const fillColor = ensureInstructionColor(styles, visualStyle.fillColor);
-  if (fillColor) out.fillColor = fillColor;
+  if (hasFillColor) out.fillColor = fillColor || null;
   if (visualStyle.fillOpacity !== null && typeof visualStyle.fillOpacity !== 'undefined') {
     out.fillOpacity = Number(visualStyle.fillOpacity);
   }
   const strokeColor = ensureInstructionColor(styles, visualStyle.strokeColor);
   const strokeWeight = Number(visualStyle.strokeWeight);
-  if (strokeColor) out.strokeColor = strokeColor;
-  if (Number.isFinite(strokeWeight)) out.strokeWeight = strokeWeight > 0 ? strokeWeight : 0;
-  else if (!strokeColor) out.strokeWeight = 0;
+  if (hasStrokeColor && strokeColor) out.strokeColor = strokeColor;
+  if (hasStrokeWeight && Number.isFinite(strokeWeight)) out.strokeWeight = strokeWeight > 0 ? strokeWeight : 0;
+  else if (hasStrokeColor && !strokeColor) out.strokeWeight = 0;
+  else if (!objectStyleHasStroke) out.strokeWeight = 0;
   if (visualStyle.strokeOpacity !== null && typeof visualStyle.strokeOpacity !== 'undefined') {
     out.strokeOpacity = Number(visualStyle.strokeOpacity);
   }
@@ -724,9 +738,16 @@ function executableStrokeStyle(value) {
   const key = text.toLowerCase();
   if (!text) return null;
   if (key === 'solid' || key === 'none' || key === '$id/solid' || text === '实底') return text;
-  if (key === 'dashed' || key === '$id/dashed' || key.includes('dash') || text.includes('虚') || /^\d+(\.\d+)?\s+\d+/.test(text)) return text;
+  if (key === 'dashed' || key === '$id/dashed' || key.includes('dash') || text.includes('虚') || isCssDashArray(text)) return text;
   if (key === 'dotted' || key === '$id/dotted' || key.includes('dot') || text.includes('点')) return text;
   return null;
+}
+
+function isCssDashArray(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!/^\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|pt|mm)?(?:\s*(?:,\s*|\s+)(?:\d+(?:\.\d+)?|\.\d+)(?:px|pt|mm)?)+\s*$/i.test(text)) return false;
+  const values = text.match(/(?:\d+(?:\.\d+)?|\.\d+)(?:px|pt|mm)?/gi) || [];
+  return values.length >= 2 && values.some((entry) => Number.parseFloat(entry) > 0);
 }
 
 function normalizeLineMarker(marker) {

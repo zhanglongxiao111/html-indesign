@@ -323,6 +323,42 @@ test('snapshotToSemanticModel captures authored SVG path geometry and vector pai
   assert.deepEqual(item.visualStyle.lineEndMarker, { type: 'arrow', rawName: 'SIMPLE_WIDE_ARROW_HEAD' });
 });
 
+test('snapshotToSemanticModel splits SVG subpaths and preserves each path computed paint', async () => {
+  const outDir = path.resolve('test/workspace/browser-vector-multipath');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 400px; height: 240px; position: relative; }
+  .diagram { position: absolute; left: 20px; top: 30px; width: 200px; height: 100px; }
+</style>
+<section class="page" id="page-1">
+  <svg id="multi-path" class="diagram" data-id-object data-id-role="shape" data-id-vector="path" viewBox="0 0 200 100" preserveAspectRatio="none">
+    <g fill="#e2231a" fill-opacity="0.6" stroke="#111111" stroke-width="2">
+      <path d="M0 0 L40 0 L40 40 Z M60 0 L100 0 L100 40 Z"></path>
+      <path d="M120 0 L160 0 L160 40 Z" fill="#3c3c3c" stroke="none"></path>
+    </g>
+  </svg>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation', targetSize: 'same' });
+  const item = model.pages[0].items.find((candidate) => candidate.id === 'multi-path');
+
+  assert.equal(item.vectorGeometry.paths.length, 3);
+  assert.deepEqual(item.vectorGeometry.paths.map((vectorPath) => vectorPath.closed), [true, true, true]);
+  assert.deepEqual(item.vectorGeometry.paths.map((vectorPath) => vectorPath.visualStyle.fillColor), [
+    '#e2231a',
+    '#e2231a',
+    '#3c3c3c',
+  ]);
+  assert.equal(item.vectorGeometry.paths[0].visualStyle.fillOpacity, 60);
+  assert.equal(item.vectorGeometry.paths[0].visualStyle.strokeColor, '#111111');
+  assert.equal(item.vectorGeometry.paths[0].visualStyle.strokeWeight, 2);
+  assert.equal(item.vectorGeometry.paths[2].visualStyle.strokeColor, null);
+});
+
 test('renderSnapshot reports unsupported CSS effects and pseudo content', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/unsupported-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

@@ -255,7 +255,7 @@ HI.applyFrameStyle = function (doc, pageItem, styleName, report) {
 
 HI.applyStyleOverride = function (doc, pageItem, override, report) {
     override = override || {};
-    try { if (override.fillColor) pageItem.fillColor = doc.swatches.itemByName(override.fillColor); } catch (_) {}
+    try { var fillSwatch = override.fillColor === null ? HI.noneSwatch(doc) : (override.fillColor ? doc.swatches.itemByName(override.fillColor) : null); if (fillSwatch) pageItem.fillColor = fillSwatch; } catch (_) {}
     HI.applyFillOpacity(pageItem, override.fillOpacity);
     HI.applyStrokePaint(doc, pageItem, override.strokeColor, override.strokeWeight);
     HI.applyVectorStrokeStyleOverride(doc, pageItem, override, report);

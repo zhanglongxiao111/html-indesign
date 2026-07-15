@@ -59,7 +59,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_styles.jsxinc': ['HI.ensureStyles', 'HI.applyParagraphStyle', 'HI.applyObjectStyle'],
     'hi_text_overrides.jsxinc': ['HI.applyTextOverride', 'HI.textOverrideSegments', 'HI.overrideOutsideCharacterStyle', 'HI.applyCharacterLevelOverride'],
     'hi_blend_modes.jsxinc': ['HI.applyBlendMode', 'HI.blendModeKey', 'HI.blendModeValue'],
-    'hi_vector_styles.jsxinc': ['HI.applyStrokeOpacity', 'HI.applyLineMarker', 'HI.lineMarkerName'],
+    'hi_vector_styles.jsxinc': ['HI.applyStrokeOpacity', 'HI.applyLineMarker', 'HI.lineMarkerName', 'HI.createVectorGroupFrame'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
     'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
     'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'HI.applyTextFitNudge', 'TEXT_FIT_APPLIED', 'TEXT_FIT_NUDGE_APPLIED', 'TEXT_FIT_UNRESOLVED'],
@@ -404,6 +404,12 @@ test('item helper computes endpoints for horizontal and vertical native lines', 
     bounds: { x: 10, y: 20, width: 0, height: 50 },
     rotationAngle: 0,
   }))), { x1: 10, y1: 20, x2: 10, y2: 70 });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(context.HI.vectorPathPointArray({
+    anchor: { x: 20, y: 30 },
+    leftDirection: { x: 10, y: 30 },
+    rightDirection: { x: 40, y: 50 },
+  }))), [[10, 30], [20, 30], [40, 50]]);
 });
 
 test('item and style helpers apply native vector paths and line markers', () => {
@@ -415,11 +421,10 @@ test('item and style helpers apply native vector paths and line markers', () => 
     'page.polygons.add',
     'HI.applyVectorGeometry',
     'HI.applyVectorPath',
+    'HI.vectorPathPointArray',
     'targetPath.entirePath',
     'PathType.CLOSED_PATH',
     'PathType.OPEN_PATH',
-    'PointType.PLAIN',
-    'PointType.SMOOTH',
   ]) {
     assert.match(itemSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -441,6 +446,23 @@ test('item and style helpers apply native vector paths and line markers', () => 
   assert.doesNotMatch(styleSource, /target\[propertyName\]\s*=\s*name/);
 });
 
+test('multi-path vectors create one native child per path and group them without lossy fallback', () => {
+  const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const vectorStyleSource = fs.readFileSync(path.join(libDir, 'hi_vector_styles.jsxinc'), 'utf8');
+
+  assert.match(itemSource, /HI\.createVectorGroupFrame\(doc,\s*page,\s*item/);
+  assert.match(vectorStyleSource, /HI\.createVectorGroupFrame\s*=\s*function/);
+  assert.match(vectorStyleSource, /for \(var i = 0; i < paths\.length; i\+\+\)/);
+  assert.match(vectorStyleSource, /HI\.applyVectorPath\(targetPath,\s*path/);
+  assert.match(vectorStyleSource, /HI\.applyStyleOverride\(doc,\s*children\[j\],\s*paths\[j\]\.styleOverride/);
+  assert.match(vectorStyleSource, /page\.groups\.add\(children\)/);
+  assert.match(vectorStyleSource, /HI\.applyObjectStyle\(doc,\s*group,\s*item\.objectStyle/);
+  assert.match(vectorStyleSource, /HI\.applyObjectStyle\(doc,\s*group,\s*item\.objectStyle[\s\S]*for \(var j = 0; j < children\.length; j\+\+\)[\s\S]*HI\.applyStyleOverride\(doc,\s*children\[j\],\s*paths\[j\]\.styleOverride/);
+  assert.match(vectorStyleSource, /html_indesign_vector_path_index/);
+  assert.doesNotMatch(itemSource, /VECTOR_MULTIPATH_UNSUPPORTED/);
+  assert.doesNotMatch(vectorStyleSource, /VECTOR_MULTIPATH_UNSUPPORTED/);
+});
+
 test('style helper clears explicit zero stroke through the None swatch', () => {
   const coreSource = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
   const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
@@ -459,10 +481,21 @@ test('style helper clears explicit zero stroke through the None swatch', () => {
 test('item helper clears InDesign default stroke on new drawable page items', () => {
   const itemSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
   const vectorStyleSource = fs.readFileSync(path.join(libDir, 'hi_vector_styles.jsxinc'), 'utf8');
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
 
   assert.match(vectorStyleSource, /HI\.clearDefaultStroke/);
+  assert.match(vectorStyleSource, /HI\.clearDefaultVectorPaint/);
+  assert.match(vectorStyleSource, /pageItem\.fillColor = none/);
   assert.match(itemSource, /HI\.clearDefaultStroke\(doc, rect\)/);
+  assert.match(itemSource, /HI\.createShapeFrame[\s\S]*HI\.clearDefaultVectorPaint\(doc, rect\)/);
   assert.match(itemSource, /HI\.clearDefaultStroke\(doc, line\)/);
+  assert.match(stylesSource, /override\.fillColor === null \? HI\.noneSwatch\(doc\)/);
+});
+
+test('reverse snapshot preserves inactive stroke width for native vector paths', () => {
+  const reverseSource = fs.readFileSync(path.join(libDir, 'hi_reverse.jsxinc'), 'utf8');
+
+  assert.match(reverseSource, /if \(vectorGeometry\)[\s\S]*visualStyle\.strokeWeight = HI\.positiveNumberOrNull/);
 });
 
 test('line style overrides are applied after native line stroke fields', () => {
@@ -498,6 +531,20 @@ test('style helper preserves authored dashed stroke style names for InDesign', (
   assert.equal(context.HI.strokeStyleName('点线'), '$ID/Dotted');
   assert.equal(context.HI.strokeStyleName('实底'), '$ID/Solid');
   assert.equal(context.HI.strokeStyleName('自定义线型'), '自定义线型');
+
+  const vectorSource = fs.readFileSync(path.join(libDir, 'hi_vector_styles.jsxinc'), 'utf8');
+  const vectorContext = { HI: {} };
+  vm.runInNewContext(vectorSource, vectorContext);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(vectorContext.HI.dashPatternFromStrokeStyle('6px, 6px'))),
+    [6, 6],
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(vectorContext.HI.dashPatternFromStrokeStyle('虚线（3 和 2）'))),
+    [3, 2],
+  );
+  assert.match(vectorSource, /doc\.dashedStrokeStyles\.add/);
+  assert.match(vectorSource, /dashArray/);
 });
 
 test('style helper applies full stroke alignment values to object styles', () => {
@@ -686,6 +733,18 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(textSource.split(/\r?\n/).length <= 180, 'hi_reverse_text.jsxinc should stay focused');
   assert.ok(effectSource.split(/\r?\n/).length <= 120, 'hi_reverse_effects.jsxinc should stay focused');
   assert.ok(tableSource.split(/\r?\n/).length <= 240, 'hi_reverse_tables.jsxinc should stay focused');
+});
+
+test('reverse text helper restores InDesign special-character names to authored Unicode', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_reverse_text.jsxinc'), 'utf8');
+  const context = { HI: {} };
+  vm.runInNewContext(source, context);
+
+  assert.equal(
+    context.HI.reverseTextValue('EM_DASHEM_DASH EN_DASH DOUBLE_STRAIGHT_QUOTE'),
+    '—— – "',
+  );
+  assert.equal(context.HI.reverseTextValue('旋转 8DEGREE_SYMBOL'), '旋转 8°');
 });
 
 test('reverse visual style treats empty None stroke color as no stroke', () => {

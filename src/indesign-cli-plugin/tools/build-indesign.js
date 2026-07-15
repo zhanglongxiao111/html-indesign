@@ -48,7 +48,7 @@ async function call(args, context) {
   });
   const lintMs = Date.now() - lintStartedAt;
   if (!lint.ok) {
-    const error = new Error('Strict authoring checks failed; fix the reported HTML issues before building.');
+    const error = new Error(lintFailureMessage(lint));
     error.code = 'AUTHORING_LINT_FAILED';
     error.details = withoutSnapshot(lint);
     throw error;
@@ -128,6 +128,16 @@ async function call(args, context) {
   };
 
   return hostActionResponse(state, buildAction(state));
+}
+
+function lintFailureMessage(lint) {
+  const errors = Array.isArray(lint && lint.errors) ? lint.errors : [];
+  const first = errors.find((entry) => entry && (entry.pageId || entry.itemId)) || errors[0] || {};
+  const location = [first.pageId, first.itemId].filter(Boolean).join(' / ');
+  const count = Number(lint && lint.errorCount || errors.length || 0);
+  const prefix = `Strict authoring checks found ${count} error${count === 1 ? '' : 's'}`;
+  if (!first.message) return `${prefix}; fix the author package before building.`;
+  return `${prefix}. First issue${location ? ` at ${location}` : ''}: ${first.message}`;
 }
 
 async function resume(params) {

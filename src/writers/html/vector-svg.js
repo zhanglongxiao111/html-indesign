@@ -37,17 +37,17 @@ function vectorViewport(item) {
 function vectorPathElements(item, depth = 0) {
   const vector = item && item.vectorGeometry || {};
   const paths = (vector.paths || [])
-    .map((path) => vectorPathElement(item, path, depth))
+    .map((path, index, allPaths) => vectorPathElement(item, path, depth, index, allPaths.length))
     .filter(Boolean)
     .join('\n');
   const defs = vectorMarkerDefs(item, depth);
   return [defs, paths].filter(Boolean).join('\n');
 }
 
-function vectorPathElement(item, path, depth) {
+function vectorPathElement(item, path, depth, pathIndex = 0, pathCount = 1) {
   const d = svgPathData(path, item);
   if (!d) return '';
-  const visualStyle = item && item.visualStyle || {};
+  const visualStyle = vectorPathVisualStyle(item, path);
   const attrs = {
     d,
     fill: path.closed ? (visualStyle.fillColor || 'none') : 'none',
@@ -82,25 +82,28 @@ function vectorPathElement(item, path, depth) {
   const endRawName = markerRawName(endMarker);
   if (startRawName) attrs[HTML_DATA_ID_ATTRIBUTES.LINE_START_MARKER_RAW_NAME] = startRawName;
   if (endRawName) attrs[HTML_DATA_ID_ATTRIBUTES.LINE_END_MARKER_RAW_NAME] = endRawName;
-  if (markerType(startMarker)) attrs['marker-start'] = `url(#${markerId(item, 'start')})`;
-  if (markerType(endMarker)) attrs['marker-end'] = `url(#${markerId(item, 'end')})`;
+  if (markerType(startMarker)) attrs['marker-start'] = `url(#${markerId(item, 'start', pathIndex, pathCount)})`;
+  if (markerType(endMarker)) attrs['marker-end'] = `url(#${markerId(item, 'end', pathIndex, pathCount)})`;
   return `${indent(depth)}<path ${attrsToHtml(orderVectorPathAttrs(attrs))}></path>`;
 }
 
 function vectorMarkerDefs(item, depth = 0) {
-  const start = markerType(item && item.visualStyle && item.visualStyle.lineStartMarker);
-  const end = markerType(item && item.visualStyle && item.visualStyle.lineEndMarker);
-  if (!start && !end) return '';
-  const children = [
-    start ? markerDef(item, 'start', start, depth + 2) : null,
-    end ? markerDef(item, 'end', end, depth + 2) : null,
-  ].filter(Boolean).join('\n');
-  return `${indent(depth)}<defs>\n${children}\n${indent(depth)}</defs>`;
+  const paths = item && item.vectorGeometry && item.vectorGeometry.paths || [];
+  const children = [];
+  paths.forEach((path, index) => {
+    const visualStyle = vectorPathVisualStyle(item, path);
+    const start = markerType(visualStyle.lineStartMarker);
+    const end = markerType(visualStyle.lineEndMarker);
+    if (start) children.push(markerDef(item, 'start', start, depth + 2, visualStyle, index, paths.length));
+    if (end) children.push(markerDef(item, 'end', end, depth + 2, visualStyle, index, paths.length));
+  });
+  if (!children.length) return '';
+  return `${indent(depth)}<defs>\n${children.join('\n')}\n${indent(depth)}</defs>`;
 }
 
-function markerDef(item, side, type, depth) {
-  const id = markerId(item, side);
-  const color = item && item.visualStyle && item.visualStyle.strokeColor || 'currentColor';
+function markerDef(item, side, type, depth, visualStyle = {}, pathIndex = 0, pathCount = 1) {
+  const id = markerId(item, side, pathIndex, pathCount);
+  const color = visualStyle.strokeColor || 'currentColor';
   const common = {
     id,
     viewBox: '0 0 10 10',
@@ -128,8 +131,13 @@ function markerRefX(type, side) {
   return side === 'start' ? '0' : '10';
 }
 
-function markerId(item, side) {
-  return `${safeId(item && item.id || 'vector')}-marker-${side}`;
+function markerId(item, side, pathIndex = 0, pathCount = 1) {
+  const pathPart = pathCount > 1 ? `-path-${pathIndex}` : '';
+  return `${safeId(item && item.id || 'vector')}${pathPart}-marker-${side}`;
+}
+
+function vectorPathVisualStyle(item, path) {
+  return { ...(item && item.visualStyle || {}), ...(path && path.visualStyle || {}) };
 }
 
 function safeId(value) {
@@ -249,10 +257,32 @@ function stringValue(value) {
 
 function strokeDashArray(styleName, strokeWeight) {
   const style = String(styleName || '').toLowerCase();
+  const pattern = strokeDashPattern(style);
+  if (pattern) return pattern.map(formatNumber).join(' ');
   const weight = Number.isFinite(Number(strokeWeight)) && Number(strokeWeight) > 0 ? Number(strokeWeight) : 1;
   if (style.includes('dash') || style.includes('虚')) return `${formatNumber(weight * 3)} ${formatNumber(weight * 2)}`;
   if (style.includes('dot') || style.includes('点')) return `0 ${formatNumber(weight * 2)}`;
   return '';
+}
+
+function strokeDashPattern(value) {
+  const text = String(value == null ? '' : value).trim();
+  const numericOnly = /^\s*(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?(?:\s*(?:,\s*|\s+)(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?)+\s*$/i.test(text);
+  if (!numericOnly && !/dash|虚线|点线/i.test(text)) return null;
+  const tokens = text.match(/(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?/gi) || [];
+  if (tokens.length < 2 || tokens.length > 10) return null;
+  const pattern = tokens.map((token) => {
+    const match = /^((?:\d+(?:\.\d+)?|\.\d+))\s*(px|pt|mm)?$/i.exec(token.trim());
+    if (!match) return NaN;
+    const number = Number(match[1]);
+    return String(match[2] || '').toLowerCase() === 'mm' ? number * 72 / 25.4 : number;
+  });
+  if (pattern.some((number) => !Number.isFinite(number) || number < 0) || !pattern.some((number) => number > 0)) return null;
+  if (pattern.length % 2 === 1) {
+    if (pattern.length * 2 > 10) return null;
+    return pattern.concat(pattern);
+  }
+  return pattern;
 }
 
 function pointTypesAttr(points) {
@@ -269,8 +299,12 @@ function pointTypeToken(value) {
 }
 
 function paintedStrokeExtent(item) {
-  const strokeWeight = Number(item && item.visualStyle && item.visualStyle.strokeWeight);
-  return Number.isFinite(strokeWeight) && strokeWeight > 0 ? strokeWeight : 1;
+  const paths = item && item.vectorGeometry && item.vectorGeometry.paths || [];
+  const weights = [item && item.visualStyle && item.visualStyle.strokeWeight]
+    .concat(paths.map((path) => path && path.visualStyle && path.visualStyle.strokeWeight))
+    .map(Number)
+    .filter((weight) => Number.isFinite(weight) && weight > 0);
+  return weights.length ? Math.max(...weights) : 1;
 }
 
 function orderVectorPathAttrs(attrs) {

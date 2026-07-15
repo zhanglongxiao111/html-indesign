@@ -33,10 +33,15 @@ HI.reverseTextValue = function (value) {
     var text = String(value || "");
     if (text === "FORCED_LINE_BREAK" || text === "PARAGRAPH_BREAK") return "\n";
     return text
+        .replace(/EM_DASH/g, "\u2014")
+        .replace(/EN_DASH/g, "\u2013")
+        .replace(/DOUBLE_STRAIGHT_QUOTE/g, "\u0022")
+        .replace(/SINGLE_STRAIGHT_QUOTE/g, "\u0027")
         .replace(/DOUBLE_LEFT_QUOTE/g, "\u201c")
         .replace(/DOUBLE_RIGHT_QUOTE/g, "\u201d")
         .replace(/SINGLE_LEFT_QUOTE/g, "\u2018")
         .replace(/SINGLE_RIGHT_QUOTE/g, "\u2019")
+        .replace(/DEGREE_SYMBOL/g, "\u00b0")
         .replace(/FORCED_LINE_BREAK|PARAGRAPH_BREAK/g, "\n");
 };
 

@@ -5,8 +5,10 @@ const { pathToFileURL } = require('url');
 const { EDGE_NOT_AVAILABLE, launchEdgeBrowser } = require('../src/shared/edge-browser');
 
 const { renderSnapshot } = require('../src/adapters/html');
+const { reverseSnapshotToSemanticModel } = require('../src/adapters/indesign');
 const hostJsx = require('../src/indesign-cli-plugin/host-jsx');
-const { compileInstructions } = require('../src/indesign-pipeline');
+const { compileDocument } = require('../src/indesign-pipeline');
+const { auditForwardFidelity } = require('../src/semantic-model');
 const { validateInstructions } = require('../src/writers/indesign');
 const { readAuthorPackage } = require('../src/authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../src/semantic-preset');
@@ -18,6 +20,7 @@ const {
 const {
   assertPanelNameAuditOk,
   observedPanelNamesForHtml,
+  assertNoLossyVectorWarnings,
   assertNoTextOverset,
 } = require('../src/writers/indesign/audit/e2e-result-audit');
 const {
@@ -40,6 +43,9 @@ function createRunContext(options = {}) {
     timestamp,
     defaultInstructionsPath: path.join(workspaceDir, 'instructions.json'),
     runInstructionsPath: path.join(runDir, 'instructions.json'),
+    expectedModelPath: path.join(runDir, 'expected-semantic-model.json'),
+    semanticPresetPath: path.join(runDir, 'expected-semantic-preset.json'),
+    fidelityReportPath: path.join(runDir, 'forward-fidelity-report.json'),
     compileSummaryPath: path.join(runDir, 'compile-summary.json'),
     resultPath: path.join(runDir, 'e2e-result.json'),
     buildScriptPath: path.join(runDir, 'build-latest.jsx'),
@@ -192,11 +198,26 @@ async function runIndesignE2E(options = {}) {
   const buildCli = runCli(['--json', '--pretty', 'script', 'run', context.buildScriptPath], context.repoRoot);
   const buildResult = parseCliResultJson(buildCli.stdout);
   assertCliResultOk(buildResult, 'InDesign build failed');
-  assertNoTextOverset(buildResult);
+  try {
+    assertNoTextOverset(buildResult);
+    assertNoLossyVectorWarnings(buildResult);
+  } catch (error) {
+    closeOwnedBuildDocument(context, error);
+    throw error;
+  }
+
+  let fidelity;
+  try {
+    fidelity = captureAndAuditForwardFidelity(context, options);
+  } catch (error) {
+    closeOwnedBuildDocument(context, error);
+    throw error;
+  }
 
   fs.writeFileSync(context.exportScriptPath, buildExportJsx({
     runDir: context.runDir,
-    closeDocument: !options.reverseRoundtrip,
+    closeDocument: true,
+    expectedMarker: 'html-indesign-indesign-e2e',
   }), 'utf8');
 
   const exportCli = runCli(['--json', '--pretty', 'script', 'run', context.exportScriptPath], context.repoRoot);
@@ -216,7 +237,7 @@ async function runIndesignE2E(options = {}) {
   }
 
   const reverse = options.reverseRoundtrip
-    ? await runReverseRoundtrip(context, options)
+    ? await runReverseRoundtrip(context, options, fidelity)
     : null;
 
   const preview = options.skipPreview
@@ -224,12 +245,13 @@ async function runIndesignE2E(options = {}) {
     : await renderPdfPreview(context, pdfPath);
 
   const result = {
-    ok: aggregateE2EOk({ build: buildResult, exportResult, reverse }),
+    ok: aggregateE2EOk({ build: buildResult, fidelity, exportResult, reverse }),
     runDir: context.runDir,
     htmlPath: context.htmlPath,
     instructionsPath: context.runInstructionsPath,
     compile: compileSummary,
     build: buildResult,
+    fidelity,
     export: exportResult,
     verify: verifyResult.data,
     reverse,
@@ -242,9 +264,10 @@ async function runIndesignE2E(options = {}) {
   return result;
 }
 
-function aggregateE2EOk({ build, exportResult, reverse }) {
+function aggregateE2EOk({ build, fidelity, exportResult, reverse }) {
   const checks = [
     Boolean(build) && build.ok !== false,
+    Boolean(fidelity && fidelity.report && fidelity.report.ok === true),
     Boolean(exportResult) && exportResult.ok !== false,
   ];
   if (reverse) {
@@ -333,13 +356,15 @@ async function runHumanInddRoundtripE2E(options = {}) {
 async function compileToInstructions(context, options = {}) {
   const snapshot = await renderSnapshot({ htmlPath: context.htmlPath });
   const observedPanelNames = observedPanelNamesForHtml(context.htmlPath);
-  const instructions = compileInstructions(snapshot, {
+  const semanticPreset = loadSemanticPresetForHtml(context.htmlPath, options);
+  const compiled = compileDocument(snapshot, {
     mode: 'editable-first',
     unitMode: options.unitMode || 'presentation',
     targetSize: options.targetSize || 'same',
     styleNameMap: loadStyleNameMapForHtml(context.htmlPath, options),
     preserveObservedLayerNames: observedPanelNames.length > 0,
   });
+  const { model, instructions } = compiled;
   const validation = validateInstructions(instructions, {
     checkAssetFiles: true,
     baseDir: path.dirname(context.htmlPath),
@@ -355,6 +380,8 @@ async function compileToInstructions(context, options = {}) {
   const json = JSON.stringify(instructions, null, 2);
   fs.writeFileSync(context.defaultInstructionsPath, json, 'utf8');
   fs.writeFileSync(context.runInstructionsPath, json, 'utf8');
+  fs.writeFileSync(context.expectedModelPath, JSON.stringify(model, null, 2), 'utf8');
+  fs.writeFileSync(context.semanticPresetPath, JSON.stringify(semanticPreset, null, 2), 'utf8');
 
   const summary = {
     ok: true,
@@ -367,6 +394,10 @@ async function compileToInstructions(context, options = {}) {
       height: instructions.document.pages[0].height,
     } : null,
     items: instructions.pages.reduce((sum, page) => sum + (page.items || []).length, 0),
+    vectorPaths: instructions.pages.reduce((sum, page) => sum + (page.items || []).reduce(
+      (itemSum, item) => itemSum + ((item.vectorGeometry && item.vectorGeometry.paths || []).length),
+      0,
+    ), 0),
     assets: (instructions.assets || []).length,
     fonts: Object.keys(instructions.styles.fonts || {}),
     styleCounts: {
@@ -405,16 +436,22 @@ function architectureStyleNameMap() {
 function loadStyleNameMapForHtml(htmlPath, options = {}) {
   if (options.styleNameMap) return options.styleNameMap;
 
+  return presetToStyleNameMap(loadSemanticPresetForHtml(htmlPath, options));
+}
+
+function loadSemanticPresetForHtml(htmlPath, options = {}) {
+  if (options.semanticPreset) return options.semanticPreset;
+
   const packageInfo = findAuthorPackageForHtml(htmlPath);
   if (packageInfo) {
     const resolved = resolveSemanticPreset({
       rootDir: packageInfo.rootDir,
       config: packageInfo.config,
     });
-    return presetToStyleNameMap(resolved.preset);
+    return resolved.preset;
   }
 
-  return architectureStyleNameMap();
+  return resolveSemanticPreset({ profile: 'architecture-report' }).preset;
 }
 
 function findAuthorPackageForHtml(htmlPath) {
@@ -438,6 +475,23 @@ function resolveReverseSourceRootForHtml(htmlPath, options = {}) {
 
 function runCli(args, cwd) {
   return runCommand(resolveIndesignCliCommand(), args, cwd);
+}
+
+function closeOwnedBuildDocument(context, originalError) {
+  const cleanupScriptPath = path.join(context.runDir, 'cleanup-after-gate-failure.jsx');
+  try {
+    fs.writeFileSync(cleanupScriptPath, hostJsx.buildCloseJsx({
+      expectedMarker: 'html-indesign-indesign-e2e',
+    }), 'utf8');
+    const cleanupCli = runCli(['--json', '--pretty', 'script', 'run', cleanupScriptPath], context.repoRoot);
+    const cleanupResult = parseCliResultJson(cleanupCli.stdout);
+    if (!cleanupResult || cleanupResult.ok === false) originalError.cleanupFailure = cleanupResult;
+  } catch (cleanupError) {
+    originalError.cleanupFailure = {
+      code: 'BUILD_DOCUMENT_CLOSE_FAILED',
+      message: cleanupError.message,
+    };
+  }
 }
 
 function resolveIndesignCliCommand(env = process.env) {
@@ -495,16 +549,56 @@ function buildReverseSnapshotJsx(options) {
   return hostJsx.buildReverseSnapshotJsx(options);
 }
 
-async function runReverseRoundtrip(context, options = {}) {
-  const reverseMode = options.reverseMode || 'structured';
+function captureAndAuditForwardFidelity(context, options = {}) {
   fs.writeFileSync(context.reverseScriptPath, buildReverseSnapshotJsx({
     repoRoot: context.repoRoot,
     outputPath: context.reverseSnapshotPath,
+    closeDocument: false,
+    expectedMarker: 'html-indesign-indesign-e2e',
+    closeOnFailure: true,
   }), 'utf8');
 
   const reverseCli = runCli(['--json', '--pretty', 'script', 'run', context.reverseScriptPath], context.repoRoot);
-  const reverseResult = parseCliResultJson(reverseCli.stdout);
-  assertCliResultOk(reverseResult, 'InDesign reverse snapshot failed');
+  const snapshotResult = parseCliResultJson(reverseCli.stdout);
+  assertCliResultOk(snapshotResult, 'InDesign fidelity snapshot failed');
+
+  const expectedModel = readJsonFile(context.expectedModelPath);
+  const semanticPreset = readJsonFile(context.semanticPresetPath);
+  const instructions = readJsonFile(context.runInstructionsPath);
+  const actualSnapshot = readJsonFile(context.reverseSnapshotPath);
+  const actualModel = reverseSnapshotToSemanticModel(actualSnapshot, {
+    mode: 'structured',
+    semanticPreset,
+  });
+  const report = auditForwardFidelity({
+    expectedModel,
+    instructions,
+    actualSnapshot,
+    actualModel,
+  });
+  fs.writeFileSync(context.fidelityReportPath, JSON.stringify(report, null, 2), 'utf8');
+  if (!report.ok) {
+    const first = report.errors[0] || {};
+    const error = new Error(
+      `InDesign fidelity gate failed at ${first.pageId || 'document'} / ${first.itemId || first.field || 'unknown'}: ${first.code || 'FORWARD_FIDELITY_CHANGED'}. See ${context.fidelityReportPath}`,
+    );
+    error.code = 'FORWARD_FIDELITY_GATE_FAILED';
+    error.report = report;
+    throw error;
+  }
+  return { snapshot: snapshotResult, report };
+}
+
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+async function runReverseRoundtrip(context, options = {}, fidelity = null) {
+  const reverseMode = options.reverseMode || 'structured';
+  if (!fidelity || !fidelity.snapshot || !fidelity.report || fidelity.report.ok !== true) {
+    throw new Error('InDesign reverse roundtrip requires a successful forward fidelity snapshot.');
+  }
+  const reverseResult = fidelity.snapshot;
 
   const { compileReverseSnapshotToHtml } = require('./indesign-reverse-export');
   const sourceRoot = resolveReverseSourceRootForHtml(context.htmlPath, options);
@@ -562,6 +656,7 @@ async function runReverseRoundtrip(context, options = {}) {
   return {
     mode: reverseMode,
     snapshot: reverseResult,
+    fidelity: fidelity.report,
     html: {
       ...htmlResult,
       audit: htmlAudit,

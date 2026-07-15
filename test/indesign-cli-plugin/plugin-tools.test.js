@@ -148,6 +148,10 @@ test('html.build_indesign runs strict authoring checks internally before creatin
 
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'AUTHORING_LINT_FAILED');
+  assert.equal(response.error.details.ok, false);
+  assert.equal(response.error.details.errorCount > 0, true);
+  assert.equal(Array.isArray(response.error.details.errors), true);
+  assert.match(response.error.message, /styles\/tokens\.css/);
   assert.equal(fs.existsSync(path.join(root, 'output', 'build.jsx')), false);
 });
 

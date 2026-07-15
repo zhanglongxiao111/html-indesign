@@ -135,3 +135,113 @@ test('reverse snapshot keeps effective grouped audit child objects in observatio
   assert.equal(model.pages[0].items.find((item) => item.id === 'inner-pdf-frame').visualStyle.opacity, 42);
   assert.equal(model.pages[0].items.find((item) => item.id === 'inner-marker').role, 'shape');
 });
+
+test('reverse snapshot attaches native item paint to its canonical vector path', () => {
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'single-vector.indd', mode: 'observation' },
+    document: { name: 'single-vector.indd', labels: [] },
+    pages: [{
+      id: '1',
+      index: 0,
+      labels: [],
+      bounds: { x: 0, y: 0, width: 400, height: 240 },
+      items: [{
+        id: 'single-vector',
+        type: 'Polygon',
+        labels: [],
+        bounds: { x: 10, y: 20, width: 30, height: 30 },
+        visualStyle: { fillColor: null, strokeColor: '#111111', strokeWeight: 2, strokeStyle: '虚线（6 和 6）' },
+        vectorGeometry: {
+          kind: 'polygon',
+          paths: [{
+            closed: true,
+            points: [
+              { anchor: { x: 10, y: 20 }, leftDirection: { x: 10, y: 20 }, rightDirection: { x: 10, y: 20 } },
+              { anchor: { x: 40, y: 20 }, leftDirection: { x: 40, y: 20 }, rightDirection: { x: 40, y: 20 } },
+              { anchor: { x: 40, y: 50 }, leftDirection: { x: 40, y: 50 }, rightDirection: { x: 40, y: 50 } },
+            ],
+          }],
+        },
+      }],
+    }],
+  }, { mode: 'observation' });
+
+  assert.deepEqual(model.pages[0].items[0].vectorGeometry.paths[0].visualStyle, {
+    fillColor: null,
+    strokeColor: '#111111',
+    strokeWeight: 2,
+    strokeStyle: '虚线（6 和 6）',
+  });
+});
+
+test('reverse snapshot reassembles native SVG path groups into one canonical vector item', () => {
+  const label = {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id: 'diagram-svg',
+    source: 'html-to-indesign',
+    role: 'shape',
+    htmlTag: 'svg',
+    className: 'diagram',
+    sourceNode: {
+      tagName: 'svg',
+      id: 'diagram-svg',
+      classList: ['diagram'],
+      attributes: { id: 'diagram-svg', 'data-id-vector': 'path' },
+    },
+    sourceText: '',
+    sourceRuns: [],
+    sourceAncestorNodes: [],
+    structure: { parentId: 'page-1', order: 0, containerPolicy: 'group' },
+  };
+  const point = (x, y) => ({
+    anchor: { x, y },
+    leftDirection: { x, y },
+    rightDirection: { x, y },
+    pointType: 'PLAIN',
+  });
+  const child = (id, index, color, x) => ({
+    id,
+    type: 'Polygon',
+    labels: [],
+    parent: { id: 'group-100', type: 'Group', labelId: 'diagram-svg' },
+    vectorPathIndex: index,
+    bounds: { x, y: 20, width: 30, height: 30 },
+    visualStyle: { fillColor: color, strokeColor: null, strokeWeight: 0, cornerRadius: 12 },
+    vectorGeometry: {
+      kind: 'polygon',
+      paths: [{ closed: true, points: [point(x, 20), point(x + 30, 20), point(x + 30, 50)] }],
+    },
+  });
+  const group = {
+    id: 'group-100',
+    type: 'Group',
+    labels: [label],
+    parent: { id: 'spread-1', type: 'Spread' },
+    bounds: { x: 10, y: 20, width: 90, height: 30 },
+    visualStyle: {},
+    vectorGeometry: null,
+  };
+
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'vector-group.indd', mode: 'structured' },
+    document: { name: 'vector-group.indd', labels: [] },
+    pages: [{
+      id: '1',
+      index: 0,
+      labels: [],
+      bounds: { x: 0, y: 0, width: 400, height: 240 },
+      items: [group],
+      auditItems: [group, child('path-b', 1, '#3c3c3c', 70), child('path-a', 0, '#e2231a', 10)],
+    }],
+  }, { mode: 'structured', semanticPreset: { semantics: {} } });
+
+  assert.equal(model.pages[0].items.length, 1);
+  const item = model.pages[0].items[0];
+  assert.equal(item.id, 'diagram-svg');
+  assert.equal(item.vectorGeometry.paths.length, 2);
+  assert.deepEqual(item.vectorGeometry.paths.map((path) => path.visualStyle.fillColor), ['#e2231a', '#3c3c3c']);
+  assert.equal(item.vectorGeometry.paths.some((path) => Object.prototype.hasOwnProperty.call(path.visualStyle, 'cornerRadius')), false);
+  assert.deepEqual(item.vectorGeometry.paths.map((path) => path.points[0].anchor.x), [10, 70]);
+});

@@ -14,6 +14,7 @@ const { tableSourceHtmlMatchesTable } = require('./table-source-html');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
 const SOURCE_FILE_ATTR = htmlReadAttrFromRegistry('items[].sourceFile');
+const VECTOR_PATH_VISUAL_STYLE_KEYS = vectorPathVisualStyleKeysFromRegistry();
 
 function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const documentLabel = firstLabel(snapshot.document && snapshot.document.labels, 'document') || {};
@@ -125,17 +126,69 @@ function reversePage(page, styleMaps, context = {}) {
 
 function effectiveReversePageItems(page = {}) {
   const topLevel = Array.isArray(page.items) ? page.items : [];
+  const auditItems = Array.isArray(page.auditItems) ? page.auditItems : [];
   const auditById = auditItemsById(page.auditItems || []);
-  const out = topLevel.map((item) => mergeAuditTreeItem(item, auditById.get(String(item && item.id || ''))));
+  const vectorChildIds = new Set();
+  const out = topLevel.map((item) => {
+    const merged = mergeAuditTreeItem(item, auditById.get(String(item && item.id || '')));
+    const reassembled = reassembleNativeVectorPathGroup(merged, auditItems);
+    for (const childId of reassembled.childIds) vectorChildIds.add(childId);
+    return reassembled.item;
+  });
   const seen = new Set(out.map((item) => String(item && item.id || '')));
-  for (const item of page.auditItems || []) {
+  for (const item of auditItems) {
     if (!shouldExposeAuditChildItem(item)) continue;
     const id = String(item && item.id || '');
+    if (id && vectorChildIds.has(id)) continue;
     if (id && seen.has(id)) continue;
     if (id) seen.add(id);
     out.push(item);
   }
   return out;
+}
+
+function reassembleNativeVectorPathGroup(item = {}, auditItems = []) {
+  const empty = { item, childIds: [] };
+  if (String(item.type || '') !== 'Group') return empty;
+  if (!firstLabel(item.labels, 'item')) return empty;
+  const groupId = String(item.id || '');
+  if (!groupId) return empty;
+  const children = auditItems
+    .filter((candidate) => String(candidate && candidate.parent && candidate.parent.id || '') === groupId)
+    .filter((candidate) => vectorPathIndex(candidate) != null)
+    .filter((candidate) => candidate && candidate.vectorGeometry && Array.isArray(candidate.vectorGeometry.paths))
+    .sort((left, right) => vectorPathIndex(left) - vectorPathIndex(right));
+  if (!children.length) return empty;
+  const paths = [];
+  for (const child of children) {
+    for (const path of child.vectorGeometry.paths) {
+      if (!path || !Array.isArray(path.points) || !path.points.length) continue;
+      const visualStyle = reverseVectorPathVisualStyle({
+        ...(path.visualStyle || {}),
+        ...(child.visualStyle || {}),
+      });
+      paths.push({
+        ...path,
+        ...(Object.keys(visualStyle).length ? { visualStyle } : {}),
+      });
+    }
+  }
+  if (!paths.length) return empty;
+  return {
+    item: {
+      ...item,
+      vectorGeometry: { kind: 'path', paths },
+      visualStyle: item.visualStyle && Object.keys(item.visualStyle).length
+        ? item.visualStyle
+        : children[0].visualStyle || null,
+    },
+    childIds: children.map((child) => String(child.id || '')).filter(Boolean),
+  };
+}
+
+function vectorPathIndex(item = {}) {
+  const index = Number(item.vectorPathIndex);
+  return Number.isInteger(index) && index >= 0 ? index : null;
 }
 
 function sourcePageSemanticByFile(sourcePackage, semanticPreset, labelOptions = {}) {
@@ -217,7 +270,8 @@ function reverseItem(item, styleMaps = {}, context = {}) {
   const observed = observedLabelWithReasons(validation);
   const role = effective.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
-  const vectorGeometry = reverseVectorGeometry(item.vectorGeometry);
+  const visualStyle = item.visualStyle || null;
+  const vectorGeometry = reverseVectorGeometry(item.vectorGeometry, visualStyle);
   const extensions = reverseItemExtensions(item);
   return {
     id: label.id || item.id,
@@ -241,7 +295,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     content: contentForReverseItem(role, item, effective, styleMaps, table),
     table,
     vectorGeometry,
-    visualStyle: item.visualStyle || null,
+    visualStyle,
     textStyle: item.textStyle || null,
     ...(extensions ? { extensions } : {}),
     inlineStyle: item.inlineStyle || item.inlineCSS || null,
@@ -787,15 +841,40 @@ function roleFromInDesignType(type, item = {}) {
   return 'shape';
 }
 
-function reverseVectorGeometry(vectorGeometry) {
+function reverseVectorGeometry(vectorGeometry, fallbackVisualStyle = null) {
   if (!vectorGeometry || !Array.isArray(vectorGeometry.paths)) return null;
+  const fallbackPathStyle = reverseVectorPathVisualStyle(fallbackVisualStyle || {});
   return {
     kind: vectorGeometry.kind || 'path',
-    paths: vectorGeometry.paths.map((path) => ({
-      closed: Boolean(path && path.closed),
-      points: (path && Array.isArray(path.points) ? path.points : []).map(reverseVectorPoint),
-    })).filter((path) => path.points.length),
+    paths: vectorGeometry.paths.map((path) => {
+      const visualStyle = reverseVectorPathVisualStyle({
+        ...fallbackPathStyle,
+        ...(path && path.visualStyle || {}),
+      });
+      return {
+        closed: Boolean(path && path.closed),
+        points: (path && Array.isArray(path.points) ? path.points : []).map(reverseVectorPoint),
+        ...(Object.keys(visualStyle).length ? { visualStyle } : {}),
+      };
+    }).filter((path) => path.points.length),
   };
+}
+
+function reverseVectorPathVisualStyle(visualStyle = {}) {
+  const out = {};
+  for (const key of VECTOR_PATH_VISUAL_STYLE_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(visualStyle, key)) out[key] = visualStyle[key];
+  }
+  return out;
+}
+
+function vectorPathVisualStyleKeysFromRegistry() {
+  const prefix = 'items[].vectorGeometry.paths[].visualStyle.';
+  return new Set(fieldRegistry.entries
+    .map((entry) => String(entry && entry.canonicalPath || ''))
+    .filter((fieldPath) => fieldPath.startsWith(prefix))
+    .map((fieldPath) => fieldPath.slice(prefix.length).split('.')[0])
+    .filter(Boolean));
 }
 
 function reverseVectorPoint(point = {}) {

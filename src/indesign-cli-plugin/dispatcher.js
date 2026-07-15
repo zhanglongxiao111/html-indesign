@@ -93,7 +93,7 @@ async function resumeTool(params) {
   try {
     return await caller.resume(params);
   } catch (err) {
-    return error(err.code || 'TOOL_RESUME_FAILED', err.message, { tool: id });
+    return error(err.code || 'TOOL_RESUME_FAILED', err.message, errorDetails(err, id));
   }
 }
 
@@ -112,8 +112,15 @@ async function callTool(params, context) {
   try {
     return await caller.call(params.args || {}, context || {});
   } catch (err) {
-    return error(err.code || 'TOOL_CALL_FAILED', err.message, { tool: id });
+    return error(err.code || 'TOOL_CALL_FAILED', err.message, errorDetails(err, id));
   }
+}
+
+function errorDetails(err, tool) {
+  const details = err && err.details && typeof err.details === 'object' && !Array.isArray(err.details)
+    ? err.details
+    : {};
+  return { ...details, tool };
 }
 
 module.exports = {

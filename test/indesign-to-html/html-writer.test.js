@@ -387,6 +387,48 @@ test('semanticModelToHtml renders observed vector paths as SVG instead of rectan
   assert.doesNotMatch(html, /id="axis-line"[^>]+border:2px solid #c8102e/);
 });
 
+test('semanticModelToHtml preserves independent paint for every path in one SVG', () => {
+  const point = (x, y) => ({
+    anchor: { x, y },
+    leftDirection: { x, y },
+    rightDirection: { x, y },
+  });
+  const html = semanticModelToHtml({
+    kind: 'DocumentModel',
+    id: 'multi-paint-vector',
+    title: 'multi-paint-vector',
+    reverseMode: 'observation',
+    pages: [{
+      id: 'vector-page',
+      width: 400,
+      height: 240,
+      items: [{
+        id: 'zoning-svg',
+        role: 'shape',
+        bounds: { x: 20, y: 30, width: 120, height: 80 },
+        visualStyle: { fillColor: '#000000', strokeColor: null, strokeWeight: 0 },
+        vectorGeometry: {
+          kind: 'path',
+          paths: [{
+            closed: true,
+            points: [point(20, 30), point(70, 30), point(70, 80)],
+            visualStyle: { fillColor: '#e2231a', fillOpacity: 80, strokeColor: null, strokeWeight: 0 },
+          }, {
+            closed: true,
+            points: [point(80, 30), point(140, 30), point(140, 110)],
+            visualStyle: { fillColor: '#3c3c3c', fillOpacity: 45, strokeColor: null, strokeWeight: 0 },
+          }],
+        },
+        styleRefs: {},
+        content: { text: '' },
+      }],
+    }],
+  });
+
+  assert.match(html, /<path[^>]+fill="#e2231a"[^>]+fill-opacity="0\.8"/);
+  assert.match(html, /<path[^>]+fill="#3c3c3c"[^>]+fill-opacity="0\.45"/);
+});
+
 test('semanticModelToHtml renders vector arrow markers and extended stroke fields', () => {
   const html = semanticModelToHtml({
     kind: 'DocumentModel',
@@ -526,6 +568,7 @@ test('semanticModelToHtml renders vector arrow markers and extended stroke field
   assert.match(html, /<path[^>]+fill="#c8102e"[^>]+d="M0 0 L10 5 L0 10 Z"/);
   assert.match(html, /<path[^>]+marker-start="url\(#route-arrow-marker-start\)"[^>]+marker-end="url\(#route-arrow-marker-end\)"/);
   assert.match(html, /<path[^>]+data-id-stroke-style="虚线（3 和 2）"/);
+  assert.match(html, /stroke-dasharray="3 2"/);
   assert.match(html, /<path[^>]+data-id-line-start-marker-raw-name="Circle"/);
   assert.match(html, /<path[^>]+data-id-line-end-marker-raw-name="SIMPLE_WIDE_ARROW_HEAD"/);
   assert.match(html, /stroke-linecap="round"/);

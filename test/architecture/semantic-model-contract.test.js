@@ -1048,6 +1048,22 @@ function sampleHtmlSnapshot() {
           kind: 'path',
           paths: [{
             closed: false,
+            visualStyle: {
+              fillColor: '#eeeeee',
+              fillOpacity: 80,
+              strokeColor: '#999999',
+              strokeWeight: 1,
+              strokeOpacity: 90,
+              strokeStyle: 'solid',
+              strokeAlignment: 'center',
+              lineStartMarker: { rawName: 'None' },
+              lineEndMarker: { rawName: 'Arrow' },
+              strokeLineCap: 'round',
+              strokeLineJoin: 'round',
+              strokeMiterLimit: 4,
+              opacity: 75,
+              blendMode: 'multiply',
+            },
             points: [{
               anchor: { x: 0, y: 0 },
               leftDirection: { x: 0, y: 0 },

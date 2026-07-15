@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; }
+    .page {
+      position: relative;
+      width: 800px;
+      height: 450px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      box-sizing: border-box;
+    }
+    .diagram-axis-label {
+      position: absolute;
+      left: 80px;
+      top: 60px;
+      width: 260px;
+      height: 32px;
+      font: 16px/32px Arial, sans-serif;
+    }
+    .ambiguous-copy {
+      position: absolute;
+      left: 80px;
+      top: 120px;
+    }
+  </style>
+</head>
+<body>
+  <section class="page" data-page id="natural-text-page">
+    <div class="diagram-axis-label" id="axis-label">46 KM · 区域公路强联系轴</div>
+    <div class="ambiguous-copy" id="ambiguous-copy">未归属文字 <button type="button">操作</button></div>
+  </section>
+</body>
+</html>

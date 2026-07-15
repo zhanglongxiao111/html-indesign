@@ -26,6 +26,45 @@ test('forward fidelity audit accepts matching supported facts within geometry to
   assert.equal(report.capabilitySource, 'src/protocol');
 });
 
+test('forward fidelity audit reports bounded text-fit growth without failing the build', () => {
+  const fixture = matchingFixture();
+  fixture.instructions.pages[0].items[0].textFit = {
+    mode: 'expand-frame-to-content',
+    maxGrowX: 20,
+    maxGrowY: 0,
+    preservePosition: true,
+    preferWidth: true,
+    horizontalAnchor: 'start',
+  };
+  fixture.actualSnapshot.pages[0].items[0].bounds.width = 92;
+  fixture.actualModel.pages[0].items[0].bounds.width = 92;
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.errors.length, 0);
+  assert.equal(report.warnings.some((issue) => issue.code === 'FORWARD_TEXT_FIT_APPLIED'
+    && issue.itemId === 'title'), true);
+});
+
+test('forward fidelity audit accepts native pill-radius clamping as the same visual shape', () => {
+  const fixture = matchingFixture();
+  fixture.instructions.styles = {
+    objectStyles: {
+      pill: { name: 'pill', cornerRadius: '999pt' },
+    },
+  };
+  fixture.instructions.pages[0].items[0].objectStyle = 'pill';
+  fixture.actualSnapshot.pages[0].items[0].objectStyleName = 'pill';
+  fixture.actualSnapshot.pages[0].items[0].visualStyle = { cornerRadius: 9.5 };
+  fixture.actualSnapshot.styles = { objectStyles: [{ name: 'pill' }] };
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.errors.some((issue) => issue.field === 'visualStyle.cornerRadius'), false);
+});
+
 test('forward fidelity audit reports missing objects, changed text, asset paths, and trusted source facts', () => {
   const fixture = matchingFixture();
   const actualText = fixture.actualSnapshot.pages[0].items[0];
@@ -140,6 +179,75 @@ test('forward fidelity audit compares rotated lines by endpoints', () => {
   const report = auditForwardFidelity(fixture);
 
   assert.equal(report.ok, true);
+});
+
+test('forward fidelity audit fails when a native SVG path or its paint is lost', () => {
+  const fixture = matchingFixture();
+  const label = itemLabel('diagram-svg', 'shape', { order: 4 });
+  const pathRecord = (x, fillColor) => ({
+    closed: true,
+    points: [vectorPoint(x, 20), vectorPoint(x + 20, 20), vectorPoint(x + 20, 40)],
+    visualStyle: { fillColor, fillOpacity: 80, strokeColor: null, strokeWeight: 0 },
+  });
+  fixture.instructions.styles = {
+    swatches: {
+      'svg-red': { value: '#e2231a' },
+      'svg-gray': { value: '#3c3c3c' },
+    },
+  };
+  fixture.instructions.pages[0].items = [{
+    id: 'diagram-svg',
+    role: 'shape',
+    type: 'SHAPE',
+    bounds: { x: 10, y: 20, width: 80, height: 20 },
+    layer: '图形',
+    labels: [label],
+    styleOverride: { strokeAlignment: null },
+    vectorGeometry: {
+      kind: 'path',
+      paths: [
+        { ...pathRecord(10, '#e2231a'), styleOverride: { fillColor: 'svg-red' } },
+        { ...pathRecord(70, '#3c3c3c'), styleOverride: { fillColor: 'svg-gray' } },
+      ],
+    },
+  }];
+  fixture.actualSnapshot.pages[0].items = [{
+    id: '205',
+    type: 'Group',
+    bounds: { x: 10, y: 20, width: 80, height: 20 },
+    layerName: '图形',
+    text: '',
+    textRuns: [],
+    table: null,
+    placedAsset: null,
+    labels: [label],
+  }];
+  fixture.actualModel.pages[0].items = [{
+    id: 'diagram-svg',
+    role: 'shape',
+    bounds: { x: 10, y: 20, width: 80, height: 20 },
+    content: { text: '', runs: [] },
+    vectorGeometry: {
+      kind: 'path',
+      paths: [{
+        ...pathRecord(10, '#e2231a'),
+        visualStyle: { ...pathRecord(10, '#e2231a').visualStyle, strokeAlignment: 'center' },
+      }],
+    },
+  }];
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.ok, false);
+  assert.equal(report.errors.some((issue) => issue.code === 'FORWARD_VECTOR_GEOMETRY_CHANGED'
+    && issue.itemId === 'diagram-svg'), true);
+
+  fixture.actualModel.pages[0].items[0].vectorGeometry.paths.push({
+    ...pathRecord(70, '#3c3c3c'),
+    visualStyle: { ...pathRecord(70, '#3c3c3c').visualStyle, strokeAlignment: 'center' },
+  });
+  const matchingReport = auditForwardFidelity(fixture);
+  assert.equal(matchingReport.ok, true, JSON.stringify(matchingReport.errors, null, 2));
 });
 
 test('forward fidelity audit treats page-specific parent furniture overrides as expected page objects', () => {

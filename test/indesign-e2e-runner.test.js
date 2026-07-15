@@ -22,6 +22,7 @@ const scriptExports = require('../scripts/indesign-e2e');
 const { buildCloseJsx } = require('../src/indesign-cli-plugin/host-jsx');
 const {
   assertPanelNameAuditOk,
+  assertNoLossyVectorWarnings,
   assertNoTextOverset,
   isAllowedBuiltInPanelName,
   observedPanelNamesForHtml,
@@ -47,6 +48,19 @@ test('createRunContext creates stable default paths under test/workspace', () =>
   assert.equal(context.runDir, path.join(repoRoot, 'test/workspace/indesign-e2e-20260524-190000'));
   assert.equal(context.defaultInstructionsPath, path.join(repoRoot, 'test/workspace/instructions.json'));
   assert.equal(context.runInstructionsPath, path.join(context.runDir, 'instructions.json'));
+  assert.equal(context.expectedModelPath, path.join(context.runDir, 'expected-semantic-model.json'));
+  assert.equal(context.semanticPresetPath, path.join(context.runDir, 'expected-semantic-preset.json'));
+  assert.equal(context.fidelityReportPath, path.join(context.runDir, 'forward-fidelity-report.json'));
+});
+
+test('indesign e2e captures every built document and runs the forward fidelity gate before export', () => {
+  const script = fs.readFileSync(path.resolve('scripts/indesign-e2e.js'), 'utf8');
+  const gateCall = script.indexOf('captureAndAuditForwardFidelity(context, options)');
+  const exportCall = script.indexOf("fs.writeFileSync(context.exportScriptPath, buildExportJsx({");
+
+  assert.equal(gateCall >= 0, true);
+  assert.equal(exportCall > gateCall, true);
+  assert.match(script, /forward-fidelity-report\.json/);
 });
 
 test('buildBuildJsx creates an isolated document and loads executor libs', () => {
@@ -279,6 +293,36 @@ test('assertNoTextOverset rejects build outputs with located text overflow', () 
   assert.doesNotThrow(() => assertNoTextOverset({
     counts: { oversetTextFrames: 0 },
     oversetTextFrames: [],
+  }));
+});
+
+test('assertNoLossyVectorWarnings rejects vector geometry loss but allows unrelated warnings', () => {
+  assert.throws(() => assertNoLossyVectorWarnings({
+    warnings: [{
+      code: 'VECTOR_MULTIPATH_UNSUPPORTED',
+      message: 'Only the first vector path was applied by the current executor',
+      details: { itemId: 'page-03-svg-1', pathCount: 12 },
+    }],
+  }), /InDesign dropped or failed to apply vector geometry/);
+
+  assert.throws(() => assertNoLossyVectorWarnings({
+    warnings: [{
+      code: 'VECTOR_PATH_APPLY_FAILED',
+      message: 'Path geometry could not be applied',
+      details: { itemId: 'page-03-svg-1' },
+    }],
+  }), /VECTOR_PATH_APPLY_FAILED/);
+
+  assert.throws(() => assertNoLossyVectorWarnings({
+    messages: [{
+      code: 'VECTOR_DASH_STYLE_CREATE_FAILED',
+      message: 'Native dashed stroke style could not be created',
+      details: { itemId: 'page-03-svg-1', strokeStyle: '6px, 6px' },
+    }],
+  }), /VECTOR_DASH_STYLE_CREATE_FAILED/);
+
+  assert.doesNotThrow(() => assertNoLossyVectorWarnings({
+    warnings: [{ code: 'FONT_FALLBACK_APPLIED', message: 'A fallback font was used.' }],
   }));
 });
 
@@ -677,6 +721,10 @@ test('auditSecondPassAuthorStability invalid-input 必须 fail', () => {
 
 test('assertNoTextOverset invalid-input 必须 fail', () => {
   assert.throws(() => assertNoTextOverset(null));
+});
+
+test('assertNoLossyVectorWarnings invalid-input 必须 fail', () => {
+  assert.throws(() => assertNoLossyVectorWarnings(null));
 });
 
 test('assertPanelNameAuditOk invalid-input 必须 fail', () => {

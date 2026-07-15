@@ -1,6 +1,6 @@
 {
   "name": "@sa/html-indesign",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Sa fixed semantic HTML and InDesign bidirectional translation plugin",
   "main": "index.js",
   "files": [

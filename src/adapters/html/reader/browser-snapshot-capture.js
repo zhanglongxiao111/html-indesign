@@ -114,6 +114,7 @@
       heightCss: pageStyle.height,
       computedStyle: styles.styleObject(pageEl),
       authoredStyle: styles.authoredStyleObject(pageEl, styleRules),
+      uncapturedText: elements.collectUncapturedTextElements(pageEl, candidates),
       items: candidates.map((el, itemIndex) => collectItemSnapshot(el, itemIndex, pageIndex, pageEl, candidates, styleRules)),
     };
   }
@@ -133,6 +134,7 @@
     return {
       id: elements.itemIdFor(el, frameEl, pageIndex, itemIndex),
       tagName: el.tagName.toLowerCase(),
+      naturalTextElement: elements.isNaturalTextElement(el),
       classList: elements.mergeClassList(elements.classList(el), elements.classList(frameEl)),
       attributes: elements.mergeFrameAttributes(itemAttrs, frameAttrs),
       sourceNode: elements.sourceNodeFor(el, pageEl, {
@@ -143,6 +145,7 @@
       }),
       sourceAncestorNodes: elements.sourceAncestorNodes(el, pageEl, candidates),
       cssVars: elements.cssVarsFor(el),
+      vectorPaths: elements.vectorPathsFor(el),
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),
       computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),

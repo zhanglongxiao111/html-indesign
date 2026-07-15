@@ -113,6 +113,43 @@
     return out;
   }
 
+  function vectorPathsFor(el) {
+    if (!el || String(el.tagName || '').toLowerCase() !== 'svg') return [];
+    return Array.from(el.querySelectorAll('path'))
+      .filter((pathEl) => {
+        const defs = pathEl.closest('defs');
+        return !defs || !el.contains(defs);
+      })
+      .map((pathEl) => ({
+        attributes: attrs(pathEl),
+        computedStyle: vectorPathComputedStyle(pathEl),
+      }));
+  }
+
+  function vectorPathComputedStyle(pathEl) {
+    const style = getComputedStyle(pathEl);
+    const out = {};
+    for (const name of [
+      'fill',
+      'fill-opacity',
+      'stroke',
+      'stroke-width',
+      'stroke-opacity',
+      'opacity',
+      'stroke-linecap',
+      'stroke-linejoin',
+      'stroke-miterlimit',
+      'stroke-dasharray',
+      'marker-start',
+      'marker-end',
+      'mix-blend-mode',
+    ]) {
+      const value = style.getPropertyValue(name);
+      if (value != null && String(value).trim()) out[name] = String(value).trim();
+    }
+    return out;
+  }
+
   function visualFrameFor(el) {
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
@@ -177,6 +214,15 @@
     return ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'figcaption'].includes(tagName);
   }
 
+  function isNaturalTextElement(el) {
+    const tagName = String(el && el.tagName || '').toLowerCase();
+    if (tagName !== 'div') return false;
+    if (!sourceText(el).trim()) return false;
+    const dataId = dataIdAttributes();
+    if (el.querySelector(`h1,h2,h3,h4,h5,h6,p,li,figcaption,hr,img,object,embed,svg,canvas,table,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`)) return false;
+    return Array.from(el.children || []).every(isInlineSourceElement);
+  }
+
   function collectCandidateElements(pageEl) {
     const dataId = dataIdAttributes();
     const candidates = Array.from(pageEl.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,figcaption,hr,img,object,embed,svg,canvas,table,div,span,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`))
@@ -189,6 +235,43 @@
       })
       .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'));
     return candidates.filter((el) => !isRedundantTextContainer(el, candidates));
+  }
+
+  function collectUncapturedTextElements(pageEl, candidates) {
+    const dataId = dataIdAttributes();
+    return Array.from(pageEl.querySelectorAll('*')).filter((el) => {
+      const tagName = String(el.tagName || '').toLowerCase();
+      if (['script', 'style', 'template', 'noscript'].includes(tagName)) return false;
+      if (el.closest(`[${dataId.IGNORE}]`)) return false;
+      if (!directText(el)) return false;
+      if (candidateCoversText(el, candidates, dataId)) return false;
+      return !candidates.some((candidate) => (
+        candidate !== el
+          && candidate.contains(el)
+          && candidateCoversText(candidate, candidates, dataId)
+      ));
+    }).map((el) => ({
+      id: el.id || el.getAttribute('data-id') || null,
+      tagName: el.tagName.toLowerCase(),
+      text: directText(el),
+      sourcePath: sourcePathFor(el, pageEl),
+    }));
+  }
+
+  function candidateCoversText(el, candidates, dataId) {
+    if (!candidates.includes(el)) return false;
+    const tagName = String(el.tagName || '').toLowerCase();
+    if (isTextTag(tagName) || isNaturalTextElement(el) || tagName === 'table' || tagName === 'svg') return true;
+    if (el.hasAttribute(dataId.PARAGRAPH_STYLE)) return true;
+    return String(el.getAttribute(dataId.ROLE) || '').trim().toLowerCase() === 'text';
+  }
+
+  function directText(el) {
+    return Array.from(el.childNodes || [])
+      .filter((node) => node.nodeType === 3)
+      .map((node) => String(node.nodeValue || ''))
+      .join(' ')
+      .trim();
   }
 
   function candidateDescendantsFor(el, candidates) {
@@ -204,7 +287,7 @@
 
   function textRunsFor(el, candidates) {
     const tagName = el.tagName.toLowerCase();
-    if (!isTextTag(tagName)) return [];
+    if (!isTextTag(tagName) && !isNaturalTextElement(el)) return [];
     const inlineRuns = inlineRunsFor(el, candidates);
     if (inlineRuns.length) return inlineRuns;
     return [{
@@ -315,6 +398,7 @@
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     return isTextTag(tagName)
+      || isNaturalTextElement(el)
       || ['hr', 'img', 'object', 'embed', 'svg', 'canvas', 'table'].includes(tagName)
       || el.hasAttribute(dataId.OBJECT)
       || el.hasAttribute(dataId.PARAGRAPH_STYLE);
@@ -379,6 +463,7 @@
     sourcePreviewNodeFor,
     sourceHtmlFor,
     cssVarsFor,
+    vectorPathsFor,
     visualFrameFor,
     mergeFrameAttributes,
     classList,
@@ -386,6 +471,8 @@
     itemIdFor,
     unsupportedFor,
     collectCandidateElements,
+    collectUncapturedTextElements,
+    isNaturalTextElement,
     textRunsFor,
     tableRowsFor,
     ancestorCandidateIndexes,

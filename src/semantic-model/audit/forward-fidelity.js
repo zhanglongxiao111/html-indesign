@@ -33,6 +33,23 @@ const PAGE_LABEL_FIELDS = Object.freeze([
   ['sourceNode', 'pages[].sourceNode'],
 ]);
 
+const VECTOR_PATH_STYLE_FIELDS = Object.freeze([
+  'fillColor',
+  'fillOpacity',
+  'strokeColor',
+  'strokeWeight',
+  'strokeOpacity',
+  'opacity',
+  'blendMode',
+  'strokeStyle',
+  'strokeLineCap',
+  'strokeLineJoin',
+  'strokeMiterLimit',
+  'strokeAlignment',
+  'lineStartMarker',
+  'lineEndMarker',
+]);
+
 function auditForwardFidelity(input = {}, options = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const expectedModel = input.expectedModel || {};
@@ -299,12 +316,13 @@ function compareItem(expected, actual, actualModelItem, identity, context) {
   const actualLabel = protocolLabel(actual, 'item') || {};
   compareLabelFacts(expectedLabel, actualLabel, ITEM_LABEL_FIELDS, identity, context);
 
-  if (String(expected.type || '').toUpperCase() === 'LINE') {
+  const hasVectorGeometry = Boolean(expected.vectorGeometry && array(expected.vectorGeometry.paths).length);
+  if (hasVectorGeometry) {
+    compareVectorGeometry(expected, actual, actualModelItem, identity, context);
+  } else if (String(expected.type || '').toUpperCase() === 'LINE') {
     compareLineGeometry(expected, actual, identity, context);
   } else {
-    compareField(context, 'items[].bounds', expected.bounds || null, actual.bounds || null, {
-      code: 'FORWARD_ITEM_GEOMETRY_CHANGED', ...identity, field: 'bounds', tolerance: context.opts.boundsTolerance,
-    });
+    compareItemBounds(expected, actual, identity, context);
   }
 
   compareExpectedScalar('items[].layer', 'layer', expected.layer, actual.layerName, identity, context);
@@ -318,7 +336,124 @@ function compareItem(expected, actual, actualModelItem, identity, context) {
     compareText(expected, actual, actualModelItem, identity, context);
   }
   comparePlacedAsset(expected, actual, identity, context);
-  compareVisualStyle(expected, actual, identity, context);
+  if (!hasVectorGeometry) compareVisualStyle(expected, actual, identity, context);
+}
+
+function compareVectorGeometry(expected, actual, actualModelItem, identity, context) {
+  const expectedPaths = array(expected.vectorGeometry && expected.vectorGeometry.paths);
+  const actualGeometry = actualModelItem && actualModelItem.vectorGeometry || actual.vectorGeometry || null;
+  const actualPaths = array(actualGeometry && actualGeometry.paths);
+  const styles = context.instructions.styles || {};
+  const expectedFallbackStyle = effectiveExpectedVisualStyle(expected, styles) || {};
+  const actualFallbackStyle = actualModelItem && actualModelItem.visualStyle || actual.visualStyle || {};
+  const expectedFacts = expectedPaths.map((path) => expectedVectorPathFact(path, expectedFallbackStyle, styles.swatches || {}));
+  const actualFacts = actualPaths.map((path, index) => actualVectorPathFact(
+    path,
+    actualFallbackStyle,
+    expectedFacts[index] && expectedFacts[index].visualStyle || {},
+  ));
+  const protocolPath = 'items[].vectorGeometry.paths';
+  if (!isComparableProtocolPath(protocolPath)) return;
+  context.comparedPaths.add(protocolPath);
+  if (deepEqualWithTolerance(expectedFacts, actualFacts, context.opts.boundsTolerance)) return;
+  context.errors.push({
+    code: 'FORWARD_VECTOR_GEOMETRY_CHANGED',
+    ...identity,
+    field: 'vectorGeometry.paths',
+    expected: expectedFacts,
+    actual: actualFacts,
+  });
+}
+
+function expectedVectorPathFact(path = {}, fallbackStyle = {}, swatches = {}) {
+  const hasPathStyle = Boolean(path.visualStyle || path.styleOverride);
+  const rawStyle = {
+    ...(hasPathStyle ? {} : fallbackStyle),
+    ...(path.visualStyle || {}),
+    ...(path.styleOverride || {}),
+  };
+  const visualStyle = {};
+  for (const field of VECTOR_PATH_STYLE_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(rawStyle, field) || rawStyle[field] === undefined) continue;
+    visualStyle[field] = normalizeVectorPathStyleValue(field, rawStyle[field], true, swatches);
+  }
+  return vectorPathFact(path, visualStyle);
+}
+
+function actualVectorPathFact(path = {}, fallbackStyle = {}, expectedStyle = {}) {
+  const rawStyle = { ...fallbackStyle, ...(path.visualStyle || {}) };
+  const visualStyle = {};
+  for (const field of Object.keys(expectedStyle)) {
+    let value = normalizeVectorPathStyleValue(field, rawStyle[field], false, {});
+    if (field === 'strokeWeight' && expectedStyle[field] === 0 && value == null) value = 0;
+    visualStyle[field] = value;
+  }
+  return vectorPathFact(path, visualStyle);
+}
+
+function vectorPathFact(path = {}, visualStyle = {}) {
+  return {
+    closed: Boolean(path.closed),
+    points: array(path.points).map((point) => ({
+      anchor: vectorCoordinateFact(point && point.anchor),
+      leftDirection: vectorCoordinateFact(point && (point.leftDirection || point.anchor)),
+      rightDirection: vectorCoordinateFact(point && (point.rightDirection || point.anchor)),
+    })),
+    visualStyle,
+  };
+}
+
+function vectorCoordinateFact(value = {}) {
+  return { x: Number(value.x || 0), y: Number(value.y || 0) };
+}
+
+function normalizeVectorPathStyleValue(field, value, expected, swatches) {
+  if (field.endsWith('Color') && value == null) return null;
+  if (field === 'lineStartMarker' || field === 'lineEndMarker') {
+    if (!value) return null;
+    if (typeof value === 'string') return { type: String(value).toLowerCase() };
+    return { type: value.type ? String(value.type).toLowerCase() : null };
+  }
+  let normalized = expected
+    ? normalizeExpectedVisualValue(field, value, swatches)
+    : normalizeActualVisualValue(field, value);
+  if (field === 'strokeStyle') {
+    const text = String(normalized == null ? '' : normalized).trim().toLowerCase();
+    if (!text || text === 'none' || text === 'solid' || text === '$id/solid' || text === '实底') return 'solid';
+    const dashPattern = strokeDashPattern(text);
+    if (dashPattern) return `dash:${dashPattern.map(formatDashNumber).join(',')}`;
+    if (text.includes('dot') || text.includes('点')) return 'dotted';
+    if (text.includes('dash') || text.includes('虚')) return 'dashed';
+    return text;
+  }
+  if (['blendMode', 'strokeLineCap', 'strokeLineJoin', 'strokeAlignment'].includes(field) && normalized != null) {
+    normalized = String(normalized).toLowerCase();
+  }
+  return normalized;
+}
+
+function strokeDashPattern(value) {
+  const text = String(value == null ? '' : value).trim();
+  const numericOnly = /^\s*(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?(?:\s*(?:,\s*|\s+)(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?)+\s*$/i.test(text);
+  if (!numericOnly && !/dash|虚线|点线/i.test(text)) return null;
+  const tokens = text.match(/(?:\d+(?:\.\d+)?|\.\d+)\s*(?:px|pt|mm)?/gi) || [];
+  if (tokens.length < 2 || tokens.length > 10) return null;
+  const pattern = tokens.map((token) => {
+    const match = /^((?:\d+(?:\.\d+)?|\.\d+))\s*(px|pt|mm)?$/i.exec(token.trim());
+    if (!match) return NaN;
+    const number = Number(match[1]);
+    return String(match[2] || '').toLowerCase() === 'mm' ? number * 72 / 25.4 : number;
+  });
+  if (pattern.some((number) => !Number.isFinite(number) || number < 0) || !pattern.some((number) => number > 0)) return null;
+  if (pattern.length % 2 === 1) {
+    if (pattern.length * 2 > 10) return null;
+    return pattern.concat(pattern);
+  }
+  return pattern;
+}
+
+function formatDashNumber(value) {
+  return String(Math.round(Number(value) * 1000000) / 1000000);
 }
 
 function compareLabelFacts(expected, actual, fields, identity, context) {
@@ -427,10 +562,81 @@ function compareVisualStyle(expected, actual, identity, context) {
     const expectedValue = normalizeExpectedVisualValue(field, expectedStyle[field], swatches);
     let actualValue = normalizeActualVisualValue(field, actualStyle[field]);
     if (expectedValue === 0 && actualValue == null && ['strokeWeight', 'cornerRadius'].includes(field)) actualValue = 0;
+    if (field === 'cornerRadius' && equivalentPillRadius(
+      expectedValue,
+      actualValue,
+      expected.bounds,
+      actual.bounds,
+      context.opts.boundsTolerance,
+    )) continue;
     compareField(context, protocolPath, expectedValue, actualValue, {
       code: 'FORWARD_VISUAL_STYLE_CHANGED', ...identity, field: `visualStyle.${field}`, tolerance: context.opts.numberTolerance,
     });
   }
+}
+
+function compareItemBounds(expected, actual, identity, context) {
+  const expectedBounds = expected.bounds || null;
+  const actualBounds = actual.bounds || null;
+  if (isBoundedTextFitAdjustment(expected, expectedBounds, actualBounds, context.opts.boundsTolerance)) {
+    context.comparedPaths.add('items[].bounds');
+    if (!deepEqualWithTolerance(expectedBounds, actualBounds, context.opts.boundsTolerance)) {
+      context.warnings.push({
+        code: 'FORWARD_TEXT_FIT_APPLIED',
+        ...identity,
+        field: 'bounds',
+        expected: expectedBounds,
+        actual: actualBounds,
+        growX: Number(actualBounds.width) - Number(expectedBounds.width),
+        growY: Number(actualBounds.height) - Number(expectedBounds.height),
+      });
+    }
+    return;
+  }
+  compareField(context, 'items[].bounds', expectedBounds, actualBounds, {
+    code: 'FORWARD_ITEM_GEOMETRY_CHANGED', ...identity, field: 'bounds', tolerance: context.opts.boundsTolerance,
+  });
+}
+
+function isBoundedTextFitAdjustment(item, expected, actual, tolerance) {
+  const policy = item && item.textFit;
+  if (!policy || policy.mode !== 'expand-frame-to-content' || !expected || !actual) return false;
+  const growX = Number(actual.width) - Number(expected.width);
+  const growY = Number(actual.height) - Number(expected.height);
+  if (![growX, growY].every(Number.isFinite)) return false;
+  if (growX < -tolerance || growY < -tolerance) return false;
+  if (growX > Number(policy.maxGrowX || 0) + tolerance) return false;
+  if (growY > Number(policy.maxGrowY || 0) + tolerance) return false;
+  if (Math.abs(Number(actual.y) - Number(expected.y)) > tolerance) return false;
+  const anchor = String(policy.horizontalAnchor || 'start').toLowerCase();
+  if (anchor === 'center') {
+    return Math.abs(boundsCenterX(actual) - boundsCenterX(expected)) <= tolerance;
+  }
+  if (anchor === 'end' || anchor === 'right') {
+    return Math.abs(boundsRight(actual) - boundsRight(expected)) <= tolerance;
+  }
+  return Math.abs(Number(actual.x) - Number(expected.x)) <= tolerance;
+}
+
+function boundsCenterX(bounds) {
+  return Number(bounds.x) + Number(bounds.width) / 2;
+}
+
+function boundsRight(bounds) {
+  return Number(bounds.x) + Number(bounds.width);
+}
+
+function equivalentPillRadius(expectedRadius, actualRadius, expectedBounds, actualBounds, tolerance) {
+  const expectedCap = halfShortEdge(expectedBounds);
+  const actualCap = halfShortEdge(actualBounds);
+  if (![Number(expectedRadius), Number(actualRadius), expectedCap, actualCap].every(Number.isFinite)) return false;
+  return Number(expectedRadius) >= expectedCap - tolerance
+    && Number(actualRadius) >= actualCap - tolerance;
+}
+
+function halfShortEdge(bounds) {
+  if (!bounds) return NaN;
+  return Math.min(Number(bounds.width), Number(bounds.height)) / 2;
 }
 
 function compareAssets(expectedAssets, actualAssets, context) {

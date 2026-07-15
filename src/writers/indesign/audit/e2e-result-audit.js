@@ -1,6 +1,20 @@
 const fs = require('fs');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
 
+const LOSSY_VECTOR_WARNING_CODES = new Set([
+  'PRESERVE_VECTOR_UNSUPPORTED',
+  'VECTOR_DASH_STYLE_CREATE_FAILED',
+  'VECTOR_GROUP_CHILD_CREATE_FAILED',
+  'VECTOR_GROUP_CREATE_FAILED',
+  'VECTOR_GROUP_INCOMPLETE',
+  'VECTOR_GROUP_PATH_APPLY_FAILED',
+  'VECTOR_MULTIPATH_UNSUPPORTED',
+  'VECTOR_MULTIPATH_GROUP_REQUIRED',
+  'VECTOR_PATH_APPLY_FAILED',
+  'VECTOR_STROKE_STYLE_APPLY_FAILED',
+  'VECTOR_STROKE_STYLE_RESOLVE_FAILED',
+]);
+
 function assertPanelNameAuditOk(result, options = {}) {
   assertResultInputValid(result, 'assertPanelNameAuditOk');
   const allowed = panelNameSet(options.allowedPanelNames || []);
@@ -58,6 +72,20 @@ function assertNoTextOverset(result) {
   throw error;
 }
 
+function assertNoLossyVectorWarnings(result) {
+  assertResultInputValid(result, 'assertNoLossyVectorWarnings');
+  const messages = [
+    ...(result.messages || []),
+    ...(result.warnings || []),
+  ].filter((message) => message && LOSSY_VECTOR_WARNING_CODES.has(String(message.code || '')));
+  if (messages.length === 0) return;
+
+  const error = new Error(`InDesign dropped or failed to apply vector geometry: ${JSON.stringify(messages, null, 2)}`);
+  error.code = 'INDESIGN_VECTOR_GEOMETRY_LOSS';
+  error.vectorMessages = messages;
+  throw error;
+}
+
 function isAllowedBuiltInPanelName(kind, name) {
   return kind === 'swatches' && ['None', 'Registration', 'Paper', 'Black'].includes(String(name));
 }
@@ -108,6 +136,7 @@ function escapeRegExp(value) {
 module.exports = {
   assertPanelNameAuditOk,
   observedPanelNamesForHtml,
+  assertNoLossyVectorWarnings,
   assertNoTextOverset,
   isAllowedBuiltInPanelName,
 };

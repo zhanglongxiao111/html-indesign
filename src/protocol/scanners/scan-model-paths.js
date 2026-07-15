@@ -298,6 +298,23 @@ const ITEM_VECTOR_GEOMETRY_FIELD_PATHS = Object.freeze({
   paths: 'items[].vectorGeometry.paths',
 });
 
+const VECTOR_PATH_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
+  fillColor: 'items[].vectorGeometry.paths[].visualStyle.fillColor',
+  fillOpacity: 'items[].vectorGeometry.paths[].visualStyle.fillOpacity',
+  strokeColor: 'items[].vectorGeometry.paths[].visualStyle.strokeColor',
+  strokeWeight: 'items[].vectorGeometry.paths[].visualStyle.strokeWeight',
+  opacity: 'items[].vectorGeometry.paths[].visualStyle.opacity',
+  strokeOpacity: 'items[].vectorGeometry.paths[].visualStyle.strokeOpacity',
+  strokeStyle: 'items[].vectorGeometry.paths[].visualStyle.strokeStyle',
+  strokeLineCap: 'items[].vectorGeometry.paths[].visualStyle.strokeLineCap',
+  strokeLineJoin: 'items[].vectorGeometry.paths[].visualStyle.strokeLineJoin',
+  strokeMiterLimit: 'items[].vectorGeometry.paths[].visualStyle.strokeMiterLimit',
+  strokeAlignment: 'items[].vectorGeometry.paths[].visualStyle.strokeAlignment',
+  lineStartMarker: 'items[].vectorGeometry.paths[].visualStyle.lineStartMarker',
+  lineEndMarker: 'items[].vectorGeometry.paths[].visualStyle.lineEndMarker',
+  blendMode: 'items[].vectorGeometry.paths[].visualStyle.blendMode',
+});
+
 const ITEM_CONTENT_FIELD_PATHS = Object.freeze({
   text: 'items[].content.text',
   sourceHtml: 'items[].content.sourceHtml',
@@ -603,10 +620,27 @@ function scanVectorGeometryPaths(paths, seen, vectorPaths) {
     if (!isPlainObject(vectorPath) || !Array.isArray(vectorPath.points)) {
       continue;
     }
+    if (isPlainObject(vectorPath.visualStyle)) {
+      scanVectorPathVisualStyle(paths, seen, vectorPath.visualStyle);
+    }
     for (const point of vectorPath.points) {
       if (isPlainObject(point) && hasOwn.call(point, 'pointType')) {
         addPath(paths, seen, 'items[].vectorGeometry.paths[].points[].pointType');
       }
+    }
+  }
+}
+
+function scanVectorPathVisualStyle(paths, seen, visualStyle) {
+  for (const [key, value] of Object.entries(visualStyle)) {
+    const protocolPath = VECTOR_PATH_VISUAL_STYLE_FIELD_PATHS[key];
+    if (protocolPath) {
+      addPath(paths, seen, protocolPath);
+      if ((key === 'lineStartMarker' || key === 'lineEndMarker') && isPlainObject(value) && value.rawName != null) {
+        addPath(paths, seen, `${protocolPath}.rawName`);
+      }
+    } else if (!STRUCTURAL_KEYS.has(key)) {
+      addPath(paths, seen, `items[].vectorGeometry.paths[].visualStyle.${key}`);
     }
   }
 }
