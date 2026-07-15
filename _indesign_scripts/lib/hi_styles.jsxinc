@@ -1,6 +1,7 @@
 if (typeof HI === "undefined") { HI = {}; }
 HI.ensureStyles = function (doc, styles, report) {
     styles = styles || {};
+    HI.configureFonts(styles.fonts || {});
     return {
         swatches: HI.ensureSwatches(doc, styles.swatches || {}, report),
         compositeFonts: HI.ensureCompositeFonts(doc, styles.compositeFonts || {}, report),
@@ -96,8 +97,9 @@ HI.assignTextStyleProperties = function (doc, style, def, report) {
     try {
         if (def.appliedFont) {
             var font = HI.resolveFont(def, report);
-            if (font) style.appliedFont = font;
-            if (def.fontStyleName) style.fontStyle = def.fontStyleName;
+            if (font) {
+                style.appliedFont = font;
+            }
         }
     } catch (error) {
         HI.addMessage(report, "warning", "FONT_APPLY_FAILED", String(error), { font: def.appliedFont });

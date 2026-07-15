@@ -1057,6 +1057,73 @@ test('compileInstructions emits editable text for textual annotation objects', a
   assert.equal(annotationText.paragraphStyle, 'annotation');
 });
 
+test('compileInstructions does not create aggregate text companions for semantic containers', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      rectPx: { x: 0, y: 0, width: 100, height: 60 },
+      attributes: {},
+      computedStyle: {},
+      authoredStyle: {},
+      items: [{
+        id: 'card',
+        role: 'shape',
+        tagName: 'div',
+        classList: ['card'],
+        attributes: { 'data-id-object': '', 'data-id-role': 'container' },
+        text: 'LabelValue',
+        rectPx: { x: 10, y: 10, width: 40, height: 30 },
+        boundsMm: { x: 10, y: 10, width: 40, height: 30 },
+        computedStyle: { backgroundColor: 'rgb(240, 240, 240)' },
+        authoredStyle: {},
+        candidateIndex: 0,
+        ancestorCandidateIndexes: [],
+      }, {
+        id: 'label',
+        role: 'text',
+        tagName: 'span',
+        classList: ['label'],
+        attributes: { 'data-id-paragraph-style': 'label' },
+        text: 'Label',
+        rectPx: { x: 12, y: 12, width: 12, height: 5 },
+        boundsMm: { x: 12, y: 12, width: 12, height: 5 },
+        computedStyle: { fontSize: '10px' },
+        authoredStyle: {},
+        candidateIndex: 1,
+        ancestorCandidateIndexes: [0],
+        ancestorCandidateIds: ['card'],
+      }, {
+        id: 'value',
+        role: 'text',
+        tagName: 'span',
+        classList: ['value'],
+        attributes: { 'data-id-paragraph-style': 'value' },
+        text: 'Value',
+        rectPx: { x: 25, y: 12, width: 12, height: 5 },
+        boundsMm: { x: 25, y: 12, width: 12, height: 5 },
+        computedStyle: { fontSize: '10px' },
+        authoredStyle: {},
+        candidateIndex: 2,
+        ancestorCandidateIndexes: [0],
+        ancestorCandidateIds: ['card'],
+      }],
+    }],
+    assets: [],
+  };
+
+  const instructions = compileInstructions(snapshot);
+  const ids = instructions.pages[0].items.map((item) => item.id);
+
+  assert.equal(ids.includes('card'), true);
+  assert.equal(ids.includes('label'), true);
+  assert.equal(ids.includes('value'), true);
+  assert.equal(ids.includes('card-text'), false);
+});
+
 test('compileInstructions carries vertical justification into text instructions', () => {
   const instructions = compileInstructions({
     metadata: { source: 'inline.html' },

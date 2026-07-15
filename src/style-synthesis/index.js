@@ -327,9 +327,16 @@ function declaredParagraphFacts(item) {
   if (!ruleFactValue(rule.fontSize) && !ruleFactValue(rule.fontFamily)) return null;
   const facts = {};
   for (const prop of DECLARED_PARAGRAPH_FACT_PROPS) {
-    facts[prop] = ruleFactValue(rule[prop]) || computed[prop];
+    const declared = ruleFactValue(rule[prop]);
+    facts[prop] = prop === 'fontFamily' && isCssVariableReference(declared)
+      ? computed[prop]
+      : declared || computed[prop];
   }
   return facts;
+}
+
+function isCssVariableReference(value) {
+  return /var\s*\(/i.test(String(value || ''));
 }
 
 function ruleFactValue(value) {
@@ -493,7 +500,7 @@ function compileTableCell(cell, styles, report, options) {
   const style = cell.computedStyle || {};
   const fill = ensureFillSwatch(styles, style);
   const paragraphStyle = styleTokenForKind(cell.attributes, 'paragraphStyles')
-    ? ensureParagraphStyle(styles, tableCellStyleItem(cell), report, options)
+    ? ensureTableCellParagraphStyle(styles, cell, report, options)
     : null;
   const padding = tableCellPadding(style, options);
   const borders = compileTableCellBorders(cell, styles, options);
@@ -511,6 +518,10 @@ function compileTableCell(cell, styles, report, options) {
     textColor: ensureSwatch(styles, style.color),
     pointSize: styleLengthToPt(style, 'fontSize', options),
     leading: styleLengthToPt(style, 'lineHeight', options),
+    appliedFont: ensureFont(styles, style.fontFamily, options, cell.text),
+    fontStyleName: fontStyleNameFor(style),
+    tracking: trackingValue(style, options),
+    capitalization: capitalizationFor(style),
     textAlign: style.textAlign || 'left',
     borderColor: ensureSwatch(styles, style.borderTopColor),
     borderWeight: itemLengthToPt(cell, 'borderTopWidth', options),
@@ -519,6 +530,13 @@ function compileTableCell(cell, styles, report, options) {
     padding: padding.values,
     paddingUnit: padding.unit,
   };
+}
+
+function ensureTableCellParagraphStyle(styles, cell, report, options) {
+  const item = tableCellStyleItem(cell);
+  const declaredName = styleNameForKind(item, 'paragraphStyles', null, options);
+  if (declaredName && styles.paragraphStyles[declaredName]) return declaredName;
+  return ensureParagraphStyle(styles, item, report, options);
 }
 
 function compileTableCellRuns(cell, styles, report, options) {

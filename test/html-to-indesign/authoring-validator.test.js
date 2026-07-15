@@ -273,6 +273,32 @@ test('validateAuthoringRules allows nested text to use local card rhythm instead
   assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
 });
 
+test('validateAuthoringRules inherits grid-ignore from a non-mappable authoring container', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'material-label',
+      role: 'text',
+      tagName: 'p',
+      classList: ['material-name'],
+      attributes: { 'data-id-paragraph-style': 'material-name' },
+      sourceAncestorNodes: [{
+        tagName: 'figcaption',
+        attributes: { 'data-id-grid-ignore': '' },
+      }],
+      boundsMm: { x: 13, y: 14, width: 18, height: 5 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 0.5 });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+});
+
 test('validateAuthoringRules checks text placement by left right and top edges', () => {
   const snapshot = snapshotWithPage({
     attributes: {
@@ -336,6 +362,117 @@ test('validateAuthoringRules can promote warnings to errors in strict mode', () 
 
   assert.equal(result.valid, false);
   assert.equal(result.errors.some((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING'), true);
+});
+
+test('validateAuthoringRules rejects graphic protocol fields on a container without its own resource', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'graphic-container',
+      role: ITEM_ROLE.GRAPHIC,
+      tagName: 'figure',
+      classList: ['hero-figure'],
+      attributes: { 'data-id-role': ITEM_ROLE.GRAPHIC },
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((entry) => entry.code === 'GRAPHIC_ASSET_REFERENCE_MISSING'
+    && entry.itemId === 'graphic-container'), true);
+});
+
+test('validateAuthoringRules accepts graphic protocol fields on an image with its own source', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'hero-image',
+      role: ITEM_ROLE.GRAPHIC,
+      tagName: 'img',
+      classList: ['hero-image'],
+      attributes: { 'data-id-role': ITEM_ROLE.GRAPHIC, src: './assets/hero.jpg' },
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.some((entry) => entry.code === 'GRAPHIC_ASSET_REFERENCE_MISSING'), false);
+});
+
+test('validateAuthoringRules rejects composite layout containers declared as text objects', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'metric-card',
+      role: ITEM_ROLE.TEXT,
+      tagName: 'div',
+      candidateIndex: 0,
+      classList: ['metric-card'],
+      attributes: { 'data-id-role': ITEM_ROLE.TEXT },
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }, {
+      id: 'metric-value',
+      role: ITEM_ROLE.TEXT,
+      tagName: 'p',
+      candidateIndex: 1,
+      ancestorCandidateIndexes: [0],
+      classList: ['metric-value'],
+      attributes: { 'data-id-paragraph-style': 'metric-value' },
+      boundsMm: { x: 12, y: 12, width: 20, height: 8 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((entry) => entry.code === 'TEXT_CONTAINER_HAS_CHILD_OBJECTS'
+    && entry.itemId === 'metric-card'), true);
+});
+
+test('validateAuthoringRules allows a semantic container to follow its child content height', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'content-block',
+      role: ITEM_ROLE.SHAPE,
+      tagName: 'div',
+      candidateIndex: 0,
+      classList: ['content-block'],
+      attributes: { 'data-id-role': ITEM_ROLE.CONTAINER },
+      boundsMm: { x: 10, y: 10, width: 25, height: 25 },
+    }, {
+      id: 'content-copy',
+      role: ITEM_ROLE.TEXT,
+      tagName: 'p',
+      candidateIndex: 1,
+      ancestorCandidateIndexes: [0],
+      classList: ['body-copy'],
+      attributes: { 'data-id-paragraph-style': 'body-copy' },
+      boundsMm: { x: 12, y: 12, width: 20, height: 8 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 0.5 });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'
+    && entry.itemId === 'content-block'), false);
 });
 
 function snapshotWithPage(overrides = {}) {

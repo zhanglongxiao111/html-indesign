@@ -85,6 +85,13 @@ test('html.compile_instructions writes validated instructions and summary', () =
   const instructions = JSON.parse(fs.readFileSync(response.data.instructionsPath, 'utf8'));
   assert.equal(Array.isArray(instructions.pages), true);
   assert.equal(instructions.pages.length > 0, true);
+  const layerNames = instructions.layers.map((layer) => layer.name);
+  assert.equal(layerNames.includes('图片'), true);
+  assert.equal(layerNames.includes('遮罩'), true);
+  assert.equal(layerNames.includes('文字'), true);
+  assert.equal(layerNames.includes('image'), false);
+  assert.equal(layerNames.includes('overlay'), false);
+  assert.equal(layerNames.includes('text'), false);
 });
 
 test('html.build_indesign returns script.run host actions instead of calling InDesign directly', () => {
@@ -113,6 +120,31 @@ test('html.build_indesign returns script.run host actions instead of calling InD
   assert.equal(verifyAction.args.path.endsWith('plugin-smoke.pdf'), true);
   assert.equal(Object.prototype.hasOwnProperty.call(verifyAction.args, 'file'), false);
   assert.equal(response.resume.method, 'tools/resume');
+});
+
+test('html.build_indesign resolves executor libraries from the plugin root outside the caller project', () => {
+  const callerRoot = path.join(workspaceRoot, 'external-plugin-caller');
+  const outDir = path.join(callerRoot, 'build-output');
+  fs.rmSync(callerRoot, { recursive: true, force: true });
+  fs.mkdirSync(callerRoot, { recursive: true });
+
+  const response = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: path.join(repoRoot, 'test', 'fixtures', 'e2e', 'architecture-report', 'deck.config.json'),
+      outDir,
+      outputBaseName: 'external-caller',
+      exportPdf: false,
+      exportIdml: false,
+    },
+  }, { cwd: callerRoot });
+
+  assert.equal(response.status, 'requires_host_actions');
+  const buildJsx = fs.readFileSync(response.state.buildScriptPath, 'utf8');
+  const expectedPluginRoot = repoRoot.replace(/\\/g, '/');
+  const callerPath = callerRoot.replace(/\\/g, '/');
+  assert.match(buildJsx, new RegExp(`var base = ${escapeRegExp(JSON.stringify(expectedPluginRoot))}`));
+  assert.doesNotMatch(buildJsx, new RegExp(`var base = ${escapeRegExp(JSON.stringify(callerPath))}`));
 });
 
 test('html.build_indesign resume returns generated artifacts after host success', () => {
@@ -184,6 +216,30 @@ test('html.reverse_export returns script.run host action for an INDD file', () =
   assert.equal(fs.existsSync(response.state.reverseScriptPath), true);
   assert.equal(response.actions.length, 1);
   assert.equal(response.actions[0].tool_id, 'script.run');
+});
+
+test('html.reverse_export resolves its snapshot script from the plugin root outside the caller project', () => {
+  const callerRoot = path.join(workspaceRoot, 'external-reverse-caller');
+  const outDir = path.join(callerRoot, 'reverse-output');
+  fs.rmSync(callerRoot, { recursive: true, force: true });
+  fs.mkdirSync(callerRoot, { recursive: true });
+  const fakeIndd = path.join(callerRoot, 'input.indd');
+  fs.writeFileSync(fakeIndd, 'fake');
+
+  const response = callPlugin('tools/call', {
+    id: 'html.reverse_export',
+    args: {
+      indd: fakeIndd,
+      outDir,
+    },
+  }, { cwd: callerRoot });
+
+  assert.equal(response.status, 'requires_host_actions');
+  const reverseJsx = fs.readFileSync(response.state.reverseScriptPath, 'utf8');
+  const expectedScript = path.join(repoRoot, '_indesign_scripts', 'export_to_html_snapshot.jsx').replace(/\\/g, '/');
+  const wrongScript = path.join(callerRoot, '_indesign_scripts', 'export_to_html_snapshot.jsx').replace(/\\/g, '/');
+  assert.match(reverseJsx, new RegExp(escapeRegExp(JSON.stringify(expectedScript))));
+  assert.doesNotMatch(reverseJsx, new RegExp(escapeRegExp(JSON.stringify(wrongScript))));
 });
 
 test('html.reverse_export stores the resolved experimental profile for resume', () => {
@@ -306,4 +362,8 @@ function writeAuthorPackage(root, pageHtml) {
     pages: [{ id: 'agenda', file: 'pages/01-agenda.html' }],
   }, null, 2), 'utf8');
   fs.writeFileSync(path.join(root, 'pages/01-agenda.html'), pageHtml, 'utf8');
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

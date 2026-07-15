@@ -230,13 +230,19 @@ test('validateInstructions rejects invalid text fit modes', () => {
         bounds: { x: 0, y: 0, width: 20, height: 80 },
         text: 'bad',
         runs: [],
-        textFit: { mode: 'shrink-font' },
+        textFit: {
+          mode: 'shrink-font',
+          preferWidth: 'yes',
+          horizontalAnchor: 'middle',
+        },
       }],
     }],
   });
 
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((error) => error.code === 'INVALID_TEXT_FIT_MODE'));
+  assert.ok(result.errors.some((error) => error.code === 'INVALID_TEXT_FIT_PREFERENCE'));
+  assert.ok(result.errors.some((error) => error.code === 'INVALID_TEXT_FIT_ANCHOR'));
 });
 
 test('validateInstructions rejects missing required protocol labels in strict mode', () => {

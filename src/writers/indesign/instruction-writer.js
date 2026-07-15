@@ -1,4 +1,4 @@
-const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { HTML_DATA_ID_ATTRIBUTES, ITEM_ROLE } = require('../../protocol');
 const { createReport, addMessage } = require('../../shared/report');
 const { parseCssLength, round } = require('../../shared/geometry');
 const { normalizeCssColor } = require('../../shared/style-utils');
@@ -328,7 +328,7 @@ function textInstructionItemFor({
   visualStyle,
   base,
 }) {
-  const textFit = textFitPolicy(modelItem, options);
+  const textFit = textFitPolicy(modelItem, options, layout);
   const text = textForInstruction(modelItem, content);
   const styleOverride = vectorStyleOverride(visualStyle, styles, report, modelItem);
   const textFrameStyle = textFrameStyleForInstruction(modelItem);
@@ -876,6 +876,7 @@ function hasStructuredTextChildCarryingItemText(item, siblingItems = []) {
   if (!item || !item.id || !Array.isArray(siblingItems)) return false;
   const parentText = normalizeInstructionText(item.content && item.content.text);
   if (!parentText) return false;
+  if (authoredItemRole(item) === ITEM_ROLE.CONTAINER && hasStructuredTextDescendant(item, siblingItems)) return true;
   const childTexts = siblingItems
     .filter((candidate) => (
       candidate
@@ -889,7 +890,34 @@ function hasStructuredTextChildCarryingItemText(item, siblingItems = []) {
     .filter(Boolean);
   if (childTexts.length === 0) return false;
   if (childTexts.some((text) => text === parentText)) return true;
-  return normalizeInstructionText(childTexts.join(' ')) === parentText;
+  const combined = normalizeInstructionText(childTexts.join(' '));
+  return combined === parentText || withoutWhitespace(combined) === withoutWhitespace(parentText);
+}
+
+function authoredItemRole(item) {
+  const sourceNode = item && item.sourceNode || {};
+  const attrs = sourceNode.attributes || item && item.attributes || {};
+  return String(attrs[HTML_DATA_ID_ATTRIBUTES.ROLE] || '').trim().toLowerCase();
+}
+
+function hasStructuredTextDescendant(item, siblingItems) {
+  const byId = new Map(siblingItems.filter(Boolean).map((candidate) => [candidate.id, candidate]));
+  return siblingItems.some((candidate) => {
+    if (!candidate || candidate === item || candidate.role !== ITEM_ROLE.TEXT) return false;
+    let parentId = candidate.structure && candidate.structure.parentId;
+    const visited = new Set();
+    while (parentId && !visited.has(parentId)) {
+      if (parentId === item.id) return true;
+      visited.add(parentId);
+      const parent = byId.get(parentId);
+      parentId = parent && parent.structure && parent.structure.parentId;
+    }
+    return false;
+  });
+}
+
+function withoutWhitespace(value) {
+  return String(value || '').replace(/\s+/g, '');
 }
 
 module.exports = {

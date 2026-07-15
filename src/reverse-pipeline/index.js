@@ -12,15 +12,20 @@ const {
 const { semanticModelToHtml } = require('../writers/html/visual-html-writer');
 const { writeReverseAuthorPackage } = require('../writers/html/author-package-writer');
 const { auditReverseAuthorPackage } = require('../writers/html/audit/reverse-roundtrip');
+const { resolveSemanticPreset } = require('../semantic-preset');
 
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
   const reconstructionProfile = assertResolvedReconstructionProfile(options.reconstructionProfile);
 
   const inputFormat = options.blueprintPath ? 'historical-blueprint' : 'reverse-snapshot';
+  const semanticPreset = options.blueprintPath ? null : sourceSemanticPreset(options.sourceRoot);
+  const adapterOptions = semanticPreset
+    ? { mode: options.mode, semanticPreset }
+    : { mode: options.mode };
   const observedModel = options.blueprintPath
-    ? blueprintMigrationToSemanticModel(readJson(options.blueprintPath), { mode: options.mode })
-    : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), { mode: options.mode });
+    ? blueprintMigrationToSemanticModel(readJson(options.blueprintPath), adapterOptions)
+    : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), adapterOptions);
   const reconstruction = reconstructSemanticModel(observedModel, {
     mode: options.mode,
     inputFormat,
@@ -40,6 +45,7 @@ function compileReverseSnapshotToHtml(options) {
     outDir: path.join(outDir, 'author'),
     mode: options.mode,
     sourceRoot: options.sourceRoot,
+    ...(semanticPreset ? { semanticPreset } : {}),
     assetPolicy: options.assetPolicy || 'reference',
     nasPublicRoot: options.nasPublicRoot || '/nas',
   });
@@ -127,6 +133,16 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(path.resolve(filePath), 'utf8'));
 }
 
+function sourceSemanticPreset(sourceRoot) {
+  if (!sourceRoot) return null;
+  const rootDir = path.resolve(sourceRoot);
+  const configPath = path.join(rootDir, 'deck.config.json');
+  if (!fs.existsSync(configPath)) return null;
+  const config = readJson(configPath);
+  if (!config.semanticPreset) return null;
+  return resolveSemanticPreset({ rootDir, config }).preset;
+}
+
 function reconstructionPassedTrustedSourceGate(report) {
   return Boolean(report
     && report.trustedSourcePreservation
@@ -136,4 +152,5 @@ function reconstructionPassedTrustedSourceGate(report) {
 module.exports = {
   compileReverseSnapshotToHtml,
   reconstructionPassedTrustedSourceGate,
+  sourceSemanticPreset,
 };

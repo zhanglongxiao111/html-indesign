@@ -252,8 +252,7 @@ test('executor maps font family weight and italic into InDesign font styles', ()
 
   for (const token of [
     'HI.resolveFont',
-    'def.fontStyleName',
-    'style.fontStyle',
+    'style.appliedFont = font',
   ]) {
     assert.match(stylesSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -261,11 +260,47 @@ test('executor maps font family weight and italic into InDesign font styles', ()
     'HI.resolveFont',
     'HI.fontStyleNameFor',
     'def.fontStyleName',
-    'family + "\\t" + styleName',
+    'HI.installedFontNameFor(families[j], styles[i])',
     'app.fonts.itemByName(name)',
+    'font.isValid !== true',
+    'String(font.fontFamily || "")',
   ]) {
     assert.match(fontsSource, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+  assert.doesNotMatch(stylesSource, /\.fontStyle\s*=\s*HI\.lastFontResolution\.styleName/);
+  assert.doesNotMatch(
+    fs.readFileSync(path.join(libDir, 'hi_text_overrides.jsxinc'), 'utf8'),
+    /\.fontStyle\s*=\s*HI\.lastFontResolution\.styleName/,
+  );
+  assert.doesNotMatch(
+    fs.readFileSync(path.join(libDir, 'hi_tables.jsxinc'), 'utf8'),
+    /\.fontStyle\s*=\s*HI\.lastFontResolution\.styleName/,
+  );
+});
+
+test('executor follows compiled font fallbacks and resolves Windows InDesign font aliases', () => {
+  const stylesSource = fs.readFileSync(path.join(libDir, 'hi_styles.jsxinc'), 'utf8');
+  const fontsSource = fs.readFileSync(path.join(libDir, 'hi_fonts.jsxinc'), 'utf8');
+  const tablesSource = fs.readFileSync(path.join(libDir, 'hi_tables.jsxinc'), 'utf8');
+
+  assert.match(stylesSource, /HI\.configureFonts\(styles\.fonts \|\| \{\}\)/);
+  assert.match(fontsSource, /HI\.fontDefs\s*=\s*defs \|\| \{\}/);
+  assert.match(fontsSource, /FONT_FALLBACK_APPLIED/);
+  assert.match(fontsSource, /HI\.fontFamilyCandidates/);
+  assert.match(fontsSource, /app\.fonts\.everyItem\(\)\.name/);
+  assert.match(fontsSource, /HI\.installedFontNameFor/);
+  assert.match(fontsSource, /Noto Sans SC \(TT\)/);
+  assert.match(fontsSource, /微软雅黑/);
+  assert.match(fontsSource, /def\.fallback/);
+  assert.match(
+    fontsSource,
+    /base === "semibold"[^\n]+weights = \[base, "bold", "medium", "regular"\]/,
+    'when Semibold is unavailable, the fallback order must match Chromium and prefer Bold before Medium',
+  );
+  assert.ok(
+    tablesSource.indexOf('cell.texts[0].appliedParagraphStyle') < tablesSource.indexOf('cell.texts[0].fillColor'),
+    'table paragraph style must be applied before cell text overrides',
+  );
 });
 
 test('asset helper resolves placed files and applies fitting preferences', () => {
@@ -518,6 +553,12 @@ test('text fit helper expands bounded overset frames and reports unresolved case
   assert.match(source, /TEXT_FIT_UNRESOLVED/);
   assert.match(source, /maxGrowX/);
   assert.match(source, /maxGrowY/);
+  assert.match(source, /HI\.applyTextFitWidthFirst/);
+  assert.match(source, /TEXT_FIT_WIDTH_APPLIED/);
+  assert.ok(
+    source.indexOf('HI.applyTextFitWidthFirst') < source.indexOf('frame.fit(FitOptions.FRAME_TO_CONTENT)'),
+    'single-line authored text should try bounded width growth before adding a wrapped line',
+  );
   assert.match(items, /HI\.resolveTextFrameOverflow\(report,\s*frame,\s*item\)/);
 });
 

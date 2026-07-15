@@ -188,6 +188,50 @@ test('compileReverseSnapshotToHtml forwards source root into the author package 
   );
 });
 
+test('compileReverseSnapshotToHtml loads the author package semantic preset before validating labels', () => {
+  const root = path.resolve('test/workspace/reverse-cli-project-preset-test');
+  const sourceRoot = path.join(root, 'source');
+  const outDir = path.join(root, 'out');
+  const snapshotPath = path.join(root, 'reverse-snapshot.json');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><h2 id="agenda-title" data-id-paragraph-style="project-label">汇报结构</h2></section>');
+
+  const configPath = path.join(sourceRoot, 'deck.config.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.profile = 'architecture-report';
+  config.semanticPreset = 'semantic-preset.json';
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+
+  const preset = JSON.parse(fs.readFileSync(path.resolve('presets/architecture-report/semantic-preset.json'), 'utf8'));
+  preset.id = 'reverse-cli-project-preset';
+  preset.styleNameMap.paragraphStyles['project-label'] = '项目标注';
+  fs.writeFileSync(path.join(sourceRoot, 'semantic-preset.json'), JSON.stringify(preset, null, 2), 'utf8');
+
+  const snapshot = JSON.parse(fs.readFileSync(path.resolve('test/fixtures/indesign-reverse/tagged-snapshot.json'), 'utf8'));
+  snapshot.pages[0].items[0].labels[0].sourceNode.attributes['data-id-paragraph-style'] = 'project-label';
+  fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+  fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
+
+  const result = compileReverseSnapshotToHtml({
+    snapshotPath,
+    outDir,
+    mode: 'structured',
+    reconstructionProfile: resolveReconstructionProfile({ profile: 'none' }),
+    sourceRoot,
+  });
+  const model = JSON.parse(fs.readFileSync(result.files.model, 'utf8'));
+  const item = model.pages[0].items.find((candidate) => candidate.id === 'agenda-title');
+  const reverseConfig = JSON.parse(fs.readFileSync(result.files.author.config, 'utf8'));
+
+  assert.equal(item.labelStatus, 'accepted');
+  assert.equal(item.effectiveLabel.styleRefs.paragraphStyle, 'project-label');
+  assert.equal(reverseConfig.semanticPreset, 'semantic-preset.json');
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(result.files.author.outDir, reverseConfig.semanticPreset), 'utf8')),
+    preset,
+  );
+});
+
 test('compileReverseSnapshotToHtml returns src-level author audit gates when source root is explicit', () => {
   const root = path.resolve('test/workspace/reverse-cli-author-audit-test');
   const sourceRoot = path.join(root, 'source');

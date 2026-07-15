@@ -25,18 +25,22 @@
     return textWithHardBreaks(el, '\n');
   }
 
-  function textWithHardBreaks(node, brToken) {
+  function textWithHardBreaks(node, brToken, excludedElements, rootNode) {
     if (!node) return '';
+    if (node !== rootNode && excludedElements && excludedElements.has(node)) return '';
     if (node.nodeType === 3) return String(node.nodeValue || '');
     if (node.nodeType !== 1) return '';
     if (String(node.tagName || '').toLowerCase() === 'br') return brToken;
-    return Array.from(node.childNodes || []).map((child) => textWithHardBreaks(child, brToken)).join('');
+    return Array.from(node.childNodes || [])
+      .map((child) => textWithHardBreaks(child, brToken, excludedElements, rootNode))
+      .join('');
   }
 
   const HARD_BREAK_TOKEN = '\u0000';
 
-  function trimmedTextWithHardBreaks(el) {
-    return textWithHardBreaks(el, HARD_BREAK_TOKEN)
+  function trimmedTextWithHardBreaks(el, candidates) {
+    const excludedElements = new Set(candidateDescendantsFor(el, candidates));
+    return textWithHardBreaks(el, HARD_BREAK_TOKEN, excludedElements, el)
       .trim()
       .replace(/[ \t]*\u0000[ \t]*/g, '\n');
   }
@@ -77,10 +81,26 @@
       && el.hasAttribute(dataId.IGNORE));
   }
 
-  function sourceHtmlFor(el) {
+  function sourceHtmlFor(el, candidates) {
+    const descendants = candidateDescendantsFor(el, candidates);
+    if (descendants.length) {
+      if (!descendants.every(isInlineSourceCandidate)) return null;
+      if (!Array.from(el.querySelectorAll('*')).every(isInlineSourceElement)) return null;
+      if (!candidates.includes(el) && trimmedTextWithHardBreaks(el, candidates) !== '') return null;
+    }
     const html = String(el.innerHTML || '');
     if (!html) return null;
     return html === sourceText(el) ? null : html;
+  }
+
+  function isInlineSourceCandidate(el) {
+    const tagName = String(el && el.tagName || '').toLowerCase();
+    return ['span', 'strong', 'b', 'em', 'i', 'mark', 'small', 'sup', 'sub'].includes(tagName);
+  }
+
+  function isInlineSourceElement(el) {
+    const tagName = String(el && el.tagName || '').toLowerCase();
+    return tagName === 'br' || isInlineSourceCandidate(el);
   }
 
   function cssVarsFor(el) {
@@ -98,8 +118,23 @@
     const tagName = el.tagName.toLowerCase();
     if (!['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return el;
     const parent = el.parentElement;
-    if (!parent || !parent.hasAttribute(dataId.IGNORE)) return el;
-    return parent;
+    if (!parent) return el;
+    if (parent.hasAttribute(dataId.IGNORE)) return parent;
+    return isNaturalSingleAssetFrame(parent, el) ? parent : el;
+  }
+
+  function isNaturalSingleAssetFrame(frameEl, assetEl) {
+    if (!frameEl || !assetEl) return false;
+    const dataId = dataIdAttributes();
+    const frameTag = String(frameEl.tagName || '').toLowerCase();
+    if (!['div', 'figure'].includes(frameTag)) return false;
+    if (sourceText(frameEl).trim()) return false;
+    const registeredAttributeNames = Object.keys(dataId).map((key) => dataId[key]);
+    if (Array.from(frameEl.attributes || []).some((attr) => registeredAttributeNames.includes(attr.name))) return false;
+    const contentChildren = Array.from(frameEl.children || [])
+      .filter((child) => !child.hasAttribute(dataId.IGNORE));
+    if (contentChildren.length !== 1 || contentChildren[0] !== assetEl) return false;
+    return ['img', 'object', 'embed', 'svg', 'canvas'].includes(String(assetEl.tagName || '').toLowerCase());
   }
 
   function mergeFrameAttributes(itemAttrs, frameAttrs) {
@@ -144,19 +179,36 @@
 
   function collectCandidateElements(pageEl) {
     const dataId = dataIdAttributes();
-    return Array.from(pageEl.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,figcaption,img,object,embed,svg,canvas,table,div,span,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`))
+    const candidates = Array.from(pageEl.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,figcaption,hr,img,object,embed,svg,canvas,table,div,span,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`))
       .filter((el) => !el.hasAttribute(dataId.IGNORE))
       .filter(isCandidateElement)
+      .filter((el) => {
+        const contentChildren = Array.from(el.children || [])
+          .filter((child) => !child.hasAttribute(dataId.IGNORE));
+        return contentChildren.length !== 1 || !isNaturalSingleAssetFrame(el, contentChildren[0]);
+      })
       .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'));
+    return candidates.filter((el) => !isRedundantTextContainer(el, candidates));
   }
 
-  function textRunsFor(el) {
+  function candidateDescendantsFor(el, candidates) {
+    if (!el || !Array.isArray(candidates)) return [];
+    return candidates.filter((candidate) => candidate !== el && el.contains(candidate));
+  }
+
+  function isRedundantTextContainer(el, candidates) {
+    if (!isTextTag(String(el && el.tagName || '').toLowerCase())) return false;
+    if (!candidateDescendantsFor(el, candidates).length) return false;
+    return trimmedTextWithHardBreaks(el, candidates) === '';
+  }
+
+  function textRunsFor(el, candidates) {
     const tagName = el.tagName.toLowerCase();
     if (!isTextTag(tagName)) return [];
-    const inlineRuns = inlineRunsFor(el);
+    const inlineRuns = inlineRunsFor(el, candidates);
     if (inlineRuns.length) return inlineRuns;
     return [{
-      text: trimmedTextWithHardBreaks(el),
+      text: trimmedTextWithHardBreaks(el, candidates),
       tagName,
       classList: classList(el),
       attributes: attrs(el),
@@ -215,7 +267,10 @@
     const out = [];
     let parent = el.parentElement;
     while (parent && parent !== pageEl) {
-      if (!candidates.includes(parent)) out.unshift(sourceNodeFor(parent, pageEl));
+      if (!candidates.includes(parent)) {
+        const sourceHtml = sourceHtmlFor(parent, candidates);
+        out.unshift(sourceNodeFor(parent, pageEl, sourceHtml == null ? null : { sourceHtml }));
+      }
       parent = parent.parentElement;
     }
     return out;
@@ -238,10 +293,11 @@
     return parts.join('>');
   }
 
-  function inlineRunsFor(el) {
+  function inlineRunsFor(el, candidates) {
     const dataId = dataIdAttributes();
     const inlineSelector = `span,strong,b,em,i,mark,sup,sub,[${dataId.CHARACTER_STYLE}]`;
-    const inlineEls = Array.from(el.querySelectorAll(inlineSelector));
+    const inlineEls = Array.from(el.querySelectorAll(inlineSelector))
+      .filter((runEl) => !Array.isArray(candidates) || !candidates.includes(runEl));
     return inlineEls.map((runEl) => ({
       text: trimmedTextWithHardBreaks(runEl),
       tagName: runEl.tagName.toLowerCase(),
@@ -259,7 +315,7 @@
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     return isTextTag(tagName)
-      || ['img', 'object', 'embed', 'svg', 'canvas', 'table'].includes(tagName)
+      || ['hr', 'img', 'object', 'embed', 'svg', 'canvas', 'table'].includes(tagName)
       || el.hasAttribute(dataId.OBJECT)
       || el.hasAttribute(dataId.PARAGRAPH_STYLE);
   }

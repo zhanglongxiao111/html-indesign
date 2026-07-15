@@ -11,7 +11,10 @@ const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./autho
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
 const { collectSemanticCandidates } = require('./semantic-candidates');
-const { loadStandardSemanticPreset } = require('../../semantic-preset');
+const {
+  loadProjectSemanticPreset,
+  loadStandardSemanticPreset,
+} = require('../../semantic-preset');
 const { writeRevealPresentation } = require('./reveal-presentation-writer');
 const { isUsefulSemantic } = require('./author-render-utils');
 const {
@@ -79,6 +82,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     styleResidualReport,
   };
   const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
+  copySourceSemanticPreset(sourceConfig, sourceRoot, outDir);
   fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
   for (const [relativePath, css] of Object.entries(generatedCss)) {
@@ -190,6 +194,7 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     ? sourceConfig.layers
     : layersConfigFor(model.layers || []);
   const hasSourceCompositeFonts = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'compositeFonts');
+  const hasSourceSemanticPreset = sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'semanticPreset');
   const compositeFonts = hasSourceConfig
     ? sourceConfig.compositeFonts
     : compositeFontsConfig(model.styles && model.styles.compositeFonts);
@@ -232,7 +237,20 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
   } else if (Array.isArray(compositeFonts) && compositeFonts.length) {
     config.compositeFonts = compositeFonts;
   }
+  if (hasSourceSemanticPreset) {
+    config.semanticPreset = sourceConfig.semanticPreset;
+  }
   return config;
+}
+
+function copySourceSemanticPreset(sourceConfig, sourceRoot, outDir) {
+  if (!sourceConfig || !Object.prototype.hasOwnProperty.call(sourceConfig, 'semanticPreset')) return;
+  const loaded = loadProjectSemanticPreset(sourceRoot, sourceConfig.semanticPreset);
+  const target = path.resolve(outDir, loaded.relativePath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  if (path.resolve(loaded.filePath) !== target) {
+    fs.copyFileSync(loaded.filePath, target);
+  }
 }
 
 function layersConfigFor(layers = []) {

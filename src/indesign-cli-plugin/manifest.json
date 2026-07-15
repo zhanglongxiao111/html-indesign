@@ -3,7 +3,7 @@
   "protocol": "indesign-cli-plugin.v1",
   "id": "html-indesign",
   "name": "html-indesign",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "kind": "node-plugin",
   "domain": "html",
   "entry": "src/indesign-cli-plugin/index.js",

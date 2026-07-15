@@ -6,6 +6,7 @@ const path = require('path');
 const { readReverseSnapshot, reverseSnapshotToSemanticModel } = require('../../src/adapters/indesign');
 const { semanticModelToHtml } = require('../../src/writers/html');
 const {
+  AUTHOR_HTML_SAFE_INLINE_TAGS,
   AUTHOR_HTML_SAFE_TAGS,
   REVERSE_VISUAL_HTML_CONTAINER_TAGS,
   assertReverseVisualHtmlContainerTag,
@@ -20,6 +21,13 @@ test('HTML writers use explicit domain safe tag exports instead of duplicate loc
     () => assertReverseVisualHtmlContainerTag('svg'),
     /Unsupported reverse HTML tag: svg/,
   );
+});
+
+test('every accepted author inline tag remains valid in author and reverse HTML', () => {
+  for (const tag of AUTHOR_HTML_SAFE_INLINE_TAGS) {
+    assert.equal(AUTHOR_HTML_SAFE_TAGS.has(tag), true, `${tag} must remain author-safe`);
+    assert.equal(assertReverseVisualHtmlContainerTag(tag), tag, `${tag} must remain reverse-visual-safe`);
+  }
 });
 
 test('semanticModelToHtml writes page, parent page, layout and text item tags', () => {

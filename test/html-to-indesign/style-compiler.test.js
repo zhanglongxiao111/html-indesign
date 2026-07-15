@@ -318,6 +318,50 @@ test('compileStyles selects CJK fonts and InDesign font style names for Chinese 
   assert.equal(styled.styles.fonts['Microsoft YaHei'].family, 'Microsoft YaHei');
 });
 
+test('compileStyles preserves CSS font fallback order and resolves declared CSS variables', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'body-copy',
+        role: 'text',
+        tagName: 'p',
+        classList: [],
+        attributes: { 'data-id-paragraph-style': 'body-copy' },
+        text: '顺应等高线',
+        boundsMm: { x: 0, y: 0, width: 60, height: 10 },
+        ruleStyle: {
+          fontFamily: 'var(--font-sans)',
+          fontSize: '18px',
+        },
+        computedStyle: {
+          color: 'rgb(0, 0, 0)',
+          fontFamily: '"Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
+          fontSize: '18px',
+          lineHeight: '24px',
+          fontWeight: '400',
+          fontStyle: 'normal',
+          textAlign: 'left',
+        },
+        runs: [],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+
+  assert.equal(styled.styles.paragraphStyles['body-copy'].appliedFont, 'Source Han Sans SC');
+  assert.equal(styled.styles.fonts['Source Han Sans SC'].fallback, 'Noto Sans SC');
+  assert.equal(styled.styles.fonts['Noto Sans SC'].fallback, 'Microsoft YaHei');
+  assert.equal(styled.styles.fonts['Microsoft YaHei'].fallback, 'Arial');
+  assert.equal(Object.prototype.hasOwnProperty.call(styled.styles.fonts, 'var(--font-sans)'), false);
+});
+
 test('compileStyles can use human readable Chinese style names from HTML attributes', () => {
   const snapshot = {
     metadata: { source: 'inline.html' },
@@ -790,6 +834,72 @@ test('compileStyles preserves table cell fill opacity and inline character runs'
     { text: '+12%', characterStyle: 'metric-delta' },
   ]);
   assert.equal(styled.styles.characterStyles['metric-delta'].fillColor, '颜色-200-16-46');
+});
+
+test('compileStyles keeps explicit table paragraph style identity and emits cell text overrides', () => {
+  const cell = (index, text, color, fontWeight) => ({
+    index,
+    text,
+    tagName: 'td',
+    header: false,
+    rowSpan: 1,
+    colSpan: 1,
+    classList: index === 1 ? ['num'] : [],
+    attributes: { 'data-id-paragraph-style': 'table-body' },
+    boundsMm: { x: index * 50, y: 0, width: 50, height: 20 },
+    computedStyle: {
+      color,
+      fontFamily: '"Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
+      fontSize: '15px',
+      lineHeight: '20px',
+      fontWeight,
+      fontStyle: 'normal',
+      textAlign: 'left',
+      backgroundColor: 'rgba(0, 0, 0, 0)',
+      borderTopColor: 'rgba(0, 0, 0, 0)',
+      borderTopWidth: '0px',
+      borderTopStyle: 'none',
+      paddingTop: '0px',
+      paddingRight: '0px',
+      paddingBottom: '0px',
+      paddingLeft: '0px',
+    },
+    authoredStyle: {},
+  });
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'table',
+        role: 'table',
+        tagName: 'table',
+        classList: [],
+        attributes: {},
+        text: 'Label42',
+        boundsMm: { x: 0, y: 0, width: 100, height: 20 },
+        computedStyle: {},
+        authoredStyle: {},
+        table: [{ index: 0, header: false, cells: [
+          cell(0, 'Label', 'rgb(28, 26, 23)', '400'),
+          cell(1, '42', 'rgb(74, 69, 61)', '700'),
+        ] }],
+      }],
+    }],
+    assets: [],
+  };
+
+  const styled = compileStyles(snapshot);
+  const cells = styled.pages[0].items[0].content.rows[0].cells;
+
+  assert.equal(cells[0].paragraphStyle, 'table-body');
+  assert.equal(cells[1].paragraphStyle, 'table-body');
+  assert.equal(cells[1].textColor, '颜色-74-69-61');
+  assert.equal(cells[1].fontStyleName, 'Bold');
+  assert.deepEqual(Object.keys(styled.styles.paragraphStyles), ['table-body']);
 });
 
 test('compileStyles warns for border styles that decoration strips cannot preserve exactly', () => {

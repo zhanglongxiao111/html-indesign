@@ -234,7 +234,7 @@ test('pageItemsToAuthorHtml restores original source inner html when text is unc
   assert.match(html, /<h1 class="cover-title pstyle-cover-title" data-id-paragraph-style="cover-title">冰球场首层平面<br><span class="accent" data-id-character-style="cover-accent">排布汇报<\/span><\/h1>/);
 });
 
-test('pageItemsToAuthorHtml adds stable item ids when preserving trusted source nodes', () => {
+test('pageItemsToAuthorHtml does not invent ids when preserving trusted source nodes', () => {
   const page = {
     id: 'cover-page',
     items: [
@@ -250,7 +250,191 @@ test('pageItemsToAuthorHtml adds stable item ids when preserving trusted source 
 
   const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
 
-  assert.match(html, /<h1 id="p1-el2" class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面排布汇报<\/h1>/);
+  assert.match(html, /<h1 class="cover-title" data-id-paragraph-style="cover-title">冰球场首层平面排布汇报<\/h1>/);
+  assert.doesNotMatch(html, /id="p1-el2"/);
+});
+
+test('pageItemsToAuthorHtml keeps adjacent inline source children adjacent', () => {
+  const page = {
+    id: 'cover-page',
+    items: [
+      {
+        id: 'cover-meta',
+        role: 'container',
+        sourceNode: { tagName: 'div', id: 'cover-meta', classList: ['cover-meta'], attributes: {} },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: { text: '' },
+      },
+      {
+        id: 'cover-label',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'cover-label', classList: ['label'], attributes: {} },
+        structure: { parentId: 'cover-meta', order: 1 },
+        content: { text: '选址', runs: [] },
+      },
+      {
+        id: 'cover-value',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'cover-value', classList: ['value'], attributes: {} },
+        structure: { parentId: 'cover-meta', order: 2 },
+        content: { text: '清屿镇', runs: [] },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'structured', preserveTrustedSource: true });
+
+  assert.match(html, /<div id="cover-meta" class="cover-meta"><span id="cover-label" class="label">选址<\/span><span id="cover-value" class="value">清屿镇<\/span><\/div>/);
+  assert.doesNotMatch(html, /选址\s+清屿镇/);
+});
+
+test('pageItemsToAuthorHtml restores trusted inline child order with stable source indentation', () => {
+  const page = {
+    id: 'metric-page',
+    items: [
+      {
+        id: 'concept-caption',
+        role: 'text',
+        sourceNode: { tagName: 'p', id: 'concept-caption', classList: ['figure-caption'], attributes: {} },
+        effectiveLabel: {
+          sourceText: '顺坡实体 · 满足容积',
+          sourceHtml: '<span id="figure-index">01</span>顺坡实体 · 满足容积',
+          sourceNode: { tagName: 'p', id: 'concept-caption', classList: ['figure-caption'], attributes: {} },
+        },
+        structure: { parentId: 'metric-page', order: 1 },
+        content: {
+          text: '顺坡实体 · 满足容积',
+          sourceHtml: '<span id="figure-index">01</span>顺坡实体 · 满足容积',
+        },
+        labelStatus: 'accepted',
+      },
+      {
+        id: 'figure-index',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'figure-index', classList: [], attributes: {} },
+        effectiveLabel: {
+          sourceText: '01',
+          sourceNode: { tagName: 'span', id: 'figure-index', classList: [], attributes: {} },
+        },
+        structure: { parentId: 'concept-caption', order: 1 },
+        content: { text: '01' },
+        labelStatus: 'accepted',
+      },
+      {
+        id: 'metric-number',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'metric-number', classList: [], attributes: {} },
+        sourceAncestorNodes: [{
+          tagName: 'div',
+          id: 'metric-value',
+          classList: ['metric-value'],
+          attributes: {},
+          sourcePath: 'div:nth-of-type(1)',
+          sourceHtml: '\n  <span id="metric-number">0</span>\n  <span id="metric-unit">棵</span>\n',
+        }],
+        effectiveLabel: { sourceText: '0', sourceNode: { tagName: 'span', id: 'metric-number', classList: [], attributes: {} } },
+        structure: { parentId: 'metric-page', order: 2 },
+        content: { text: '0' },
+        labelStatus: 'accepted',
+      },
+      {
+        id: 'metric-unit',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'metric-unit', classList: [], attributes: {} },
+        sourceAncestorNodes: [{
+          tagName: 'div',
+          id: 'metric-value',
+          classList: ['metric-value'],
+          attributes: {},
+          sourcePath: 'div:nth-of-type(1)',
+          sourceHtml: '\n  <span id="metric-number">0</span>\n  <span id="metric-unit">棵</span>\n',
+        }],
+        effectiveLabel: { sourceText: '棵', sourceNode: { tagName: 'span', id: 'metric-unit', classList: [], attributes: {} } },
+        structure: { parentId: 'metric-page', order: 3 },
+        content: { text: '棵' },
+        labelStatus: 'accepted',
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'authoring', preserveTrustedSource: true });
+  const reindentedPage = structuredClone(page);
+  for (const item of reindentedPage.items) {
+    for (const ancestor of item.sourceAncestorNodes || []) {
+      ancestor.sourceHtml = ancestor.sourceHtml
+        .replace(/\n  /g, '\n        ');
+    }
+  }
+  const reindentedHtml = pageItemsToAuthorHtml(reindentedPage, { mode: 'authoring', preserveTrustedSource: true });
+
+  assert.match(html, /<p id="concept-caption" class="figure-caption"><span id="figure-index">01<\/span>顺坡实体 · 满足容积<\/p>/);
+  assert.match(html, /<div id="metric-value" class="metric-value">\n  <span id="metric-number">0<\/span>\n  <span id="metric-unit">棵<\/span>\n<\/div>/);
+  assert.equal((html.match(/id="figure-index"/g) || []).length, 1);
+  assert.equal((html.match(/id="metric-number"/g) || []).length, 1);
+  assert.equal((html.match(/id="metric-unit"/g) || []).length, 1);
+  assert.equal(reindentedHtml, html);
+});
+
+test('pageItemsToAuthorHtml preserves a trusted hr tag', () => {
+  const html = pageItemsToAuthorHtml({
+    id: 'back-cover-page',
+    items: [{
+      id: 'back-cover-rule',
+      role: 'shape',
+      sourceNode: { tagName: 'hr', id: 'back-cover-rule', classList: ['rule'], attributes: { style: 'width:64px;margin:8px auto' } },
+      structure: { parentId: 'back-cover-page', order: 1 },
+      content: { text: '' },
+    }],
+  }, { mode: 'authoring', preserveTrustedSource: true });
+
+  assert.equal(html, '<hr id="back-cover-rule" class="rule" style="width:64px;margin:8px auto">');
+});
+
+test('pageItemsToAuthorHtml does not duplicate descendant markup stored on a physical container', () => {
+  const ancestor = {
+    tagName: 'div',
+    id: null,
+    classList: ['meta-row'],
+    attributes: {},
+    sourcePath: 'div:nth-of-type(1)>div:nth-of-type(1)',
+    sourceHtml: '<span id="meta-label">选址</span><span id="meta-value">清屿镇</span>',
+  };
+  const html = pageItemsToAuthorHtml({
+    id: 'cover-page',
+    items: [
+      {
+        id: 'cover-meta',
+        role: 'container',
+        sourceNode: { tagName: 'div', id: 'cover-meta', classList: ['cover-meta'], attributes: {} },
+        structure: { parentId: 'cover-page', order: 1 },
+        content: {
+          text: '',
+          sourceHtml: '<div class="meta-row"><span id="meta-label">选址</span><span id="meta-value">清屿镇</span></div>',
+        },
+      },
+      {
+        id: 'meta-label',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'meta-label', classList: [], attributes: {} },
+        sourceAncestorNodes: [ancestor],
+        effectiveLabel: { sourceText: '选址', sourceNode: { tagName: 'span', id: 'meta-label', classList: [], attributes: {} } },
+        structure: { parentId: 'cover-meta', order: 1 },
+        content: { text: '选址' },
+      },
+      {
+        id: 'meta-value',
+        role: 'text',
+        sourceNode: { tagName: 'span', id: 'meta-value', classList: [], attributes: {} },
+        sourceAncestorNodes: [ancestor],
+        effectiveLabel: { sourceText: '清屿镇', sourceNode: { tagName: 'span', id: 'meta-value', classList: [], attributes: {} } },
+        structure: { parentId: 'cover-meta', order: 2 },
+        content: { text: '清屿镇' },
+      },
+    ],
+  }, { mode: 'authoring', preserveTrustedSource: true });
+
+  assert.equal((html.match(/id="meta-label"/g) || []).length, 1);
+  assert.equal((html.match(/id="meta-value"/g) || []).length, 1);
 });
 
 test('pageItemsToAuthorHtml merges observed text style into sourced text nodes', () => {
@@ -486,7 +670,7 @@ test('pageItemsToAuthorHtml restores missing nonvisual source ancestor wrappers'
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /<div class="legend-item">\n\s+<span class="swatch" style="background:var\(--accent\)"><\/span>\n\s+<span>Service rooms<\/span>\n<\/div>/);
+  assert.match(html, /<div class="legend-item"><span class="swatch" style="background:var\(--accent\)"><\/span><span>Service rooms<\/span><\/div>/);
 });
 
 test('pageItemsToAuthorHtml keeps every sibling inside the same identified virtual source ancestor', () => {

@@ -1,23 +1,210 @@
 if (typeof HI === "undefined") { HI = {}; }
 
+HI.configureFonts = function (defs) {
+    HI.fontDefs = defs || {};
+    HI.fontSearchCache = {};
+    HI.reportedFontFallbacks = {};
+    HI.installedFontIndex = HI.buildInstalledFontIndex();
+};
+
 HI.resolveFont = function (def, report) {
-    var family = String(def.appliedFont || "");
-    if (!family) return null;
+    var requestedFamily = String(def.appliedFont || "");
+    if (!requestedFamily) return null;
     var styleName = def.fontStyleName || HI.fontStyleNameFor(def);
-    var font = null;
-    if (styleName) font = HI.fontByName(family + "\t" + styleName);
-    if (!font && styleName !== "Regular") font = HI.fontByName(family + "\tRegular");
-    if (!font) font = HI.fontByName(family);
-    if (!font && report) {
-        HI.addMessage(report, "warning", "FONT_APPLY_FAILED", "Font was not found", { font: family, fontStyleName: styleName });
+    var family = requestedFamily;
+    var visited = {};
+    HI.lastFontResolution = null;
+    while (family && !visited[HI.normalizeFontName(family)]) {
+        visited[HI.normalizeFontName(family)] = true;
+        var resolution = HI.findFontResolution(family, styleName);
+        if (resolution) {
+            resolution.requestedFamily = requestedFamily;
+            HI.lastFontResolution = resolution;
+            if (family !== requestedFamily && report) {
+                var warningKey = requestedFamily + "\t" + styleName + "=>" + resolution.family + "\t" + resolution.styleName;
+                HI.reportedFontFallbacks = HI.reportedFontFallbacks || {};
+                if (!HI.reportedFontFallbacks[warningKey]) {
+                    HI.reportedFontFallbacks[warningKey] = true;
+                    HI.addMessage(report, "warning", "FONT_FALLBACK_APPLIED", "Requested font was unavailable; an authored fallback was applied", {
+                        requestedFont: requestedFamily,
+                        requestedStyle: styleName,
+                        appliedFont: resolution.family,
+                        appliedStyle: resolution.styleName
+                    });
+                }
+            }
+            return resolution.font;
+        }
+        family = HI.fontFallbackFor(family);
     }
-    return font;
+    if (report) {
+        HI.addMessage(report, "warning", "FONT_APPLY_FAILED", "Font and authored fallbacks were not found", { font: requestedFamily, fontStyleName: styleName });
+    }
+    return null;
+};
+
+HI.fontFallbackFor = function (family) {
+    var def = HI.fontDefFor(family);
+    return def && def.fallback ? String(def.fallback) : "";
+};
+
+HI.fontDefFor = function (family) {
+    var defs = HI.fontDefs || {};
+    if (defs[family]) return defs[family];
+    var normalized = HI.normalizeFontName(family);
+    for (var name in defs) {
+        if (!defs.hasOwnProperty(name)) continue;
+        var def = defs[name];
+        if (HI.normalizeFontName(name) === normalized || HI.normalizeFontName(def.family) === normalized) return def;
+    }
+    return null;
+};
+
+HI.findFontResolution = function (family, requestedStyle) {
+    var cacheKey = family + "\t" + requestedStyle;
+    HI.fontSearchCache = HI.fontSearchCache || {};
+    if (HI.fontSearchCache.hasOwnProperty(cacheKey)) return HI.fontSearchCache[cacheKey] || null;
+    var families = HI.fontFamilyCandidates(family);
+    var styles = HI.fontStyleCandidates(requestedStyle);
+    var i, j, font, installedName;
+    for (i = 0; i < styles.length; i++) {
+        for (j = 0; j < families.length; j++) {
+            installedName = HI.installedFontNameFor(families[j], styles[i]);
+            font = installedName ? HI.fontByName(installedName) : null;
+            if (font) return HI.cacheFontResolution(cacheKey, font, families[j], styles[i]);
+        }
+    }
+    for (j = 0; j < families.length; j++) {
+        installedName = HI.installedFontNameFor(families[j]);
+        font = installedName ? HI.fontByName(installedName) : null;
+        if (font) return HI.cacheFontResolution(cacheKey, font, families[j], HI.actualFontStyleName(font, requestedStyle));
+    }
+    HI.fontSearchCache[cacheKey] = false;
+    return null;
+};
+
+HI.buildInstalledFontIndex = function () {
+    var index = { byFamilyStyle: {}, byFamily: {} };
+    var names = [];
+    try {
+        names = app.fonts.everyItem().name;
+        if (!(names instanceof Array)) names = [names];
+    } catch (_) {}
+    for (var i = 0; i < names.length; i++) {
+        var fullName = String(names[i] || "");
+        if (!fullName) continue;
+        var parts = fullName.split("\t");
+        var familyKey = HI.normalizeFontName(parts[0]);
+        var styleKey = HI.normalizeFontName(parts.length > 1 ? parts.slice(1).join("\t") : "Regular");
+        if (!familyKey) continue;
+        if (!index.byFamilyStyle[familyKey + "\t" + styleKey]) index.byFamilyStyle[familyKey + "\t" + styleKey] = fullName;
+        if (!index.byFamily[familyKey]) index.byFamily[familyKey] = fullName;
+    }
+    return index;
+};
+
+HI.installedFontNameFor = function (family, styleName) {
+    var index = HI.installedFontIndex || { byFamilyStyle: {}, byFamily: {} };
+    var familyKey = HI.normalizeFontName(family);
+    if (!familyKey) return "";
+    if (styleName) return index.byFamilyStyle[familyKey + "\t" + HI.normalizeFontName(styleName)] || "";
+    return index.byFamily[familyKey] || "";
+};
+
+HI.cacheFontResolution = function (key, font, family, styleName) {
+    var resolution = {
+        font: font,
+        family: HI.actualFontFamily(font, family),
+        styleName: HI.actualFontStyleName(font, styleName)
+    };
+    HI.fontSearchCache[key] = resolution;
+    return resolution;
+};
+
+HI.fontFamilyCandidates = function (family) {
+    var aliases = {
+        "microsoftyahei": ["微软雅黑", "Microsoft YaHei UI"],
+        "simsun": ["宋体"],
+        "simhei": ["黑体"],
+        "kaiti": ["楷体"],
+        "fangsong": ["仿宋"],
+        "notosanssc": ["Noto Sans SC (TT)", "Noto Sans SC (OTF)"],
+        "sourcehansanssc": ["思源黑体"],
+        "sourcehanserifsc": ["思源宋体"]
+    };
+    var out = [String(family || "")];
+    var extra = aliases[HI.normalizeFontName(family)] || [];
+    for (var i = 0; i < extra.length; i++) HI.pushUniqueFontName(out, extra[i]);
+    return out;
+};
+
+HI.fontStyleCandidates = function (styleName) {
+    var requested = String(styleName || "Regular");
+    var lower = requested.toLowerCase();
+    var italic = lower.indexOf("italic") >= 0 || lower.indexOf("oblique") >= 0;
+    var base = lower.replace(/italic|oblique/g, "").replace(/^\s+|\s+$/g, "");
+    var weights = [base || "regular"];
+    if (base === "semibold" || base === "semi bold") weights = [base, "bold", "medium", "regular"];
+    else if (base === "black" || base === "heavy") weights = [base, "heavy", "black", "bold", "regular"];
+    else if (base === "thin") weights = [base, "light", "regular"];
+    else if (base === "light") weights = [base, "regular"];
+    else if (base === "medium") weights = [base, "regular"];
+    else if (base === "bold") weights = [base, "semibold", "medium", "regular"];
+    var out = [];
+    for (var i = 0; i < weights.length; i++) {
+        var title = HI.titleFontStyle(weights[i]);
+        HI.pushUniqueFontName(out, italic ? title + " Italic" : title);
+        if (italic) HI.pushUniqueFontName(out, title);
+    }
+    HI.pushUniqueFontName(out, "Regular");
+    HI.pushUniqueFontName(out, "常规");
+    return out;
+};
+
+HI.titleFontStyle = function (value) {
+    var text = String(value || "regular").replace(/[_-]+/g, " ");
+    var parts = text.split(/\s+/), out = [];
+    for (var i = 0; i < parts.length; i++) {
+        if (!parts[i]) continue;
+        out.push(parts[i].charAt(0).toUpperCase() + parts[i].substr(1).toLowerCase());
+    }
+    return out.join(" ") || "Regular";
+};
+
+HI.pushUniqueFontName = function (list, value) {
+    var normalized = HI.normalizeFontName(value);
+    for (var i = 0; i < list.length; i++) {
+        if (HI.normalizeFontName(list[i]) === normalized) return;
+    }
+    if (value) list.push(value);
+};
+
+HI.normalizeFontName = function (value) {
+    return String(value || "").toLowerCase().replace(/[\s_\-]+/g, "");
+};
+
+HI.actualFontFamily = function (font, fallback) {
+    try { if (font.fontFamily) return String(font.fontFamily); } catch (_) {}
+    try { return String(font.name || "").split("\t")[0] || fallback; } catch (_) {}
+    return fallback || "";
+};
+
+HI.actualFontStyleName = function (font, fallback) {
+    try { if (font.fontStyleName) return String(font.fontStyleName); } catch (_) {}
+    try {
+        var parts = String(font.name || "").split("\t");
+        if (parts.length > 1 && parts[1]) return parts[1];
+    } catch (_) {}
+    return fallback || "Regular";
 };
 
 HI.fontByName = function (name) {
     try {
         var font = app.fonts.itemByName(name);
-        font.name;
+        if (!font || font.isValid !== true) return null;
+        var family = String(font.fontFamily || "");
+        var styleName = String(font.fontStyleName || "");
+        if (!family || !styleName) return null;
         return font;
     } catch (_) {}
     return null;

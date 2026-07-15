@@ -5,6 +5,10 @@ function getCwd(context) {
   return path.resolve((context && context.cwd) || process.cwd());
 }
 
+function getPluginRoot() {
+  return path.resolve(__dirname, '..', '..');
+}
+
 function resolveProjectPath(context, inputPath, fieldName) {
   if (!inputPath || typeof inputPath !== 'string') {
     const err = new Error(`${fieldName} must be a non-empty string`);
@@ -47,6 +51,7 @@ function ensureOutputDir(context, requestedOutDir, prefix) {
 
 module.exports = {
   getCwd,
+  getPluginRoot,
   resolveProjectPath,
   ensureOutputDir,
 };

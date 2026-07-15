@@ -1,9 +1,9 @@
 const AUTHOR_HTML_SAFE_TAGS = Object.freeze(new Set([
   'section', 'article', 'header', 'footer', 'main', 'aside', 'nav',
-  'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr',
   'figure', 'figcaption', 'img', 'object', 'embed', 'picture', 'source',
   'svg', 'canvas', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
-  'ul', 'ol', 'li', 'strong', 'em', 'small', 'sup', 'sub',
+  'ul', 'ol', 'li', 'strong', 'b', 'em', 'i', 'mark', 'small', 'sup', 'sub',
 ]));
 
 const AUTHOR_HTML_SAFE_INLINE_TAGS = Object.freeze(new Set([
@@ -32,7 +32,15 @@ const REVERSE_VISUAL_HTML_CONTAINER_TAGS = Object.freeze(new Set([
   'ol',
   'p',
   'section',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'mark',
+  'small',
   'span',
+  'sub',
+  'sup',
   'table',
   'tbody',
   'td',

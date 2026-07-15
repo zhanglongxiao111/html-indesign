@@ -2,7 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const cheerio = require('cheerio');
-const { assetSourceFromElementLike, inferAssetKind } = require('../../../shared/assets');
+const {
+  assetSourceFromElementLike,
+  inferAssetKind,
+  resourceReferenceIdentity,
+} = require('../../../shared/assets');
 const { nasUrlToUncPath } = require('../../../shared/nas-paths');
 const { collapseWhitespace } = require('../../../shared/text');
 const {
@@ -13,6 +17,7 @@ const {
 
 const NON_CONTENT_TAGS = new Set(['script', 'style', 'template', 'noscript']);
 const PAGE_SIZE_TOLERANCE = 1;
+const RESOURCE_REFERENCE_IDENTITY = Symbol('resourceReferenceIdentity');
 
 function authorPackageContentInventory(root) {
   const packageRoot = path.resolve(root);
@@ -286,11 +291,15 @@ function resourceEntryFor($, element, root, assetAliases) {
   const value = explicitAssetPath || htmlValue;
   const alias = explicitAssetPath ? null : assetAliases.get(resourceIdentity(null, htmlValue));
   const identity = alias || resourceIdentity(root, value);
-  return {
+  const entry = {
     kind: tagNameOf(element) === 'object' ? 'object' : 'image',
     identity,
     contentHash: contentHashFor(root, identity),
   };
+  Object.defineProperty(entry, RESOURCE_REFERENCE_IDENTITY, {
+    value: resourceReferenceIdentity(htmlValue, { sourceRoot: root }),
+  });
+  return entry;
 }
 
 function warnEmptyPageDigest(expectedPage, actualPage, warnings) {
@@ -347,22 +356,26 @@ function compareTextDigests(expectedPage, actualPage, errors, warnings) {
 }
 
 function compareResourceDigests(expectedPage, actualPage, errors, warnings) {
-  const expectedCounts = resourceCounts(expectedPage.resources);
-  const actualCounts = resourceCounts(actualPage.resources);
+  const equivalence = resourceEquivalence([
+    ...(expectedPage.resources || []),
+    ...(actualPage.resources || []),
+  ]);
+  const expectedCounts = resourceCounts(expectedPage.resources, equivalence);
+  const actualCounts = resourceCounts(actualPage.resources, equivalence);
   const missing = [];
-  for (const [identity, entry] of expectedCounts) {
-    if (isDerivedPreviewResource({ identity })) continue;
-    const actualEntry = actualCounts.get(identity);
+  for (const [key, entry] of expectedCounts) {
+    if (isDerivedPreviewResource(entry)) continue;
+    const actualEntry = actualCounts.get(key);
     const actualCount = actualEntry ? actualEntry.count : 0;
     if (actualCount < entry.count) {
-      missing.push({ identity, kind: entry.kind, expected: entry.count, actual: actualCount });
+      missing.push({ identity: entry.identity, kind: entry.kind, expected: entry.count, actual: actualCount });
       continue;
     }
     if (entry.contentHash && actualEntry && actualEntry.contentHash && entry.contentHash !== actualEntry.contentHash) {
       errors.push({
         code: 'CONTENT_RESOURCE_CONTENT_CHANGED',
         pageId: expectedPage.id,
-        identity,
+        identity: entry.identity,
         expectedHash: entry.contentHash,
         actualHash: actualEntry.contentHash,
       });
@@ -376,12 +389,12 @@ function compareResourceDigests(expectedPage, actualPage, errors, warnings) {
     });
   }
   const extra = [];
-  for (const [identity, entry] of actualCounts) {
-    if (isDerivedPreviewResource({ identity })) continue;
-    const expectedEntry = expectedCounts.get(identity);
+  for (const [key, entry] of actualCounts) {
+    if (isDerivedPreviewResource(entry)) continue;
+    const expectedEntry = expectedCounts.get(key);
     const expectedCount = expectedEntry ? expectedEntry.count : 0;
     if (entry.count > expectedCount) {
-      extra.push({ identity, kind: entry.kind, expected: expectedCount, actual: entry.count });
+      extra.push({ identity: entry.identity, kind: entry.kind, expected: expectedCount, actual: entry.count });
     }
   }
   if (extra.length) {
@@ -393,18 +406,56 @@ function compareResourceDigests(expectedPage, actualPage, errors, warnings) {
   }
 }
 
-function resourceCounts(entries) {
+function resourceCounts(entries, equivalence = (entry) => entry.identity) {
   const counts = new Map();
   for (const entry of entries || []) {
-    const existing = counts.get(entry.identity);
+    const key = equivalence(entry);
+    const existing = counts.get(key);
     if (existing) {
       existing.count += 1;
       if (!existing.contentHash && entry.contentHash) existing.contentHash = entry.contentHash;
     } else {
-      counts.set(entry.identity, { kind: entry.kind, count: 1, contentHash: entry.contentHash || null });
+      counts.set(key, {
+        identity: entry.identity,
+        kind: entry.kind,
+        count: 1,
+        contentHash: entry.contentHash || null,
+      });
     }
   }
   return counts;
+}
+
+function resourceEquivalence(entries) {
+  const parent = new Map();
+  const find = (value) => {
+    if (!parent.has(value)) parent.set(value, value);
+    const current = parent.get(value);
+    if (current === value) return value;
+    const root = find(current);
+    parent.set(value, root);
+    return root;
+  };
+  const union = (left, right) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent.set(rightRoot, leftRoot);
+  };
+  for (const entry of entries || []) {
+    const keys = resourceEquivalenceKeys(entry);
+    for (let index = 1; index < keys.length; index += 1) union(keys[0], keys[index]);
+  }
+  return (entry) => {
+    const keys = resourceEquivalenceKeys(entry);
+    return keys.length ? find(keys[0]) : '';
+  };
+}
+
+function resourceEquivalenceKeys(entry) {
+  return Array.from(new Set([
+    entry && entry.identity,
+    entry && entry[RESOURCE_REFERENCE_IDENTITY],
+  ].filter(Boolean)));
 }
 
 function compareRoleDigests(expectedPage, actualPage, errors) {
@@ -671,7 +722,7 @@ function readAssetAliases(root, seenReports = new Set(), warnings = [], errors =
       const key = resourceIdentity(null, htmlPath);
       const transitiveOriginalPath = resolveTransitiveAssetAlias(originalPath, seenReports, warnings);
       const value = resourceIdentity(null, transitiveOriginalPath || originalPath);
-      if (!aliases.has(key) || isAbsoluteHostPath(originalPath)) {
+      if (!aliases.has(key)) {
         aliases.set(key, value);
       }
     }
@@ -714,11 +765,6 @@ function isPageFurnitureElement($, element) {
 function escapesPackageRoot(value) {
   const normalized = path.normalize(String(value || ''));
   return normalized === '..' || normalized.startsWith(`..${path.sep}`) || normalized.startsWith('../') || normalized.startsWith('..\\');
-}
-
-function isAbsoluteHostPath(value) {
-  const raw = String(value || '').trim();
-  return /^\\\\|^\/nas\/|^[a-zA-Z]:[\\/]/i.test(raw);
 }
 
 function isDerivedPreviewResource(entry) {

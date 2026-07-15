@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { compileAuthoringPackage } = require('./compile-instructions');
-const { getCwd } = require('../path-policy');
+const { getPluginRoot } = require('../path-policy');
 const { artifact } = require('../artifacts');
 const { buildBuildJsx, buildExportJsx } = require('../host-jsx');
 
@@ -12,7 +12,7 @@ async function call(args, context) {
     outputName: 'instructions.json',
   }, context, 'html-plugin-build');
 
-  const cwd = getCwd(context);
+  const pluginRoot = getPluginRoot();
   const buildScriptPath = path.join(compile.outDir, 'build.jsx');
   const exportScriptPath = path.join(compile.outDir, 'export.jsx');
   const exportPdf = args.exportPdf !== false;
@@ -20,7 +20,7 @@ async function call(args, context) {
   const timeout = args.timeout || 300;
 
   fs.writeFileSync(buildScriptPath, buildBuildJsx({
-    repoRoot: cwd,
+    repoRoot: pluginRoot,
     instructionsPath: compile.instructionsPath,
   }), 'utf8');
 

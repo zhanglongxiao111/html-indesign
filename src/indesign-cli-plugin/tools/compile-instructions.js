@@ -30,7 +30,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     unitMode: args.unitMode || 'presentation',
     targetSize: args.targetSize || 'same',
     styleNameMap,
-    preserveObservedLayerNames: true,
+    preserveObservedLayerNames: false,
   });
 
   const validation = validateInstructions(instructions, {

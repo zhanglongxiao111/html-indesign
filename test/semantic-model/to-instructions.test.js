@@ -302,6 +302,56 @@ test('semanticModelToInstructions emits non-default page backgrounds through a p
   assert.equal(instructions.document.pages[1].parentPageId, 'background-245-241-232-100x80');
 });
 
+test('semanticModelToInstructions gives color variants of one parent page unique InDesign names', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'parent-background-variants',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [{
+      id: 'report-parent',
+      name: 'report-parent',
+      semantic: 'report-parent',
+      items: [{
+        id: 'parent-rule',
+        role: 'shape',
+        bounds: { x: 0, y: 0, width: 100, height: 1 },
+        structure: { parentId: 'report-parent', order: 0 },
+      }],
+    }],
+    pages: [{
+      id: 'p1',
+      index: 0,
+      width: 100,
+      height: 80,
+      parentPageId: 'report-parent',
+      attributes: { 'data-id-parent-page': 'report-parent' },
+      computedStyle: { backgroundColor: 'rgb(250, 248, 244)' },
+      labels: [],
+      items: [],
+    }, {
+      id: 'p2',
+      index: 1,
+      width: 100,
+      height: 80,
+      parentPageId: 'report-parent',
+      attributes: { 'data-id-parent-page': 'report-parent' },
+      computedStyle: { backgroundColor: 'rgb(239, 231, 219)' },
+      labels: [],
+      items: [],
+    }],
+    styles: { swatches: {} },
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const variants = instructions.document.parentPages.filter((entry) => entry.semantic === 'page-background');
+
+  assert.equal(variants.length, 2);
+  assert.equal(new Set(variants.map((entry) => entry.name)).size, 2);
+});
+
 test('semanticModelToInstructions emits bounded text fit for observed reverse text frames', () => {
   const model = {
     kind: 'DocumentModel',
@@ -336,6 +386,54 @@ test('semanticModelToInstructions emits bounded text fit for observed reverse te
     maxGrowX: 96,
     maxGrowY: 48,
     preservePosition: true,
+  });
+});
+
+test('semanticModelToInstructions preserves single-line visible HTML overflow with width-first text fit', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'authored-visible-overflow-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 1000,
+      height: 600,
+      items: [{
+        id: 'centered-label',
+        role: 'text',
+        bounds: { x: 10, y: 20, width: 168, height: 20 },
+        computedStyle: {
+          overflow: 'visible',
+          fontSize: '14px',
+          lineHeight: '20px',
+          paddingTop: '0px',
+          paddingBottom: '0px',
+          borderTopWidth: '0px',
+          borderBottomWidth: '0px',
+          textAlign: 'center',
+        },
+        content: { text: '全书 30 页 · 白盒极简风格' },
+        sourceNode: { tagName: 'p', attributes: {} },
+        structure: { parentId: 'p1', order: 1 },
+      }],
+    }],
+    styles: {},
+    assets: [],
+  };
+
+  const instructions = semanticModelToInstructions(model, {});
+  const item = instructions.pages[0].items.find((entry) => entry.id === 'centered-label');
+
+  assert.deepEqual(item.textFit, {
+    mode: 'expand-frame-to-content',
+    maxGrowX: 96,
+    maxGrowY: 48,
+    preservePosition: true,
+    preferWidth: true,
+    horizontalAnchor: 'center',
   });
 });
 

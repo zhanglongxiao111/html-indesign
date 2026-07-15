@@ -315,6 +315,8 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `PAGE_GRID_RULE_INVALID` | error | 网格声明不可解析 |
 | `GRID_ALIGNMENT_OFF` | warning | 元素边缘未贴合声明网格 |
 | `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定语义 token |
+| `GRAPHIC_ASSET_REFERENCE_MISSING` | error | 图形角色没有写在持有资源路径的元素上 |
+| `TEXT_CONTAINER_HAS_CHILD_OBJECTS` | error | 复合布局容器被错误声明为文本对象，会与子文字重复 |
 
 普通模式下，网格偏移和语义 token 缺失先作为 warning；`strict` 模式会把 warning 提升为 error。
 
@@ -681,7 +683,7 @@ PSD 和 AI 也应优先保留为 linked placed asset。只有在 InDesign 置入
 
 ### 9.4 SVG
 
-SVG 优先保留为矢量置入资源。简单 SVG 后续可以拆解为 native vector shape，但第一优先级是可靠置入和视觉还原。若 InDesign 环境不能可靠置入或效果不兼容，则转换为 PDF/PNG fallback。
+SVG 优先保留为矢量置入资源。当前内联 SVG 的 native path 只接受 `M/L/C/Z`；出现其他 path 命令时必须明确失败并提示改用外部 SVG，严禁跳过命令后输出残缺图形。简单 SVG 后续可以继续扩展 native vector shape 拆解，但第一优先级是可靠置入和视觉还原。若 InDesign 环境不能可靠置入或效果不兼容，则转换为 PDF/PNG fallback。
 
 ### 9.5 矢量标注和分析图形
 

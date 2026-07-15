@@ -186,6 +186,33 @@ test('compareContentInventories uses authoring report asset map for copied resou
   assert.equal(diff.ok, true);
 });
 
+test('compareContentInventories keeps the source-authored relative alias when a resolved absolute alias is also reported', () => {
+  const root = path.resolve('test/workspace/content-inventory-reference-aliases');
+  const sourceRoot = path.join(root, 'source');
+  const reverseRoot = path.join(root, 'reverse');
+  const originalAsset = path.join(sourceRoot, 'assets/diagram.svg');
+  const fileUrl = `file:///${originalAsset.replace(/\\/g, '/')}`;
+  fs.rmSync(root, { recursive: true, force: true });
+  writeAuthorPackage(sourceRoot, '<section class="page"><img src="assets/diagram.svg"></section>');
+  writeFile(originalAsset, '<svg/>');
+  writeAuthorPackage(reverseRoot, `<section class="page"><img src="${fileUrl}"></section>`);
+  writeFile(path.join(reverseRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [
+        { originalPath: 'assets/diagram.svg', htmlPath: fileUrl, reason: 'local-file-reference' },
+        { originalPath: originalAsset, htmlPath: fileUrl, reason: 'local-file-reference' },
+      ],
+    },
+  }, null, 2));
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(sourceRoot),
+    authorPackageContentInventory(reverseRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
 test('compareContentInventories follows copied asset aliases across a second authoring pass', () => {
   const root = path.resolve('test/workspace/content-inventory-transitive-authoring-assets');
   const originalRoot = path.join(root, 'original');
@@ -214,6 +241,42 @@ test('compareContentInventories follows copied asset aliases across a second aut
         htmlPath: 'assets/diagram.svg',
         reason: 'local-copy-for-preview',
       }],
+    },
+  }, null, 2));
+
+  const diff = compareContentInventories(
+    authorPackageContentInventory(firstRoot),
+    authorPackageContentInventory(secondRoot)
+  );
+
+  assert.equal(diff.ok, true);
+});
+
+test('compareContentInventories keeps file-referenced assets stable across a second authoring pass', () => {
+  const root = path.resolve('test/workspace/content-inventory-transitive-file-reference');
+  const originalRoot = path.join(root, 'original');
+  const firstRoot = path.join(root, 'first-reverse');
+  const secondRoot = path.join(root, 'second-reverse');
+  const originalAsset = path.join(originalRoot, 'assets/diagram.svg');
+  const fileUrl = `file:///${originalAsset.replace(/\\/g, '/')}`;
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFile(originalAsset, '<svg/>');
+  writeAuthorPackage(firstRoot, `<section class="page"><img src="${fileUrl}"></section>`);
+  writeFile(path.join(firstRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [
+        { originalPath: 'assets/diagram.svg', htmlPath: fileUrl, reason: 'local-file-reference' },
+        { originalPath: originalAsset, htmlPath: fileUrl, reason: 'local-file-reference' },
+      ],
+    },
+  }, null, 2));
+  writeAuthorPackage(secondRoot, `<section class="page"><img src="${fileUrl}"></section>`);
+  writeFile(path.join(secondRoot, 'reports/authoring-report.json'), JSON.stringify({
+    assets: {
+      entries: [
+        { originalPath: fileUrl, htmlPath: fileUrl, reason: 'local-file-reference' },
+        { originalPath: originalAsset, htmlPath: fileUrl, reason: 'local-file-reference' },
+      ],
     },
   }, null, 2));
 

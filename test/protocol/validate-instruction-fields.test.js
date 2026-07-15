@@ -45,6 +45,28 @@ test('validateInstructionFields resolves scanned paths through the instructions 
   assert.deepEqual(result.errors, []);
 });
 
+test('validateInstructionFields accepts registered InDesign text-fit policy', () => {
+  const instructions = {
+    pages: [{
+      items: [{
+        type: 'TEXT',
+        textFit: {
+          mode: 'expand-frame-to-content',
+          maxGrowX: 96,
+          maxGrowY: 48,
+          preferWidth: true,
+          horizontalAnchor: 'center',
+        },
+      }],
+    }],
+  };
+
+  const result = validateInstructionFields(fieldRegistry, scanInstructionPaths(instructions), { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.accepted, ['pages[].items[].textFit']);
+});
+
 test('validateInstructionFields warns by default and errors in strict mode for unknown instruction fields', () => {
   const scannedPaths = scanInstructionPaths({
     pages: [{

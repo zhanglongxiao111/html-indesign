@@ -66,8 +66,9 @@ function backgroundParentPageFor(background, page, baseParent, generated) {
   ].join('|');
   if (generated.has(key)) return generated.get(key);
   const id = backgroundParentPageId(background, page, baseParent);
+  const colorName = backgroundColorName(background);
   const name = baseParent && baseParent.name
-    ? `${baseParent.name}-背景`
+    ? `${baseParent.name}-背景-${colorName}`
     : `背景母版-${background.styleOverride.fillColor}`;
   const parent = {
     id,
@@ -89,13 +90,17 @@ function backgroundParentPageFor(background, page, baseParent, generated) {
 
 function backgroundParentPageId(background, page, baseParent) {
   const prefix = baseParent && baseParent.id ? safeInstructionId(baseParent.id) : 'background';
-  const color = String(background.styleOverride && background.styleOverride.fillColor || 'fill')
-    .replace(/^颜色-/, '')
-    .replace(/[^0-9a-zA-Z]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'fill';
+  const color = backgroundColorName(background);
   const width = String(round(Number(page.width || 0), 2)).replace(/\./g, '_');
   const height = String(round(Number(page.height || 0), 2)).replace(/\./g, '_');
   return `${prefix}-${color}-${width}x${height}`;
+}
+
+function backgroundColorName(background) {
+  return String(background.styleOverride && background.styleOverride.fillColor || 'fill')
+    .replace(/^颜色-/, '')
+    .replace(/[^0-9a-zA-Z]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'fill';
 }
 
 function backgroundParentLabels(id, name) {

@@ -4,16 +4,31 @@ function capitalizationFor(style) {
   return null;
 }
 
-function ensureFont(styles, fontFamily, options, text) {
+function ensureFont(styles, fontFamily, options = {}, text) {
+  const families = fontStack(fontFamily);
   const family = selectFontFamily(fontFamily, text, options) || options.fontFallback || 'Arial';
   if (!family) return null;
-  if (!styles.fonts[family]) {
-    styles.fonts[family] = {
-      family,
-      fallback: options.fontFallback || 'Arial',
-    };
+  const defaultFallback = options.fontFallback || 'Arial';
+  const chain = fallbackChain(family, families, defaultFallback);
+  for (let index = 0; index < chain.length; index += 1) {
+    const current = chain[index];
+    const fallback = chain[index + 1] || defaultFallback;
+    if (!styles.fonts[current]) {
+      styles.fonts[current] = { family: current, fallback };
+    } else if (styles.fonts[current].fallback === defaultFallback && fallback !== defaultFallback) {
+      styles.fonts[current].fallback = fallback;
+    }
   }
   return family;
+}
+
+function fallbackChain(selected, families, defaultFallback) {
+  const selectedIndex = families.indexOf(selected);
+  const ordered = selectedIndex >= 0
+    ? families.slice(selectedIndex)
+    : [selected, ...families];
+  if (!ordered.includes(defaultFallback)) ordered.push(defaultFallback);
+  return Array.from(new Set(ordered));
 }
 
 function selectFontFamily(fontFamily, text, options) {

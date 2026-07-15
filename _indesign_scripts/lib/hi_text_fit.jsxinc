@@ -11,6 +11,9 @@ HI.resolveTextFrameOverflow = function (report, frame, item) {
     var maxGrowX = Number(item.textFit.maxGrowX || 0);
     var maxGrowY = Number(item.textFit.maxGrowY || 0);
     var tolerance = 0.25;
+    if (item.textFit.preferWidth === true && HI.applyTextFitWidthFirst(report, frame, item, original, maxGrowX, tolerance)) {
+        return true;
+    }
     try {
         frame.fit(FitOptions.FRAME_TO_CONTENT);
     } catch (fitError) {
@@ -59,6 +62,44 @@ HI.resolveTextFrameOverflow = function (report, frame, item) {
         maxGrowY: maxGrowY
     });
     return false;
+};
+
+HI.applyTextFitWidthFirst = function (report, frame, item, original, maxGrowX, tolerance) {
+    var limitX = Math.max(0, Number(maxGrowX || 0));
+    var step = 0.5;
+    var anchor = String(item.textFit.horizontalAnchor || "start").toLowerCase();
+    for (var growX = step; growX <= limitX + tolerance; growX += step) {
+        var bounds = HI.textFitWidthBounds(original, growX, anchor);
+        try { frame.geometricBounds = bounds; } catch (_) {}
+        if (!frame.overflows) {
+            HI.addMessage(report, "info", "TEXT_FIT_WIDTH_APPLIED", "Single-line text frame width expanded to avoid overset", {
+                itemId: item.id || null,
+                originalBounds: HI.boundsArray(original),
+                fittedBounds: HI.boundsArray(bounds),
+                growX: growX,
+                growY: 0,
+                horizontalAnchor: anchor,
+                tolerance: tolerance
+            });
+            return true;
+        }
+    }
+    try { frame.geometricBounds = original; } catch (_) {}
+    return false;
+};
+
+HI.textFitWidthBounds = function (original, growX, anchor) {
+    var left = Number(original[1]);
+    var right = Number(original[3]);
+    if (anchor === "center") {
+        left -= growX / 2;
+        right += growX / 2;
+    } else if (anchor === "end" || anchor === "right") {
+        left -= growX;
+    } else {
+        right += growX;
+    }
+    return [Number(original[0]), left, Number(original[2]), right];
 };
 
 HI.applyTextFitNudge = function (report, frame, item, original, maxGrowX, maxGrowY, tolerance) {

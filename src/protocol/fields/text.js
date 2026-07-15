@@ -88,4 +88,21 @@ module.exports = [
       instructionPaths: ['styles.paragraphStyles[].composer'],
     },
   },
+  {
+    canonicalPath: 'items[].extensions.indesign.textFit',
+    currentPaths: ['instructions.pages[].items[].textFit'],
+    fieldClass: 'formatExtension',
+    lifecycle: 'active',
+    owner: 'indesign-writer',
+    type: 'object',
+    description: 'Derived InDesign executor policy for bounded text-frame growth when browser-visible text would otherwise become overset.',
+    capabilities: {
+      html: { read: 'native', write: 'unsupported', persist: 'lossless' },
+      indesign: { read: 'unsupported', write: 'native', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      instructionPaths: ['textFit'],
+    },
+  },
 ];

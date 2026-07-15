@@ -182,6 +182,22 @@ function validateTextFit(item, errors) {
       });
     }
   }
+  if (Object.prototype.hasOwnProperty.call(item.textFit, 'preferWidth')
+    && typeof item.textFit.preferWidth !== 'boolean') {
+    errors.push({
+      code: 'INVALID_TEXT_FIT_PREFERENCE',
+      message: 'textFit.preferWidth must be a boolean.',
+      itemId: item.id,
+    });
+  }
+  if (Object.prototype.hasOwnProperty.call(item.textFit, 'horizontalAnchor')
+    && !['start', 'center', 'end'].includes(String(item.textFit.horizontalAnchor))) {
+    errors.push({
+      code: 'INVALID_TEXT_FIT_ANCHOR',
+      message: "textFit.horizontalAnchor must be 'start', 'center', or 'end'.",
+      itemId: item.id,
+    });
+  }
 }
 
 function validateStyleRefs(item, styles, errors) {

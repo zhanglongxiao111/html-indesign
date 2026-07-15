@@ -34,6 +34,23 @@ function tableSourceMetadata(canonicalPath, type) {
   });
 }
 
+function tableCellFormatExtension(name, type) {
+  const canonicalPath = `items[].table.rows[].cells[].${name}`;
+  return {
+    canonicalPath,
+    currentPaths: [`instructions.pages[].items[].table.rows[].cells[].${name}`],
+    fieldClass: 'formatExtension',
+    lifecycle: 'active',
+    owner: 'table-content',
+    type,
+    capabilities: {
+      html: { read: 'native', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+  };
+}
+
 module.exports = [
   tableField('items[].table.rowCount', 'integer'),
   tableField('items[].table.columnCount', 'integer'),
@@ -69,6 +86,10 @@ module.exports = [
   tableField('items[].table.rows[].cells[].borderColor', 'string'),
   tableField('items[].table.rows[].cells[].borderWeight', 'number'),
   tableField('items[].table.rows[].cells[].textColor', 'string'),
+  tableCellFormatExtension('appliedFont', 'string'),
+  tableCellFormatExtension('fontStyleName', 'string'),
+  tableCellFormatExtension('tracking', 'number'),
+  tableCellFormatExtension('capitalization', 'string'),
   tableSourceMetadata('items[].table.rows[].cells[].textStyle', 'object'),
   tableField('items[].table.rows[].cells[].bounds', 'object'),
   tableField('items[].table.rows[].cells[].pointSize', 'number'),

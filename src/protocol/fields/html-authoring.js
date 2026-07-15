@@ -52,7 +52,10 @@ module.exports = [
     'items[].authoring.gridIgnore',
     [
       'sourceNode.attributes.data-id-grid-ignore',
+      'sourceAncestorNodes[].attributes.data-id-grid-ignore',
+      'labels[].sourceAncestorNodes[].attributes.data-id-grid-ignore',
       'pages[].items[].sourceNode.attributes.data-id-grid-ignore',
+      'pages[].items[].sourceAncestorNodes[].attributes.data-id-grid-ignore',
     ],
     'data-id-grid-ignore',
     'boolean|string',

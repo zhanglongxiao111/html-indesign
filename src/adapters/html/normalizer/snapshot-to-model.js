@@ -643,6 +643,7 @@ function sourceAncestorNodesForItem(item) {
       classList: Array.isArray(node.classList) ? node.classList.slice() : [],
       attributes: { ...(node.attributes || {}) },
       sourcePath: node.sourcePath || null,
+      ...(typeof node.sourceHtml === 'string' ? { sourceHtml: node.sourceHtml } : {}),
     }));
 }
 

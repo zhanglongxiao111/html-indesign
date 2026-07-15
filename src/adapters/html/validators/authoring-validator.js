@@ -11,6 +11,8 @@ const PAGE_GRID_RULE_MISSING = 'PAGE_GRID_RULE_MISSING';
 const PAGE_GRID_RULE_INVALID = 'PAGE_GRID_RULE_INVALID';
 const GRID_ALIGNMENT_OFF = 'GRID_ALIGNMENT_OFF';
 const SEMANTIC_TOKEN_MISSING = 'SEMANTIC_TOKEN_MISSING';
+const GRAPHIC_ASSET_REFERENCE_MISSING = 'GRAPHIC_ASSET_REFERENCE_MISSING';
+const TEXT_CONTAINER_HAS_CHILD_OBJECTS = 'TEXT_CONTAINER_HAS_CHILD_OBJECTS';
 
 function validateAuthoringRules(snapshot, options = {}) {
   const pages = Array.isArray(snapshot && snapshot.pages) ? snapshot.pages : [];
@@ -46,6 +48,24 @@ function validateAuthoringRules(snapshot, options = {}) {
     }
 
     items.forEach((item, itemIndex) => {
+      if (isCompositeTextContainer(item, itemIndex, items)) {
+        errors.push(message(
+          'error',
+          TEXT_CONTAINER_HAS_CHILD_OBJECTS,
+          pageId,
+          itemIdFor(item, itemIndex),
+          `A layout container with child objects cannot use ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.TEXT}". Use ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.CONTAINER}" and keep text semantics on the leaf text elements.`,
+        ));
+      }
+      if (isGraphicWithoutOwnResource(item)) {
+        errors.push(message(
+          'error',
+          GRAPHIC_ASSET_REFERENCE_MISSING,
+          pageId,
+          itemIdFor(item, itemIndex),
+          `Graphic protocol fields must be placed on the resource element itself, with src, data, href or ${HTML_DATA_ID_ATTRIBUTES.ASSET_PATH}.`,
+        ));
+      }
       if (!isMappableItem(item) || hasStableSemanticToken(item)) return;
       warnings.push(message('warning', SEMANTIC_TOKEN_MISSING, pageId, itemIdFor(item, itemIndex), 'Mappable item should use a stable class or data-id semantic token.'));
     });
@@ -254,6 +274,29 @@ function attributeValue(attrs, name) {
   return key ? attrs[key] : null;
 }
 
+function isGraphicWithoutOwnResource(item) {
+  const attrs = attributesFor(item);
+  const role = String(item && item.role || attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) || '').trim().toLowerCase();
+  if (role !== ITEM_ROLE.GRAPHIC) return false;
+  return ![
+    attributeValue(attrs, 'src'),
+    attributeValue(attrs, 'data'),
+    attributeValue(attrs, 'href'),
+    attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ASSET_PATH),
+  ].some((value) => value != null && String(value).trim() !== '');
+}
+
+function isCompositeTextContainer(item, itemIndex, items) {
+  const attrs = attributesFor(item);
+  if (String(attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) || '').trim().toLowerCase() !== ITEM_ROLE.TEXT) return false;
+  const tagName = String(item && item.tagName || '').trim().toLowerCase();
+  if (!['div', 'section', 'article', 'aside', 'figure', 'header', 'footer', 'main', 'nav'].includes(tagName)) return false;
+  const candidateIndex = Number.isInteger(item && item.candidateIndex) ? item.candidateIndex : itemIndex;
+  return (items || []).some((child) => child !== item
+    && Array.isArray(child && child.ancestorCandidateIndexes)
+    && child.ancestorCandidateIndexes.includes(candidateIndex));
+}
+
 function zeroMargins() {
   return { top: 0, right: 0, bottom: 0, left: 0 };
 }
@@ -379,6 +422,7 @@ function shouldCheckGrid(item, page) {
   if (!isMappableItem(item)) return false;
   const attrs = attributesFor(item);
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null) return false;
+  if (hasInheritedGridIgnore(item)) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) === 'folio') return false;
@@ -389,6 +433,13 @@ function shouldCheckGrid(item, page) {
     && Number.isFinite(Number(bounds.width))
     && Number.isFinite(Number(bounds.height))
     && !coversWholePage(bounds, page);
+}
+
+function hasInheritedGridIgnore(item) {
+  return Array.isArray(item && item.sourceAncestorNodes)
+    && item.sourceAncestorNodes.some((ancestor) => (
+      attributeValue(attributesFor(ancestor), HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null
+    ));
 }
 
 function offGridEdges(bounds, lines, tolerance, item) {
@@ -407,7 +458,8 @@ function gridEdgesForItem(bounds, vertical, horizontal, item) {
     ['top', Number(bounds.y), horizontal],
   ];
   const role = String(item && item.role || '').toLowerCase();
-  if (role !== ITEM_ROLE.TEXT && role !== ITEM_ROLE.TABLE) {
+  const authoredRole = String(attributeValue(attributesFor(item), HTML_DATA_ID_ATTRIBUTES.ROLE) || '').trim().toLowerCase();
+  if (role !== ITEM_ROLE.TEXT && role !== ITEM_ROLE.TABLE && authoredRole !== ITEM_ROLE.CONTAINER) {
     edges.push(['bottom', Number(bounds.y) + Number(bounds.height), horizontal]);
   }
   return edges;

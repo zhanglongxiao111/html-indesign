@@ -7,12 +7,12 @@ const {
   safeInlineTag,
 } = require('./author-render-utils');
 
-function ownContent(item, depth) {
-  const sourceHtml = item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== ''
+function ownContent(item, depth, options = {}) {
+  const sourceHtml = !options.ignoreSourceHtml && item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== ''
     ? item.content.sourceHtml
     : null;
   if (item.role === 'table' && sourceHtml) return tableSourceHtmlContent(sourceHtml, depth);
-  if (sourceHtml) return sourceHtml;
+  if (sourceHtml) return sourceHtmlContent(sourceHtml, depth);
   if (item.role === 'table' && item.table) return `\n${tableContent(item.table, depth + 2)}\n${' '.repeat(depth)}`;
   if (item.authorTextCompanion && item.authorTextCompanion.content) {
     return plainTextContent(item.authorTextCompanion.content.text || '');
@@ -20,6 +20,25 @@ function ownContent(item, depth) {
   const rich = richTextContent(item);
   if (rich != null) return rich;
   return plainTextContent((item.content && item.content.text) || '');
+}
+
+function sourceHtmlContent(sourceHtml, depth) {
+  const text = String(sourceHtml).replace(/\r\n|\r/g, '\n');
+  if (!/^\s*\n/.test(text) || !/\n\s*$/.test(text)) return text;
+  const lines = text.split('\n');
+  while (lines.length && lines[0].trim() === '') lines.shift();
+  while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+  if (!lines.length) return '';
+  const contentLines = lines.filter((line) => line.trim() !== '');
+  const commonIndent = contentLines.reduce(
+    (min, line) => Math.min(min, /^[ \t]*/.exec(line)[0].length),
+    Infinity,
+  );
+  const contentIndent = ' '.repeat(depth + 2);
+  const body = lines.map((line) => (
+    line.trim() === '' ? '' : `${contentIndent}${line.slice(commonIndent)}`
+  )).join('\n');
+  return `\n${body}\n${' '.repeat(depth)}`;
 }
 
 function tableSourceHtmlContent(sourceHtml, depth) {
@@ -83,6 +102,7 @@ function plainTextContent(value) {
 
 module.exports = {
   ownContent,
+  sourceHtmlContent,
   richTextContent,
   renderInlineRun,
   hasRichRunMarkup,

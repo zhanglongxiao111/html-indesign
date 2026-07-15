@@ -98,6 +98,82 @@ test('renderSnapshot captures standalone semantic span text objects', async () =
   assert.equal(folio.text, '00');
 });
 
+test('renderSnapshot does not duplicate text across nested independently mapped text elements', async () => {
+  const outDir = path.resolve('test/workspace/browser-nested-mapped-text');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+  li { display: flex; }
+</style>
+<section class="page" id="page-1">
+  <ul>
+    <li>
+      <span id="toc-title" data-id-paragraph-style="toc-title">Title<span id="toc-sub" data-id-paragraph-style="toc-sub">Sub</span></span>
+      <span id="toc-page" data-id-paragraph-style="toc-page">P.01</span>
+    </li>
+  </ul>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const items = snapshot.pages[0].items;
+  const title = items.find((item) => item.id === 'toc-title');
+  const sub = items.find((item) => item.id === 'toc-sub');
+
+  assert.equal(items.some((item) => item.tagName === 'li'), false);
+  assert.equal(title.text, 'Title');
+  assert.equal(title.sourceNode.sourceHtml, 'Title<span id="toc-sub" data-id-paragraph-style="toc-sub">Sub</span>');
+  assert.deepEqual(title.runs, []);
+  assert.equal(sub.text, 'Sub');
+  assert.equal(title.sourceAncestorNodes.some((node) => node.tagName === 'li'), true);
+});
+
+test('renderSnapshot preserves whitespace in source-only wrappers around mapped inline text', async () => {
+  const outDir = path.resolve('test/workspace/browser-inline-source-wrapper');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>.page { width: 800px; height: 450px; }</style>
+<section class="page" id="page-1">
+  <div class="metric-value" id="metric-value">
+    <span id="metric-number" data-id-paragraph-style="metric-number">0</span>
+    <span id="metric-unit" data-id-paragraph-style="metric-unit">棵</span>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const number = snapshot.pages[0].items.find((item) => item.id === 'metric-number');
+  const wrapper = number.sourceAncestorNodes.find((node) => node.id === 'metric-value');
+
+  assert.equal(
+    wrapper.sourceHtml,
+    '\n    <span id="metric-number" data-id-paragraph-style="metric-number">0</span>\n    <span id="metric-unit" data-id-paragraph-style="metric-unit">棵</span>\n  ',
+  );
+});
+
+test('renderSnapshot captures a natural hr as a shape', async () => {
+  const outDir = path.resolve('test/workspace/browser-hr');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+  hr { width: 64px; margin: 8px auto; border: 0; border-top: 1px solid #c8102e; }
+</style>
+<section class="page" id="page-1"><hr id="back-cover-rule" class="rule"></section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const rule = snapshot.pages[0].items.find((item) => item.id === 'back-cover-rule');
+
+  assert.ok(rule);
+  assert.equal(rule.role, 'shape');
+  assert.equal(rule.tagName, 'hr');
+});
+
 test('renderSnapshot keeps table cell paragraph markers inside the table model only', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
@@ -377,6 +453,39 @@ test('renderSnapshot keeps PDF source node separate from its preview wrapper', a
   assert.equal(pdf.sourceNode.attributes.style, undefined);
   assert.equal(pdf.sourceNode.previewNode.attributes.alt, 'drawing preview');
   assert.equal(pdf.sourceAncestorNodes[0].classList[0], 'drawing-frame');
+});
+
+test('renderSnapshot treats a natural single-asset wrapper as the graphic frame', async () => {
+  const outDir = path.resolve('test/workspace/browser-natural-asset-frame');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  body { margin: 0; }
+  .page { position: relative; width: 800px; height: 450px; }
+  .asset-frame { box-sizing: border-box; position: absolute; left: 80px; top: 45px; width: 320px; height: 180px; padding: 8px; border: 2px solid #333; background: #ddd; }
+  .asset-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+</style>
+<section class="page" id="page-1">
+  <div class="asset-frame" id="hero-frame">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='160'%3E%3Crect width='300' height='160' fill='%23999'/%3E%3C/svg%3E"
+         alt="hero" data-id-object data-id-role="graphic" data-id-layer="image">
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const items = snapshot.pages[0].items;
+
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, 'hero-frame');
+  assert.equal(items[0].tagName, 'img');
+  assert.equal(items[0].role, 'graphic');
+  assert.equal(items[0].rectPx.width, 320);
+  assert.equal(items[0].rectPx.height, 180);
+  assert.equal(items[0].sourceNode.tagName, 'img');
+  assert.equal(items[0].sourceAncestorNodes.length, 1);
+  assert.equal(items[0].sourceAncestorNodes[0].id, 'hero-frame');
 });
 
 test('renderSnapshot attaches ignored sibling PDF previews to the source node', async () => {

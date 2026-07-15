@@ -127,17 +127,29 @@ HI.applyTableCells = function (doc, table, grid, report) {
 
 HI.applyTableCell = function (doc, cell, cellDef, report) {
     if (!cell || !cellDef) return;
-    try { if (cellDef.fillColor) cell.fillColor = doc.swatches.itemByName(cellDef.fillColor); } catch (_) {}
-    HI.applyTableCellFillOpacity(cell, cellDef.fillOpacity, report);
-    try { if (cellDef.textColor) cell.texts[0].fillColor = doc.swatches.itemByName(cellDef.textColor); } catch (_) {}
-    try { if (cellDef.pointSize !== null && typeof cellDef.pointSize !== "undefined") cell.texts[0].pointSize = HI.ptValue(cellDef.pointSize); } catch (_) {}
-    try { if (cellDef.leading !== null && typeof cellDef.leading !== "undefined") cell.texts[0].leading = HI.ptValue(cellDef.leading); } catch (_) {}
-    try { if (cellDef.textAlign) cell.texts[0].justification = HI.justificationFor(cellDef.textAlign); } catch (_) {}
     try {
         if (cellDef.paragraphStyle) {
             cell.texts[0].appliedParagraphStyle = doc.paragraphStyles.itemByName(cellDef.paragraphStyle);
         }
     } catch (_) {}
+    try { if (cellDef.fillColor) cell.fillColor = doc.swatches.itemByName(cellDef.fillColor); } catch (_) {}
+    HI.applyTableCellFillOpacity(cell, cellDef.fillOpacity, report);
+    try { if (cellDef.textColor) cell.texts[0].fillColor = doc.swatches.itemByName(cellDef.textColor); } catch (_) {}
+    try {
+        if (cellDef.appliedFont) {
+            var font = HI.resolveFont(cellDef, report);
+            if (font) {
+                cell.texts[0].appliedFont = font;
+            }
+        }
+    } catch (error) {
+        HI.addMessage(report, "warning", "FONT_APPLY_FAILED", String(error), { font: cellDef.appliedFont });
+    }
+    try { if (cellDef.pointSize !== null && typeof cellDef.pointSize !== "undefined") cell.texts[0].pointSize = HI.ptValue(cellDef.pointSize); } catch (_) {}
+    try { if (cellDef.leading !== null && typeof cellDef.leading !== "undefined") cell.texts[0].leading = HI.ptValue(cellDef.leading); } catch (_) {}
+    try { if (cellDef.tracking !== null && typeof cellDef.tracking !== "undefined") cell.texts[0].tracking = Number(cellDef.tracking); } catch (_) {}
+    try { if (cellDef.textAlign) cell.texts[0].justification = HI.justificationFor(cellDef.textAlign); } catch (_) {}
+    HI.assignCharacterStyleExtras(cell.texts[0], cellDef);
     HI.applyTableCellRuns(doc, cell, cellDef.runs || [], report);
     HI.applyCellStroke(doc, cell, cellDef);
     HI.applyCellPadding(cell, cellDef.padding || {}, cellDef.paddingUnit || "mm");

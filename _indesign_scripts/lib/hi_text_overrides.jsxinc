@@ -99,8 +99,9 @@ HI.applyCharacterLevelOverride = function (doc, range, override, report) {
     try {
         if (override.appliedFont) {
             var font = HI.resolveFont(override, report);
-            if (font) range.appliedFont = font;
-            if (override.fontStyleName) range.fontStyle = override.fontStyleName;
+            if (font) {
+                range.appliedFont = font;
+            }
         }
     } catch (error) {
         HI.addMessage(report, "warning", "FONT_APPLY_FAILED", String(error), { font: override.appliedFont });

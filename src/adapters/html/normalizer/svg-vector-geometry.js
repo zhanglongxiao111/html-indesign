@@ -97,7 +97,16 @@ function parsePathPoints(d, bounds, viewBox) {
   let command = '';
   let current = { x: 0, y: 0 };
   while (index < tokens.length) {
-    if (isCommand(tokens[index])) command = tokens[index++];
+    const iterationStart = index;
+    if (isCommand(tokens[index])) {
+      command = tokens[index++];
+      if (!isSupportedCommand(command)) {
+        throw svgPathError(
+          'UNSUPPORTED_SVG_PATH_COMMAND',
+          `Unsupported inline SVG path command '${command}'. Use an external SVG asset for complex paths.`,
+        );
+      }
+    }
     if (!command || /[zZ]/.test(command)) break;
     if (/[mM]/.test(command)) {
       while (hasNumbers(tokens, index, 2)) {
@@ -141,18 +150,37 @@ function parsePathPoints(d, bounds, viewBox) {
         index += 6;
       }
     } else {
-      break;
+      throw svgPathError(
+        'UNSUPPORTED_SVG_PATH_COMMAND',
+        `Unsupported inline SVG path command '${command}'. Use an external SVG asset for complex paths.`,
+      );
+    }
+    if (index === iterationStart) {
+      throw svgPathError(
+        'INVALID_SVG_PATH_DATA',
+        `Invalid inline SVG path data near '${tokens[index]}'.`,
+      );
     }
   }
   return points;
 }
 
 function pathTokens(value) {
-  return String(value || '').match(/[mMlLcCzZ]|[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/g) || [];
+  return String(value || '').match(/[A-Za-z]|[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/g) || [];
 }
 
 function isCommand(token) {
+  return /^[A-Za-z]$/.test(String(token || ''));
+}
+
+function isSupportedCommand(token) {
   return /^[mMlLcCzZ]$/.test(String(token || ''));
+}
+
+function svgPathError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }
 
 function hasNumbers(tokens, index, count) {

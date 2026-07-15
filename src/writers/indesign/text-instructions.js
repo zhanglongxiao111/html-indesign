@@ -53,15 +53,41 @@ function textFrameBounds(item, bounds, layout) {
   };
 }
 
-function textFitPolicy(item, options = {}) {
+function textFitPolicy(item, options = {}, layout) {
   if (options.textFit === false) return null;
-  if (!isObservedReverseText(item)) return null;
+  if (!isObservedReverseText(item) && !isSingleLineVisibleOverflow(item, layout)) return null;
+  const authoredSingleLine = !isObservedReverseText(item);
   return {
     mode: 'expand-frame-to-content',
     maxGrowX: Number(options.textFitMaxGrowX || 96),
     maxGrowY: Number(options.textFitMaxGrowY || 48),
     preservePosition: true,
+    ...(authoredSingleLine ? {
+      preferWidth: true,
+      horizontalAnchor: horizontalAnchorFor(item),
+    } : {}),
   };
+}
+
+function isSingleLineVisibleOverflow(item, layout) {
+  const style = item && item.computedStyle || {};
+  if (String(style.overflow || '').toLowerCase() !== 'visible') return false;
+  const text = String(item && item.content && item.content.text || item && item.text || '');
+  if (/\r|\n/.test(text)) return false;
+  const lineHeight = cssLengthToTarget(style.lineHeight, layout)
+    || round(cssLengthToTarget(style.fontSize, layout) * 1.2, 2);
+  if (!lineHeight) return false;
+  const verticalExtras = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+    .reduce((sum, key) => sum + cssLengthToTarget(style[key], layout), 0);
+  const contentHeight = Math.max(0, Number(item && item.bounds && item.bounds.height || 0) - verticalExtras);
+  return contentHeight > 0 && contentHeight <= lineHeight * 1.35;
+}
+
+function horizontalAnchorFor(item) {
+  const value = String(item && item.computedStyle && item.computedStyle.textAlign || '').toLowerCase();
+  if (value === 'center') return 'center';
+  if (value === 'right' || value === 'end') return 'end';
+  return 'start';
 }
 
 function textForInstruction(item, content = {}) {
