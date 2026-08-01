@@ -29,6 +29,7 @@ async function call(args, context) {
   if (!['final', 'draft'].includes(mode)) {
     const error = new Error(`mode must be final or draft, received: ${mode}`);
     error.code = 'INVALID_ARGS';
+    error.details = { stage: 'validate' };
     throw error;
   }
   const outputBaseName = args.outputBaseName || 'html-indesign-output';
@@ -47,22 +48,55 @@ async function call(args, context) {
     includeSnapshot: true,
   });
   const lintMs = Date.now() - lintStartedAt;
+  const lintCounts = { errorCount: lint.errorCount, warningCount: lint.warningCount };
   if (!lint.ok) {
     const error = new Error(lintFailureMessage(lint));
     error.code = 'AUTHORING_LINT_FAILED';
-    error.details = withoutSnapshot(lint);
+    error.details = {
+      ...withoutSnapshot(lint),
+      stage: 'lint',
+      metrics: buildMetrics({
+        lint_ms: lintMs,
+        error_count: lintCounts.errorCount,
+        warning_count: lintCounts.warningCount,
+      }),
+    };
     throw error;
   }
 
   const compileStartedAt = Date.now();
-  const compile = await compileAuthoringPackage({
-    ...args,
-    outputName: 'instructions.json',
-  }, context, 'html-plugin-build', {
-    snapshot: lint.snapshot,
-    expectedModelName: 'expected-semantic-model.json',
-  });
+  let compile;
+  try {
+    compile = await compileAuthoringPackage({
+      ...args,
+      outputName: 'instructions.json',
+    }, context, 'html-plugin-build', {
+      snapshot: lint.snapshot,
+      expectedModelName: 'expected-semantic-model.json',
+    });
+  } catch (error) {
+    const compileMsAtFailure = Date.now() - compileStartedAt;
+    const existingDetails = (error && typeof error.details === 'object' && error.details) || {};
+    const existingMetrics = (existingDetails.metrics && typeof existingDetails.metrics === 'object') ? existingDetails.metrics : {};
+    error.details = {
+      ...existingDetails,
+      stage: existingDetails.stage || 'compile',
+      metrics: buildMetrics({
+        lint_ms: lintMs,
+        compile_ms: compileMsAtFailure,
+        warning_count: lintCounts.warningCount,
+        ...existingMetrics,
+      }),
+    };
+    throw error;
+  }
   const compileMs = Date.now() - compileStartedAt;
+  const sizeMetrics = {
+    pages: compile.metrics && compile.metrics.pages,
+    objects: compile.metrics && compile.metrics.objects,
+    vectorPaths: compile.metrics && compile.metrics.vector_paths,
+    assets: compile.metrics && compile.metrics.assets,
+  };
 
   const pluginRoot = getPluginRoot();
   const runMarker = createRunMarker();
@@ -124,6 +158,8 @@ async function call(args, context) {
     fidelityReportPath,
     semanticPresetPath,
     timings: { lintMs, compileMs },
+    sizeMetrics,
+    lintCounts,
     stageStartedAt: Date.now(),
   };
 
@@ -178,6 +214,7 @@ async function resume(params) {
 
   return errorResponse('BUILD_STATE_INVALID', `Unknown html.build_indesign stage: ${state.stage || 'missing'}`, {
     stage: state.stage || null,
+    metrics: collectMetrics(state),
   });
 }
 
@@ -203,16 +240,26 @@ function resumeAfterSnapshot(state) {
     });
   }
 
+  const fidelityAuditStartedAt = Date.now();
   const report = auditForwardFidelity({
     expectedModel,
     instructions,
     actualSnapshot,
     actualModel,
   });
+  const fidelityGateMs = Date.now() - fidelityAuditStartedAt;
+  const stateWithGateTiming = {
+    ...state,
+    timings: { ...(state.timings || {}), fidelityGateMs },
+    fidelityCounts: {
+      errorCount: report.summary && report.summary.errors,
+      warningCount: report.summary && report.summary.warnings,
+    },
+  };
   fs.writeFileSync(state.fidelityReportPath, JSON.stringify(report, null, 2), 'utf8');
   if (!report.ok) {
     const first = report.errors[0] || {};
-    return cleanupThenError(state, {
+    return cleanupThenError(stateWithGateTiming, {
       code: 'FIDELITY_GATE_FAILED',
       message: fidelityFailureMessage(first, report.errors.length),
       stage: 'fidelity',
@@ -227,15 +274,23 @@ function resumeAfterSnapshot(state) {
   }
 
   return hostActionResponse(startStage({
-    ...state,
+    ...stateWithGateTiming,
     verified: true,
     fidelitySummary: report.summary,
   }, 'export'), exportAction(state));
 }
 
 function cleanupThenError(state, error) {
-  if (!state.cleanupScriptPath) return { status: 'error', error };
-  return hostActionResponse(startStage({ ...state, pendingError: error }, 'cleanup'), cleanupAction(state));
+  const enrichedError = {
+    ...error,
+    details: {
+      ...(error.details || {}),
+      stage: error.stage || (error.details && error.details.stage) || null,
+      metrics: collectMetrics(state),
+    },
+  };
+  if (!state.cleanupScriptPath) return { status: 'error', error: enrichedError };
+  return hostActionResponse(startStage({ ...state, pendingError: enrichedError }, 'cleanup'), cleanupAction(state));
 }
 
 function pendingErrorAfterCleanup(state, hostResults) {
@@ -272,6 +327,7 @@ function completeResult(state) {
     return errorResponse('BUILD_ARTIFACTS_MISSING', `Expected build artifacts are missing: ${missing.join(', ')}`, {
       stage: 'artifacts',
       missing,
+      metrics: collectMetrics(state),
     });
   }
 
@@ -306,6 +362,7 @@ function completeResult(state) {
         message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
       }],
     },
+    metrics: collectMetrics(state, { artifacts: artifacts.length }),
     artifacts,
   };
 }
@@ -313,6 +370,7 @@ function completeResult(state) {
 function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
   const stage = state.stage || 'build';
+  const finished = finishStageTiming(state);
   return {
     status: 'error',
     error: {
@@ -324,6 +382,8 @@ function hostFailureResponse(state, failed) {
       details: {
         causeCode: detail.code || null,
         hostResult: failed,
+        stage,
+        metrics: collectMetrics(finished),
       },
     },
   };
@@ -449,6 +509,40 @@ function errorResponse(code, message, details) {
 
 function addArtifactIfPresent(artifacts, kind, file, label) {
   if (file && fs.existsSync(file)) artifacts.push(artifact(kind, file, label));
+}
+
+function collectMetrics(state, extra) {
+  const timings = state.timings || {};
+  const size = state.sizeMetrics || {};
+  const lintCounts = state.lintCounts || {};
+  const fidelityCounts = state.fidelityCounts || {};
+  return buildMetrics({
+    lint_ms: timings.lintMs,
+    compile_ms: timings.compileMs,
+    indesign_build_ms: timings.buildMs,
+    readback_ms: timings.snapshotMs,
+    fidelity_gate_ms: timings.fidelityGateMs,
+    export_ms: timings.exportMs,
+    verify_ms: timings.verifyMs,
+    pages: size.pages,
+    objects: size.objects,
+    vector_paths: size.vectorPaths,
+    assets: size.assets,
+    error_count: lintCounts.errorCount,
+    warning_count: lintCounts.warningCount,
+    fidelity_error_count: fidelityCounts.errorCount,
+    fidelity_warning_count: fidelityCounts.warningCount,
+    ...(extra || {}),
+  });
+}
+
+function buildMetrics(values) {
+  const metrics = {};
+  for (const [key, value] of Object.entries(values || {})) {
+    if (typeof value === 'number' && Number.isFinite(value)) metrics[key] = value;
+    else if (typeof value === 'boolean') metrics[key] = value;
+  }
+  return metrics;
 }
 
 module.exports = {

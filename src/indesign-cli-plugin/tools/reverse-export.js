@@ -12,6 +12,7 @@ async function call(args, context) {
   if (!fs.existsSync(inddPath)) {
     const err = new Error(`INDD file not found: ${inddPath}`);
     err.code = 'INDD_NOT_FOUND';
+    err.details = { stage: 'validate' };
     throw err;
   }
 
@@ -43,6 +44,7 @@ async function call(args, context) {
       sourceRoot: args.sourceRoot ? resolveProjectPath(context, args.sourceRoot, 'sourceRoot') : null,
       nasPublicRoot: args.nasPublicRoot || '/nas',
       reconstructionProfile,
+      readbackStartedAt: Date.now(),
     },
     actions: [
       {
@@ -62,6 +64,10 @@ async function call(args, context) {
 
 async function resume(params) {
   const state = params.state || {};
+  const readbackMs = Number.isFinite(Number(state.readbackStartedAt))
+    ? Math.max(0, Date.now() - Number(state.readbackStartedAt))
+    : undefined;
+
   const failedHostResult = firstFailedHostResult(params.host_results || []);
   if (failedHostResult) {
     return {
@@ -69,7 +75,12 @@ async function resume(params) {
       error: {
         code: 'HOST_ACTION_FAILED',
         message: `Host action failed: ${failedHostResult.id || failedHostResult.tool_id || 'unknown'}`,
-        details: failedHostResult,
+        stage: 'readback',
+        details: {
+          ...(failedHostResult && typeof failedHostResult === 'object' ? failedHostResult : { hostResult: failedHostResult }),
+          stage: 'readback',
+          metrics: buildMetrics({ readback_ms: readbackMs }),
+        },
       },
     };
   }
@@ -80,10 +91,16 @@ async function resume(params) {
       error: {
         code: 'REVERSE_SNAPSHOT_MISSING',
         message: `Reverse snapshot missing: ${state.snapshotPath}`,
+        stage: 'readback',
+        details: {
+          stage: 'readback',
+          metrics: buildMetrics({ readback_ms: readbackMs }),
+        },
       },
     };
   }
 
+  const exportStartedAt = Date.now();
   const result = compileReverseSnapshotToHtml({
     snapshotPath: state.snapshotPath,
     outDir: state.outDir,
@@ -93,6 +110,13 @@ async function resume(params) {
     nasPublicRoot: state.nasPublicRoot || '/nas',
     reconstructionProfile: state.reconstructionProfile,
   });
+  const exportMs = Date.now() - exportStartedAt;
+  const sizeMetrics = result && result.report ? {
+    pages: result.report.pages,
+    objects: result.report.items,
+    assets: result.report.assets,
+  } : {};
+
   const authorDeckPath = result.files && result.files.author ? result.files.author.entry : path.join(state.outDir, 'author', 'deck.html');
   const visualDeckPath = result.files ? result.files.visualHtml : path.join(state.outDir, 'deck.visual.html');
   const reportPath = result.files ? result.files.report : path.join(state.outDir, 'report.json');
@@ -107,12 +131,26 @@ async function resume(params) {
         message: authorAudit
           ? 'Reverse author package audit failed.'
           : 'Reverse author package audit evidence is missing; refusing to report success without it.',
-        details: authorAudit || null,
+        stage: 'export',
+        details: {
+          ...(authorAudit || {}),
+          stage: 'export',
+          metrics: buildMetrics({
+            readback_ms: readbackMs,
+            export_ms: exportMs,
+            ...sizeMetrics,
+            error_count: authorAudit && Array.isArray(authorAudit.errors) ? authorAudit.errors.length : undefined,
+          }),
+        },
       },
     };
   }
 
-  const pipelineFailure = reversePipelineFailureResponse(result);
+  const pipelineFailure = reversePipelineFailureResponse(result, buildMetrics({
+    readback_ms: readbackMs,
+    export_ms: exportMs,
+    ...sizeMetrics,
+  }));
   if (pipelineFailure) return pipelineFailure;
 
   if (!fs.existsSync(authorDeckPath)) {
@@ -121,6 +159,11 @@ async function resume(params) {
       error: {
         code: 'AUTHOR_HTML_MISSING',
         message: `Reverse export did not produce author deck: ${authorDeckPath}`,
+        stage: 'export',
+        details: {
+          stage: 'export',
+          metrics: buildMetrics({ readback_ms: readbackMs, export_ms: exportMs, ...sizeMetrics }),
+        },
       },
     };
   }
@@ -133,6 +176,14 @@ async function resume(params) {
   if (reportPath && fs.existsSync(reportPath)) artifacts.push(artifact('json', reportPath, 'Reverse report'));
   if (reverseModelPath && fs.existsSync(reverseModelPath)) artifacts.push(artifact('json', reverseModelPath, 'Reverse model'));
 
+  const metrics = buildMetrics({
+    readback_ms: readbackMs,
+    export_ms: exportMs,
+    ...sizeMetrics,
+    error_count: authorAudit && Array.isArray(authorAudit.errors) ? authorAudit.errors.length : undefined,
+    artifacts: artifacts.length,
+  });
+
   return {
     status: 'complete',
     data: {
@@ -143,6 +194,7 @@ async function resume(params) {
       visualDeckPath: visualDeckPath && fs.existsSync(visualDeckPath) ? visualDeckPath : null,
       reportPath: reportPath && fs.existsSync(reportPath) ? reportPath : null,
     },
+    metrics,
     artifacts,
   };
 }
@@ -157,16 +209,30 @@ function firstFailedHostResult(hostResults) {
   }) || null;
 }
 
-function reversePipelineFailureResponse(result) {
+function reversePipelineFailureResponse(result, metrics) {
   if (result && result.ok === true) return null;
+  const baseDetails = result && result.report ? result.report : result || null;
+  const details = baseDetails && typeof baseDetails === 'object'
+    ? { ...baseDetails, stage: 'export', ...(metrics && Object.keys(metrics).length ? { metrics } : {}) }
+    : baseDetails;
   return {
     status: 'error',
     error: {
       code: 'REVERSE_PIPELINE_FAILED',
       message: 'Reverse pipeline failed; refusing to report a successful export.',
-      details: result && result.report ? result.report : result || null,
+      stage: 'export',
+      details,
     },
   };
+}
+
+function buildMetrics(values) {
+  const metrics = {};
+  for (const [key, value] of Object.entries(values || {})) {
+    if (typeof value === 'number' && Number.isFinite(value)) metrics[key] = value;
+    else if (typeof value === 'boolean') metrics[key] = value;
+  }
+  return metrics;
 }
 
 module.exports = {

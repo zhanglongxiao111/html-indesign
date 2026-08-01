@@ -25,6 +25,50 @@ test('html.authoring_lint validates the architecture report author package', () 
   assert.equal(response.artifacts.length, 0);
 });
 
+test('html.authoring_lint reports lint_ms and issue counts in metrics on success', () => {
+  const response = callPlugin('tools/call', {
+    id: 'html.authoring_lint',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      strict: true,
+    },
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(typeof response.metrics.lint_ms, 'number');
+  assert.equal(Number.isFinite(response.metrics.lint_ms), true);
+  assert.equal(response.metrics.error_count, 0);
+  assert.equal(typeof response.metrics.warning_count, 'number');
+  assert.equal(response.metrics.artifacts, 0);
+});
+
+test('html.authoring_lint reports failed stage and partial metrics on lint failure', () => {
+  const root = path.join(repoRoot, 'test', 'workspace', 'plugin-lint-metrics-failing-package');
+  fs.rmSync(root, { recursive: true, force: true });
+  fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
+    schemaVersion: 1,
+    id: 'lint-metrics-failing',
+    entry: 'deck.html',
+    styles: [],
+    pages: [{ id: 'page-1', file: 'pages/01-page.html' }],
+  }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(root, 'pages/01-page.html'), '<section class="page"><p>缺网格缺边距的页面</p></section>', 'utf8');
+
+  const response = callPlugin('tools/call', {
+    id: 'html.authoring_lint',
+    args: {
+      package: 'test/workspace/plugin-lint-metrics-failing-package/deck.config.json',
+    },
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.stage, 'lint');
+  assert.equal(response.error.details.stage, 'lint');
+  assert.equal(typeof response.error.details.metrics.lint_ms, 'number');
+  assert.equal(response.error.details.metrics.error_count > 0, true);
+});
+
 test('html.authoring_lint reports missing package without pretending success', () => {
   const response = callPlugin('tools/call', {
     id: 'html.authoring_lint',
@@ -92,6 +136,36 @@ test('html.compile_instructions writes validated instructions and summary', () =
   assert.equal(layerNames.includes('image'), false);
   assert.equal(layerNames.includes('overlay'), false);
   assert.equal(layerNames.includes('text'), false);
+});
+
+test('html.compile_instructions reports compile_ms, snapshot_ms and task-size metrics', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-compile-metrics-smoke');
+  fs.rmSync(path.join(repoRoot, outDir), { recursive: true, force: true });
+
+  const response = callPlugin('tools/call', {
+    id: 'html.compile_instructions',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+      targetSize: 'same',
+      unitMode: 'presentation',
+    },
+  });
+
+  assert.equal(response.status, 'complete');
+  const { metrics } = response;
+  assert.equal(typeof metrics.compile_ms, 'number');
+  assert.equal(Number.isFinite(metrics.compile_ms), true);
+  assert.equal(typeof metrics.snapshot_ms, 'number');
+  assert.equal(Number.isFinite(metrics.snapshot_ms), true);
+  assert.equal(typeof metrics.pages, 'number');
+  assert.equal(metrics.pages > 0, true);
+  assert.equal(typeof metrics.objects, 'number');
+  assert.equal(metrics.objects > 0, true);
+  assert.equal(typeof metrics.vector_paths, 'number');
+  assert.equal(typeof metrics.assets, 'number');
+  assert.equal(metrics.error_count, 0);
+  assert.equal(metrics.artifacts, 2);
 });
 
 test('html.build_indesign starts with one build action and defers dependent actions', () => {
@@ -323,6 +397,151 @@ test('html.build_indesign closes its owned document before returning a fidelity 
   assert.equal(response.error.retryable, false);
 });
 
+test('html.build_indesign draft mode success reports staged timing and task-size metrics', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-build-metrics-draft');
+  const absoluteOutDir = path.join(repoRoot, outDir);
+  fs.rmSync(absoluteOutDir, { recursive: true, force: true });
+
+  const callResponse = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+      outputBaseName: 'metrics-draft',
+      mode: 'draft',
+      exportPdf: true,
+      exportIdml: true,
+    },
+  });
+  assert.equal(callResponse.status, 'requires_host_actions');
+  assert.equal(callResponse.state.stage, 'build');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'export');
+
+  const afterExport = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  fs.writeFileSync(path.join(absoluteOutDir, 'metrics-draft.indd'), 'fake');
+  fs.writeFileSync(path.join(absoluteOutDir, 'metrics-draft.pdf'), 'fake');
+  fs.writeFileSync(path.join(absoluteOutDir, 'metrics-draft.idml'), 'fake');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.data.ok, true);
+  const { metrics } = response;
+  for (const key of ['lint_ms', 'compile_ms', 'indesign_build_ms', 'export_ms', 'verify_ms']) {
+    assert.equal(typeof metrics[key], 'number', `expected numeric metrics.${key}`);
+    assert.equal(Number.isFinite(metrics[key]), true, `expected finite metrics.${key}`);
+  }
+  assert.equal(typeof metrics.pages, 'number');
+  assert.equal(metrics.pages > 0, true);
+  assert.equal(typeof metrics.objects, 'number');
+  assert.equal(typeof metrics.assets, 'number');
+  assert.equal(typeof metrics.vector_paths, 'number');
+  assert.equal(metrics.error_count, 0);
+  assert.equal(typeof metrics.warning_count, 'number');
+  assert.equal(metrics.artifacts > 0, true);
+  // draft mode never runs the readback/fidelity-gate stage; those keys must be absent, not zero.
+  assert.equal('readback_ms' in metrics, false);
+  assert.equal('fidelity_gate_ms' in metrics, false);
+  assert.equal('fidelity_error_count' in metrics, false);
+});
+
+test('html.build_indesign final mode fidelity-gate failure reports failed stage and partial metrics', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-build-metrics-fidelity-failure');
+  const absoluteOutDir = path.join(repoRoot, outDir);
+  fs.rmSync(absoluteOutDir, { recursive: true, force: true });
+
+  const callResponse = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+      outputBaseName: 'metrics-fidelity-failure',
+      mode: 'final',
+    },
+  });
+  assert.equal(callResponse.status, 'requires_host_actions');
+  assert.equal(callResponse.state.stage, 'build');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'snapshot');
+
+  // The real InDesign host never ran in this test, so fabricate an "actual" snapshot that
+  // cannot match the real compiled instructions/expected model: a single near-empty page
+  // instead of the real 7-page deck. This drives auditForwardFidelity down its real
+  // page/item-count mismatch path instead of asserting on fabricated numbers.
+  const fakeActualSnapshot = {
+    document: { labels: [] },
+    report: { ok: true, errors: [], oversetTextFrames: [] },
+    parentPages: [],
+    assets: [],
+    layers: [],
+    styles: {},
+    pages: [{
+      id: 'fake-page-1',
+      index: 0,
+      bounds: { x: 0, y: 0, width: 100, height: 80 },
+      margins: { top: 5, right: 5, bottom: 5, left: 5 },
+      guides: [],
+      labels: [],
+      items: [],
+    }],
+  };
+  fs.writeFileSync(afterBuild.state.snapshotPath, JSON.stringify(fakeActualSnapshot, null, 2), 'utf8');
+
+  const afterSnapshot = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  // The fidelity gate failed, so build-indesign requests cleanup of its owned document
+  // before surfacing the final error (see cleanupThenError).
+  assert.equal(afterSnapshot.status, 'requires_host_actions');
+  assert.equal(afterSnapshot.state.stage, 'cleanup');
+
+  const response = callPlugin('tools/resume', {
+    state: afterSnapshot.state,
+    host_results: [{ id: 'html-build-cleanup', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'FIDELITY_GATE_FAILED');
+  assert.equal(response.error.stage, 'fidelity');
+  assert.equal(response.error.details.stage, 'fidelity');
+
+  const { metrics } = response.error.details;
+  for (const key of ['lint_ms', 'compile_ms', 'indesign_build_ms', 'readback_ms', 'fidelity_gate_ms']) {
+    assert.equal(typeof metrics[key], 'number', `expected numeric metrics.${key}`);
+    assert.equal(Number.isFinite(metrics[key]), true, `expected finite metrics.${key}`);
+  }
+  assert.equal(metrics.fidelity_error_count > 0, true);
+  assert.equal(typeof metrics.pages, 'number');
+  assert.equal(metrics.pages > 0, true);
+  assert.equal(typeof metrics.objects, 'number');
+  assert.equal(typeof metrics.assets, 'number');
+  // the export/verify stages never ran; their timing keys must be absent.
+  assert.equal('export_ms' in metrics, false);
+  assert.equal('verify_ms' in metrics, false);
+});
+
 test('html.reverse_export returns script.run host action for an INDD file', () => {
   const outDir = path.join('test', 'workspace', 'plugin-reverse-smoke');
   const absoluteOutDir = path.join(repoRoot, outDir);
@@ -431,6 +650,44 @@ test('html.reverse_export resume writes author html from reverse snapshot', () =
   assert.equal(fs.existsSync(path.join(outDir, 'author', 'deck.html')), true);
   assert.equal(response.artifacts.some((item) => item.kind === 'html'
     && (item.path.endsWith('author\\deck.html') || item.path.endsWith('author/deck.html'))), true);
+});
+
+test('html.reverse_export resume reports readback_ms, export_ms and task-size metrics on success', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-reverse-metrics-resume');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  fs.copyFileSync(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'), snapshotPath);
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      outDir,
+      snapshotPath,
+      mode: 'structured',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
+      readbackStartedAt: Date.now() - 5,
+    },
+    host_results: [
+      { id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } },
+    ],
+  });
+
+  assert.equal(response.status, 'complete');
+  const { metrics } = response;
+  assert.equal(typeof metrics.readback_ms, 'number');
+  assert.equal(Number.isFinite(metrics.readback_ms), true);
+  assert.equal(typeof metrics.export_ms, 'number');
+  assert.equal(Number.isFinite(metrics.export_ms), true);
+  assert.equal(typeof metrics.pages, 'number');
+  assert.equal(typeof metrics.objects, 'number');
+  assert.equal(typeof metrics.assets, 'number');
+  assert.equal(typeof metrics.error_count, 'number');
+  assert.equal(metrics.artifacts > 0, true);
 });
 
 test('html.reverse_export resume maps a failed trusted-source gate to an error response', () => {
