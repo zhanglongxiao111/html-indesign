@@ -335,7 +335,7 @@ function compareItem(expected, actual, actualModelItem, identity, context) {
   } else {
     compareText(expected, actual, actualModelItem, identity, context);
   }
-  comparePlacedAsset(expected, actual, identity, context);
+  comparePlacedAsset(expected, actual, actualModelItem, identity, context);
   if (!hasVectorGeometry) compareVisualStyle(expected, actual, identity, context);
 }
 
@@ -492,9 +492,9 @@ function compareTable(expectedRows, actualTable, identity, context) {
   });
 }
 
-function comparePlacedAsset(expected, actual, identity, context) {
+function comparePlacedAsset(expected, actual, actualModelItem, identity, context) {
   const placed = expected.placed || null;
-  const actualAsset = actual.placedAsset || null;
+  const actualAsset = actualModelItem && actualModelItem.asset || actual.placedAsset || null;
   const expectedAsset = placed
     ? array(context.instructions.assets).find((asset) => asset.id === placed.assetId) || {}
     : {};

@@ -42,6 +42,8 @@ test('collects known semantic tokens from style maps and token lists', () => {
   assert.equal(known.semantic.has('drawing-sheet'), true);
   assert.equal(known.assets.has('pdf'), true);
   assert.equal(known.fits.has('cover'), true);
+  assert.equal(known.fits.has('manual'), true);
+  assert.equal(known.fits.has('none'), true);
   assert.equal(known.crops.has('media'), true);
   assert.equal(known.semanticContainers.has('text-block'), true);
   assert.equal(known.semanticContainers.has('figure-grid'), true);

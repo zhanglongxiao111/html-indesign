@@ -526,6 +526,65 @@ test('semanticModelToInstructions preserves shape text when structured children 
   assert.equal(byId['callout-text'].text, 'Main entry');
 });
 
+test('semanticModelToInstructions reports a filled ancestor that would cover a nested lower-layer graphic', () => {
+  const model = {
+    kind: 'DocumentModel',
+    id: 'nested-layer-conflict-deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    labels: [],
+    parentPages: [],
+    pages: [{
+      id: 'p1',
+      width: 640,
+      height: 360,
+      items: [{
+        id: 'map-panel',
+        role: 'shape',
+        bounds: { x: 40, y: 40, width: 400, height: 260 },
+        zIndex: 1,
+        layer: 'content',
+        styleRefs: {},
+        visualStyle: { fillColor: '#ffffff' },
+        structure: { parentId: 'p1', order: 1, containerPolicy: 'group' },
+      }, {
+        id: 'site-plan',
+        role: 'graphic',
+        bounds: { x: 60, y: 60, width: 360, height: 220 },
+        zIndex: 1.01,
+        layer: 'image',
+        sourceSelector: '#site-plan',
+        styleRefs: {},
+        attributes: {
+          data: './assets/site-plan.ai',
+          'data-id-asset-kind': 'ai',
+          'data-id-artboard': '1',
+          'data-id-fit': 'contain',
+        },
+        computedStyle: { objectFit: 'contain', objectPosition: '50% 50%' },
+        structure: { parentId: 'map-panel', order: 1, containerPolicy: 'child' },
+      }],
+    }],
+    styles: {},
+    assets: [{
+      id: 'asset-site-plan',
+      src: './assets/site-plan.ai',
+      kind: 'ai',
+      sourceSelector: '#site-plan',
+      placement: { artboard: 1, fit: 'contain' },
+    }],
+  };
+
+  const instructions = semanticModelToInstructions(model);
+  const conflict = instructions.report.messages.find((message) => message.code === 'NESTED_LAYER_PAINT_ORDER_UNSUPPORTED');
+
+  assert.ok(conflict);
+  assert.equal(conflict.level, 'error');
+  assert.equal(conflict.details.pageId, 'p1');
+  assert.equal(conflict.details.ancestorItemId, 'map-panel');
+  assert.equal(conflict.details.descendantItemId, 'site-plan');
+});
+
 test('semanticModelToInstructions normalizes native table width delta only within the bounded tolerance', () => {
   const model = {
     kind: 'DocumentModel',

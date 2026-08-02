@@ -273,7 +273,7 @@ HTML 必须能自然浏览器预览。CSS 负责视觉表现，协议字段负�
 
 图片、PDF、PSD、AI、SVG 等资源必须保留真实来源。
 
-`data-id-role="graphic"`、资源类型、置入方式等图形协议字段必须写在实际持有资源路径的元素上，例如带 `src` 的 `img`、带 `data` 的 `object`，或带 `data-id-asset-path` 的图框。不要把这些字段只写在包住资源的普通容器上。
+`data-id-role="graphic"`、资源类型、置入方式等图形协议字段必须写在实际持有资源路径的元素上：图片使用带 `src` 的 `img`，PDF/AI 等使用带 `data` 的 `object`。不要只在外层普通容器或视觉图框上写 `data-id-asset-path`、`data-id-asset-kind`、页码、画板和 fitting 字段；这种 wrapper-only 写法没有独立的浏览器资源节点，容易把预览、真实资源和原生置入图框混为一体。
 
 推荐：
 
@@ -286,6 +286,24 @@ HTML 必须能自然浏览器预览。CSS 负责视觉表现，协议字段负�
         data-id-fit="contain">
 </object>
 ```
+
+AI 画板同样使用真实 `object`；从 InDesign 回读并需要精确保留已有人工作物裁切时，`manual` 必须和完整内容几何一起出现：
+
+```html
+<object id="site-plan-ai"
+        data="../drawings/site-plan.ai"
+        type="application/pdf"
+        data-id-asset-kind="ai"
+        data-id-artboard="1"
+        data-id-fit="manual"
+        data-id-content-x="18pt"
+        data-id-content-y="24pt"
+        data-id-content-width="720pt"
+        data-id-content-height="405pt">
+</object>
+```
+
+新写作者 HTML 优先使用 `cover`、`contain`、`fill` 或 `none`；只有已知内容 bounds 的反向作者包或明确手工裁切才使用 `manual`，不得只写 `manual` 而省略内容几何。
 
 或：
 
@@ -303,6 +321,7 @@ HTML 必须能自然浏览器预览。CSS 负责视觉表现，协议字段负�
 - PDF/PSD/AI 可以有预览图，但不能丢掉原始资源路径。
 - 不能把 PDF 页面截图当成唯一事实。
 - 不能把 InDesign 矢量对象全部退化成不可编辑图片。
+- 带填充的祖先容器不能放在其嵌套资源元素之上的 InDesign 图层。例如 `content` 层白色面板嵌套 `image` 层总图会在 InDesign 中遮住总图，编译器会以 `NESTED_LAYER_PAINT_ORDER_UNSUPPORTED` 阻断。把背景做成同层或更低层的独立兄弟对象，或让带填充祖先位于不高于嵌套资源的图层。
 
 ## 9. 母版和页面家具
 

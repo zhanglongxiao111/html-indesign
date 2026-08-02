@@ -26,6 +26,45 @@ test('forward fidelity audit accepts matching supported facts within geometry to
   assert.equal(report.capabilitySource, 'src/protocol');
 });
 
+test('forward fidelity audit compares canonical AI artboard from the normalized actual model', () => {
+  const fixture = matchingFixture();
+  fixture.instructions.assets[0] = {
+    id: 'asset-hero',
+    resolvedPath: 'D:/assets/site-plan.ai',
+    kind: 'ai',
+  };
+  fixture.instructions.pages[0].items[1].placed = {
+    assetId: 'asset-hero',
+    fit: 'contain',
+    artboard: 2,
+  };
+  fixture.actualSnapshot.assets[0] = {
+    name: 'site-plan.ai',
+    path: 'D:/assets/site-plan.ai',
+    status: 'NORMAL',
+  };
+  fixture.actualSnapshot.pages[0].items[1].placedAsset = {
+    name: 'site-plan.ai',
+    path: 'D:/assets/site-plan.ai',
+    status: 'NORMAL',
+    graphicType: 'PDF',
+    placement: {
+      pageNumber: 2,
+      frameBounds: { x: 10, y: 35, width: 80, height: 35 },
+    },
+  };
+  fixture.actualModel.pages[0].items[1].asset = {
+    name: 'site-plan.ai',
+    path: 'D:/assets/site-plan.ai',
+    placement: { artboard: 2 },
+  };
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.ok, true);
+  assert.equal(report.errors.some((issue) => issue.field === 'asset.placement.artboard'), false);
+});
+
 test('forward fidelity audit reports bounded text-fit growth without failing the build', () => {
   const fixture = matchingFixture();
   fixture.instructions.pages[0].items[0].textFit = {

@@ -99,6 +99,7 @@ function semanticModelToInstructions(model, options = {}) {
     ensureSwatch: ensureInstructionSwatch,
   });
   const layers = collectLayers([...pages, ...parentPages], options, model.layers || []);
+  reportNestedLayerPaintOrderConflicts(model.pages, pages, layers, model.styles || {}, report);
 
   return {
     metadata: {
@@ -133,6 +134,91 @@ function semanticModelToInstructions(model, options = {}) {
     warnings: model.warnings || [],
     report,
   };
+}
+
+function reportNestedLayerPaintOrderConflicts(modelPages, instructionPages, layers, styles, report) {
+  const layerOrder = new Map((layers || []).map((layer) => [String(layer.name || layer.token), Number(layer.order)]));
+  const instructionPageById = new Map((instructionPages || []).map((page) => [String(page.id), page]));
+  for (const modelPage of modelPages || []) {
+    const instructionPage = instructionPageById.get(String(modelPage.id));
+    if (!instructionPage) continue;
+    const modelItems = Array.isArray(modelPage.items) ? modelPage.items : [];
+    const modelById = new Map(modelItems.filter(Boolean).map((item) => [String(item.id), item]));
+    const instructionById = new Map((instructionPage.items || []).filter(Boolean).map((item) => [String(item.id), item]));
+    for (const descendantModel of modelItems) {
+      const descendantInstruction = descendantModel && instructionById.get(String(descendantModel.id));
+      if (!descendantInstruction) continue;
+      let ancestorId = descendantModel.structure && descendantModel.structure.parentId;
+      const visited = new Set();
+      while (ancestorId != null && !visited.has(String(ancestorId))) {
+        const key = String(ancestorId);
+        visited.add(key);
+        const ancestorModel = modelById.get(key);
+        if (!ancestorModel) break;
+        const ancestorInstruction = instructionById.get(key);
+        if (nestedLayerConflict(ancestorInstruction, descendantInstruction, layerOrder, styles)) {
+          addMessage(
+            report,
+            'error',
+            'NESTED_LAYER_PAINT_ORDER_UNSUPPORTED',
+            `Filled ancestor '${ancestorInstruction.id}' is on layer '${ancestorInstruction.layer}' above nested item '${descendantInstruction.id}' on layer '${descendantInstruction.layer}'; InDesign would paint the ancestor over its descendant.`,
+            {
+              pageId: modelPage.id,
+              ancestorItemId: ancestorInstruction.id,
+              ancestorLayer: ancestorInstruction.layer,
+              descendantItemId: descendantInstruction.id,
+              descendantLayer: descendantInstruction.layer,
+            },
+          );
+        }
+        ancestorId = ancestorModel.structure && ancestorModel.structure.parentId;
+      }
+    }
+  }
+}
+
+function nestedLayerConflict(ancestor, descendant, layerOrder, styles) {
+  if (!ancestor || !descendant || ancestor.id === descendant.id) return false;
+  const ancestorOrder = layerOrder.get(String(ancestor.layer));
+  const descendantOrder = layerOrder.get(String(descendant.layer));
+  if (!Number.isFinite(ancestorOrder) || !Number.isFinite(descendantOrder) || ancestorOrder <= descendantOrder) return false;
+  if (!instructionHasVisibleFill(ancestor, styles)) return false;
+  return boundsOverlap(ancestor.bounds, descendant.bounds);
+}
+
+function instructionHasVisibleFill(item, styles) {
+  const opacity = item.styleOverride && item.styleOverride.fillOpacity != null
+    ? item.styleOverride.fillOpacity
+    : item.visualStyle && item.visualStyle.fillOpacity;
+  if (opacity != null && Number(opacity) <= 0) return false;
+  if (item.styleOverride && Object.prototype.hasOwnProperty.call(item.styleOverride, 'fillColor')) {
+    return visibleFillColor(item.styleOverride.fillColor);
+  }
+  if (item.visualStyle && Object.prototype.hasOwnProperty.call(item.visualStyle, 'fillColor')) {
+    return visibleFillColor(item.visualStyle.fillColor);
+  }
+  return [
+    styles.objectStyles && item.objectStyle && styles.objectStyles[item.objectStyle]
+      && styles.objectStyles[item.objectStyle].fillColor,
+    styles.frameStyles && item.frameStyle && styles.frameStyles[item.frameStyle]
+      && styles.frameStyles[item.frameStyle].fillColor,
+  ].some(visibleFillColor);
+}
+
+function visibleFillColor(value) {
+  const color = String(value == null ? '' : value).trim().toLowerCase();
+  return Boolean(color && color !== 'none' && color !== '[none]' && color !== '无' && color !== '[无]' && color !== 'transparent');
+}
+
+function boundsOverlap(a, b) {
+  if (!a || !b) return false;
+  const left = Math.max(Number(a.x), Number(b.x));
+  const top = Math.max(Number(a.y), Number(b.y));
+  const right = Math.min(Number(a.x) + Number(a.width), Number(b.x) + Number(b.width));
+  const bottom = Math.min(Number(a.y) + Number(a.height), Number(b.y) + Number(b.height));
+  return Number.isFinite(left) && Number.isFinite(top) && Number.isFinite(right) && Number.isFinite(bottom)
+    && right - left > 0.01
+    && bottom - top > 0.01;
 }
 
 function parentPageItemOverridesFor(page, parentPageRef, parentPages, layout, report) {

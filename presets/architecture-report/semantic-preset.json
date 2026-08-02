@@ -164,7 +164,9 @@
     "fits": [
       "cover",
       "contain",
-      "fill"
+      "fill",
+      "none",
+      "manual"
     ],
     "crops": [
       "media",

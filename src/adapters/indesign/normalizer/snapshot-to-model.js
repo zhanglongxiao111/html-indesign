@@ -311,9 +311,32 @@ function reverseItem(item, styleMaps = {}, context = {}) {
     observedLabel: observed,
     rejectedFields: validation.rejectedFields,
     rejectionReasons: validation.rejectionReasons,
-    asset: item.placedAsset || null,
+    asset: normalizePlacedAsset(item.placedAsset),
     labels: labelsWithRequiredKind(item.labels, 'item', label.id || item.id, { role }),
   };
+}
+
+function normalizePlacedAsset(asset) {
+  if (!asset) return null;
+  const placement = isPlainObject(asset.placement) ? { ...asset.placement } : asset.placement;
+  const normalized = {
+    ...asset,
+    ...(placement ? { placement } : {}),
+  };
+  if (isAiPlacedAsset(normalized)
+    && isPlainObject(placement)
+    && placement.pageNumber != null) {
+    if (placement.artboard == null) placement.artboard = placement.pageNumber;
+    delete placement.pageNumber;
+  }
+  return normalized;
+}
+
+function isAiPlacedAsset(asset) {
+  const kind = String(asset && (asset.kind || asset.assetKind) || '').trim().toLowerCase();
+  if (kind === 'ai') return true;
+  const source = String(asset && (asset.path || asset.name || asset.fileName) || '').trim().toLowerCase();
+  return /\.ai(?:[?#].*)?$/.test(source);
 }
 
 function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {

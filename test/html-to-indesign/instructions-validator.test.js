@@ -15,6 +15,35 @@ test('validateInstructions accepts compiler output', async () => {
   assert.deepEqual(result.errors, []);
 });
 
+test('validateInstructions rejects compiler report errors before host execution', () => {
+  const result = validateInstructions({
+    metadata: {},
+    document: { pages: [{ id: 'page-1', width: 100, height: 100 }] },
+    styles: {},
+    assets: [],
+    layers: [],
+    pages: [{ id: 'page-1', items: [] }],
+    report: {
+      errorCount: 1,
+      warningCount: 0,
+      messages: [{
+        level: 'error',
+        code: 'NESTED_LAYER_PAINT_ORDER_UNSUPPORTED',
+        message: 'A filled ancestor would cover its nested lower-layer descendant.',
+        details: { pageId: 'page-1', ancestorItemId: 'panel', descendantItemId: 'asset' },
+      }],
+    },
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((error) => (
+    error.code === 'NESTED_LAYER_PAINT_ORDER_UNSUPPORTED'
+      && error.pageId === 'page-1'
+      && error.ancestorItemId === 'panel'
+      && error.descendantItemId === 'asset'
+  )), true);
+});
+
 test('validateInstructions rejects missing page and style references', () => {
   const result = validateInstructions({
     metadata: {},

@@ -374,7 +374,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `data-id-crop` | PDF crop box：`media`、`crop`、`bleed`、`trim`、`art` |
 | `data-id-artboard` | AI/SVG 画板或导入区域 |
 | `data-id-layer-comp` | PSD layer comp |
-| `data-id-fit` | `cover`、`contain`、`fill`、`none` |
+| `data-id-fit` | `cover`、`contain`、`fill`、`none`、`manual`；`manual` 表示使用已登记的内容 bounds、缩放和偏移精确保留手工裁切，不再由通用 fitting 重新计算 |
 | `data-id-preserve-vector` | 是否优先保留矢量 |
 
 历史字段 `data-id-page` 曾被用作 PDF 页码。新 HTML 必须使用 `data-id-pdf-page`；读取层不得把 `data-id-page` 当作 PDF 页码参与编译，只能把它记录为无效观察字段或迁移问题，避免和页面容器标记 `data-page` 混淆。

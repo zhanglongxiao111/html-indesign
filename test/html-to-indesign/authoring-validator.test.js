@@ -409,6 +409,33 @@ test('validateAuthoringRules accepts graphic protocol fields on an image with it
   assert.equal(result.errors.some((entry) => entry.code === 'GRAPHIC_ASSET_REFERENCE_MISSING'), false);
 });
 
+test('validateAuthoringRules accepts PDF and AI protocol fields on an object with its own data source', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'site-plan-ai',
+      role: ITEM_ROLE.GRAPHIC,
+      tagName: 'object',
+      classList: ['site-plan'],
+      attributes: {
+        'data-id-role': ITEM_ROLE.GRAPHIC,
+        'data-id-asset-kind': 'ai',
+        'data-id-artboard': '1',
+        data: './assets/site-plan.ai',
+      },
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.some((entry) => entry.code === 'GRAPHIC_ASSET_REFERENCE_MISSING'), false);
+});
+
 test('validateAuthoringRules rejects composite layout containers declared as text objects', () => {
   const snapshot = snapshotWithPage({
     attributes: {

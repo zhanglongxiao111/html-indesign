@@ -1064,6 +1064,40 @@ test('reverseSnapshotToSemanticModel preserves placed asset preview page and lay
   assert.deepEqual(item.asset.placement.hiddenLayers, ['家具']);
 });
 
+test('reverseSnapshotToSemanticModel normalizes an observed AI page number to canonical artboard', () => {
+  const snapshot = {
+    metadata: { sourceDocument: 'artboard.indd', mode: 'observation' },
+    document: { name: 'artboard.indd', labels: [] },
+    pages: [{
+      id: '1',
+      index: 0,
+      labels: [],
+      bounds: { x: 0, y: 0, width: 800, height: 450 },
+      items: [{
+        id: 'linked-ai',
+        type: 'Rectangle',
+        bounds: { x: 80, y: 40, width: 500, height: 300 },
+        placedAsset: {
+          name: 'site-plan.ai',
+          path: 'D:\\assets\\site-plan.ai',
+          status: 'NORMAL',
+          graphicType: 'PDF',
+          imageTypeName: 'Adobe PDF',
+          placement: { pageNumber: 2, crop: 'media' },
+        },
+        labels: [],
+      }],
+    }],
+  };
+
+  const model = reverseSnapshotToSemanticModel(snapshot, { mode: 'observation', profile: 'architecture-report' });
+  const placement = model.pages[0].items[0].asset.placement;
+
+  assert.equal(placement.artboard, 2);
+  assert.equal(placement.pageNumber, undefined);
+  assert.equal(snapshot.pages[0].items[0].placedAsset.placement.pageNumber, 2);
+});
+
 test('reverseSnapshotToSemanticModel preserves observed item effects', () => {
   const model = reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'effects.indd', mode: 'structured' },

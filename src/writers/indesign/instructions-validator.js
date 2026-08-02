@@ -5,6 +5,7 @@ const { resolveLocalAssetReference } = require('../../shared/assets');
 
 function validateInstructions(instructions, options = {}) {
   const errors = [];
+  appendCompileReportErrors(instructions.report, errors);
   const styles = instructions.styles || {};
   const documentPages = instructions.document && Array.isArray(instructions.document.pages)
     ? instructions.document.pages
@@ -55,6 +56,27 @@ function validateInstructions(instructions, options = {}) {
     valid: errors.length === 0,
     errors,
   };
+}
+
+function appendCompileReportErrors(report, errors) {
+  const messages = report && Array.isArray(report.messages) ? report.messages : [];
+  const compileErrors = messages.filter((message) => message && message.level === 'error');
+  for (const error of compileErrors) {
+    errors.push({
+      ...(error.details && typeof error.details === 'object' ? error.details : {}),
+      code: error.code || 'INSTRUCTIONS_COMPILE_FAILED',
+      message: error.message || 'Instructions compilation failed.',
+      source: 'compiler-report',
+    });
+  }
+  const missingCount = Math.max(0, Number(report && report.errorCount || 0) - compileErrors.length);
+  for (let index = 0; index < missingCount; index++) {
+    errors.push({
+      code: 'INSTRUCTIONS_COMPILE_FAILED',
+      message: 'Instructions compilation reported an error without a diagnostic message.',
+      source: 'compiler-report',
+    });
+  }
 }
 
 function validatePageSizes(documentPages, errors) {
