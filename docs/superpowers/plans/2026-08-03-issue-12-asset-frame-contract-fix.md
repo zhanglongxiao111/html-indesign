@@ -18,10 +18,10 @@
 - Modify: `docs/规范/HTML_INDESIGN_LIBRARY_SPEC.md`
 - Verify: `docs/规范/REVERSE_EXPORT.md`
 
-- [ ] Add a failing preset test asserting that `manual` and CSS-native `none` are known fit tokens.
-- [ ] Run `node --test test/semantic-preset/semantic-preset.test.js` and confirm the new assertion fails because the standard preset omits both tokens.
-- [ ] Add `manual` and `none` to the standard preset and document `manual` as the canonical explicit-content-geometry mode.
-- [ ] Re-run the targeted test and confirm it passes.
+- [x] Add a failing preset test asserting that `manual` and CSS-native `none` are known fit tokens.
+- [x] Run `node --test test/semantic-preset/semantic-preset.test.js` and confirm the new assertion fails because the standard preset omits both tokens.
+- [x] Add `manual` and `none` to the standard preset and document `manual` as the canonical explicit-content-geometry mode.
+- [x] Re-run the targeted test and confirm it passes.
 
 ### Task 2: Normalize real InDesign AI page observations to canonical artboards
 
@@ -31,11 +31,11 @@
 - Modify: `src/adapters/indesign/normalizer/snapshot-to-model.js`
 - Modify: `src/semantic-model/audit/forward-fidelity.js`
 
-- [ ] Add a failing reverse-normalizer test for an `.ai` link whose InDesign snapshot reports `placement.pageNumber`.
-- [ ] Add a failing fidelity test proving expected `artboard: 1` matches the normalized actual model even though the raw snapshot only reports `pageNumber: 1`.
-- [ ] Run both targeted test files and confirm the new cases fail for the intended missing-artboard reason.
-- [ ] Normalize `.ai` placed assets by moving observed `pageNumber` to canonical `artboard` without mutating the raw snapshot, and make fidelity compare the normalized model asset.
-- [ ] Re-run both targeted test files and confirm they pass while PDF page-number behavior remains unchanged.
+- [x] Add a failing reverse-normalizer test for an `.ai` link whose InDesign snapshot reports `placement.pageNumber`.
+- [x] Add a failing fidelity test proving expected `artboard: 1` matches the normalized actual model even though the raw snapshot only reports `pageNumber: 1`.
+- [x] Run both targeted test files and confirm the new cases fail for the intended missing-artboard reason.
+- [x] Normalize `.ai` placed assets by moving observed `pageNumber` to canonical `artboard` without mutating the raw snapshot, and make fidelity compare the normalized model asset.
+- [x] Re-run both targeted test files and confirm they pass while PDF page-number behavior remains unchanged.
 
 ### Task 3: Reject cross-layer ancestor fills that would cover descendants
 
@@ -45,12 +45,12 @@
 - Modify: `src/writers/indesign/instruction-writer.js`
 - Modify: `src/writers/indesign/instructions-validator.js`
 
-- [ ] Add a failing writer test with a filled parent on `content` and a nested graphic on lower `image`, asserting a dedicated compile error.
-- [ ] Add a failing validator test asserting compile-report errors make instructions invalid before host execution.
-- [ ] Run the two targeted test files and confirm the new cases fail.
-- [ ] Detect the unsupported descendant paint-order conflict from canonical structure, effective fill, bounds overlap, and final layer order; record `NESTED_LAYER_PAINT_ORDER_UNSUPPORTED` with page/item evidence.
-- [ ] Promote compiler report errors into instruction validation failures so plugin and E2E builds stop before InDesign.
-- [ ] Re-run the targeted tests and the existing nested same-layer paint-order regression.
+- [x] Add a failing writer test with a filled parent on `content` and a nested graphic on lower `image`, asserting a dedicated compile error.
+- [x] Add a failing validator test asserting compile-report errors make instructions invalid before host execution.
+- [x] Run the two targeted test files and confirm the new cases fail.
+- [x] Detect the unsupported descendant paint-order conflict from canonical structure, effective fill, bounds overlap, and final layer order; record `NESTED_LAYER_PAINT_ORDER_UNSUPPORTED` with page/item evidence.
+- [x] Promote compiler report errors into instruction validation failures so plugin and E2E builds stop before InDesign.
+- [x] Re-run the targeted tests and the existing nested same-layer paint-order regression.
 
 ### Task 4: Publish the canonical authoring rule and regression coverage
 
@@ -59,10 +59,10 @@
 - Modify in unified Skill repository: `D:/AI/mcp-indesign/skills/indesign-cli/references/html-authoring.md`
 - Test: `test/html-to-indesign/authoring-validator.test.js`
 
-- [ ] Document that PDF/AI source fields belong on the real `<object data="...">`/resource element, not a visual wrapper, and include `manual` crop geometry.
-- [ ] Document the cross-layer limitation as an explicit compile failure with a safe authoring shape: keep a filled ancestor at or below its nested asset layer, or use a sibling background object.
-- [ ] Synchronize the same rule to the only published unified Skill source after checking the separate repository status and using an isolated worktree if needed.
-- [ ] Confirm existing authoring validation still rejects wrapper-only asset fields and accepts real resource elements.
+- [x] Document that PDF/AI source fields belong on the real `<object data="...">`/resource element, not a visual wrapper, and include `manual` crop geometry.
+- [x] Document the cross-layer limitation as an explicit compile failure with a safe authoring shape: keep a filled ancestor at or below its nested asset layer, or use a sibling background object.
+- [x] Synchronize the same rule to the only published unified Skill source after checking the separate repository status and using an isolated worktree if needed.
+- [x] Confirm existing authoring validation still rejects wrapper-only asset fields and accepts real resource elements.
 
 ### Task 5: Verify the complete fix
 
@@ -70,8 +70,9 @@
 - Test: `test/`
 - Verify: package and plugin artifacts
 
-- [ ] Run all targeted regression files.
-- [ ] Run `npm test` and confirm zero failures.
-- [ ] Run `npm run plugin:validate` and `npm run pack:dry-run`.
-- [ ] Run proportionate real InDesign verification for AI placement/artboard round-trip if a repository-safe AI fixture is available; otherwise record the exact environmental limitation and retain the unit/static executor evidence.
-- [ ] Inspect `git diff --check`, worktree status, and the final diff; confirm no customer paths or private artifacts entered version control.
+- [x] Run all targeted regression files.
+- [x] Run `npm test` and confirm zero failures (1162/1162).
+- [x] Run formal CLI plugin validation and `npm run pack:dry-run`.
+- [x] Run proportionate real InDesign verification. The repository has no safe `.ai` fixture, so direct AI placement remains covered by normalizer/fidelity regressions; the standard seven-page real InDesign E2E passed with INDD/PDF/IDML and seven preview pages.
+- [x] Add regression coverage for the formal `indesign-cli-agent` child-envelope response discovered during E2E, and confirm the runner unwraps health, script, and export verification results.
+- [x] Inspect `git diff --check`, worktree status, and the final diff; confirm no customer paths or private artifacts entered version control.

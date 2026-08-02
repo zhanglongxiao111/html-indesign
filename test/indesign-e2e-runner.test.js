@@ -12,6 +12,7 @@ const {
   architectureStyleNameMap,
   loadStyleNameMapForHtml,
   parseArgs,
+  parseCliEnvelopeJson,
   parseCliResultJson,
   resolveIndesignCliCommand,
   parseTargetSize,
@@ -161,6 +162,54 @@ test('parseCliResultJson returns current script run parsed payload', () => {
     counts: {
       pages: 7,
     },
+  });
+});
+
+test('parseCliResultJson unwraps the formal indesign-cli-agent child envelope', () => {
+  const parsed = parseCliResultJson(JSON.stringify({
+    ok: true,
+    data: {
+      update: { updated: false },
+      child: {
+        exit_code: 0,
+        stdout_json: {
+          ok: true,
+          data: {
+            parsed: {
+              ok: true,
+              outputs: { pdf: 'D:/out/report.pdf' },
+            },
+          },
+        },
+      },
+    },
+  }));
+
+  assert.deepEqual(parsed, {
+    ok: true,
+    outputs: { pdf: 'D:/out/report.pdf' },
+  });
+});
+
+test('parseCliEnvelopeJson keeps the inner command envelope for health and export verification', () => {
+  const parsed = parseCliEnvelopeJson(JSON.stringify({
+    ok: true,
+    data: {
+      child: {
+        exit_code: 0,
+        stdout_json: {
+          ok: true,
+          tool_success: true,
+          data: { signature_ok: true },
+        },
+      },
+    },
+  }));
+
+  assert.deepEqual(parsed, {
+    ok: true,
+    tool_success: true,
+    data: { signature_ok: true },
   });
 });
 

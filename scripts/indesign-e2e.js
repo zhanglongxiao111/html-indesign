@@ -185,7 +185,7 @@ async function runIndesignE2E(options = {}) {
 
   const compileSummary = await compileToInstructions(context, options);
   const health = runCli(['--json', '--pretty', 'server', 'health'], context.repoRoot);
-  const healthJson = JSON.parse(health.stdout);
+  const healthJson = parseCliEnvelopeJson(health.stdout);
   if (!healthJson.ok || healthJson.tool_success === false) {
     throw new Error(`${resolveIndesignCliCommand()} health failed: ${health.stdout || health.stderr}`);
   }
@@ -231,7 +231,7 @@ async function runIndesignE2E(options = {}) {
   if (!pdfPath) throw new Error('InDesign export did not report a PDF path.');
 
   const verifyCli = runCli(['--json', '--pretty', 'export', 'verify', pdfPath], context.repoRoot);
-  const verifyResult = JSON.parse(verifyCli.stdout);
+  const verifyResult = parseCliEnvelopeJson(verifyCli.stdout);
   if (!verifyResult.ok || !verifyResult.data || verifyResult.data.signature_ok !== true) {
     throw new Error(`PDF verification failed: ${verifyCli.stdout}`);
   }
@@ -519,7 +519,7 @@ function runCommand(command, args, cwd) {
 }
 
 function parseCliResultJson(stdout) {
-  const parsed = JSON.parse(stdout);
+  const parsed = parseCliEnvelopeJson(stdout);
   if (parsed && parsed.data && parsed.data.result_json) return parsed.data.result_json;
   if (parsed && parsed.data && parsed.data.parsed && parsed.data.parsed.result) {
     return JSON.parse(parsed.data.parsed.result);
@@ -529,6 +529,12 @@ function parseCliResultJson(stdout) {
   }
   if (parsed && parsed.data) return parsed.data;
   return parsed;
+}
+
+function parseCliEnvelopeJson(stdout) {
+  const parsed = typeof stdout === 'string' ? JSON.parse(stdout) : stdout;
+  const childOutput = parsed && parsed.data && parsed.data.child && parsed.data.child.stdout_json;
+  return childOutput ? parseCliEnvelopeJson(childOutput) : parsed;
 }
 
 function assertCliResultOk(result, message) {
@@ -828,6 +834,7 @@ module.exports = {
   buildReverseSnapshotJsx,
   architectureStyleNameMap,
   loadStyleNameMapForHtml,
+  parseCliEnvelopeJson,
   parseCliResultJson,
   resolveIndesignCliCommand,
   parseArgs,
