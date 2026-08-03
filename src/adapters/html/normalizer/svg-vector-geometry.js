@@ -87,24 +87,31 @@ function pathsFromVectorElement(element, bounds, viewBox, sourceHtml) {
   const visualStyle = visualStyleFromPath(attrs, sourceHtml, element && element.computedStyle || {});
   let path = null;
   if (tagName === 'circle') {
-    const radius = finiteNumber(attrs.r);
-    path = ellipsePath(finiteNumber(attrs.cx, 0), finiteNumber(attrs.cy, 0), radius, radius, bounds, viewBox, visualStyle);
+    const radius = elementNumber(element, 'r');
+    path = ellipsePath(elementNumber(element, 'cx', 0), elementNumber(element, 'cy', 0), radius, radius, bounds, viewBox, visualStyle);
   } else if (tagName === 'ellipse') {
     path = ellipsePath(
-      finiteNumber(attrs.cx, 0),
-      finiteNumber(attrs.cy, 0),
-      finiteNumber(attrs.rx),
-      finiteNumber(attrs.ry),
+      elementNumber(element, 'cx', 0),
+      elementNumber(element, 'cy', 0),
+      elementNumber(element, 'rx'),
+      elementNumber(element, 'ry'),
       bounds,
       viewBox,
       visualStyle,
     );
   } else if (tagName === 'rect') {
-    path = rectPath(attrs, bounds, viewBox, visualStyle);
+    path = rectPath(element, bounds, viewBox, visualStyle);
   } else if (tagName === 'line') {
-    path = linePath(attrs, bounds, viewBox, visualStyle);
+    path = linePath(element, bounds, viewBox, visualStyle);
   } else if (tagName === 'polyline' || tagName === 'polygon') {
-    path = pointsPath(attrs.points, tagName === 'polygon', bounds, viewBox, visualStyle);
+    path = pointsPath(
+      attrs.points,
+      tagName === 'polygon',
+      bounds,
+      viewBox,
+      visualStyle,
+      element && element.geometry && element.geometry.points,
+    );
   }
   return path ? [path] : [];
 }
@@ -135,14 +142,18 @@ function ellipsePath(cx, cy, rx, ry, bounds, viewBox, visualStyle) {
   };
 }
 
-function rectPath(attrs, bounds, viewBox, visualStyle) {
-  const x = finiteNumber(attrs.x, 0);
-  const y = finiteNumber(attrs.y, 0);
-  const width = finiteNumber(attrs.width);
-  const height = finiteNumber(attrs.height);
+function rectPath(elementLike, bounds, viewBox, visualStyle) {
+  const element = elementLike && elementLike.attributes ? elementLike : { attributes: elementLike };
+  const normalizedAttrs = element.attributes || {};
+  const x = elementNumber(element, 'x', 0);
+  const y = elementNumber(element, 'y', 0);
+  const width = elementNumber(element, 'width');
+  const height = elementNumber(element, 'height');
   if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
-  let rx = finiteNumber(attrs.rx);
-  let ry = finiteNumber(attrs.ry);
+  let rx = elementNumber(element, 'rx');
+  let ry = elementNumber(element, 'ry');
+  if (!Object.prototype.hasOwnProperty.call(element.geometry || {}, 'rx') && !Object.prototype.hasOwnProperty.call(normalizedAttrs, 'rx')) rx = NaN;
+  if (!Object.prototype.hasOwnProperty.call(element.geometry || {}, 'ry') && !Object.prototype.hasOwnProperty.call(normalizedAttrs, 'ry')) ry = NaN;
   if (!Number.isFinite(rx) && Number.isFinite(ry)) rx = ry;
   if (!Number.isFinite(ry) && Number.isFinite(rx)) ry = rx;
   rx = Math.min(Math.max(Number.isFinite(rx) ? rx : 0, 0), width / 2);
@@ -177,10 +188,11 @@ function rectPath(attrs, bounds, viewBox, visualStyle) {
   };
 }
 
-function linePath(attrs, bounds, viewBox, visualStyle) {
+function linePath(elementLike, bounds, viewBox, visualStyle) {
+  const element = elementLike && elementLike.attributes ? elementLike : { attributes: elementLike };
   const points = [
-    { x: finiteNumber(attrs.x1, 0), y: finiteNumber(attrs.y1, 0) },
-    { x: finiteNumber(attrs.x2, 0), y: finiteNumber(attrs.y2, 0) },
+    { x: elementNumber(element, 'x1', 0), y: elementNumber(element, 'y1', 0) },
+    { x: elementNumber(element, 'x2', 0), y: elementNumber(element, 'y2', 0) },
   ];
   if (points.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) return null;
   return {
@@ -190,14 +202,22 @@ function linePath(attrs, bounds, viewBox, visualStyle) {
   };
 }
 
-function pointsPath(value, closed, bounds, viewBox, visualStyle) {
+function pointsPath(value, closed, bounds, viewBox, visualStyle, capturedPoints = null) {
+  const points = Array.isArray(capturedPoints) && capturedPoints.length
+    ? capturedPoints.map((point) => vectorPoint(mapPoint(point, bounds, viewBox)))
+    : pointsFromAttribute(value, bounds, viewBox);
+  if (points.length < (closed ? 3 : 2)) return null;
+  return { closed, points, visualStyle: { ...visualStyle } };
+}
+
+function pointsFromAttribute(value, bounds, viewBox) {
   const values = String(value || '').match(/[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/gi) || [];
-  if (values.length < (closed ? 6 : 4) || values.length % 2 !== 0) return null;
+  if (values.length % 2 !== 0) return [];
   const points = [];
   for (let index = 0; index < values.length; index += 2) {
     points.push(vectorPoint(mapPoint({ x: Number(values[index]), y: Number(values[index + 1]) }, bounds, viewBox)));
   }
-  return { closed, points, visualStyle: { ...visualStyle } };
+  return points;
 }
 
 function smoothVectorPoint(anchor, left, right, bounds, viewBox) {
@@ -212,6 +232,15 @@ function smoothVectorPoint(anchor, left, right, bounds, viewBox) {
 function finiteNumber(value, fallback = NaN) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function elementNumber(element, name, fallback = NaN) {
+  const geometry = element && element.geometry || {};
+  if (Object.prototype.hasOwnProperty.call(geometry, name) && geometry[name] != null) {
+    return finiteNumber(geometry[name], fallback);
+  }
+  const attrs = element && element.attributes || {};
+  return finiteNumber(attrs[name], fallback);
 }
 
 function parseVectorPointsAttr(value, bounds, viewBox) {

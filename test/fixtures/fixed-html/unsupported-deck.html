@@ -82,6 +82,13 @@
       border-right: 10mm solid transparent;
       border-bottom: 20mm solid #ee9900;
     }
+    .invalid-svg {
+      position: absolute;
+      left: 16mm;
+      top: 76mm;
+      width: 30mm;
+      height: 16mm;
+    }
   </style>
 </head>
 <body>
@@ -96,6 +103,9 @@
     <div id="clipped-shape" class="clipped-shape"></div>
     <div id="multi-color-gradient" class="multi-color-gradient"></div>
     <div id="border-triangle" class="border-triangle" data-id-object></div>
+    <svg id="invalid-svg" class="invalid-svg" viewBox="0 0 100 60">
+      <circle cx="50" cy="30" r="0" fill="#c00000"></circle>
+    </svg>
   </section>
 </body>
 </html>

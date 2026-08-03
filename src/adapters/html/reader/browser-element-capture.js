@@ -143,19 +143,20 @@
       .map((vectorEl) => ({
         tagName: String(vectorEl.tagName || '').toLowerCase(),
         attributes: attrs(vectorEl),
+        geometry: vectorElementGeometry(vectorEl),
         computedStyle: vectorElementComputedStyle(vectorEl),
       }));
   }
 
   function isRenderedSvgVectorElement(vectorEl) {
-    const style = getComputedStyle(vectorEl);
-    return Boolean(style && style.display !== 'none' && style.visibility !== 'hidden' && style.visibility !== 'collapse');
+    return isRenderedSvgNode(vectorEl, vectorEl && vectorEl.ownerSVGElement);
   }
 
   function svgUnsupportedElementsFor(el) {
     if (!el || String(el.tagName || '').toLowerCase() !== 'svg') return [];
     const nodes = [el, ...Array.from(el.querySelectorAll('*'))]
-      .filter((node) => node === el || !isSvgDefinitionNode(node, el));
+      .filter((node) => node === el || !isSvgDefinitionNode(node, el))
+      .filter((node) => node === el || isRenderedSvgNode(node, el));
     const findings = [];
     for (const node of nodes) {
       const tagName = String(node.tagName || '').toLowerCase();
@@ -167,8 +168,106 @@
         findings.push({ tagName, reason: 'unsupported-element' });
       }
       for (const finding of unsupportedSvgFactsForNode(node, tagName)) findings.push(finding);
+      const invalidGeometry = invalidSvgGeometryFinding(node, tagName);
+      if (invalidGeometry) findings.push(invalidGeometry);
     }
     return uniqueSvgFindings(findings);
+  }
+
+  function isRenderedSvgNode(node, rootSvg) {
+    let current = node;
+    while (current) {
+      const style = getComputedStyle(current);
+      if (!style
+        || style.display === 'none'
+        || style.visibility === 'hidden'
+        || style.visibility === 'collapse') return false;
+      if (current === rootSvg) break;
+      current = current.parentElement;
+    }
+    return true;
+  }
+
+  function vectorElementGeometry(vectorEl) {
+    const tagName = String(vectorEl && vectorEl.tagName || '').toLowerCase();
+    if (tagName === 'circle') {
+      return {
+        cx: svgLengthValue(vectorEl.cx),
+        cy: svgLengthValue(vectorEl.cy),
+        r: svgLengthValue(vectorEl.r),
+      };
+    }
+    if (tagName === 'ellipse') {
+      return {
+        cx: svgLengthValue(vectorEl.cx),
+        cy: svgLengthValue(vectorEl.cy),
+        rx: svgLengthValue(vectorEl.rx),
+        ry: svgLengthValue(vectorEl.ry),
+      };
+    }
+    if (tagName === 'rect') {
+      return {
+        x: svgLengthValue(vectorEl.x),
+        y: svgLengthValue(vectorEl.y),
+        width: svgLengthValue(vectorEl.width),
+        height: svgLengthValue(vectorEl.height),
+        ...(vectorEl.hasAttribute('rx') ? { rx: svgLengthValue(vectorEl.rx) } : {}),
+        ...(vectorEl.hasAttribute('ry') ? { ry: svgLengthValue(vectorEl.ry) } : {}),
+      };
+    }
+    if (tagName === 'line') {
+      return {
+        x1: svgLengthValue(vectorEl.x1),
+        y1: svgLengthValue(vectorEl.y1),
+        x2: svgLengthValue(vectorEl.x2),
+        y2: svgLengthValue(vectorEl.y2),
+      };
+    }
+    if (tagName === 'polyline' || tagName === 'polygon') {
+      return { points: svgPointListValue(vectorEl.points) };
+    }
+    if (tagName === 'path') return { d: String(vectorEl.getAttribute('d') || '') };
+    return {};
+  }
+
+  function svgLengthValue(animatedLength) {
+    const value = Number(animatedLength && animatedLength.baseVal && animatedLength.baseVal.value);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function svgPointListValue(pointList) {
+    const out = [];
+    const count = Number(pointList && pointList.numberOfItems || 0);
+    for (let index = 0; index < count; index += 1) {
+      const point = pointList.getItem(index);
+      const x = Number(point && point.x);
+      const y = Number(point && point.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return [];
+      out.push({ x, y });
+    }
+    return out;
+  }
+
+  function invalidSvgGeometryFinding(node, tagName) {
+    if (!SVG_VECTOR_TAGS.includes(tagName)) return null;
+    const geometry = vectorElementGeometry(node);
+    let valid = true;
+    if (tagName === 'circle') valid = positiveSvgNumber(geometry.r);
+    else if (tagName === 'ellipse') valid = positiveSvgNumber(geometry.rx) && positiveSvgNumber(geometry.ry);
+    else if (tagName === 'rect') valid = positiveSvgNumber(geometry.width) && positiveSvgNumber(geometry.height);
+    else if (tagName === 'line') valid = finiteSvgNumbers(geometry.x1, geometry.y1, geometry.x2, geometry.y2);
+    else if (tagName === 'polyline') valid = Array.isArray(geometry.points) && geometry.points.length >= 2;
+    else if (tagName === 'polygon') valid = Array.isArray(geometry.points) && geometry.points.length >= 3;
+    else if (tagName === 'path') valid = Boolean(String(geometry.d || '').trim());
+    return valid ? null : { tagName, reason: 'invalid-geometry' };
+  }
+
+  function positiveSvgNumber(value) {
+    return Number.isFinite(Number(value)) && Number(value) > 0;
+  }
+
+  function finiteSvgNumbers() {
+    return Array.prototype.every.call(arguments, (value) => Number.isFinite(Number(value)));
   }
 
   function isSvgDefinitionNode(node, rootSvg) {

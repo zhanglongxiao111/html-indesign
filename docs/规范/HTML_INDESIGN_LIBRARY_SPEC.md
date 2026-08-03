@@ -686,9 +686,9 @@ PSD 和 AI 也应优先保留为 linked placed asset。只有在 InDesign 置入
 
 ### 9.4 SVG
 
-外部 SVG 优先保留为 linked vector resource。简单内联 SVG 当前直接拆成 native vector：`circle/ellipse` -> Oval，`rect` -> Rectangle 或圆角 Path，`line` -> GraphicLine，`polyline/polygon/path` -> 原生 Path；多个基础图元形成 native group。缺少 `viewBox` 时使用浏览器实际 rendered viewport 作为用户坐标范围。
+外部 SVG 优先保留为 linked vector resource。简单内联 SVG 当前直接拆成 native vector：`circle/ellipse` -> Oval，`rect` -> Rectangle 或圆角 Path，`line` -> GraphicLine，`polyline/polygon/path` -> 原生 Path；多个基础图元形成 native group。缺少 `viewBox` 时使用浏览器实际 rendered viewport 作为用户坐标范围；百分比和带单位的 SVG 长度使用浏览器 DOM 已解析的用户坐标，不再自行猜算。
 
-内联 SVG path 当前只接受 `M/L/C/Z`（含相对命令）。`use`、SVG text/image、transform、clip、mask、filter、paint server 和其他 path 命令返回 `HTML_INLINE_SVG_UNSUPPORTED`；作者应拆成已支持图元，或改为外部 SVG 资源。严禁跳过不支持的元素后输出残缺图形，也不自动栅格化来掩盖损失。支持的内联 SVG 返回 `HTML_INLINE_SVG_NORMALIZED`。
+内联 SVG path 当前只接受 `M/L/C/Z`（含相对命令）。基础图元缺少有效尺寸/坐标，或出现 `use`、SVG text/image、transform、clip、mask、filter、paint server 和其他 path 命令时，返回 `HTML_INLINE_SVG_UNSUPPORTED`；作者应修正基础几何、拆成已支持图元，或改为外部 SVG 资源。隐藏的辅助/元数据元素不参与判断。严禁跳过不支持的可见元素后输出残缺图形，也不自动栅格化来掩盖损失。支持的内联 SVG 返回 `HTML_INLINE_SVG_NORMALIZED`。
 
 ### 9.5 矢量标注和分析图形
 

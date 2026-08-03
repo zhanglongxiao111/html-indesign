@@ -404,6 +404,8 @@ test('snapshotToSemanticModel converts common inline SVG primitives to native ve
   assert.equal(items.get('svg-polygon').vectorGeometry.kind, 'polygon');
   assert.equal(items.get('svg-polygon').vectorGeometry.paths[0].closed, true);
   assert.equal(items.get('svg-path').vectorGeometry.kind, 'path');
+  assert.equal(items.get('svg-percent-circle').vectorGeometry.kind, 'oval');
+  assert.equal(items.get('svg-percent-circle').visualStyle.fillColor, '#cc3388');
   assert.equal(items.get('svg-circle').vectorGeometry.paths.length, 1);
   assert.equal(items.get('svg-circle').vectorGeometry.paths[0].points.length, 4);
   assert.equal(items.get('svg-circle').visualStyle.fillColor, '#c00000');
@@ -452,6 +454,12 @@ test('renderSnapshot captures unsupported visible HTML constructs instead of sil
   assert.equal(
     items.get('unsupported-svg').unsupported.svgUnsupportedElements.some((entry) => (
       entry.tagName === 'use' && entry.reason === 'unsupported-element'
+    )),
+    true,
+  );
+  assert.equal(
+    items.get('invalid-svg').unsupported.svgUnsupportedElements.some((entry) => (
+      entry.tagName === 'circle' && entry.reason === 'invalid-geometry'
     )),
     true,
   );

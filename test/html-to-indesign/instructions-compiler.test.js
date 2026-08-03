@@ -927,11 +927,13 @@ test('compileInstructions recognizes natural CSS oval and large-radius circle sh
   #ellipse-50-percent { left: 20px; width: 80px; height: 40px; border-radius: 50%; }
   #circle-large-radius { left: 120px; width: 40px; height: 40px; border-radius: 9999px; }
   #pill-large-radius { left: 180px; width: 80px; height: 40px; border-radius: 9999px; }
+  #ellipse-hundred-percent { left: 280px; width: 80px; height: 40px; border-radius: 100%; }
 </style>
 <section class="page" id="shape-page">
   <div id="ellipse-50-percent" class="shape"></div>
   <div id="circle-large-radius" class="shape"></div>
   <div id="pill-large-radius" class="shape"></div>
+  <div id="ellipse-hundred-percent" class="shape"></div>
 </section>`, 'utf8');
 
   const snapshot = await renderSnapshot({ htmlPath });
@@ -941,6 +943,7 @@ test('compileInstructions recognizes natural CSS oval and large-radius circle sh
   assert.equal(byId.get('ellipse-50-percent').shapeKind, 'oval');
   assert.equal(byId.get('circle-large-radius').shapeKind, 'oval');
   assert.equal(byId.get('pill-large-radius').shapeKind, 'rectangle');
+  assert.equal(byId.get('ellipse-hundred-percent').shapeKind, 'oval');
 });
 
 test('compileInstructions emits native InDesign kinds for common inline SVG primitives', async () => {
@@ -957,6 +960,7 @@ test('compileInstructions emits native InDesign kinds for common inline SVG prim
   assert.equal(byId.get('svg-polyline').type, 'SHAPE');
   assert.equal(byId.get('svg-polyline').shapeKind, 'polygon');
   assert.equal(byId.get('svg-polygon').shapeKind, 'polygon');
+  assert.equal(byId.get('svg-percent-circle').shapeKind, 'oval');
   assert.equal(byId.get('svg-circle').styleOverride.fillColor, '颜色-192-0-0');
   assert.equal(byId.get('svg-circle').styleOverride.strokeColor, '颜色-255-255-255');
 });

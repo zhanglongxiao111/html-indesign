@@ -46,7 +46,7 @@ React、Vue 和图表库可以用于创作阶段，但在转换前必须生成�
 
 Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM：标题、段落、列表、`figure + figcaption`、原生 `table`、`img[src]`、`object[data]`、CSS Grid、Flex、padding 和 `object-fit` 都是允许的作者写法。
 
-常见位置圆点可以直接写成标准 SVG；`viewBox` 可写可不写，转换层会按浏览器实际 SVG 视口换算：
+常见位置圆点可以直接写成标准 SVG；`viewBox` 可写可不写，`cx="50%"`、`r="25%"`、`width="100%"` 等常见 SVG 长度也可直接使用，转换层会读取浏览器解析后的实际用户坐标：
 
 ```html
 <svg id="site-marker" viewBox="0 0 100 100" role="img" aria-label="建筑位置标记">
@@ -54,7 +54,7 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 </svg>
 ```
 
-空 `div` 使用 `background`、`border` 和 `border-radius: 50%` 绘制圆或椭圆也可直接转换；方形元素使用足够大的绝对圆角（例如 `9999px`）会转换为 Oval，非方形大圆角胶囊仍保留圆角矩形。
+空 `div` 使用 `background`、`border` 和 `border-radius: 50%` 或 `100%` 绘制圆或椭圆也可直接转换；方形元素使用足够大的绝对圆角（例如 `9999px`）会转换为 Oval，非方形大圆角胶囊仍保留圆角矩形。
 
 转换链路分三档处理：
 
@@ -78,7 +78,7 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 
 | code | 表示什么 | 作者源码应如何改 |
 | ---- | -------- | ---------------- |
-| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含复杂元素、变换、裁切、paint server 或不支持的 path 命令 | 拆成支持的基础图元，或保存为外部 `.svg` 资源 |
+| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含无效几何、复杂元素、变换、裁切、paint server 或不支持的 path 命令 | 修正基础图元的尺寸/坐标，拆成支持图元，或保存为外部 `.svg` 资源 |
 | `HTML_PSEUDO_ELEMENT_UNSUPPORTED` | 可见内容只存在于 `::before` / `::after` | 改成真实 HTML 元素，装饰几何可改为基础 SVG 图元 |
 | `HTML_CLIP_PATH_UNSUPPORTED` | 使用 `clip-path` 绘制或裁切可见对象 | 改为 SVG `polygon/path`，或使用外部 SVG |
 | `HTML_GRADIENT_UNSUPPORTED` | 使用多色或无法映射的渐变 | 单色透明度渐变可保留；其他渐变改为外部资源 |

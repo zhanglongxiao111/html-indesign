@@ -93,6 +93,12 @@ test('auditHtmlCompatibility blocks common visible HTML constructs that cannot b
     assert.ok(message.ruleRef);
   }
   assert.equal(report.summary.blocked >= 6, true);
+  const invalidGeometry = report.messages.find((message) => (
+    message.code === 'HTML_INLINE_SVG_UNSUPPORTED'
+      && message.itemId === 'invalid-svg'
+      && message.unsupportedElements.some((entry) => entry.reason === 'invalid-geometry')
+  ));
+  assert.ok(invalidGeometry, 'invalid SVG geometry must be blocked before compilation');
 });
 
 test('auditHtmlCompatibility reports supported inline SVG primitives as native normalization', async () => {
@@ -100,7 +106,7 @@ test('auditHtmlCompatibility reports supported inline SVG primitives as native n
   const report = auditHtmlCompatibility(await renderSnapshot({ htmlPath }));
   const svgMessages = report.messages.filter((message) => message.code === 'HTML_INLINE_SVG_NORMALIZED');
 
-  assert.equal(svgMessages.length, 8);
+  assert.equal(svgMessages.length, 9);
   assert.equal(svgMessages.every((message) => message.action === 'normalized'), true);
   assert.equal(report.messages.some((message) => message.code === 'HTML_INLINE_SVG_UNSUPPORTED'), false);
   assert.equal(report.summary.blocked, 0);

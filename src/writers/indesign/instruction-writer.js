@@ -778,7 +778,8 @@ function shapeKindFor(item, vectorGeometry = null) {
 
 function isCssOval(item, radius) {
   const value = String(radius || '').trim().toLowerCase();
-  if (/^50(?:\.0+)?%$/.test(value)) return true;
+  const percent = value.match(/^([+-]?(?:\d+|\d*\.\d+))%$/);
+  if (percent && Number(percent[1]) >= 50) return true;
   const parsed = parseCssLength(value);
   if (!parsed) return false;
   const bounds = item && item.boundsMm || {};
