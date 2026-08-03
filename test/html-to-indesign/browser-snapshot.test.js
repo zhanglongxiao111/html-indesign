@@ -259,13 +259,13 @@ test('renderSnapshot keeps RGB colors ending in zero and ignores alpha-zero pain
   .paint { position: absolute; top: 10px; width: 40px; height: 40px; }
   #red { left: 10px; background: rgb(192, 0, 0); }
   #orange { left: 60px; background: rgb(238, 153, 0); }
-  #transparent-legacy { left: 110px; background: rgba(12, 34, 56, 0); }
+  #transparent-comma-alpha { left: 110px; background: rgba(12, 34, 56, 0); }
   #transparent-modern { left: 160px; background: rgb(12 34 56 / 0); }
 </style>
 <section class="page" id="paint-page">
   <div id="red" class="paint"></div>
   <div id="orange" class="paint"></div>
-  <div id="transparent-legacy" class="paint"></div>
+  <div id="transparent-comma-alpha" class="paint"></div>
   <div id="transparent-modern" class="paint"></div>
 </section>`, 'utf8');
 
@@ -274,7 +274,7 @@ test('renderSnapshot keeps RGB colors ending in zero and ignores alpha-zero pain
 
   assert.equal(ids.includes('red'), true);
   assert.equal(ids.includes('orange'), true);
-  assert.equal(ids.includes('transparent-legacy'), false);
+  assert.equal(ids.includes('transparent-comma-alpha'), false);
   assert.equal(ids.includes('transparent-modern'), false);
 });
 

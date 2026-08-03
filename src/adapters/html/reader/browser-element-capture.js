@@ -555,8 +555,8 @@
     if (!raw || raw === 'transparent') return true;
     const slashAlpha = raw.match(/^rgba?\([^/]+\/\s*([+-]?(?:\d+|\d*\.\d+))%?\s*\)$/i);
     if (slashAlpha) return Number(slashAlpha[1]) === 0;
-    const legacyAlpha = raw.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([+-]?(?:\d+|\d*\.\d+))\s*\)$/i);
-    return Boolean(legacyAlpha && Number(legacyAlpha[1]) === 0);
+    const commaAlpha = raw.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([+-]?(?:\d+|\d*\.\d+))\s*\)$/i);
+    return Boolean(commaAlpha && Number(commaAlpha[1]) === 0);
   }
 
   function cssPxNumber(value) {
