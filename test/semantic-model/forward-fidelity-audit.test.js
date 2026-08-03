@@ -104,6 +104,48 @@ test('forward fidelity audit accepts native pill-radius clamping as the same vis
   assert.equal(report.errors.some((issue) => issue.field === 'visualStyle.cornerRadius'), false);
 });
 
+test('forward fidelity audit does not compare rectangle corner radius after CSS circle becomes a native Oval', () => {
+  const fixture = matchingFixture();
+  const label = itemLabel('title', 'shape', { order: 0 });
+  fixture.instructions.styles = {
+    objectStyles: {
+      circle: { name: 'circle', cornerRadius: '9999pt' },
+    },
+  };
+  Object.assign(fixture.instructions.pages[0].items[0], {
+    role: 'shape',
+    type: 'SHAPE',
+    shapeKind: 'oval',
+    bounds: { x: 10, y: 10, width: 78, height: 78 },
+    layer: '图形',
+    text: '',
+    runs: [],
+    labels: [label],
+    objectStyle: 'circle',
+  });
+  Object.assign(fixture.actualSnapshot.pages[0].items[0], {
+    type: 'Oval',
+    bounds: { x: 10, y: 10, width: 78, height: 78 },
+    layerName: '图形',
+    objectStyleName: 'circle',
+    text: '',
+    textRuns: [],
+    labels: [label],
+    visualStyle: { cornerRadius: 14.1732283464567 },
+  });
+  fixture.actualSnapshot.styles = { objectStyles: [{ name: 'circle' }] };
+  Object.assign(fixture.actualModel.pages[0].items[0], {
+    role: 'shape',
+    bounds: { x: 10, y: 10, width: 78, height: 78 },
+    content: { text: '', runs: [] },
+  });
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.ok, true, JSON.stringify(report.errors, null, 2));
+  assert.equal(report.errors.some((issue) => issue.field === 'visualStyle.cornerRadius'), false);
+});
+
 test('forward fidelity audit reports missing objects, changed text, asset paths, and trusted source facts', () => {
   const fixture = matchingFixture();
   const actualText = fixture.actualSnapshot.pages[0].items[0];

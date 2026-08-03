@@ -558,6 +558,7 @@ function compareVisualStyle(expected, actual, identity, context) {
     ['blendMode', 'items[].visualStyle.blendMode'],
   ]) {
     if (!Object.prototype.hasOwnProperty.call(expectedStyle, field) || expectedStyle[field] == null) continue;
+    if (field === 'cornerRadius' && isNativeOvalPair(expected, actual)) continue;
     if (field === 'cornerRadius' && /%\s*$/.test(String(expectedStyle[field]))) continue;
     const expectedValue = normalizeExpectedVisualValue(field, expectedStyle[field], swatches);
     let actualValue = normalizeActualVisualValue(field, actualStyle[field]);
@@ -573,6 +574,11 @@ function compareVisualStyle(expected, actual, identity, context) {
       code: 'FORWARD_VISUAL_STYLE_CHANGED', ...identity, field: `visualStyle.${field}`, tolerance: context.opts.numberTolerance,
     });
   }
+}
+
+function isNativeOvalPair(expected, actual) {
+  return String(expected && expected.shapeKind || '').toLowerCase() === 'oval'
+    && String(actual && actual.type || '').toLowerCase() === 'oval';
 }
 
 function compareItemBounds(expected, actual, identity, context) {
