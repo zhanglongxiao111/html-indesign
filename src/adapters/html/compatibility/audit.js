@@ -3,11 +3,15 @@ const {
   inferAssetKind,
   inferAssetKindFromExtension,
 } = require('../../../shared/assets');
-const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
+const {
+  HTML_DATA_ID_ATTRIBUTES,
+  HTML_DATA_ID_ATTRIBUTE_NAMES,
+} = require('../../../protocol');
 
 const SPECIAL_FORMAT_KINDS = new Set(['pdf', 'psd', 'ai', 'svg']);
 const FORMAT_DECLARATIONS = new Set(['raster', 'pdf', 'psd', 'ai', 'svg']);
 const CSS_FITS = new Set(['cover', 'contain', 'fill', 'none', 'scale-down']);
+const PROTOCOL_ATTRIBUTE_NAMES = new Set(HTML_DATA_ID_ATTRIBUTE_NAMES);
 
 function auditHtmlCompatibility(snapshot) {
   const messages = [];
@@ -89,7 +93,7 @@ function auditItem(page, item, messages) {
 
   const sourceAttrs = attributesFor(item && item.sourceNode);
   const inherited = Object.keys(attrs)
-    .filter((name) => name.startsWith('data-id-'))
+    .filter((name) => PROTOCOL_ATTRIBUTE_NAMES.has(name))
     .filter((name) => !Object.prototype.hasOwnProperty.call(sourceAttrs, name));
   if (source.src && inherited.length && Array.isArray(item.sourceAncestorNodes) && item.sourceAncestorNodes.length) {
     messages.push(normalizedMessage(
