@@ -770,11 +770,22 @@ function shapeKindFor(item, vectorGeometry = null) {
   }
   if (!item || item.role !== 'shape') return 'rectangle';
   const radius = styleValue(item, 'borderRadius');
-  const bounds = item.boundsMm || {};
-  if (String(radius || '').trim() === '50%' && Math.abs(Number(bounds.width || 0) - Number(bounds.height || 0)) < 0.5) {
-    return 'oval';
-  }
+  if (isCssOval(item, radius)) return 'oval';
   return 'rectangle';
+}
+
+function isCssOval(item, radius) {
+  const value = String(radius || '').trim().toLowerCase();
+  if (/^50(?:\.0+)?%$/.test(value)) return true;
+  const parsed = parseCssLength(value);
+  if (!parsed) return false;
+  const bounds = item && item.boundsMm || {};
+  const width = Number(bounds.width || 0);
+  const height = Number(bounds.height || 0);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return false;
+  if (Math.abs(width - height) >= 0.5) return false;
+  const radiusMm = cssLengthToMm(value);
+  return Number.isFinite(radiusMm) && radiusMm >= Math.min(width, height) / 2 - 0.01;
 }
 
 function vectorStyleOverride(visualStyle, styles, report, item) {

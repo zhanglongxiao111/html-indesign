@@ -248,6 +248,36 @@ test('renderSnapshot captures paint-only legend swatches as shape items', async 
   assert.equal(swatches.every((item) => item.computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'), true);
 });
 
+test('renderSnapshot keeps RGB colors ending in zero and ignores alpha-zero paint', async () => {
+  const outDir = path.resolve('test/workspace/browser-paint-alpha');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { position: relative; width: 800px; height: 450px; }
+  .paint { position: absolute; top: 10px; width: 40px; height: 40px; }
+  #red { left: 10px; background: rgb(192, 0, 0); }
+  #orange { left: 60px; background: rgb(238, 153, 0); }
+  #transparent-legacy { left: 110px; background: rgba(12, 34, 56, 0); }
+  #transparent-modern { left: 160px; background: rgb(12 34 56 / 0); }
+</style>
+<section class="page" id="paint-page">
+  <div id="red" class="paint"></div>
+  <div id="orange" class="paint"></div>
+  <div id="transparent-legacy" class="paint"></div>
+  <div id="transparent-modern" class="paint"></div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const ids = snapshot.pages[0].items.map((item) => item.id);
+
+  assert.equal(ids.includes('red'), true);
+  assert.equal(ids.includes('orange'), true);
+  assert.equal(ids.includes('transparent-legacy'), false);
+  assert.equal(ids.includes('transparent-modern'), false);
+});
+
 test('renderSnapshot captures authored CSS mix-blend-mode for drawable objects', async () => {
   const outDir = path.resolve('test/workspace/browser-blend-mode');
   fs.rmSync(outDir, { recursive: true, force: true });

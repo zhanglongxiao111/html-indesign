@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
 const { renderSnapshot } = require('../../src/adapters/html');
 const { compileStyles } = require('../../src/writers/indesign');
@@ -912,6 +913,34 @@ test('compileInstructions emits native lines and oval dot shapes', async () => {
   assert.equal(slopedLine.strokeWeight, 1);
   assert.ok(dot);
   assert.equal(dot.shapeKind, 'oval');
+});
+
+test('compileInstructions recognizes natural CSS oval and large-radius circle shapes', async () => {
+  const outDir = path.resolve('test/workspace/instructions-natural-css-ovals');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { position: relative; width: 800px; height: 450px; }
+  .shape { position: absolute; top: 20px; background: #057; }
+  #ellipse-50-percent { left: 20px; width: 80px; height: 40px; border-radius: 50%; }
+  #circle-large-radius { left: 120px; width: 40px; height: 40px; border-radius: 9999px; }
+  #pill-large-radius { left: 180px; width: 80px; height: 40px; border-radius: 9999px; }
+</style>
+<section class="page" id="shape-page">
+  <div id="ellipse-50-percent" class="shape"></div>
+  <div id="circle-large-radius" class="shape"></div>
+  <div id="pill-large-radius" class="shape"></div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const instructions = compileInstructions(snapshot);
+  const byId = new Map(instructions.pages[0].items.map((item) => [item.id, item]));
+
+  assert.equal(byId.get('ellipse-50-percent').shapeKind, 'oval');
+  assert.equal(byId.get('circle-large-radius').shapeKind, 'oval');
+  assert.equal(byId.get('pill-large-radius').shapeKind, 'rectangle');
 });
 
 test('compileInstructions orders visual layers below editable text layers', async () => {

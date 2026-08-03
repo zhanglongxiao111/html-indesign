@@ -452,11 +452,11 @@
 
   function isTransparentCssColor(value) {
     const raw = String(value || '').trim().toLowerCase();
-    return !raw
-      || raw === 'transparent'
-      || raw === 'rgba(0, 0, 0, 0)'
-      || raw === 'rgb(0 0 0 / 0)'
-      || /rgba?\([^)]*[,/]\s*0(?:\.0+)?\s*\)$/i.test(raw);
+    if (!raw || raw === 'transparent') return true;
+    const slashAlpha = raw.match(/^rgba?\([^/]+\/\s*([+-]?(?:\d+|\d*\.\d+))%?\s*\)$/i);
+    if (slashAlpha) return Number(slashAlpha[1]) === 0;
+    const legacyAlpha = raw.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([+-]?(?:\d+|\d*\.\d+))\s*\)$/i);
+    return Boolean(legacyAlpha && Number(legacyAlpha[1]) === 0);
   }
 
   function cssPxNumber(value) {
