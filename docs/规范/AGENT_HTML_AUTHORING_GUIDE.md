@@ -41,6 +41,26 @@ React、Vue 和图表库可以用于创作阶段，但在转换前必须生成�
 
 当前自动核对比较的是原 HTML 的统一语义事实与真实 InDesign 对象快照，不包含浏览器截图与导出 PDF 的图片视觉对比。
 
+### 1.2 先写自然 HTML，再处理兼容反馈
+
+Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM：标题、段落、列表、`figure + figcaption`、原生 `table`、`img[src]`、`object[data]`、CSS Grid、Flex、padding 和 `object-fit` 都是允许的作者写法。
+
+转换链路分三档处理：
+
+- **原生支持**：语义标签、标准资源属性和常用 CSS 已经足够明确，直接读取。
+- **安全归一化**：含义唯一时，HTML adapter 在内部补成 canonical 事实，但不修改作者文件。CLI 的 `compatibility.messages` 会返回 `code`、页面、对象、处理结果、`suggestedFix` 和 `ruleRef`。
+- **必须阻断**：多个候选资源、缺少稳定身份、manual 裁切几何不完整、不可归属文字、资源/画板冲突或跨层遮挡等情况不能可靠判断，CLI 必须停止并给出修改示例。
+
+当前常见安全归一化包括：
+
+- 根据真实资源后缀识别 PDF、PSD、AI、SVG；显式类型与后缀冲突时使用真实格式并警告。
+- 从 CSS `object-fit` 读取 InDesign fitting。
+- 把 `object` 内唯一的 fallback `img` 作为浏览器预览，不编译成第二个资源。
+- 把只含一个真实资源的普通 `div/figure` 作为该资源的视觉图框，并继承图框字段。
+- 把无显式 role 的纯文字 `div` 识别为 text；原生 `p`、标题、列表、表格和资源标签不要求重复声明显而易见的角色。
+
+工作顺序：重新组装作者包后先调用 `html.authoring_lint`，读取全部 `compatibility.messages`；安全归一化可以继续 compile/build，blocked 项必须先修改。需要承诺作者源码回环零漂移或准备长期维护时，应把 `suggestedFix` 写回 `pages/*.html` 或 `styles/*.css`，重新组装并再次 lint。自动归一化只证明本次转换可确定，不等于作者源码已经显式、稳定。
+
 ## 2. 最小合格标准
 
 Agent 编写的 HTML 作者包必须满足以下条件：
