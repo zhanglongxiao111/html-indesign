@@ -15,6 +15,8 @@ async function call(args, context) {
     lint_ms: lintMs,
     error_count: result && result.errorCount,
     warning_count: result && result.warningCount,
+    compatibility_normalized: result && result.compatibility && result.compatibility.summary.normalized,
+    compatibility_blocked: result && result.compatibility && result.compatibility.summary.blocked,
   });
 
   if (result && result.ok === false) {

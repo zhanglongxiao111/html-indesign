@@ -22,6 +22,8 @@ test('html.authoring_lint validates the architecture report author package', () 
     true
   );
   assert.equal(Number.isInteger(response.data.issueCount), true);
+  assert.ok(response.data.compatibility);
+  assert.equal(typeof response.data.compatibility.summary.normalized, 'number');
   assert.equal(response.artifacts.length, 0);
 });
 
@@ -127,6 +129,9 @@ test('html.compile_instructions writes validated instructions and summary', () =
   assert.equal(response.artifacts.some((item) => item.kind === 'json' && item.path.endsWith('instructions.json')), true);
 
   const instructions = JSON.parse(fs.readFileSync(response.data.instructionsPath, 'utf8'));
+  const summary = JSON.parse(fs.readFileSync(response.data.summaryPath, 'utf8'));
+  assert.deepEqual(response.data.compatibility, summary.compatibility);
+  assert.equal(typeof response.metrics.compatibility_normalized, 'number');
   assert.equal(Array.isArray(instructions.pages), true);
   assert.equal(instructions.pages.length > 0, true);
   const layerNames = instructions.layers.map((layer) => layer.name);
@@ -194,6 +199,8 @@ test('html.build_indesign starts with one build action and defers dependent acti
   assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'fidelity-snapshot.jsx')), true);
   assert.equal(response.state.stage, 'build');
   assert.equal(response.state.mode, 'final');
+  assert.ok(response.state.compatibility);
+  assert.equal(typeof response.state.compatibility.summary.normalized, 'number');
   assert.deepEqual(response.actions.map((action) => action.id), ['html-build-script']);
   assert.deepEqual(response.actions.map((action) => action.tool_id), ['script.run']);
   assert.equal(response.resume.method, 'tools/resume');
@@ -306,6 +313,7 @@ test('html.build_indesign draft mode exports after build and is always marked un
 
   assert.equal(response.status, 'complete');
   assert.equal(response.data.ok, true);
+  assert.ok(response.data.compatibility);
   assert.equal(response.data.verified, false);
   assert.equal(response.data.verificationStatus, 'not-run-draft');
   assert.equal(response.artifacts.some((item) => item.kind === 'indd' && item.path === inddPath), true);

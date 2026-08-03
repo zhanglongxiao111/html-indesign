@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { reverseSnapshotToSemanticModel } = require('../../adapters/indesign');
+const { auditHtmlCompatibility } = require('../../adapters/html');
 const { lintAuthoringPackage, readAuthorPackage } = require('../../authoring');
 const { auditForwardFidelity } = require('../../semantic-model');
 const { resolveSemanticPreset } = require('../../semantic-preset');
@@ -72,6 +73,7 @@ async function call(args, context) {
       outputName: 'instructions.json',
     }, context, 'html-plugin-build', {
       snapshot: lint.snapshot,
+      compatibility: lint.compatibility,
       expectedModelName: 'expected-semantic-model.json',
     });
   } catch (error) {
@@ -160,6 +162,7 @@ async function call(args, context) {
     timings: { lintMs, compileMs },
     sizeMetrics,
     lintCounts,
+    compatibility: compile.compatibility || lint.compatibility,
     stageStartedAt: Date.now(),
   };
 
@@ -287,6 +290,7 @@ function cleanupThenError(state, error) {
       ...(error.details || {}),
       stage: error.stage || (error.details && error.details.stage) || null,
       metrics: collectMetrics(state),
+      compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
   };
   if (!state.cleanupScriptPath) return { status: 'error', error: enrichedError };
@@ -361,6 +365,7 @@ function completeResult(state) {
         code: 'DRAFT_NOT_VERIFIED',
         message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
       }],
+      compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
     metrics: collectMetrics(state, { artifacts: artifacts.length }),
     artifacts,
@@ -384,6 +389,7 @@ function hostFailureResponse(state, failed) {
         hostResult: failed,
         stage,
         metrics: collectMetrics(finished),
+        compatibility: state.compatibility || auditHtmlCompatibility(null),
       },
     },
   };
@@ -516,6 +522,7 @@ function collectMetrics(state, extra) {
   const size = state.sizeMetrics || {};
   const lintCounts = state.lintCounts || {};
   const fidelityCounts = state.fidelityCounts || {};
+  const compatibility = state.compatibility && state.compatibility.summary || {};
   return buildMetrics({
     lint_ms: timings.lintMs,
     compile_ms: timings.compileMs,
@@ -532,6 +539,8 @@ function collectMetrics(state, extra) {
     warning_count: lintCounts.warningCount,
     fidelity_error_count: fidelityCounts.errorCount,
     fidelity_warning_count: fidelityCounts.warningCount,
+    compatibility_normalized: compatibility.normalized,
+    compatibility_blocked: compatibility.blocked,
     ...(extra || {}),
   });
 }

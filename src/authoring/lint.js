@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { renderSnapshot, validateAuthoringRules } = require('../adapters/html');
+const { auditHtmlCompatibility, renderSnapshot, validateAuthoringRules } = require('../adapters/html');
 const {
   auditAuthorPackageSourceFormat,
   checkAuthorPackageEntry,
@@ -83,6 +83,7 @@ async function lintAuthoringPackage(options = {}) {
     sourceFormat,
     semanticPreset,
     semanticAudit,
+    compatibility: htmlResult.compatibility,
     errors,
     warnings,
     messages: errors.concat(warnings),
@@ -117,16 +118,18 @@ async function lintAuthoringHtml(options = {}) {
     }, { htmlPath });
   }
   const snapshot = options.snapshot || await renderSnapshot({ htmlPath });
-  const result = withDataIdAudit(validateAuthoringRules(snapshot, {
+  const compatibility = auditHtmlCompatibility(snapshot);
+  const result = withCompatibility(withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
-  }), dataIdAudit);
+  }), dataIdAudit), compatibility);
 
   return normalizeLintPayload({
     ok: result.valid,
     htmlPath,
     dataIdAudit,
     runtimeAudit,
+    compatibility,
     ...(options.includeSnapshot ? { snapshot } : {}),
     ...withRuntimeAudit(result, runtimeAudit),
   }, {
@@ -138,6 +141,7 @@ function withRuntimeAudit(result, runtimeAudit) {
   const errors = result.errors.concat(runtimeAudit.errors);
   const warnings = result.warnings.concat(runtimeAudit.warnings);
   return {
+    ...result,
     valid: errors.length === 0,
     errors,
     warnings,
@@ -178,7 +182,26 @@ function normalizeLintPayload(payload, paths = {}) {
     issueCount: messages.length,
     errorCount: errors.length,
     warningCount: warnings.length,
+    compatibility: payload.compatibility || emptyCompatibility(),
   };
+}
+
+function withCompatibility(result, compatibility) {
+  const messages = compatibility && Array.isArray(compatibility.messages) ? compatibility.messages : [];
+  const errors = result.errors.concat(messages.filter((entry) => entry.level === 'error'));
+  const warnings = result.warnings.concat(messages.filter((entry) => entry.level !== 'error'));
+  return {
+    ...result,
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    messages: errors.concat(warnings),
+    compatibility: compatibility || emptyCompatibility(),
+  };
+}
+
+function emptyCompatibility() {
+  return { summary: { normalized: 0, warnings: 0, blocked: 0 }, messages: [] };
 }
 
 function packageFailure(sourceFormat, entryIssue, semanticAudit, semanticPreset) {
@@ -235,6 +258,7 @@ function withDataIdAudit(result, dataIdAudit) {
   const errors = result.errors.concat(dataIdAudit.errors);
   const warnings = result.warnings.concat(dataIdAudit.warnings);
   return {
+    ...result,
     valid: errors.length === 0,
     errors,
     warnings,

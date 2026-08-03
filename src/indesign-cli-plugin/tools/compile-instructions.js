@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { renderSnapshot } = require('../../adapters/html');
+const { auditHtmlCompatibility, renderSnapshot } = require('../../adapters/html');
 const { compileDocument } = require('../../indesign-pipeline');
 const { validateInstructions } = require('../../writers/indesign');
 const { checkAuthorPackageEntry, readAuthorPackage } = require('../../authoring');
@@ -28,6 +28,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   const snapshotStartedAt = Date.now();
   const snapshot = internal.snapshot || await renderSnapshot({ htmlPath: sourcePackage.entryPath });
   const snapshotMs = hasProvidedSnapshot ? null : Date.now() - snapshotStartedAt;
+  const compatibility = internal.compatibility || auditHtmlCompatibility(snapshot);
 
   const compileStartedAt = Date.now();
   const styleNameMap = loadStyleNameMap(sourcePackage);
@@ -57,6 +58,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
         compile_ms: compileMs,
         error_count: validation.errors.length,
       }),
+      compatibility,
     };
     throw err;
   }
@@ -75,6 +77,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     instructionsPath,
     summaryPath,
     validation,
+    compatibility,
   });
   fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf8');
 
@@ -88,6 +91,8 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     vector_paths: countVectorPaths(instructions),
     assets: Array.isArray(instructions.assets) ? instructions.assets.length : undefined,
     error_count: validation.errors.length,
+    compatibility_normalized: compatibility.summary.normalized,
+    compatibility_blocked: compatibility.summary.blocked,
   });
 
   return {
@@ -101,6 +106,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     expectedModelPath,
     summary,
     validation,
+    compatibility,
     metrics,
   };
 }
@@ -135,7 +141,7 @@ function loadStyleNameMap(sourcePackage) {
   return presetToStyleNameMap(resolved.preset);
 }
 
-function compileSummary({ sourcePackage, instructions, instructionsPath, summaryPath, validation }) {
+function compileSummary({ sourcePackage, instructions, instructionsPath, summaryPath, validation, compatibility }) {
   return {
     ok: true,
     packagePath: sourcePackage.configPath,
@@ -161,6 +167,7 @@ function compileSummary({ sourcePackage, instructions, instructionsPath, summary
       tableStyles: Object.keys(instructions.styles.tableStyles || {}).length,
     },
     validation,
+    compatibility,
   };
 }
 
@@ -180,6 +187,7 @@ async function call(args, context) {
       instructionsPath: result.instructionsPath,
       summaryPath: result.summaryPath,
       pageCount: Array.isArray(result.instructions.pages) ? result.instructions.pages.length : 0,
+      compatibility: result.compatibility,
     },
     metrics: buildMetrics({ ...(result.metrics || {}), artifacts: artifacts.length }),
     artifacts,

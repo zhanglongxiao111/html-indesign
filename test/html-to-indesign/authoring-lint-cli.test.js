@@ -26,6 +26,18 @@ test('public authoring entry exports lintAuthoringPackage', () => {
   assert.equal(typeof lintAuthoringPackage, 'function');
 });
 
+test('lintAuthoringPackage exposes one compatibility report alongside ordinary diagnostics', async () => {
+  const result = await lintAuthoringPackage({
+    packagePath: path.join(ROOT_DIR, 'test/fixtures/e2e/architecture-report/deck.config.json'),
+    strict: true,
+  });
+
+  assert.ok(result.compatibility);
+  assert.equal(typeof result.compatibility.summary.normalized, 'number');
+  assert.equal(typeof result.compatibility.summary.blocked, 'number');
+  assert.equal(Array.isArray(result.compatibility.messages), true);
+});
+
 test('lint-authoring --strict fails unregistered data-id carriers through registry validation', () => {
   const htmlPath = writeRegistryLintFixture('strict-unknown.html', 'data-id-made-up="x"');
 
