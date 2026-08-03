@@ -14,7 +14,14 @@ function cleanKind(value) {
 
 function inferAssetKind(src, explicitKind) {
   const cleanExplicit = cleanKind(explicitKind);
+  if (cleanExplicit === 'fallback' || cleanExplicit === 'vector') return cleanExplicit;
+  const inferred = inferAssetKindFromExtension(src);
+  if (inferred !== 'unknown') return inferred;
   if (cleanExplicit) return cleanExplicit;
+  return 'unknown';
+}
+
+function inferAssetKindFromExtension(src) {
   const ext = path.extname(String(src || '').split(/[?#]/)[0]).toLowerCase();
   if (RASTER_EXTENSIONS.has(ext)) return 'raster';
   if (ext === '.pdf') return 'pdf';
@@ -258,6 +265,7 @@ function slash(value) {
 
 module.exports = {
   inferAssetKind,
+  inferAssetKindFromExtension,
   assetSourceFromElementLike,
   createAssetId,
   firstCssUrl,

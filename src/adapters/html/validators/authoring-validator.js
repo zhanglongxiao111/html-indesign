@@ -83,13 +83,26 @@ function validateAuthoringRules(snapshot, options = {}) {
         ));
       }
       if (!isMappableItem(item) || hasStableSemanticToken(item)) return;
-      warnings.push(message('warning', SEMANTIC_TOKEN_MISSING, pageId, itemIdFor(item, itemIndex), 'Mappable item should use a stable class or data-id semantic token.'));
+      const itemId = itemIdFor(item, itemIndex);
+      const role = String(item && item.role || '').trim().toLowerCase();
+      warnings.push({
+        ...message('warning', SEMANTIC_TOKEN_MISSING, pageId, itemId, 'A neutral HTML element was understood from its content; add an explicit role when this object must remain stable across edits.'),
+        action: 'normalized',
+        strictBlocking: false,
+        ruleRef: 'semantics/inferred-role',
+        suggestedFix: `Add ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${role || ITEM_ROLE.CONTAINER}" to #${itemId}.`,
+      });
     });
   });
 
-  const resultWarnings = options.strict ? [] : warnings;
+  const promotedWarnings = options.strict
+    ? warnings.filter((entry) => entry.strictBlocking !== false)
+    : [];
+  const resultWarnings = options.strict
+    ? warnings.filter((entry) => entry.strictBlocking === false)
+    : warnings;
   const resultErrors = options.strict
-    ? errors.concat(warnings.map((entry) => ({ ...entry, level: 'error' })))
+    ? errors.concat(promotedWarnings.map((entry) => ({ ...entry, level: 'error' })))
     : errors;
   return {
     valid: resultErrors.length === 0,
@@ -506,6 +519,10 @@ function isMappableItem(item) {
 }
 
 function hasStableSemanticToken(item) {
+  const tagName = String(item && item.tagName || '').trim().toLowerCase();
+  if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'figcaption', 'table'].includes(tagName)) {
+    return true;
+  }
   if (Array.isArray(item && item.classList) && item.classList.some((name) => String(name || '').trim())) {
     return true;
   }

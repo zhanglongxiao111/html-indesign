@@ -28,6 +28,13 @@ test('inferAssetKind maps architecture presentation asset extensions', () => {
   assert.equal(inferAssetKind('unknown.xyz'), 'unknown');
 });
 
+test('inferAssetKind trusts a known resource extension over a conflicting format declaration', () => {
+  assert.equal(inferAssetKind('site-plan.ai', 'pdf'), 'ai');
+  assert.equal(inferAssetKind('drawing.pdf', 'ai'), 'pdf');
+  assert.equal(inferAssetKind('preview.png', 'fallback'), 'fallback');
+  assert.equal(inferAssetKind('shape.svg', 'vector'), 'vector');
+});
+
 test('assetSourceFromElementLike reads img src object data and explicit kind', () => {
   assert.deepEqual(assetSourceFromElementLike({
     tagName: 'IMG',

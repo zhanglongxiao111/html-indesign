@@ -321,28 +321,7 @@ test('validateAuthoringRules checks text placement by left right and top edges',
   assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
 });
 
-test('validateAuthoringRules warns for mappable items without stable semantic tokens', () => {
-  const snapshot = snapshotWithPage({
-    attributes: {
-      'data-id-margin': '10mm',
-      'data-id-grid': '4x2',
-    },
-    items: [{
-      id: 'anonymous-text',
-      role: 'text',
-      tagName: 'p',
-      classList: [],
-      attributes: {},
-      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
-    }],
-  });
-
-  const result = validateAuthoringRules(snapshot);
-
-  assert.equal(result.warnings.some((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING' && entry.itemId === 'anonymous-text'), true);
-});
-
-test('validateAuthoringRules can promote warnings to errors in strict mode', () => {
+test('validateAuthoringRules accepts native semantic text without project-only tokens', () => {
   const snapshot = snapshotWithPage({
     attributes: {
       'data-id-margin': '10mm',
@@ -360,8 +339,35 @@ test('validateAuthoringRules can promote warnings to errors in strict mode', () 
 
   const result = validateAuthoringRules(snapshot, { strict: true });
 
-  assert.equal(result.valid, false);
-  assert.equal(result.errors.some((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING'), true);
+  assert.equal(result.valid, true);
+  assert.equal(result.messages.some((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING'), false);
+});
+
+test('validateAuthoringRules keeps safe neutral-element role inference visible but non-blocking in strict mode', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'anonymous-text',
+      role: 'text',
+      tagName: 'div',
+      classList: [],
+      attributes: {},
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.some((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING'), false);
+  const warning = result.warnings.find((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING');
+  assert.ok(warning);
+  assert.equal(warning.action, 'normalized');
+  assert.equal(warning.ruleRef, 'semantics/inferred-role');
+  assert.match(warning.suggestedFix, /data-id-role="text"/);
 });
 
 test('validateAuthoringRules rejects graphic protocol fields on a container without its own resource', () => {
