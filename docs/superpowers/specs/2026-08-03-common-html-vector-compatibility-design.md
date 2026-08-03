@@ -18,6 +18,8 @@ Luna 在真实项目中使用了标准内联 SVG：
 - 只有 `::before` / `::after` 绘制内容的元素不会进入候选集，CLI 无法提醒；
 - 所有内联 SVG 当前都返回 `INLINE_SVG_UNSUPPORTED`，即使 `<path>` 已成功转成原生矢量，反馈既有误报，也不能说明具体丢失内容。
 
+审计还发现 paint-only 候选的透明色正则会把 `rgb(238, 153, 0)`、`rgb(192, 0, 0)` 的最后一个蓝色通道 `0` 误判为 alpha 0。没有边框或其他画笔事实的橙色、红色空 `div` 会因此完全不进入快照；这是与 Luna 圆点同类的静默丢失。
+
 ## 2. 目标与边界
 
 目标是让 Agent 按常见、自然、可在浏览器预览的 HTML 写法创作，不需要记住模型专用补丁：
@@ -57,6 +59,8 @@ Luna 在真实项目中使用了标准内联 SVG：
 - 影响几何但尚未支持的 transform、clip、mask、filter 或 paint server 事实。
 
 支持集合为 `path`、`circle`、`ellipse`、`rect`、`line`、`polyline`、`polygon`。`defs`、`marker` 等定义内容不作为页面图形重复输出。
+
+paint-only 候选的透明色判断必须区分 RGB 色彩通道与 alpha：只把 computed `rgba(..., 0)`、`rgb(... / 0)` 和标准 `transparent` 视为透明，不能依据最后一个 RGB 通道是否为 0。测试至少覆盖纯红、橙色、现代斜杠 alpha 和真正透明色。
 
 ### 4.2 统一矢量几何
 
@@ -106,10 +110,11 @@ HTML normalizer 把基础图元映射到现有 `items[].vectorGeometry`，不新
 ## 6. 验证
 
 1. 浏览器快照与 semantic model 测试覆盖所有七种基础图元、CSS 圆/椭圆和 `9999px` 圆点；
-2. 失败测试覆盖 `<use>`、伪元素圆点、clip-path 和边框三角形，确认 lint 返回可执行阻断消息；
-3. instructions 测试确认 circle/ellipse 为 Oval、line 为 LINE、polygon/polyline 为原生路径；
-4. 全量 `npm test`、`npm run pack:dry-run`、插件校验通过；
-5. 用真实 InDesign 构建包含 Luna 原始 `<svg><circle>` 的安全样例，核对 INDD 对象类型、fill/stroke、几何和导出 PDF。
+2. paint-only 测试覆盖蓝色通道为 0 的纯色和 alpha 为 0 的透明色，确认前者被捕获、后者不产生对象；
+3. 失败测试覆盖 `<use>`、伪元素圆点、clip-path 和边框三角形，确认 lint 返回可执行阻断消息；
+4. instructions 测试确认 circle/ellipse 为 Oval、line 为 LINE、polygon/polyline 为原生路径；
+5. 全量 `npm test`、`npm run pack:dry-run`、插件校验通过；
+6. 用真实 InDesign 构建包含 Luna 原始 `<svg><circle>` 的安全样例，核对 INDD 对象类型、fill/stroke、几何和导出 PDF。
 
 ## 7. 自审结论
 
