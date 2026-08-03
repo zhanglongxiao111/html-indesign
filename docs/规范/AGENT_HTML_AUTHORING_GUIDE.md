@@ -32,7 +32,8 @@ Agent 作者包 HTML
 React、Vue 和图表库可以用于创作阶段，但在转换前必须生成确定的静态 HTML/CSS/SVG：
 
 - Canvas 必须转换为 SVG 或原生可回读结构。
-- 复杂图表使用外部 SVG 资源；内联 SVG 路径当前只可使用 `M/L/C/Z` 命令，不支持的路径命令会明确报错，不能静默丢线。
+- 简单内联 SVG 可以直接使用 `path`、`circle`、`ellipse`、`rect`、`line`、`polyline` 和 `polygon`；它们会转换为可编辑的 InDesign 原生矢量对象，不需要先改写为协议专用 `div`。
+- 内联 SVG 的 `path` 当前只可使用 `M/L/C/Z` 命令。`use`、SVG text/image、几何变换、裁切、mask、filter、paint server 和其他 path 命令必须改为外部 SVG 资源，或拆成已支持的基础图元；CLI 会明确阻断，不能静默丢线。
 - 动画必须固定到明确帧或最终状态。
 - 异步数据必须固定到作者包，转换时不得依赖接口请求。
 - 最终作者包不得依赖可执行脚本、远程运行时脚本或远程 stylesheet；`application/json` 协议载荷允许保留。
@@ -44,6 +45,16 @@ React、Vue 和图表库可以用于创作阶段，但在转换前必须生成�
 ### 1.2 先写自然 HTML，再处理兼容反馈
 
 Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM：标题、段落、列表、`figure + figcaption`、原生 `table`、`img[src]`、`object[data]`、CSS Grid、Flex、padding 和 `object-fit` 都是允许的作者写法。
+
+常见位置圆点可以直接写成标准 SVG；`viewBox` 可写可不写，转换层会按浏览器实际 SVG 视口换算：
+
+```html
+<svg id="site-marker" viewBox="0 0 100 100" role="img" aria-label="建筑位置标记">
+  <circle cx="50" cy="50" r="23" fill="#c00000" stroke="#ffffff" stroke-width="8"></circle>
+</svg>
+```
+
+空 `div` 使用 `background`、`border` 和 `border-radius: 50%` 绘制圆或椭圆也可直接转换；方形元素使用足够大的绝对圆角（例如 `9999px`）会转换为 Oval，非方形大圆角胶囊仍保留圆角矩形。
 
 转换链路分三档处理：
 
@@ -58,8 +69,23 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 - 把 `object` 内唯一的 fallback `img` 作为浏览器预览，不编译成第二个资源。
 - 把只含一个真实资源的普通 `div/figure` 作为该资源的视觉图框，并继承图框字段。
 - 把无显式 role 的纯文字 `div` 识别为 text；原生 `p`、标题、列表、表格和资源标签不要求重复声明显而易见的角色。
+- 把简单内联 SVG 基础图元转换为 native vector，并返回 `HTML_INLINE_SVG_NORMALIZED`。
+- 把 CSS `border-radius: 50%` 的圆/椭圆和方形大圆角圆点转换为 native Oval。
 
 工作顺序：重新组装作者包后先调用 `html.authoring_lint`，读取全部 `compatibility.messages`；安全归一化可以继续 compile/build，blocked 项必须先修改。需要承诺作者源码回环零漂移或准备长期维护时，应把 `suggestedFix` 写回 `pages/*.html` 或 `styles/*.css`，重新组装并再次 lint。自动归一化只证明本次转换可确定，不等于作者源码已经显式、稳定。
+
+常见视觉阻断码及改法：
+
+| code | 表示什么 | 作者源码应如何改 |
+| ---- | -------- | ---------------- |
+| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含复杂元素、变换、裁切、paint server 或不支持的 path 命令 | 拆成支持的基础图元，或保存为外部 `.svg` 资源 |
+| `HTML_PSEUDO_ELEMENT_UNSUPPORTED` | 可见内容只存在于 `::before` / `::after` | 改成真实 HTML 元素，装饰几何可改为基础 SVG 图元 |
+| `HTML_CLIP_PATH_UNSUPPORTED` | 使用 `clip-path` 绘制或裁切可见对象 | 改为 SVG `polygon/path`，或使用外部 SVG |
+| `HTML_GRADIENT_UNSUPPORTED` | 使用多色或无法映射的渐变 | 单色透明度渐变可保留；其他渐变改为外部资源 |
+| `HTML_CSS_BORDER_SHAPE_UNSUPPORTED` | 用零尺寸元素和透明边框拼三角形等轮廓 | 改为 SVG `polygon/path` |
+| `HTML_CSS_EFFECT_UNSUPPORTED` | 使用尚不能原生映射的 shadow、filter 或 mask | 改为已有原生样式，或把完整视觉保存为外部资源 |
+
+`html.compile_instructions` 会再次检查同一份 compatibility report；`blocked > 0` 时返回 `HTML_COMPATIBILITY_BLOCKED`，不会写出看似成功但已经丢图的 instructions。`html.build_indesign` 的严格 lint 使用同一组消息。
 
 ## 2. 最小合格标准
 

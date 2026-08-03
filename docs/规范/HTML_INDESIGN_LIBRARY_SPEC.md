@@ -222,7 +222,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | Vector Shape | 线、箭头、分区色块、分析标注 | Line/Rectangle/Oval/Polygon/Path | fill、stroke、arrowhead、path points、opacity |
 | Table | 面积表、经济技术指标、对比表 | InDesign table | table/cell styles、row/column strokes、cell inset |
 | Group | 案例卡片、指标组、图例组 | group | child items、transform、label |
-| Fallback | 复杂阴影、滤镜、mask、canvas | placed raster/vector fallback | reason、source element、output asset |
+| Compatibility Blocker | 尚未实现的复杂阴影、滤镜、mask、canvas | 不生成假成功对象 | stable code、source element、suggested fix、rule ref |
 
 ## 5. Canonical Mapping Model
 
@@ -336,12 +336,13 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `embed[type="application/pdf"]` | placed PDF |
 | `a[href$=".pdf"]` with `[data-id-object]` | placed PDF |
 | `table` | InDesign table |
-| `svg` | placed vector / native vector / fallback |
-| `canvas` | raster fallback |
+| 简单内联 `svg` | native Rectangle / Oval / Line / Polygon / Path |
+| 外部 SVG 资源 | linked placed vector |
+| `canvas` | 当前阻断并提示先静态化为 SVG 或原生结构 |
 | `[data-id-object]` | 强制生成 InDesign 对象 |
 | `[data-id-ignore]` | 不生成对象 |
 
-布局容器默认不生成对象，除非它有可见背景、边框、阴影、clip、mask、transform，或显式声明 `[data-id-object]`。
+布局容器默认不生成对象，除非它有可见背景、边框、transform，或显式声明 `[data-id-object]`。阴影、clip、mask 等可见事实必须进入兼容审计；当前无法可靠原生化时阻断，不能用普通矩形冒充成功。
 
 ### 6.3 建筑资产输入约定
 
@@ -581,10 +582,10 @@ CSS 到对象样式的核心映射：
 | `border-style` | stroke type approximation |
 | `border-radius` | corner radius |
 | `opacity` | blending opacity |
-| `box-shadow` | approximate or fallback |
+| `box-shadow` | 当前 compatibility blocked；实现可验证的 native/fallback 前不得静默省略 |
 | `mix-blend-mode` | approximate or fallback |
 | `overflow: hidden` | clipping frame |
-| `clip-path` | vector clip or fallback |
+| `clip-path` | 当前 compatibility blocked；作者改用基础 SVG path/polygon 或外部 SVG |
 
 对象样式命名与段落样式相同，优先使用 class 或 `data-id-object-style`。`data-id-style` 只允许在编译层已经确定样式种类的上下文中作为简写，不能作为未知类型样式的通用兜底。
 
@@ -661,8 +662,9 @@ HTML table 应优先映射为 InDesign table。
 | PDF 图纸 | `object` / `embed` / 显式 data 属性 | placed PDF | page number、crop box、scale、vector preservation | PDF layer visibility |
 | AI | `img` / `object` + `data-id-asset-kind="ai"` | placed AI/PDF-compatible asset | artboard/page、scale、crop、vector preservation | AI layer visibility |
 | PSD | `img` + `data-id-asset-kind="psd"` | placed PSD | transparency、scale、crop、link status | layer comp、layer visibility |
-| SVG | inline `svg` / external SVG | placed vector or fallback | preserve vector when reliable、viewBox、scale | native path decomposition |
-| Canvas | `canvas` | raster fallback | rendered bitmap、bounds、warning | editable reconstruction |
+| Inline SVG | `path/circle/ellipse/rect/line/polyline/polygon` | native vector object / native group | viewBox 或 rendered viewport、fill、stroke、opacity、基础 path geometry | 更多 path 命令和 SVG 效果 |
+| External SVG | `img` / `object` / 显式资源路径 | linked placed SVG | 原位路径、scale、crop、vector preservation | SVG layer visibility |
+| Canvas | `canvas` | compatibility blocker | source element、stable error、static conversion guidance | 明确设计并实现后的可审计 fallback |
 
 PDF 图纸必须作为一等资源处理。它不是“图片截图”，默认应作为 linked PDF 置入，并保留页码、crop box、矢量属性和 link。
 
@@ -679,11 +681,14 @@ PSD 和 AI 也应优先保留为 linked placed asset。只有在 InDesign 置入
 - 纯背景色 -> rectangle + fill swatch。
 - border -> stroke。
 - border-radius -> corner radius。
-- 多层背景、渐变、复杂 shadow -> approximate 或 fallback。
+- 单色透明度渐变 -> InDesign gradient feather。
+- 多色渐变、复杂 shadow、filter 和 mask -> compatibility blocked；不得静默降级为普通填充。
 
 ### 9.4 SVG
 
-SVG 优先保留为矢量置入资源。当前内联 SVG 的 native path 只接受 `M/L/C/Z`；出现其他 path 命令时必须明确失败并提示改用外部 SVG，严禁跳过命令后输出残缺图形。简单 SVG 后续可以继续扩展 native vector shape 拆解，但第一优先级是可靠置入和视觉还原。若 InDesign 环境不能可靠置入或效果不兼容，则转换为 PDF/PNG fallback。
+外部 SVG 优先保留为 linked vector resource。简单内联 SVG 当前直接拆成 native vector：`circle/ellipse` -> Oval，`rect` -> Rectangle 或圆角 Path，`line` -> GraphicLine，`polyline/polygon/path` -> 原生 Path；多个基础图元形成 native group。缺少 `viewBox` 时使用浏览器实际 rendered viewport 作为用户坐标范围。
+
+内联 SVG path 当前只接受 `M/L/C/Z`（含相对命令）。`use`、SVG text/image、transform、clip、mask、filter、paint server 和其他 path 命令返回 `HTML_INLINE_SVG_UNSUPPORTED`；作者应拆成已支持图元，或改为外部 SVG 资源。严禁跳过不支持的元素后输出残缺图形，也不自动栅格化来掩盖损失。支持的内联 SVG 返回 `HTML_INLINE_SVG_NORMALIZED`。
 
 ### 9.5 矢量标注和分析图形
 
@@ -699,16 +704,18 @@ SVG 优先保留为矢量置入资源。当前内联 SVG 的 native path 只接�
 | zoning overlay | Rectangle/Polygon | fill swatch、opacity、blend |
 | callout / arrow | Line + text/group | arrowhead、label、group |
 
-复杂 SVG path 可先作为 placed vector/fallback，但需要在报告中标明没有拆为 native path。
+复杂 SVG 应作为外部 linked vector resource；不能可靠拆解的内联 SVG 必须在 compile 前阻断。
 
 ### 9.6 Canvas 和复杂视觉
 
-`canvas`、CSS filter、复杂 mask、复杂 blend、复杂 transform 允许 raster fallback。fallback 需要记录：
+`canvas`、CSS filter、复杂 mask、`clip-path`、多色渐变和仅由伪元素绘制的形状，当前没有经过验证的自动 fallback，必须由统一 compatibility audit 阻断。消息至少记录：
 
-- fallback 类型。
-- 原因。
-- 源元素 selector。
-- 输出资源路径。
+- stable code 和具体不支持事实。
+- pageId、itemId 或 sourcePath。
+- `suggestedFix`。
+- `ruleRef`。
+
+作者可把复杂视觉显式保存为外部 SVG/图片资源后重新 lint；CLI 不得在作者未选择 fallback 的情况下自动制造派生文件。
 
 ### 9.7 Transform、Layers 和层级
 
