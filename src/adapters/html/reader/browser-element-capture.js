@@ -63,6 +63,8 @@
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
     if (tagName !== 'object' && tagName !== 'embed') return null;
+    const fallback = objectFallbackPreviewFor(el);
+    if (fallback) return sourceNodeFor(fallback, pageEl);
     if (!frameEl) return null;
     if (frameEl === el) {
       const previous = el.previousElementSibling;
@@ -79,6 +81,20 @@
       && el.tagName
       && el.tagName.toLowerCase() === 'img'
       && el.hasAttribute(dataId.IGNORE));
+  }
+
+  function objectFallbackPreviewFor(objectEl) {
+    if (!objectEl || !['object', 'embed'].includes(String(objectEl.tagName || '').toLowerCase())) return null;
+    const images = Array.from(objectEl.children || [])
+      .filter((child) => String(child.tagName || '').toLowerCase() === 'img');
+    return images.length === 1 ? images[0] : null;
+  }
+
+  function isObjectFallbackPreview(el) {
+    const parent = el && el.parentElement;
+    return Boolean(parent
+      && String(el.tagName || '').toLowerCase() === 'img'
+      && objectFallbackPreviewFor(parent) === el);
   }
 
   function sourceHtmlFor(el, candidates) {
@@ -166,8 +182,13 @@
     const frameTag = String(frameEl.tagName || '').toLowerCase();
     if (!['div', 'figure'].includes(frameTag)) return false;
     if (sourceText(frameEl).trim()) return false;
-    const registeredAttributeNames = Object.keys(dataId).map((key) => dataId[key]);
-    if (Array.from(frameEl.attributes || []).some((attr) => registeredAttributeNames.includes(attr.name))) return false;
+    const ownAssetSources = [
+      frameEl.getAttribute('src'),
+      frameEl.getAttribute('href'),
+      frameEl.getAttribute('data'),
+      frameEl.getAttribute(dataId.ASSET_PATH),
+    ];
+    if (ownAssetSources.some((value) => value != null && String(value).trim() !== '')) return false;
     const contentChildren = Array.from(frameEl.children || [])
       .filter((child) => !child.hasAttribute(dataId.IGNORE));
     if (contentChildren.length !== 1 || contentChildren[0] !== assetEl) return false;
@@ -227,6 +248,7 @@
     const dataId = dataIdAttributes();
     const candidates = Array.from(pageEl.querySelectorAll(`h1,h2,h3,h4,h5,h6,p,li,figcaption,hr,img,object,embed,svg,canvas,table,div,span,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`))
       .filter((el) => !el.hasAttribute(dataId.IGNORE))
+      .filter((el) => !isObjectFallbackPreview(el))
       .filter(isCandidateElement)
       .filter((el) => {
         const contentChildren = Array.from(el.children || [])

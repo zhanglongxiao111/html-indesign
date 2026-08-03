@@ -524,6 +524,65 @@ test('renderSnapshot treats a natural single-asset wrapper as the graphic frame'
   assert.equal(items[0].sourceAncestorNodes[0].id, 'hero-frame');
 });
 
+test('renderSnapshot treats the only image inside object as a browser fallback preview', async () => {
+  const outDir = path.resolve('test/workspace/browser-natural-object-fallback');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; }
+  object { display: block; width: 400px; height: 240px; }
+</style>
+<section class="page" id="page-1">
+  <object id="drawing" data="./drawing.pdf" type="application/pdf">
+    <img id="drawing-preview" src="./drawing-preview.png" alt="drawing preview">
+  </object>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const items = snapshot.pages[0].items;
+
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, 'drawing');
+  assert.equal(items[0].tagName, 'object');
+  assert.equal(items[0].role, 'graphic');
+  assert.equal(items[0].sourceNode.previewNode.id, 'drawing-preview');
+  assert.equal(items[0].sourceNode.previewNode.attributes.src, './drawing-preview.png');
+});
+
+test('renderSnapshot treats a protocol-decorated single-resource wrapper as one graphic frame', async () => {
+  const outDir = path.resolve('test/workspace/browser-protocol-asset-frame');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { position: relative; width: 800px; height: 450px; }
+  .asset-frame { position: absolute; left: 80px; top: 45px; width: 320px; height: 180px; padding: 8px; border: 2px solid #333; }
+  .asset-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+</style>
+<section class="page" id="page-1">
+  <figure id="hero-frame" class="asset-frame"
+          data-id-object data-id-role="graphic"
+          data-id-frame-style="hero-frame" data-id-fit="cover">
+    <img id="hero-image" src="./hero.png" alt="hero">
+  </figure>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const items = snapshot.pages[0].items;
+
+  assert.equal(items.length, 1);
+  assert.equal(items[0].id, 'hero-frame');
+  assert.equal(items[0].tagName, 'img');
+  assert.equal(items[0].role, 'graphic');
+  assert.equal(items[0].attributes['data-id-frame-style'], 'hero-frame');
+  assert.equal(items[0].attributes['data-id-fit'], 'cover');
+  assert.equal(items[0].attributes.src, './hero.png');
+  assert.equal(items[0].sourceAncestorNodes[0].id, 'hero-frame');
+});
+
 test('renderSnapshot attaches ignored sibling PDF previews to the source node', async () => {
   const outDir = path.resolve('test/workspace/browser-pdf-sibling-preview-node');
   fs.rmSync(outDir, { recursive: true, force: true });
