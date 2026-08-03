@@ -10,7 +10,11 @@ function vectorFactsFromSvgItem(item, bounds) {
   const capturedElements = Array.isArray(item && item.vectorElements) ? item.vectorElements : [];
   const vectorElements = capturedElements.length ? capturedElements : vectorElementsFromHtml(sourceHtml);
   if (!vectorElements.length) return null;
-  const viewBox = parseViewBox(attrs.viewBox || attrs.viewbox, bounds);
+  const viewBox = parseViewBox(
+    attrs.viewBox || attrs.viewbox,
+    bounds,
+    attrs.preserveAspectRatio || attrs.preserveaspectratio,
+  );
   const paths = vectorElements
     .flatMap((element) => pathsFromVectorElement(element, bounds, viewBox, sourceHtml))
     .filter(Boolean);
@@ -413,24 +417,61 @@ function pointTypesFromAttr(value) {
 }
 
 function mapPoint(point, bounds = {}, viewBox = {}) {
+  const mapping = svgViewportMapping(bounds, viewBox);
+  return {
+    x: round(Number(bounds.x || 0) + mapping.offsetX + (Number(point.x || 0) - Number(viewBox.x || 0)) * mapping.scaleX),
+    y: round(Number(bounds.y || 0) + mapping.offsetY + (Number(point.y || 0) - Number(viewBox.y || 0)) * mapping.scaleY),
+  };
+}
+
+function parseViewBox(value, bounds = {}, preserveAspectRatio) {
+  const parts = String(value || '').trim().split(/[\s,]+/).map(Number);
+  if (parts.length === 4 && parts.every(Number.isFinite)) {
+    return {
+      x: parts[0],
+      y: parts[1],
+      width: parts[2],
+      height: parts[3],
+      preserveAspectRatio: parsePreserveAspectRatio(preserveAspectRatio),
+    };
+  }
+  return {
+    x: 0,
+    y: 0,
+    width: Number(bounds.width || 0),
+    height: Number(bounds.height || 0),
+    preserveAspectRatio: { alignX: 0, alignY: 0, mode: 'none' },
+  };
+}
+
+function parsePreserveAspectRatio(value) {
+  const tokens = String(value || 'xMidYMid meet').trim().split(/\s+/).filter(Boolean);
+  if (tokens[0] && tokens[0].toLowerCase() === 'defer') tokens.shift();
+  const align = String(tokens[0] || 'xMidYMid').toLowerCase();
+  if (align === 'none') return { alignX: 0, alignY: 0, mode: 'none' };
+  const alignX = align.startsWith('xmin') ? 0 : align.startsWith('xmax') ? 1 : 0.5;
+  const alignY = align.includes('ymin') ? 0 : align.includes('ymax') ? 1 : 0.5;
+  return { alignX, alignY, mode: String(tokens[1] || 'meet').toLowerCase() === 'slice' ? 'slice' : 'meet' };
+}
+
+function svgViewportMapping(bounds, viewBox) {
   const width = Number(bounds.width || 0);
   const height = Number(bounds.height || 0);
   const vbWidth = Number(viewBox.width || 0);
   const vbHeight = Number(viewBox.height || 0);
-  const scaleX = vbWidth ? width / vbWidth : 1;
-  const scaleY = vbHeight ? height / vbHeight : 1;
+  const rawScaleX = vbWidth ? width / vbWidth : 1;
+  const rawScaleY = vbHeight ? height / vbHeight : 1;
+  const preserve = viewBox.preserveAspectRatio || { alignX: 0.5, alignY: 0.5, mode: 'meet' };
+  if (preserve.mode === 'none') return { scaleX: rawScaleX, scaleY: rawScaleY, offsetX: 0, offsetY: 0 };
+  const scale = preserve.mode === 'slice'
+    ? Math.max(rawScaleX, rawScaleY)
+    : Math.min(rawScaleX, rawScaleY);
   return {
-    x: round(Number(bounds.x || 0) + (Number(point.x || 0) - Number(viewBox.x || 0)) * scaleX),
-    y: round(Number(bounds.y || 0) + (Number(point.y || 0) - Number(viewBox.y || 0)) * scaleY),
+    scaleX: scale,
+    scaleY: scale,
+    offsetX: (width - vbWidth * scale) * Number(preserve.alignX || 0),
+    offsetY: (height - vbHeight * scale) * Number(preserve.alignY || 0),
   };
-}
-
-function parseViewBox(value, bounds = {}) {
-  const parts = String(value || '').trim().split(/[\s,]+/).map(Number);
-  if (parts.length === 4 && parts.every(Number.isFinite)) {
-    return { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
-  }
-  return { x: 0, y: 0, width: Number(bounds.width || 0), height: Number(bounds.height || 0) };
 }
 
 function visualStyleFromPath(attrs, sourceHtml, computedStyle = {}) {

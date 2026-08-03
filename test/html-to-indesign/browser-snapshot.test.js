@@ -410,6 +410,7 @@ test('snapshotToSemanticModel converts common inline SVG primitives to native ve
   assert.equal(items.get('svg-circle').visualStyle.strokeColor, '#ffffff');
   assert.equal(items.get('svg-circle').visualStyle.strokeWeight, 8);
   assert.equal(items.get('svg-rect').visualStyle.fillColor, '#ee9900');
+  assert.deepEqual(items.get('svg-ellipse').vectorGeometry.paths[0].points[1].anchor, { x: 165.2, y: 50 });
 });
 
 test('renderSnapshot reports unsupported CSS effects and pseudo content', async () => {
