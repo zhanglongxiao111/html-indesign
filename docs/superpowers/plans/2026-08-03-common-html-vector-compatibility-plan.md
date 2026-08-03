@@ -400,3 +400,13 @@ git commit -m "docs: record vector compatibility verification"
 - Spec coverage: paint-only 误判、CSS oval、七种 SVG 基础图元、CLI blocked、Skill 和真实 InDesign 均有独立任务。
 - Placeholder scan: 无 TBD、TODO、模糊“适当处理”或未定义接口。
 - Type consistency: browser snapshot 使用唯一 `vectorElements`；canonical 和 instructions 始终使用已登记的 `vectorGeometry.paths`；compatibility message contract 与现有 CLI 一致。
+
+## Verification Record (2026-08-04)
+
+- 回归和全量：最终 `npm test` 为 1178/1178 pass、0 fail；合并前相关 browser snapshot、compatibility、instructions、authoring lint 与 plugin tools 组合测试为 105/105 pass。
+- 补充兼容审查：支持 `border-radius: 100%`；SVG 百分比/带单位长度读取浏览器 DOM 已解析用户坐标；基础图元无效几何返回 `HTML_INLINE_SVG_UNSUPPORTED`；隐藏 SVG 辅助文字既不阻断，也不进入作者内容或 InDesign 文字框。
+- 包白名单：`npm pack --dry-run --json` 得到 228 个文件，package size 389493 bytes、unpacked size 1690164 bytes；`test/`、`test/workspace`、`_debug` 命中均为 0。
+- 安装态插件：从实际 tgz 安装到 `test/workspace/package-validation-final-20260804-010820/install/` 后执行 `plugin validate`，结果 4 tools、0 errors、0 warnings。
+- 真实 InDesign：`test/workspace/common-html-vector-e2e/output-percent-hidden-fix/` 生成 INDD/PDF/IDML 和 preview，forward fidelity 为 1 page、9 items、0 errors、0 warnings；实际对象包括 Luna 同构红白圆、百分比圆、无 viewBox 圆、CSS `9999px` 圆、CSS `100%` 椭圆、SVG ellipse/line/polygon。
+- 回读对象：`luna-circle` 为 Oval、fill `#c00000`、stroke `#ffffff`、8 pt、4 points；`percent-circle` 为 Oval、fill `#cc3388`、4 points；页面只含 1 个预期说明文字框，隐藏元数据未泄漏。PDF preview 已人工查看，九个预期对象均可见。
+- 统一 Skill：`D:/AI/mcp-indesign/skills/indesign-cli/references/html-authoring.md` 已同步基础图元、百分比长度、CSS 圆和 blocked 处理。quick validator 仅报告统一 Skill 既有 frontmatter `tags` 不在通用校验器 allowlist；本轮正文无新增校验问题，未擅自移除公司发布元数据。
