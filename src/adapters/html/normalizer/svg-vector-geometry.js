@@ -7,20 +7,20 @@ function vectorFactsFromSvgItem(item, bounds) {
   const vectorKind = String(attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR] || '').trim();
   if (tagName !== 'svg' && !vectorKind) return null;
   const sourceHtml = sourceHtmlForItem(item);
-  const pathTags = pathTagsFromHtml(sourceHtml);
-  if (!pathTags.length) return null;
+  const capturedElements = Array.isArray(item && item.vectorElements) ? item.vectorElements : [];
+  const vectorElements = capturedElements.length ? capturedElements : vectorElementsFromHtml(sourceHtml);
+  if (!vectorElements.length) return null;
   const viewBox = parseViewBox(attrs.viewBox || attrs.viewbox, bounds);
-  const capturedPaths = Array.isArray(item && item.vectorPaths) ? item.vectorPaths : [];
-  const paths = pathTags
-    .flatMap((tag, index) => pathsFromPathTag(tag, bounds, viewBox, capturedPaths[index], sourceHtml))
+  const paths = vectorElements
+    .flatMap((element) => pathsFromVectorElement(element, bounds, viewBox, sourceHtml))
     .filter(Boolean);
   if (!paths.length) return null;
   return {
     vectorGeometry: {
-      kind: vectorKind || 'path',
+      kind: vectorKind || vectorKindForElements(vectorElements),
       paths,
     },
-    visualStyle: paths[0].visualStyle || visualStyleFromPath(pathTags[0], sourceHtml, capturedPaths[0] && capturedPaths[0].computedStyle),
+    visualStyle: paths[0].visualStyle || null,
   };
 }
 
@@ -30,13 +30,20 @@ function sourceHtmlForItem(item) {
   return '';
 }
 
-function pathTagsFromHtml(html) {
+function vectorElementsFromHtml(html) {
   const out = [];
-  const pattern = /<path\b[^>]*>/gi;
-  const body = String(html || '').replace(/<defs\b[\s\S]*?<\/defs>/gi, '');
+  const pattern = /<(path|circle|ellipse|rect|line|polyline|polygon)\b[^>]*>/gi;
+  const body = String(html || '')
+    .replace(/<(defs|marker|clipPath|mask|pattern|linearGradient|radialGradient|symbol)\b[\s\S]*?<\/\1>/gi, '');
   let match;
-  while ((match = pattern.exec(body))) out.push(parseAttributes(match[0]));
-  return out.filter((attrs) => attrs.d);
+  while ((match = pattern.exec(body))) {
+    out.push({
+      tagName: String(match[1] || '').toLowerCase(),
+      attributes: parseAttributes(match[0]),
+      computedStyle: {},
+    });
+  }
+  return out;
 }
 
 function parseAttributes(tag) {
@@ -66,6 +73,140 @@ function pathsFromPathTag(attrs, bounds, viewBox, capturedPath, sourceHtml) {
   return paths
     .filter((path) => path && Array.isArray(path.points) && path.points.length)
     .map((path) => ({ ...path, visualStyle: { ...visualStyle } }));
+}
+
+function pathsFromVectorElement(element, bounds, viewBox, sourceHtml) {
+  const tagName = String(element && element.tagName || '').toLowerCase();
+  const attrs = element && element.attributes || {};
+  if (tagName === 'path') return pathsFromPathTag(attrs, bounds, viewBox, element, sourceHtml);
+  const visualStyle = visualStyleFromPath(attrs, sourceHtml, element && element.computedStyle || {});
+  let path = null;
+  if (tagName === 'circle') {
+    const radius = finiteNumber(attrs.r);
+    path = ellipsePath(finiteNumber(attrs.cx, 0), finiteNumber(attrs.cy, 0), radius, radius, bounds, viewBox, visualStyle);
+  } else if (tagName === 'ellipse') {
+    path = ellipsePath(
+      finiteNumber(attrs.cx, 0),
+      finiteNumber(attrs.cy, 0),
+      finiteNumber(attrs.rx),
+      finiteNumber(attrs.ry),
+      bounds,
+      viewBox,
+      visualStyle,
+    );
+  } else if (tagName === 'rect') {
+    path = rectPath(attrs, bounds, viewBox, visualStyle);
+  } else if (tagName === 'line') {
+    path = linePath(attrs, bounds, viewBox, visualStyle);
+  } else if (tagName === 'polyline' || tagName === 'polygon') {
+    path = pointsPath(attrs.points, tagName === 'polygon', bounds, viewBox, visualStyle);
+  }
+  return path ? [path] : [];
+}
+
+function vectorKindForElements(elements) {
+  if (!Array.isArray(elements) || elements.length !== 1) return 'path';
+  const tagName = String(elements[0] && elements[0].tagName || '').toLowerCase();
+  if (tagName === 'circle' || tagName === 'ellipse') return 'oval';
+  if (tagName === 'rect') return 'rectangle';
+  if (tagName === 'line') return 'line';
+  if (tagName === 'polygon') return 'polygon';
+  return 'path';
+}
+
+function ellipsePath(cx, cy, rx, ry, bounds, viewBox, visualStyle) {
+  if (![cx, cy, rx, ry].every(Number.isFinite) || rx <= 0 || ry <= 0) return null;
+  const kappa = 0.5522847498307936;
+  const localPoints = [
+    [{ x: cx, y: cy - ry }, { x: cx - kappa * rx, y: cy - ry }, { x: cx + kappa * rx, y: cy - ry }],
+    [{ x: cx + rx, y: cy }, { x: cx + rx, y: cy - kappa * ry }, { x: cx + rx, y: cy + kappa * ry }],
+    [{ x: cx, y: cy + ry }, { x: cx + kappa * rx, y: cy + ry }, { x: cx - kappa * rx, y: cy + ry }],
+    [{ x: cx - rx, y: cy }, { x: cx - rx, y: cy + kappa * ry }, { x: cx - rx, y: cy - kappa * ry }],
+  ];
+  return {
+    closed: true,
+    points: localPoints.map(([anchor, left, right]) => smoothVectorPoint(anchor, left, right, bounds, viewBox)),
+    visualStyle: { ...visualStyle },
+  };
+}
+
+function rectPath(attrs, bounds, viewBox, visualStyle) {
+  const x = finiteNumber(attrs.x, 0);
+  const y = finiteNumber(attrs.y, 0);
+  const width = finiteNumber(attrs.width);
+  const height = finiteNumber(attrs.height);
+  if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
+  let rx = finiteNumber(attrs.rx);
+  let ry = finiteNumber(attrs.ry);
+  if (!Number.isFinite(rx) && Number.isFinite(ry)) rx = ry;
+  if (!Number.isFinite(ry) && Number.isFinite(rx)) ry = rx;
+  rx = Math.min(Math.max(Number.isFinite(rx) ? rx : 0, 0), width / 2);
+  ry = Math.min(Math.max(Number.isFinite(ry) ? ry : 0, 0), height / 2);
+  if (rx === 0 || ry === 0) {
+    return {
+      closed: true,
+      points: [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+      ].map((point) => vectorPoint(mapPoint(point, bounds, viewBox))),
+      visualStyle: { ...visualStyle },
+    };
+  }
+  const kappa = 0.5522847498307936;
+  const localPoints = [
+    [{ x: x + rx, y }, { x: x + rx - kappa * rx, y }, { x: x + rx, y }],
+    [{ x: x + width - rx, y }, { x: x + width - rx, y }, { x: x + width - rx + kappa * rx, y }],
+    [{ x: x + width, y: y + ry }, { x: x + width, y: y + ry - kappa * ry }, { x: x + width, y: y + ry }],
+    [{ x: x + width, y: y + height - ry }, { x: x + width, y: y + height - ry }, { x: x + width, y: y + height - ry + kappa * ry }],
+    [{ x: x + width - rx, y: y + height }, { x: x + width - rx + kappa * rx, y: y + height }, { x: x + width - rx, y: y + height }],
+    [{ x: x + rx, y: y + height }, { x: x + rx, y: y + height }, { x: x + rx - kappa * rx, y: y + height }],
+    [{ x, y: y + height - ry }, { x, y: y + height - ry + kappa * ry }, { x, y: y + height - ry }],
+    [{ x, y: y + ry }, { x, y: y + ry }, { x, y: y + ry - kappa * ry }],
+  ];
+  return {
+    closed: true,
+    points: localPoints.map(([anchor, left, right]) => smoothVectorPoint(anchor, left, right, bounds, viewBox)),
+    visualStyle: { ...visualStyle },
+  };
+}
+
+function linePath(attrs, bounds, viewBox, visualStyle) {
+  const points = [
+    { x: finiteNumber(attrs.x1, 0), y: finiteNumber(attrs.y1, 0) },
+    { x: finiteNumber(attrs.x2, 0), y: finiteNumber(attrs.y2, 0) },
+  ];
+  if (points.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) return null;
+  return {
+    closed: false,
+    points: points.map((point) => vectorPoint(mapPoint(point, bounds, viewBox))),
+    visualStyle: { ...visualStyle },
+  };
+}
+
+function pointsPath(value, closed, bounds, viewBox, visualStyle) {
+  const values = String(value || '').match(/[-+]?(?:\d*\.\d+|\d+)(?:e[-+]?\d+)?/gi) || [];
+  if (values.length < (closed ? 6 : 4) || values.length % 2 !== 0) return null;
+  const points = [];
+  for (let index = 0; index < values.length; index += 2) {
+    points.push(vectorPoint(mapPoint({ x: Number(values[index]), y: Number(values[index + 1]) }, bounds, viewBox)));
+  }
+  return { closed, points, visualStyle: { ...visualStyle } };
+}
+
+function smoothVectorPoint(anchor, left, right, bounds, viewBox) {
+  return {
+    anchor: mapPoint(anchor, bounds, viewBox),
+    leftDirection: mapPoint(left, bounds, viewBox),
+    rightDirection: mapPoint(right, bounds, viewBox),
+    pointType: 'SMOOTH',
+  };
+}
+
+function finiteNumber(value, fallback = NaN) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function parseVectorPointsAttr(value, bounds, viewBox) {

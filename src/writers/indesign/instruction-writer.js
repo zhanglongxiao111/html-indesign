@@ -766,6 +766,8 @@ function normalizeLineStrokeColor(value) {
 function shapeKindFor(item, vectorGeometry = null) {
   if (vectorGeometry) {
     const kind = String(vectorGeometry.kind || '').toLowerCase();
+    if (kind === 'oval') return 'oval';
+    if (kind === 'rectangle') return 'rectangle';
     if ((vectorGeometry.paths || []).length || kind === 'polygon' || kind === 'path') return 'polygon';
   }
   if (!item || item.role !== 'shape') return 'rectangle';

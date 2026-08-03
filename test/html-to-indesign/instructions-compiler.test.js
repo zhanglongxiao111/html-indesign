@@ -943,6 +943,24 @@ test('compileInstructions recognizes natural CSS oval and large-radius circle sh
   assert.equal(byId.get('pill-large-radius').shapeKind, 'rectangle');
 });
 
+test('compileInstructions emits native InDesign kinds for common inline SVG primitives', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/svg-primitives-deck.html');
+  const snapshot = await renderSnapshot({ htmlPath });
+  const instructions = compileInstructions(snapshot);
+  const byId = new Map(instructions.pages[0].items.map((item) => [item.id, item]));
+
+  assert.equal(byId.get('svg-circle').type, 'SHAPE');
+  assert.equal(byId.get('svg-circle').shapeKind, 'oval');
+  assert.equal(byId.get('svg-ellipse').shapeKind, 'oval');
+  assert.equal(byId.get('svg-rect').shapeKind, 'rectangle');
+  assert.equal(byId.get('svg-line').type, 'LINE');
+  assert.equal(byId.get('svg-polyline').type, 'SHAPE');
+  assert.equal(byId.get('svg-polyline').shapeKind, 'polygon');
+  assert.equal(byId.get('svg-polygon').shapeKind, 'polygon');
+  assert.equal(byId.get('svg-circle').styleOverride.fillColor, '颜色-192-0-0');
+  assert.equal(byId.get('svg-circle').styleOverride.strokeColor, '颜色-255-255-255');
+});
+
 test('compileInstructions orders visual layers below editable text layers', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/semantic-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

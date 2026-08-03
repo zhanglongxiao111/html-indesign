@@ -129,21 +129,33 @@
     return out;
   }
 
-  function vectorPathsFor(el) {
+  const SVG_VECTOR_TAGS = ['path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon'];
+  const SVG_DEFINITION_TAGS = new Set([
+    'defs', 'marker', 'clippath', 'mask', 'pattern', 'lineargradient', 'radialgradient', 'symbol',
+  ]);
+
+  function vectorElementsFor(el) {
     if (!el || String(el.tagName || '').toLowerCase() !== 'svg') return [];
-    return Array.from(el.querySelectorAll('path'))
-      .filter((pathEl) => {
-        const defs = pathEl.closest('defs');
-        return !defs || !el.contains(defs);
-      })
-      .map((pathEl) => ({
-        attributes: attrs(pathEl),
-        computedStyle: vectorPathComputedStyle(pathEl),
+    return Array.from(el.querySelectorAll(SVG_VECTOR_TAGS.join(',')))
+      .filter((vectorEl) => !hasSvgDefinitionAncestor(vectorEl, el))
+      .map((vectorEl) => ({
+        tagName: String(vectorEl.tagName || '').toLowerCase(),
+        attributes: attrs(vectorEl),
+        computedStyle: vectorElementComputedStyle(vectorEl),
       }));
   }
 
-  function vectorPathComputedStyle(pathEl) {
-    const style = getComputedStyle(pathEl);
+  function hasSvgDefinitionAncestor(vectorEl, rootSvg) {
+    let parent = vectorEl && vectorEl.parentElement;
+    while (parent && parent !== rootSvg) {
+      if (SVG_DEFINITION_TAGS.has(String(parent.tagName || '').toLowerCase())) return true;
+      parent = parent.parentElement;
+    }
+    return false;
+  }
+
+  function vectorElementComputedStyle(vectorEl) {
+    const style = getComputedStyle(vectorEl);
     const out = {};
     for (const name of [
       'fill',
@@ -485,7 +497,7 @@
     sourcePreviewNodeFor,
     sourceHtmlFor,
     cssVarsFor,
-    vectorPathsFor,
+    vectorElementsFor,
     visualFrameFor,
     mergeFrameAttributes,
     classList,

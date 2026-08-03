@@ -145,7 +145,7 @@
       }),
       sourceAncestorNodes: elements.sourceAncestorNodes(el, pageEl, candidates),
       cssVars: elements.cssVarsFor(el),
-      vectorPaths: elements.vectorPathsFor(el),
+      vectorElements: elements.vectorElementsFor(el),
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),
       computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),

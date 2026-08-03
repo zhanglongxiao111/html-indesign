@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; }
+    .page { position: relative; width: 800px; height: 450px; background: #fff; }
+    .primitive { position: absolute; top: 20px; width: 60px; height: 60px; overflow: visible; }
+    #svg-circle { left: 20px; }
+    #svg-ellipse { left: 100px; width: 80px; }
+    #svg-rect { left: 200px; }
+    #svg-line { left: 280px; }
+    #svg-polyline { left: 360px; }
+    #svg-polygon { left: 440px; }
+    #svg-path { left: 520px; }
+  </style>
+</head>
+<body>
+  <section class="page" id="svg-primitives-page">
+    <svg id="svg-circle" class="primitive" viewBox="0 0 100 100">
+      <defs><circle id="unused-circle" cx="50" cy="50" r="10"></circle></defs>
+      <circle cx="50" cy="50" r="23" fill="#c00000" stroke="#ffffff" stroke-width="8"></circle>
+    </svg>
+    <svg id="svg-ellipse" class="primitive" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="50" rx="42" ry="28" fill="#0088cc"></ellipse>
+    </svg>
+    <svg id="svg-rect" class="primitive" viewBox="0 0 100 100">
+      <rect x="12" y="18" width="76" height="64" rx="8" ry="12" fill="#ee9900"></rect>
+    </svg>
+    <svg id="svg-line" class="primitive" viewBox="0 0 100 100">
+      <line x1="10" y1="80" x2="90" y2="20" stroke="#111111" stroke-width="6"></line>
+    </svg>
+    <svg id="svg-polyline" class="primitive" viewBox="0 0 100 100">
+      <polyline points="5,80 35,20 65,80 95,20" fill="none" stroke="#005577" stroke-width="5"></polyline>
+    </svg>
+    <svg id="svg-polygon" class="primitive" viewBox="0 0 100 100">
+      <polygon points="50,5 95,95 5,95" fill="#00aa66"></polygon>
+    </svg>
+    <svg id="svg-path" class="primitive" viewBox="0 0 100 100">
+      <path d="M 50 5 L 95 95 L 5 95 Z" fill="#7254d6"></path>
+    </svg>
+  </section>
+</body>
+</html>

@@ -389,6 +389,29 @@ test('snapshotToSemanticModel splits SVG subpaths and preserves each path comput
   assert.equal(item.vectorGeometry.paths[2].visualStyle.strokeColor, null);
 });
 
+test('snapshotToSemanticModel converts common inline SVG primitives to native vector geometry', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/svg-primitives-deck.html');
+  const snapshot = await renderSnapshot({ htmlPath });
+  const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation', targetSize: 'same' });
+  const items = new Map(model.pages[0].items.map((item) => [item.id, item]));
+
+  assert.equal(items.get('svg-circle').vectorGeometry.kind, 'oval');
+  assert.equal(items.get('svg-ellipse').vectorGeometry.kind, 'oval');
+  assert.equal(items.get('svg-rect').vectorGeometry.kind, 'rectangle');
+  assert.equal(items.get('svg-line').vectorGeometry.kind, 'line');
+  assert.equal(items.get('svg-polyline').vectorGeometry.kind, 'path');
+  assert.equal(items.get('svg-polyline').vectorGeometry.paths[0].closed, false);
+  assert.equal(items.get('svg-polygon').vectorGeometry.kind, 'polygon');
+  assert.equal(items.get('svg-polygon').vectorGeometry.paths[0].closed, true);
+  assert.equal(items.get('svg-path').vectorGeometry.kind, 'path');
+  assert.equal(items.get('svg-circle').vectorGeometry.paths.length, 1);
+  assert.equal(items.get('svg-circle').vectorGeometry.paths[0].points.length, 4);
+  assert.equal(items.get('svg-circle').visualStyle.fillColor, '#c00000');
+  assert.equal(items.get('svg-circle').visualStyle.strokeColor, '#ffffff');
+  assert.equal(items.get('svg-circle').visualStyle.strokeWeight, 8);
+  assert.equal(items.get('svg-rect').visualStyle.fillColor, '#ee9900');
+});
+
 test('renderSnapshot reports unsupported CSS effects and pseudo content', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/unsupported-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
