@@ -130,6 +130,7 @@
   }
 
   const SVG_VECTOR_TAGS = ['path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon'];
+  const SVG_UNSUPPORTED_VISIBLE_TAGS = new Set(['use', 'text', 'image', 'foreignobject']);
   const SVG_DEFINITION_TAGS = new Set([
     'defs', 'marker', 'clippath', 'mask', 'pattern', 'lineargradient', 'radialgradient', 'symbol',
   ]);
@@ -138,11 +139,91 @@
     if (!el || String(el.tagName || '').toLowerCase() !== 'svg') return [];
     return Array.from(el.querySelectorAll(SVG_VECTOR_TAGS.join(',')))
       .filter((vectorEl) => !hasSvgDefinitionAncestor(vectorEl, el))
+      .filter(isRenderedSvgVectorElement)
       .map((vectorEl) => ({
         tagName: String(vectorEl.tagName || '').toLowerCase(),
         attributes: attrs(vectorEl),
         computedStyle: vectorElementComputedStyle(vectorEl),
       }));
+  }
+
+  function isRenderedSvgVectorElement(vectorEl) {
+    const style = getComputedStyle(vectorEl);
+    return Boolean(style && style.display !== 'none' && style.visibility !== 'hidden' && style.visibility !== 'collapse');
+  }
+
+  function svgUnsupportedElementsFor(el) {
+    if (!el || String(el.tagName || '').toLowerCase() !== 'svg') return [];
+    const nodes = [el, ...Array.from(el.querySelectorAll('*'))]
+      .filter((node) => node === el || !isSvgDefinitionNode(node, el));
+    const findings = [];
+    for (const node of nodes) {
+      const tagName = String(node.tagName || '').toLowerCase();
+      if (SVG_UNSUPPORTED_VISIBLE_TAGS.has(tagName)) {
+        findings.push({ tagName, reason: 'unsupported-element' });
+      } else if (node !== el
+        && !SVG_VECTOR_TAGS.includes(tagName)
+        && !['g', 'title', 'desc', 'metadata'].includes(tagName)) {
+        findings.push({ tagName, reason: 'unsupported-element' });
+      }
+      for (const finding of unsupportedSvgFactsForNode(node, tagName)) findings.push(finding);
+    }
+    return uniqueSvgFindings(findings);
+  }
+
+  function isSvgDefinitionNode(node, rootSvg) {
+    const tagName = String(node && node.tagName || '').toLowerCase();
+    return SVG_DEFINITION_TAGS.has(tagName) || hasSvgDefinitionAncestor(node, rootSvg);
+  }
+
+  function unsupportedSvgFactsForNode(node, tagName) {
+    const findings = [];
+    for (const name of ['transform', 'clip-path', 'mask', 'filter']) {
+      const value = String(node.getAttribute && node.getAttribute(name) || '').trim();
+      if (value && value.toLowerCase() !== 'none') {
+        findings.push({ tagName, reason: `unsupported-${name}`, detail: value });
+      }
+    }
+    for (const name of ['fill', 'stroke']) {
+      const value = String(node.getAttribute && node.getAttribute(name) || '').trim();
+      if (/^url\s*\(/i.test(value)) {
+        findings.push({ tagName, reason: 'unsupported-paint-server', detail: `${name}: ${value}` });
+      }
+    }
+    if (tagName === 'path') {
+      const d = String(node.getAttribute && node.getAttribute('d') || '');
+      const unsupportedCommand = (d.match(/[A-Za-z]/g) || []).find((command) => !/[mMlLcCzZ]/.test(command));
+      if (unsupportedCommand) {
+        findings.push({ tagName, reason: 'unsupported-path-command', detail: unsupportedCommand });
+      }
+    }
+    const style = getComputedStyle(node);
+    if (style && style.transform && style.transform !== 'none') {
+      findings.push({ tagName, reason: 'unsupported-transform', detail: style.transform });
+    }
+    for (const name of ['clip-path', 'mask-image', 'filter']) {
+      const value = String(style && style.getPropertyValue(name) || '').trim();
+      if (value && value !== 'none') {
+        findings.push({ tagName, reason: `unsupported-${name}`, detail: value });
+      }
+    }
+    for (const name of ['fill', 'stroke']) {
+      const value = String(style && style.getPropertyValue(name) || '').trim();
+      if (/^url\s*\(/i.test(value)) {
+        findings.push({ tagName, reason: 'unsupported-paint-server', detail: `${name}: ${value}` });
+      }
+    }
+    return findings;
+  }
+
+  function uniqueSvgFindings(findings) {
+    const seen = new Set();
+    return findings.filter((finding) => {
+      const key = `${finding.tagName}|${finding.reason}|${finding.detail || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   function hasSvgDefinitionAncestor(vectorEl, rootSvg) {
@@ -236,10 +317,14 @@
     return {
       boxShadow: style.boxShadow && style.boxShadow !== 'none' ? style.boxShadow : '',
       filter: style.filter && style.filter !== 'none' ? style.filter : '',
+      clipPath: style.clipPath && style.clipPath !== 'none' ? style.clipPath : '',
       maskImage: unsupportedMaskImage(style),
       beforeContent: pseudoContent(el, '::before'),
       afterContent: pseudoContent(el, '::after'),
+      beforePaint: pseudoPaint(el, '::before'),
+      afterPaint: pseudoPaint(el, '::after'),
       markerContent: el.tagName.toLowerCase() === 'li' ? pseudoContent(el, '::marker') : '',
+      svgUnsupportedElements: svgUnsupportedElementsFor(el),
     };
   }
 
@@ -443,7 +528,10 @@
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return false;
     const style = getComputedStyle(el);
-    return hasVisibleBackground(style) || hasVisibleCssBorder(style);
+    return hasVisibleBackground(style)
+      || hasVisibleCssBorder(style)
+      || Boolean(pseudoPaint(el, '::before'))
+      || Boolean(pseudoPaint(el, '::after'));
   }
 
   function hasVisibleBackground(style) {
@@ -486,6 +574,33 @@
     const content = style && style.content ? String(style.content) : '';
     if (!content || content === 'none' || content === 'normal' || content === '""') return '';
     return content;
+  }
+
+  function pseudoPaint(el, pseudo) {
+    const style = getComputedStyle(el, pseudo);
+    if (!style || style.display === 'none') return null;
+    if (!hasVisibleBackground(style) && !hasVisibleCssBorder(style)) return null;
+    return {
+      visible: true,
+      display: style.display || '',
+      width: style.width || '',
+      height: style.height || '',
+      backgroundColor: style.backgroundColor || '',
+      backgroundImage: style.backgroundImage || '',
+      borderTop: visibleBorderSummary(style, 'Top'),
+      borderRight: visibleBorderSummary(style, 'Right'),
+      borderBottom: visibleBorderSummary(style, 'Bottom'),
+      borderLeft: visibleBorderSummary(style, 'Left'),
+    };
+  }
+
+  function visibleBorderSummary(style, side) {
+    const borderStyle = String(style[`border${side}Style`] || '').toLowerCase();
+    const width = style[`border${side}Width`] || '';
+    const color = style[`border${side}Color`] || '';
+    if (borderStyle === 'none' || borderStyle === 'hidden') return '';
+    if (cssPxNumber(width) <= 0 || isTransparentCssColor(color)) return '';
+    return `${width} ${borderStyle} ${color}`;
   }
 
   const api = {

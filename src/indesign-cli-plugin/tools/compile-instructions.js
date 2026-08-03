@@ -29,6 +29,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   const snapshot = internal.snapshot || await renderSnapshot({ htmlPath: sourcePackage.entryPath });
   const snapshotMs = hasProvidedSnapshot ? null : Date.now() - snapshotStartedAt;
   const compatibility = internal.compatibility || auditHtmlCompatibility(snapshot);
+  assertCompatibilityReady(compatibility, snapshotMs);
 
   const compileStartedAt = Date.now();
   const styleNameMap = loadStyleNameMap(sourcePackage);
@@ -109,6 +110,32 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     compatibility,
     metrics,
   };
+}
+
+function assertCompatibilityReady(compatibility, snapshotMs = null) {
+  const blocked = compatibility && Array.isArray(compatibility.messages)
+    ? compatibility.messages.filter((entry) => entry && (entry.level === 'error' || entry.action === 'blocked'))
+    : [];
+  const blockedCount = Number(compatibility && compatibility.summary && compatibility.summary.blocked || blocked.length);
+  if (blockedCount <= 0) return;
+  const labels = blocked.slice(0, 5).map((entry) => {
+    const location = [entry.pageId, entry.itemId].filter(Boolean).join('/');
+    return `${entry.code || 'HTML_COMPATIBILITY_BLOCKED'}${location ? ` at ${location}` : ''}`;
+  });
+  if (!labels.length) labels.push('HTML_COMPATIBILITY_BLOCKED');
+  const suffix = blocked.length > labels.length ? `; and ${blocked.length - labels.length} more` : '';
+  const err = new Error(`HTML compatibility blocked compilation: ${labels.join('; ')}${suffix}`);
+  err.code = 'HTML_COMPATIBILITY_BLOCKED';
+  err.details = {
+    stage: 'compile',
+    compatibility,
+    metrics: buildMetrics({
+      snapshot_ms: snapshotMs,
+      error_count: blockedCount,
+      compatibility_blocked: blockedCount,
+    }),
+  };
+  throw err;
 }
 
 function countVectorPaths(instructions) {
@@ -197,6 +224,7 @@ async function call(args, context) {
 module.exports = {
   call,
   compileAuthoringPackage,
+  assertCompatibilityReady,
   countVectorPaths,
   buildMetrics,
 };

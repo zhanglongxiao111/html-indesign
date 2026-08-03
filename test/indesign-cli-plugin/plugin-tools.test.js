@@ -4,6 +4,7 @@ const path = require('node:path');
 const { test } = require('node:test');
 const { callPlugin, repoRoot, workspaceRoot } = require('./plugin-test-helper');
 const { reversePipelineFailureResponse } = require('../../src/indesign-cli-plugin/tools/reverse-export');
+const { compileAuthoringPackage } = require('../../src/indesign-cli-plugin/tools/compile-instructions');
 
 test('html.authoring_lint validates the architecture report author package', () => {
   const response = callPlugin('tools/call', {
@@ -141,6 +142,41 @@ test('html.compile_instructions writes validated instructions and summary', () =
   assert.equal(layerNames.includes('image'), false);
   assert.equal(layerNames.includes('overlay'), false);
   assert.equal(layerNames.includes('text'), false);
+});
+
+test('html.compile_instructions blocks before writing lossy instructions when compatibility has errors', async () => {
+  const outDir = path.join('test', 'workspace', 'plugin-compile-compatibility-blocked');
+  fs.rmSync(path.join(repoRoot, outDir), { recursive: true, force: true });
+
+  await assert.rejects(
+    () => compileAuthoringPackage({
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+    }, { cwd: repoRoot }, 'html-plugin-compile', {
+      snapshot: { pages: [] },
+      compatibility: {
+        summary: { normalized: 0, warnings: 0, blocked: 1 },
+        messages: [{
+          level: 'error',
+          code: 'HTML_INLINE_SVG_UNSUPPORTED',
+          action: 'blocked',
+          pageId: 'page-1',
+          itemId: 'marker',
+          message: 'Unsupported inline SVG content.',
+          suggestedFix: 'Use supported primitives.',
+          ruleRef: 'vectors/inline-svg',
+        }],
+      },
+    }),
+    (error) => {
+      assert.equal(error.code, 'HTML_COMPATIBILITY_BLOCKED');
+      assert.equal(error.details.stage, 'compile');
+      assert.equal(error.details.compatibility.summary.blocked, 1);
+      assert.match(error.message, /HTML_INLINE_SVG_UNSUPPORTED/);
+      return true;
+    },
+  );
+  assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'instructions.json')), false);
 });
 
 test('html.compile_instructions reports compile_ms, snapshot_ms and task-size metrics', () => {

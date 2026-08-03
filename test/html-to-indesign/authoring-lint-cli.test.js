@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { lintAuthoringPackage } = require('../../src/authoring');
+const { lintAuthoringHtml, lintAuthoringPackage } = require('../../src/authoring');
 
 const ROOT_DIR = path.join(__dirname, '../..');
 
@@ -36,6 +36,27 @@ test('lintAuthoringPackage exposes one compatibility report alongside ordinary d
   assert.equal(typeof result.compatibility.summary.normalized, 'number');
   assert.equal(typeof result.compatibility.summary.blocked, 'number');
   assert.equal(Array.isArray(result.compatibility.messages), true);
+});
+
+test('lintAuthoringHtml fails visibly when common HTML drawing techniques would be lost', async () => {
+  const result = await lintAuthoringHtml({
+    htmlPath: path.join(ROOT_DIR, 'test/fixtures/fixed-html/unsupported-deck.html'),
+  });
+  const byCode = new Map(result.compatibility.messages.map((message) => [message.code, message]));
+
+  assert.equal(result.ok, false);
+  for (const code of [
+    'HTML_INLINE_SVG_UNSUPPORTED',
+    'HTML_PSEUDO_ELEMENT_UNSUPPORTED',
+    'HTML_CLIP_PATH_UNSUPPORTED',
+    'HTML_CSS_EFFECT_UNSUPPORTED',
+    'HTML_GRADIENT_UNSUPPORTED',
+    'HTML_CSS_BORDER_SHAPE_UNSUPPORTED',
+  ]) {
+    const message = byCode.get(code);
+    assert.ok(message, `missing ${code}`);
+    assert.equal(message.action, 'blocked');
+  }
 });
 
 test('lint-authoring --strict fails unregistered data-id carriers through registry validation', () => {

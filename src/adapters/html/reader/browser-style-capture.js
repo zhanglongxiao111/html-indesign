@@ -35,6 +35,8 @@
     'gap',
     'backgroundColor',
     'backgroundImage',
+    'backgroundPosition',
+    'backgroundSize',
     'borderTopColor',
     'borderTopWidth',
     'borderTopStyle',
@@ -56,6 +58,7 @@
     'transform',
     'boxShadow',
     'filter',
+    'clipPath',
     'maskImage',
     'webkitMaskImage',
   ];

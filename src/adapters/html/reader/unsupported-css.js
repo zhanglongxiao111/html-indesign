@@ -16,7 +16,7 @@ function collectUnsupportedWarnings(pages, warnings, report) {
         warnings.push(warning);
         addMessage(report, 'warning', warning.code, warning.message, warning);
       }
-      const pseudo = ['beforeContent', 'afterContent', 'markerContent'].filter((prop) => unsupported[prop]);
+      const pseudo = ['beforeContent', 'afterContent', 'markerContent', 'beforePaint', 'afterPaint'].filter((prop) => unsupported[prop]);
       if (pseudo.length) {
         const warning = {
           code: 'PSEUDO_CONTENT_UNSUPPORTED',
@@ -36,12 +36,21 @@ function collectUnsupportedWarnings(pages, warnings, report) {
         warnings.push(warning);
         addMessage(report, 'warning', warning.code, warning.message, warning);
       }
-      if ((item.tagName === 'svg' || item.tagName === 'canvas') && !assetSourceFromElementLike(item).src) {
+      const svgUnsupported = Array.isArray(unsupported.svgUnsupportedElements)
+        ? unsupported.svgUnsupportedElements
+        : [];
+      const inlineSvgUnsupported = item.tagName === 'svg'
+        && !assetSourceFromElementLike(item).src
+        && (svgUnsupported.length > 0 || !Array.isArray(item.vectorElements) || item.vectorElements.length === 0);
+      if (inlineSvgUnsupported || (item.tagName === 'canvas' && !assetSourceFromElementLike(item).src)) {
         const code = item.tagName === 'svg' ? 'INLINE_SVG_UNSUPPORTED' : 'CANVAS_FALLBACK_UNSUPPORTED';
         const warning = {
           code,
-          message: `${item.tagName.toUpperCase()} fallback asset generation is not implemented yet.`,
+          message: item.tagName === 'svg'
+            ? 'Inline SVG contains visible content that cannot be translated to native InDesign vectors.'
+            : 'CANVAS fallback asset generation is not implemented yet.',
           itemId: item.id,
+          ...(svgUnsupported.length ? { unsupportedElements: svgUnsupported } : {}),
         };
         warnings.push(warning);
         addMessage(report, 'warning', warning.code, warning.message, warning);

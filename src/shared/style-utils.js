@@ -68,6 +68,13 @@ function parseCssLinearGradient(value) {
   };
 }
 
+function gradientHasSingleColor(gradient) {
+  const names = new Set((gradient && gradient.stops || [])
+    .map((stop) => stop.color && stop.color.name)
+    .filter(Boolean));
+  return names.size <= 1;
+}
+
 function splitCssArgs(value) {
   const out = [];
   let current = '';
@@ -253,6 +260,7 @@ module.exports = {
   normalizeCssColor,
   normalizeCssColorFromBackgroundImage,
   parseCssLinearGradient,
+  gradientHasSingleColor,
   cssLengthToPt,
   sanitizeStyleName,
   safeAuthorClassToken,

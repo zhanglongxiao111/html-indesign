@@ -40,15 +40,62 @@
       width: 30mm;
       height: 20mm;
     }
+    .pseudo-dot {
+      position: absolute;
+      left: 52mm;
+      top: 50mm;
+      width: 12mm;
+      height: 12mm;
+    }
+    .pseudo-dot::before {
+      content: "";
+      display: block;
+      width: 12mm;
+      height: 12mm;
+      border-radius: 50%;
+      background: #c00000;
+    }
+    .clipped-shape {
+      position: absolute;
+      left: 70mm;
+      top: 50mm;
+      width: 20mm;
+      height: 20mm;
+      background: #006699;
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    }
+    .multi-color-gradient {
+      position: absolute;
+      left: 96mm;
+      top: 50mm;
+      width: 20mm;
+      height: 20mm;
+      background: linear-gradient(90deg, rgb(192, 0, 0), rgb(0, 102, 153));
+    }
+    .border-triangle {
+      position: absolute;
+      left: 122mm;
+      top: 50mm;
+      width: 0;
+      height: 0;
+      border-left: 10mm solid transparent;
+      border-right: 10mm solid transparent;
+      border-bottom: 20mm solid #ee9900;
+    }
   </style>
 </head>
 <body>
   <section class="page" data-page id="unsupported-page">
     <div class="shadow-card" data-id-object></div>
     <div class="filtered" data-id-object></div>
-    <svg class="inline-svg" data-id-object viewBox="0 0 100 60">
-      <rect x="5" y="5" width="90" height="50" fill="#123456"></rect>
+    <svg id="unsupported-svg" class="inline-svg" data-id-object viewBox="0 0 100 60">
+      <defs><circle id="defined-dot" cx="50" cy="30" r="24"></circle></defs>
+      <use href="#defined-dot" fill="#123456"></use>
     </svg>
+    <div id="pseudo-dot" class="pseudo-dot"></div>
+    <div id="clipped-shape" class="clipped-shape"></div>
+    <div id="multi-color-gradient" class="multi-color-gradient"></div>
+    <div id="border-triangle" class="border-triangle" data-id-object></div>
   </section>
 </body>
 </html>

@@ -1,5 +1,5 @@
 const { round } = require('../shared/geometry');
-const { parseCssLinearGradient } = require('../shared/style-utils');
+const { gradientHasSingleColor, parseCssLinearGradient } = require('../shared/style-utils');
 
 function compileEffects(item, report, addMessage) {
   const style = item.computedStyle || {};
@@ -43,11 +43,6 @@ function gradientStartForBounds(bounds, angle) {
   if (normalized === 90) return { x: round(x + width / 2, 2), y: round(y + height * 1.5, 2) };
   if (normalized === 270) return { x: round(x + width / 2, 2), y: round(y - height / 2, 2) };
   return { x: round(x - width / 2, 2), y: round(y + height / 2, 2) };
-}
-
-function gradientHasSingleColor(gradient) {
-  const names = new Set((gradient.stops || []).map((stop) => stop.color && stop.color.name).filter(Boolean));
-  return names.size <= 1;
 }
 
 module.exports = {

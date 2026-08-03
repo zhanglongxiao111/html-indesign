@@ -413,6 +413,23 @@ test('snapshotToSemanticModel converts common inline SVG primitives to native ve
   assert.deepEqual(items.get('svg-ellipse').vectorGeometry.paths[0].points[1].anchor, { x: 165.2, y: 50 });
 });
 
+test('snapshotToSemanticModel uses the rendered SVG viewport when viewBox is omitted', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/svg-primitives-deck.html');
+  const snapshot = await renderSnapshot({ htmlPath });
+  const model = snapshotToSemanticModel(snapshot, { unitMode: 'print' });
+  const item = model.pages[0].items.find((candidate) => candidate.id === 'svg-no-viewbox');
+  const anchors = item.vectorGeometry.paths[0].points.map((point) => point.anchor);
+
+  assert.equal(item.vectorGeometry.kind, 'oval');
+  assert.equal(anchors.every((point) => (
+    point.x >= item.bounds.x
+      && point.x <= item.bounds.x + item.bounds.width
+      && point.y >= item.bounds.y
+      && point.y <= item.bounds.y + item.bounds.height
+  )), true);
+  assert.equal(anchors[0].x, item.bounds.x + item.bounds.width / 2);
+});
+
 test('renderSnapshot reports unsupported CSS effects and pseudo content', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/unsupported-deck.html');
   const snapshot = await renderSnapshot({ htmlPath });
@@ -422,6 +439,22 @@ test('renderSnapshot reports unsupported CSS effects and pseudo content', async 
   assert.equal(codes.includes('PSEUDO_CONTENT_UNSUPPORTED'), true);
   assert.equal(codes.includes('INLINE_SVG_UNSUPPORTED'), true);
   assert.equal(snapshot.warnings.some((warning) => warning.code === 'CSS_EFFECT_UNSUPPORTED'), true);
+});
+
+test('renderSnapshot captures unsupported visible HTML constructs instead of silently dropping them', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/unsupported-deck.html');
+  const snapshot = await renderSnapshot({ htmlPath });
+  const items = new Map(snapshot.pages[0].items.map((item) => [item.id, item]));
+
+  assert.equal(items.get('pseudo-dot').unsupported.beforePaint.visible, true);
+  assert.match(items.get('pseudo-dot').unsupported.beforePaint.backgroundColor, /192, 0, 0/);
+  assert.match(items.get('clipped-shape').computedStyle.clipPath, /polygon/);
+  assert.equal(
+    items.get('unsupported-svg').unsupported.svgUnsupportedElements.some((entry) => (
+      entry.tagName === 'use' && entry.reason === 'unsupported-element'
+    )),
+    true,
+  );
 });
 
 test('renderSnapshot reports list markers that are not yet compiled to native bullets', async () => {

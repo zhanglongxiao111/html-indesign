@@ -14,6 +14,7 @@ function vectorFactsFromSvgItem(item, bounds) {
     attrs.viewBox || attrs.viewbox,
     bounds,
     attrs.preserveAspectRatio || attrs.preserveaspectratio,
+    item && item.rectPx,
   );
   const paths = vectorElements
     .flatMap((element) => pathsFromVectorElement(element, bounds, viewBox, sourceHtml))
@@ -424,7 +425,7 @@ function mapPoint(point, bounds = {}, viewBox = {}) {
   };
 }
 
-function parseViewBox(value, bounds = {}, preserveAspectRatio) {
+function parseViewBox(value, bounds = {}, preserveAspectRatio, renderedViewport = {}) {
   const parts = String(value || '').trim().split(/[\s,]+/).map(Number);
   if (parts.length === 4 && parts.every(Number.isFinite)) {
     return {
@@ -438,10 +439,16 @@ function parseViewBox(value, bounds = {}, preserveAspectRatio) {
   return {
     x: 0,
     y: 0,
-    width: Number(bounds.width || 0),
-    height: Number(bounds.height || 0),
+    width: positiveViewportLength(renderedViewport.width, bounds.width),
+    height: positiveViewportLength(renderedViewport.height, bounds.height),
     preserveAspectRatio: { alignX: 0, alignY: 0, mode: 'none' },
   };
+}
+
+function positiveViewportLength(primary, fallback) {
+  const value = Number(primary);
+  if (Number.isFinite(value) && value > 0) return value;
+  return Number(fallback || 0);
 }
 
 function parsePreserveAspectRatio(value) {
