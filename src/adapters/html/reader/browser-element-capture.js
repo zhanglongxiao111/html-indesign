@@ -28,12 +28,27 @@
   function textWithHardBreaks(node, brToken, excludedElements, rootNode) {
     if (!node) return '';
     if (node !== rootNode && excludedElements && excludedElements.has(node)) return '';
-    if (node.nodeType === 3) return String(node.nodeValue || '');
+    if (node.nodeType === 3) {
+      return isRenderedTextParent(node.parentElement) ? String(node.nodeValue || '') : '';
+    }
     if (node.nodeType !== 1) return '';
+    if (getComputedStyle(node).display === 'none') return '';
     if (String(node.tagName || '').toLowerCase() === 'br') return brToken;
     return Array.from(node.childNodes || [])
       .map((child) => textWithHardBreaks(child, brToken, excludedElements, rootNode))
       .join('');
+  }
+
+  function isRenderedTextParent(parent) {
+    if (!parent) return false;
+    const style = getComputedStyle(parent);
+    if (!style || style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+    let current = parent;
+    while (current && current.nodeType === 1) {
+      if (getComputedStyle(current).display === 'none') return false;
+      current = current.parentElement;
+    }
+    return true;
   }
 
   const HARD_BREAK_TOKEN = '\u0000';

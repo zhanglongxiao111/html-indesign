@@ -395,6 +395,8 @@ test('snapshotToSemanticModel converts common inline SVG primitives to native ve
   const model = snapshotToSemanticModel(snapshot, { unitMode: 'presentation', targetSize: 'same' });
   const items = new Map(model.pages[0].items.map((item) => [item.id, item]));
 
+  assert.equal(snapshot.pages[0].items.some((item) => item.tagName === 'text'), false);
+  assert.equal(items.get('svg-percent-circle').content.text, '');
   assert.equal(items.get('svg-circle').vectorGeometry.kind, 'oval');
   assert.equal(items.get('svg-ellipse').vectorGeometry.kind, 'oval');
   assert.equal(items.get('svg-rect').vectorGeometry.kind, 'rectangle');
