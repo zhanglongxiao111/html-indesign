@@ -3,6 +3,7 @@ const path = require('path');
 const { auditHtmlCompatibility, renderSnapshot, validateAuthoringRules } = require('../adapters/html');
 const {
   auditAuthorPackageSourceFormat,
+  authorPackageReassemblyHint,
   checkAuthorPackageEntry,
   readAuthorPackage,
 } = require('./source-package');
@@ -44,6 +45,7 @@ async function lintAuthoringPackage(options = {}) {
       code: 'AUTHOR_GENERATED_ENTRY_DIRTY',
       message,
       entryPath: packageCheck.entryPath,
+      hint: authorPackageReassemblyHint(packagePath),
     }, null, semanticPreset), {
       packagePath,
       htmlPath: packageCheck.entryPath,

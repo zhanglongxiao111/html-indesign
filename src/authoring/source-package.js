@@ -173,6 +173,14 @@ function checkAuthorPackageEntry(configPath) {
   return { ok: true, entryPath: sourcePackage.entryPath };
 }
 
+// 生成入口失效的修法唯一且确定：重跑组装。给出可直接复制的命令，
+// 避免调用方在上下文丢失后自行猜测或编造组装入口。
+function authorPackageReassemblyHint(configPath) {
+  return '重新组装作者包后重试：& "<runtime_root>\\node\\node.exe" '
+    + '"<runtime_root>\\plugins\\html-indesign\\scripts\\assemble-authoring.js" '
+    + `--package "${configPath}"`;
+}
+
 function auditAuthorPackageSourceFormat(configPath, options = {}) {
   let sourcePackage;
   try {
@@ -348,6 +356,7 @@ module.exports = {
   GENERATED_COMMENT,
   auditAuthorPackageSourceFormat,
   assembleAuthorPackage,
+  authorPackageReassemblyHint,
   checkAuthorPackageEntry,
   loadAuthorPackageConfig,
   readAuthorPackage,

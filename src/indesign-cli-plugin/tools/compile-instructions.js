@@ -3,7 +3,7 @@ const path = require('node:path');
 const { auditHtmlCompatibility, renderSnapshot } = require('../../adapters/html');
 const { compileDocument } = require('../../indesign-pipeline');
 const { validateInstructions } = require('../../writers/indesign');
-const { checkAuthorPackageEntry, readAuthorPackage } = require('../../authoring');
+const { authorPackageReassemblyHint, checkAuthorPackageEntry, readAuthorPackage } = require('../../authoring');
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../../semantic-preset');
 const { resolveProjectPath, ensureOutputDir } = require('../path-policy');
 const { artifact } = require('../artifacts');
@@ -15,7 +15,8 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   if (!packageCheck.ok) {
     const err = new Error(`AUTHOR_GENERATED_ENTRY_DIRTY: ${packageCheck.message}: ${packageCheck.entryPath}`);
     err.code = 'AUTHOR_GENERATED_ENTRY_DIRTY';
-    err.details = { stage: 'compile' };
+    err.hint = authorPackageReassemblyHint(packagePath);
+    err.details = { stage: 'compile', hint: err.hint };
     throw err;
   }
 

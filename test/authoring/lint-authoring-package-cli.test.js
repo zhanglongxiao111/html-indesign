@@ -18,6 +18,22 @@ test('lint-authoring --package fails before snapshot when generated deck is stal
   assert.match(result.stderr + result.stdout, /AUTHOR_GENERATED_ENTRY_DIRTY|out of date/);
 });
 
+test('lint-authoring --package hints the exact reassembly command when the generated entry is missing', () => {
+  const root = makePackageFixture();
+  const configPath = path.join(root, 'deck.config.json');
+
+  const result = runLint(['--package', configPath, '--strict', '--json']);
+
+  assert.equal(result.status, 1);
+  const payload = JSON.parse(result.stdout);
+  const issue = payload.errors.find((entry) => entry.code === 'AUTHOR_GENERATED_ENTRY_DIRTY');
+  assert.ok(issue, `expected AUTHOR_GENERATED_ENTRY_DIRTY, got ${JSON.stringify(payload.errors)}`);
+  assert.ok(issue.hint, 'expected a runnable hint');
+  assert.match(issue.hint, /assemble-authoring\.js/);
+  assert.match(issue.hint, /--package/);
+  assert.ok(issue.hint.includes(configPath), 'hint must name the actual package path');
+});
+
 test('lint-authoring --package snapshots the generated entry when it is current', () => {
   const root = makePackageFixture();
   const configPath = path.join(root, 'deck.config.json');
