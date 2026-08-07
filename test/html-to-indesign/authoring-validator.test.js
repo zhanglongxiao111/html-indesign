@@ -511,6 +511,105 @@ test('validateAuthoringRules allows a semantic container to follow its child con
     && entry.itemId === 'content-block'), false);
 });
 
+test('validateAuthoringRules rejects a text box whose first line cannot compose inside its padding', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 're-title-8',
+      role: 'text',
+      tagName: 'p',
+      classList: ['re-layout-title', 'id-object'],
+      attributes: { 'data-id-role': 'text', 'data-id-grid-ignore': '' },
+      text: '鸟瞰总览 / Aerial Overview',
+      boundsMm: { x: 20, y: 11, width: 190, height: 11 },
+      rectPx: { x: 78, y: 42, width: 720, height: 42 },
+      computedStyle: {
+        overflow: 'hidden',
+        fontSize: '24px',
+        lineHeight: '26.4px',
+        paddingTop: '10px',
+        paddingBottom: '10px',
+        borderTopWidth: '0px',
+        borderBottomWidth: '0px',
+      },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot);
+
+  assert.equal(result.valid, false);
+  const issue = result.errors.find((entry) => entry.code === 'TEXT_FIRST_LINE_CANNOT_FIT');
+  assert.ok(issue, JSON.stringify(result.errors));
+  assert.equal(issue.itemId, 're-title-8');
+  assert.match(issue.suggestedFix || '', /height|padding|line-height/);
+});
+
+test('validateAuthoringRules keeps single-line overflow visible text for the frame auto-fit rescue', () => {
+  const base = {
+    id: 'rescued-title',
+    role: 'text',
+    tagName: 'p',
+    classList: ['title'],
+    attributes: { 'data-id-role': 'text' },
+    text: '单行标题',
+    boundsMm: { x: 20, y: 11, width: 190, height: 11 },
+    rectPx: { x: 78, y: 42, width: 720, height: 42 },
+    computedStyle: {
+      overflow: 'visible',
+      fontSize: '24px',
+      lineHeight: '26.4px',
+      paddingTop: '10px',
+      paddingBottom: '10px',
+      borderTopWidth: '0px',
+      borderBottomWidth: '0px',
+    },
+  };
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [base],
+  });
+
+  const result = validateAuthoringRules(snapshot);
+  assert.equal(result.errors.some((entry) => entry.code === 'TEXT_FIRST_LINE_CANNOT_FIT'), false);
+});
+
+test('validateAuthoringRules accepts a text box whose line fits its inner height', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'fitting-title',
+      role: 'text',
+      tagName: 'p',
+      classList: ['title', 'id-object'],
+      attributes: { 'data-id-role': 'text' },
+      text: '案例拆解 / Case Study',
+      boundsMm: { x: 20, y: 14, width: 190, height: 11 },
+      rectPx: { x: 78, y: 54, width: 820, height: 42 },
+      computedStyle: {
+        overflow: 'hidden',
+        fontSize: '26px',
+        lineHeight: '28.6px',
+        paddingTop: '0px',
+        paddingBottom: '0px',
+        borderTopWidth: '0px',
+        borderBottomWidth: '0px',
+      },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot);
+  assert.equal(result.errors.some((entry) => entry.code === 'TEXT_FIRST_LINE_CANNOT_FIT'), false);
+});
+
 function snapshotWithPage(overrides = {}) {
   return {
     metadata: { source: 'inline.html' },

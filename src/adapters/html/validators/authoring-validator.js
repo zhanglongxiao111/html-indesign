@@ -14,6 +14,7 @@ const SEMANTIC_TOKEN_MISSING = 'SEMANTIC_TOKEN_MISSING';
 const GRAPHIC_ASSET_REFERENCE_MISSING = 'GRAPHIC_ASSET_REFERENCE_MISSING';
 const TEXT_CONTAINER_HAS_CHILD_OBJECTS = 'TEXT_CONTAINER_HAS_CHILD_OBJECTS';
 const HTML_TEXT_NOT_CONVERTIBLE = 'HTML_TEXT_NOT_CONVERTIBLE';
+const TEXT_FIRST_LINE_CANNOT_FIT = 'TEXT_FIRST_LINE_CANNOT_FIT';
 
 function validateAuthoringRules(snapshot, options = {}) {
   const pages = Array.isArray(snapshot && snapshot.pages) ? snapshot.pages : [];
@@ -70,6 +71,21 @@ function validateAuthoringRules(snapshot, options = {}) {
           `A layout container with child objects cannot use ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.TEXT}". Use ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.CONTAINER}" and keep text semantics on the leaf text elements.`,
           ),
           suggestedFix: `Change #${itemId} to ${HTML_DATA_ID_ATTRIBUTES.ROLE}="${ITEM_ROLE.CONTAINER}"; keep ${HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE} on its child text elements.`,
+          ...(page && page.sourceFile ? { sourceFile: page.sourceFile } : {}),
+        });
+      }
+      const lineFit = firstLineOverflowIssue(item);
+      if (lineFit) {
+        const itemId = itemIdFor(item, itemIndex);
+        errors.push({
+          ...message(
+            'error',
+            TEXT_FIRST_LINE_CANNOT_FIT,
+            pageId,
+            itemId,
+            `Text line-height (${lineFit.lineHeight}px) exceeds the box inner height (${lineFit.innerHeight}px = ${lineFit.height}px height − ${lineFit.vertical}px vertical padding/border). The browser still paints the line, but InDesign cannot compose it inside the frame inset and the built frame renders empty.`,
+          ),
+          suggestedFix: `Make #${itemId} tall enough for its text: increase height to ≥ ${lineFit.requiredHeight}px, or reduce vertical padding to ≤ ${lineFit.maxVertical}px total, or lower line-height to ≤ ${lineFit.innerHeight}px. A single-line text with overflow: visible is frame-auto-fitted instead.`,
           ...(page && page.sourceFile ? { sourceFile: page.sourceFile } : {}),
         });
       }
@@ -301,6 +317,53 @@ function attributeValue(attrs, name) {
   const lower = name.toLowerCase();
   const key = Object.keys(attrs).find((candidate) => candidate.toLowerCase() === lower);
   return key ? attrs[key] : null;
+}
+
+// InDesign 的 inset 是排版硬边界：第一行行高排不进内高时整个文本帧 overset 为空，
+// 而浏览器裁切边界是 padding 盒，同样的盒子预览完全正常。单行且 overflow: visible
+// 的文本会被编译层 textFit 自动扩帧救回，不在此拦截；观察态回读文本同理跳过。
+function firstLineOverflowIssue(item) {
+  const role = String(item && item.role || '').toLowerCase();
+  if (role !== ITEM_ROLE.TEXT) return null;
+  const text = String(item && item.text || '');
+  if (!text.trim()) return null;
+  if (isObservedReverseTextItem(item)) return null;
+  const style = item && item.computedStyle || {};
+  const rect = item && item.rectPx || {};
+  const height = Number(rect.height);
+  if (!Number.isFinite(height) || height <= 0) return null;
+  const lineHeight = cssPxNumber(style.lineHeight) || round(cssPxNumber(style.fontSize) * 1.2, 2);
+  if (!lineHeight) return null;
+  const vertical = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+    .reduce((sum, prop) => sum + cssPxNumber(style[prop]), 0);
+  const innerHeight = round(height - vertical, 2);
+  if (innerHeight + 0.5 >= lineHeight) return null;
+  const singleLine = !/\r|\n/.test(text);
+  if (singleLine && String(style.overflow || '').toLowerCase() === 'visible') return null;
+  return {
+    lineHeight,
+    innerHeight,
+    height: round(height, 2),
+    vertical: round(vertical, 2),
+    requiredHeight: round(lineHeight + vertical, 2),
+    maxVertical: round(height - lineHeight, 2),
+  };
+}
+
+function cssPxNumber(value) {
+  const parsed = parseCssLength(value);
+  if (!parsed) return 0;
+  if (parsed.unit === 'pt') return round(parsed.value * 96 / 72, 4);
+  if (parsed.unit === 'mm') return round(parsed.value * 96 / 25.4, 4);
+  return round(parsed.value, 4);
+}
+
+function isObservedReverseTextItem(item) {
+  const classList = Array.isArray(item && item.classList) ? item.classList : [];
+  if (classList.includes('observed-text')) return true;
+  const attrs = attributesFor(item);
+  return attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.OBSERVED) === 'true'
+    || attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE) === 'observation';
 }
 
 function isGraphicWithoutOwnResource(item) {
