@@ -1,6 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { isPathInside } = require('../shared');
+
 function getCwd(context) {
   return path.resolve((context && context.cwd) || process.cwd());
 }
@@ -38,9 +40,12 @@ function ensureOutputDir(context, requestedOutDir, prefix) {
     ? path.resolve(cwd, requestedOutDir)
     : path.join(cwd, 'test', 'workspace', `${prefix}-${timestamp()}`);
 
-  const relative = path.relative(cwd, outDir);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    const err = new Error(`Output directory must stay inside project cwd: ${outDir}`);
+  if (!isPathInside(cwd, outDir)) {
+    const err = new Error(
+      `Output directory must stay inside project cwd. outDir: ${outDir}; cwd: ${cwd}. `
+      + 'Run the CLI from the project directory (cd into it) or pass an outDir under it. '
+      + 'UNC and mapped-drive spellings of the same location are treated as equal.',
+    );
     err.code = 'OUTPUT_OUTSIDE_PROJECT';
     throw err;
   }

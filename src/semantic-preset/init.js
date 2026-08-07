@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadAuthorPackageConfig, writeAuthorPackageConfig } = require('../authoring/source-package');
+const { isPathInside } = require('../shared/path-containment');
 const { SemanticPresetError } = require('./errors');
 const { loadStandardSemanticPreset } = require('./loader');
 
@@ -51,8 +52,7 @@ function initProjectSemanticPreset(options = {}) {
 function assertInside(rootDir, filePath) {
   const root = path.resolve(rootDir);
   const target = path.resolve(filePath);
-  const relative = path.relative(root, target);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (!isPathInside(root, target)) {
     throw new SemanticPresetError('SEMANTIC_PRESET_OUTSIDE_PACKAGE', 'Preset output must stay inside the author package root', {
       rootDir: root,
       outPath: target,

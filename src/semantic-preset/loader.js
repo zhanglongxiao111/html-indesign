@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { isPathInside } = require('../shared/path-containment');
 const { SemanticPresetError } = require('./errors');
 const { validateSemanticPreset } = require('./schema');
 
@@ -82,8 +83,7 @@ function readJsonFile(filePath, code) {
 function assertInside(rootDir, filePath) {
   const root = path.resolve(rootDir);
   const target = path.resolve(filePath);
-  const relative = path.relative(root, target);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (!isPathInside(root, target)) {
     throw new SemanticPresetError(
       'SEMANTIC_PRESET_OUTSIDE_PACKAGE',
       'Project semantic preset must stay inside the author package root',
