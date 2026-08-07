@@ -1,6 +1,6 @@
 # 保真度门禁:无描边 strokeWeight 误报与文本 overset 真失败
 
-日期:2026-08-07。来源:内部工位一次 21 页汇报重排版构建连续两次被 `FIDELITY_GATE_FAILED` 拒绝,遥测与 outDir 产物完整,可离线复现。
+日期:2026-08-07。来源:内部工位一次 21 页汇报重排版构建连续两次被 `FIDELITY_GATE_FAILED` 拒绝。门禁失败不进入导出阶段,INDD/PDF/IDML 从未落盘;但 outDir 保留了 instructions、读回快照和保真报告,配合遥测足以离线复现。
 
 ## 现象
 
@@ -39,4 +39,5 @@ SVG 规范默认 `stroke-width: 1`、`stroke: none`。期望侧事实保留 `str
 ## 关联
 
 - 同一晚暴露的 `OUTPUT_OUTSIDE_PROJECT` 映射盘/UNC 误拒已另行修复(`path-policy.js` + `src/shared/path-containment.js`)。
+- "构建被放弃时无成品、但中间产物保留"此前只体现在代码流程里,外部据此误判为版本差异;已在 `build-indesign.js` 的 `cleanupThenError` 显式标注 `artifactsExported`、`artifactNote` 和 `intermediateDir`。
 - 两项修复随下一次插件版本发布;发布前该文档所述文本 overset 行为仍会导致此类构建按预期失败,headline 修复后将直接指向 `content.text`。
