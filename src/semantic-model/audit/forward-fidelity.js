@@ -377,7 +377,7 @@ function expectedVectorPathFact(path = {}, fallbackStyle = {}, swatches = {}) {
     if (!Object.prototype.hasOwnProperty.call(rawStyle, field) || rawStyle[field] === undefined) continue;
     visualStyle[field] = normalizeVectorPathStyleValue(field, rawStyle[field], true, swatches);
   }
-  return vectorPathFact(path, visualStyle);
+  return vectorPathFact(path, withoutPaintlessStrokeWeight(visualStyle));
 }
 
 function actualVectorPathFact(path = {}, fallbackStyle = {}, expectedStyle = {}) {
@@ -388,7 +388,16 @@ function actualVectorPathFact(path = {}, fallbackStyle = {}, expectedStyle = {})
     if (field === 'strokeWeight' && expectedStyle[field] === 0 && value == null) value = 0;
     visualStyle[field] = value;
   }
-  return vectorPathFact(path, visualStyle);
+  return vectorPathFact(path, withoutPaintlessStrokeWeight(visualStyle));
+}
+
+// SVG 的 stroke-width 默认值为 1 而 stroke 默认 none；InDesign 无描边读回线宽为 null。
+// 没有描边颜色时线宽不构成视觉事实，比对前统一抹平，避免把不可见差异当保真度失败。
+function withoutPaintlessStrokeWeight(visualStyle) {
+  if (!Object.prototype.hasOwnProperty.call(visualStyle, 'strokeWeight')) return visualStyle;
+  if (!Object.prototype.hasOwnProperty.call(visualStyle, 'strokeColor')) return visualStyle;
+  if (visualStyle.strokeColor != null) return visualStyle;
+  return { ...visualStyle, strokeWeight: null };
 }
 
 function vectorPathFact(path = {}, visualStyle = {}) {

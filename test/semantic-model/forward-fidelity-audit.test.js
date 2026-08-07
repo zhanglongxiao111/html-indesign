@@ -331,6 +331,59 @@ test('forward fidelity audit fails when a native SVG path or its paint is lost',
   assert.equal(matchingReport.ok, true, JSON.stringify(matchingReport.errors, null, 2));
 });
 
+test('forward fidelity audit ignores stroke weight on a path without stroke paint', () => {
+  const fixture = matchingFixture();
+  const label = itemLabel('page-bg-svg', 'shape', { order: 4 });
+  const points = [vectorPoint(0, 0), vectorPoint(0, 40), vectorPoint(80, 40), vectorPoint(80, 0)];
+  fixture.instructions.pages[0].items = [{
+    id: 'page-bg-svg',
+    role: 'shape',
+    type: 'SHAPE',
+    bounds: { x: 0, y: 0, width: 80, height: 40 },
+    layer: '图形',
+    labels: [label],
+    vectorGeometry: {
+      kind: 'path',
+      paths: [{
+        closed: true,
+        points,
+        // SVG 默认 stroke-width 为 1，但 stroke 为 none：无描边时线宽不构成视觉事实。
+        visualStyle: { fillColor: '#f8f6f0', fillOpacity: 100, strokeColor: null, strokeWeight: 1 },
+      }],
+    },
+  }];
+  fixture.actualSnapshot.pages[0].items = [{
+    id: '206',
+    type: 'Polygon',
+    bounds: { x: 0, y: 0, width: 80, height: 40 },
+    layerName: '图形',
+    text: '',
+    textRuns: [],
+    table: null,
+    placedAsset: null,
+    labels: [label],
+  }];
+  fixture.actualModel.pages[0].items = [{
+    id: 'page-bg-svg',
+    role: 'shape',
+    bounds: { x: 0, y: 0, width: 80, height: 40 },
+    content: { text: '', runs: [] },
+    vectorGeometry: {
+      kind: 'path',
+      paths: [{
+        closed: true,
+        points,
+        visualStyle: { fillColor: '#f8f6f0', fillOpacity: 100, strokeColor: null, strokeWeight: null },
+      }],
+    },
+  }];
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.ok, true, JSON.stringify(report.errors, null, 2));
+  assert.equal(report.errors.some((issue) => issue.code === 'FORWARD_VECTOR_GEOMETRY_CHANGED'), false);
+});
+
 test('forward fidelity audit treats page-specific parent furniture overrides as expected page objects', () => {
   const fixture = matchingFixture();
   const label = itemLabel('page-folio', 'text', { order: 9 });
