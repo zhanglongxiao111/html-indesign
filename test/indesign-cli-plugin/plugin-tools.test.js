@@ -441,6 +441,39 @@ test('html.build_indesign closes its owned document before returning a fidelity 
   assert.equal(response.error.retryable, false);
 });
 
+test('html.build_indesign states that a rejected build exported no deliverable', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-rejected-artifacts');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const cleanupScriptPath = path.join(outDir, 'cleanup.jsx');
+  fs.writeFileSync(cleanupScriptPath, 'cleanup', 'utf8');
+
+  const afterSnapshot = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'snapshot',
+      mode: 'final',
+      runDir: outDir,
+      expectedModelPath: path.join(outDir, 'missing-model.json'),
+      semanticPresetPath: path.join(outDir, 'missing-preset.json'),
+      instructionsPath: path.join(outDir, 'missing-instructions.json'),
+      snapshotPath: path.join(outDir, 'missing-snapshot.json'),
+      cleanupScriptPath,
+    },
+    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  const response = callPlugin('tools/resume', {
+    state: afterSnapshot.state,
+    host_results: [{ id: 'html-build-cleanup', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.details.artifactsExported, false);
+  assert.match(response.error.details.artifactNote, /未导出/);
+  assert.equal(response.error.details.intermediateDir, outDir);
+});
+
 test('html.build_indesign draft mode success reports staged timing and task-size metrics', () => {
   const outDir = path.join('test', 'workspace', 'plugin-build-metrics-draft');
   const absoluteOutDir = path.join(repoRoot, outDir);

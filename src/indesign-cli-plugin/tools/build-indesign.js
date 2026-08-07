@@ -283,12 +283,18 @@ function resumeAfterSnapshot(state) {
   }, 'export'), exportAction(state));
 }
 
+// 走到这里表示构建被放弃：文档在 InDesign 里建过，但导出阶段永远不会执行。
+// 成品从未落盘这件事必须显式说清楚，否则调用方会去找根本不存在的 INDD。
 function cleanupThenError(state, error) {
   const enrichedError = {
     ...error,
     details: {
       ...(error.details || {}),
       stage: error.stage || (error.details && error.details.stage) || null,
+      artifactsExported: false,
+      artifactNote: 'InDesign 文档已构建但未通过核对，未导出 INDD/PDF/IDML；'
+        + '可离线复查的中间产物（instructions、读回快照、保真报告）保留在 intermediateDir。',
+      intermediateDir: state.runDir || null,
       metrics: collectMetrics(state),
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
