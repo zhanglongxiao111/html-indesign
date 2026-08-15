@@ -165,6 +165,37 @@ test('isPathInside stays a non-throwing boolean when canonicalization degrades',
   });
 });
 
+test('degraded canonicalization still resolves through an indirection layer instead of falling back to the literal path', () => {
+  // 上面两个降级用例的临时目录没有间接层，字面路径恰好等于物理路径，因此
+  // 无法区分「继续向上归一化」与「就地退回字面路径」。这里用 junction 造出
+  // 两种写法指向同一目录——归一化一旦就地停下，本来在项目内的 outDir 就会
+  // 被判成越界（2026-08-06 那次误判换个方向重演）。
+  const root = makeTempDir('path-containment-indirection-');
+  const real = path.join(root, 'realproj');
+  const link = path.join(root, 'linkproj');
+  fs.mkdirSync(real, { recursive: true });
+  try {
+    fs.symlinkSync(real, link, 'junction');
+  } catch {
+    return; // 无权限建 junction 的环境跳过，不伪装成通过
+  }
+
+  const target = path.join(link, 'out');
+  const boom = Object.assign(new Error('simulated NAS timeout'), { code: 'ETIMEDOUT' });
+
+  withStubbedRealpathNative(target, boom, () => {
+    const result = tryCanonicalizePath(target);
+    assert.equal(result.ok, false, '非 ENOENT 错误必须如实标记为降级');
+    assert.equal(result.error, boom, '原始错误必须带出');
+    assert.equal(
+      result.path,
+      path.join(fs.realpathSync.native(real), 'out'),
+      '降级不等于放弃归一化：仍应解析到物理路径',
+    );
+    assert.equal(isPathInside(real, target), true, '同一目录的两种写法不得因降级被判成越界');
+  });
+});
+
 test('ensureOutputDir names the canonical paths and flags degraded canonicalization instead of promising equivalence', () => {
   const cwd = makeTempDir('path-policy-degrade-cwd-');
   const outside = makeTempDir('path-policy-degrade-outside-');

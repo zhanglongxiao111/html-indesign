@@ -20,3 +20,6 @@ Thumbs.db
 
 # InDesign temp files
 *.idlk
+
+# npm pack 产物，不进版本库
+*.tgz
