@@ -76,13 +76,13 @@ async function dispatch(request) {
   }
 
   if (method === 'tools/resume') {
-    return await resumeTool(params);
+    return await resumeTool(params, request.context || params.context || {});
   }
 
   return error('METHOD_NOT_FOUND', `Unknown plugin method: ${method}`);
 }
 
-async function resumeTool(params) {
+async function resumeTool(params, context) {
   const state = params.state || {};
   const id = state.tool_id || toolId(params);
   const caller = callers[id];
@@ -91,7 +91,7 @@ async function resumeTool(params) {
   }
 
   try {
-    return await caller.resume(params);
+    return await caller.resume(params, context || {});
   } catch (err) {
     return error(err.code || 'TOOL_RESUME_FAILED', err.message, errorDetails(err, id));
   }

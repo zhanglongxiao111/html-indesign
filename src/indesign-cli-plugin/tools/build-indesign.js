@@ -11,6 +11,13 @@ const { getPluginRoot } = require('../path-policy');
 const { resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
 const {
+  lintFailureHint,
+  lintFailureMessage,
+  underlyingHostFailure,
+  withoutLintSnapshot,
+  writeLintFailureReport,
+} = require('../lint-feedback');
+const {
   buildBuildJsx,
   buildCloseJsx,
   buildExportJsx,
@@ -51,11 +58,23 @@ async function call(args, context) {
   const lintMs = Date.now() - lintStartedAt;
   const lintCounts = { errorCount: lint.errorCount, warningCount: lint.warningCount };
   if (!lint.ok) {
-    const error = new Error(lintFailureMessage(lint));
+    const reportPath = writeLintFailureReport(lint, {
+      outDir: args.outDir,
+      cwd: context && context.cwd,
+      packagePath,
+    });
+    const hint = lintFailureHint(lint, { reportPath });
+    const error = new Error(lintFailureMessage(lint, { strict: true, reportPath }));
     error.code = 'AUTHORING_LINT_FAILED';
+    error.hint = hint;
+    error.retryable = false;
+    // dispatcher 抛出路径只搬运 details，hint/retryable/stage 必须同时冗余进 details。
     error.details = {
-      ...withoutSnapshot(lint),
+      ...withoutLintSnapshot(lint),
       stage: 'lint',
+      hint,
+      retryable: false,
+      reportPath,
       metrics: buildMetrics({
         lint_ms: lintMs,
         error_count: lintCounts.errorCount,
@@ -113,7 +132,7 @@ async function call(args, context) {
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
 
-  fs.writeFileSync(lintReportPath, JSON.stringify(withoutSnapshot(lint), null, 2), 'utf8');
+  fs.writeFileSync(lintReportPath, JSON.stringify(withoutLintSnapshot(lint), null, 2), 'utf8');
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
   fs.writeFileSync(buildScriptPath, buildBuildJsx({
     repoRoot: pluginRoot,
@@ -167,16 +186,6 @@ async function call(args, context) {
   };
 
   return hostActionResponse(state, buildAction(state));
-}
-
-function lintFailureMessage(lint) {
-  const errors = Array.isArray(lint && lint.errors) ? lint.errors : [];
-  const first = errors.find((entry) => entry && (entry.pageId || entry.itemId)) || errors[0] || {};
-  const location = [first.pageId, first.itemId].filter(Boolean).join(' / ');
-  const count = Number(lint && lint.errorCount || errors.length || 0);
-  const prefix = `Strict authoring checks found ${count} error${count === 1 ? '' : 's'}`;
-  if (!first.message) return `${prefix}; fix the author package before building.`;
-  return `${prefix}. First issue${location ? ` at ${location}` : ''}: ${first.message}`;
 }
 
 async function resume(params) {
@@ -378,36 +387,63 @@ function completeResult(state) {
   };
 }
 
+// 导出阶段可能只失败一半：INDD 已经落盘、PDF 没有。把整次调用报成失败而不提已落盘产物，
+// 调用方就无法判断重跑范围。cleanupThenError() 已是这个模式，这里对称应用。
 function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
   const stage = state.stage || 'build';
   const finished = finishStageTiming(state);
+  const partialArtifacts = landedDeliverables(state);
+  const baseMessage = detail.message || `Host action failed during ${stage}.`;
+  const prefix = landedArtifactPrefix(partialArtifacts);
   return {
     status: 'error',
     error: {
       code: STAGE_ERROR_CODES[stage] || 'HOST_ACTION_FAILED',
-      message: detail.message || `Host action failed during ${stage}.`,
+      message: prefix ? `${prefix}${baseMessage}` : baseMessage,
       stage,
       retryable: false,
-      hint: 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.',
+      hint: partialArtifacts.length
+        ? '已落盘的产物见 error.details.partialArtifacts，重跑前先确认是否需要保留；'
+          + 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.'
+        : 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.',
       details: {
         causeCode: detail.code || null,
         hostResult: failed,
         stage,
+        artifactsExported: partialArtifacts.length > 0,
+        partialArtifacts,
+        intermediateDir: state.runDir || null,
         metrics: collectMetrics(finished),
         compatibility: state.compatibility || auditHtmlCompatibility(null),
       },
     },
+    ...(partialArtifacts.length ? { artifacts: partialArtifacts } : {}),
   };
 }
 
-function underlyingHostFailure(result) {
-  if (result && result.error) return result.error;
-  const data = result && result.data;
-  const errors = data && Array.isArray(data.errors) ? data.errors : [];
-  if (errors[0]) return errors[0];
-  if (data && data.error) return data.error;
-  return { code: null, message: null };
+const DELIVERABLE_KINDS = Object.freeze([
+  { kind: 'indd', extension: '.indd', label: 'InDesign document', prefixLabel: 'INDD' },
+  { kind: 'pdf', extension: '.pdf', label: 'PDF export', prefixLabel: 'PDF' },
+  { kind: 'idml', extension: '.idml', label: 'IDML export', prefixLabel: 'IDML' },
+]);
+
+function landedDeliverables(state) {
+  if (!state || !state.runDir) return [];
+  const baseName = state.outputBaseName || 'html-indesign-output';
+  const landed = [];
+  for (const deliverable of DELIVERABLE_KINDS) {
+    const file = path.join(state.runDir, `${baseName}${deliverable.extension}`);
+    if (fs.existsSync(file)) landed.push(artifact(deliverable.kind, file, deliverable.label));
+  }
+  return landed;
+}
+
+function landedArtifactPrefix(partialArtifacts) {
+  if (!partialArtifacts.length) return '';
+  const labels = new Map(DELIVERABLE_KINDS.map((item) => [item.kind, item.prefixLabel]));
+  const parts = partialArtifacts.map((item) => `${labels.get(item.kind) || item.kind} 已保存于 ${item.path}`);
+  return `${parts.join('；')}。`;
 }
 
 function firstFailedHostResult(hostResults) {
@@ -486,11 +522,6 @@ function readJsonRequired(file, label) {
     error.cause = cause;
     throw error;
   }
-}
-
-function withoutSnapshot(lint) {
-  const { snapshot: _snapshot, ...rest } = lint || {};
-  return rest;
 }
 
 function createRunMarker() {

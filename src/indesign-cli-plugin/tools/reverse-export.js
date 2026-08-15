@@ -5,6 +5,9 @@ const { resolveReconstructionProfile } = require('../../semantic-reconstruction'
 const { buildReverseSnapshotJsx } = require('../host-jsx');
 const { ensureOutputDir, getPluginRoot, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
+// 与 build-indesign 共用同一份宿主失败原因提取：两个工具处理的 host_results 形状相同，
+// 各留一份副本迟早漂移。
+const { underlyingHostFailure } = require('../lint-feedback');
 
 async function call(args, context) {
   const pluginRoot = getPluginRoot();
@@ -70,14 +73,19 @@ async function resume(params) {
 
   const failedHostResult = firstFailedHostResult(params.host_results || []);
   if (failedHostResult) {
+    const cause = underlyingHostFailure(failedHostResult);
+    const actionLabel = failedHostResult.id || failedHostResult.tool_id || 'unknown';
     return {
       status: 'error',
       error: {
         code: 'HOST_ACTION_FAILED',
-        message: `Host action failed: ${failedHostResult.id || failedHostResult.tool_id || 'unknown'}`,
+        message: cause.message
+          ? `Host action '${actionLabel}' failed: ${cause.message}`
+          : `Host action failed: ${actionLabel}`,
         stage: 'readback',
         details: {
           ...(failedHostResult && typeof failedHostResult === 'object' ? failedHostResult : { hostResult: failedHostResult }),
+          causeCode: cause.code || null,
           stage: 'readback',
           metrics: buildMetrics({ readback_ms: readbackMs }),
         },
@@ -150,7 +158,7 @@ async function resume(params) {
     readback_ms: readbackMs,
     export_ms: exportMs,
     ...sizeMetrics,
-  }));
+  }), reportPath && fs.existsSync(reportPath) ? reportPath : null);
   if (pipelineFailure) return pipelineFailure;
 
   if (!fs.existsSync(authorDeckPath)) {
@@ -209,18 +217,48 @@ function firstFailedHostResult(hostResults) {
   }) || null;
 }
 
-function reversePipelineFailureResponse(result, metrics) {
+function reverseTrustedSourceFailureMessage(trustedSourcePreservation) {
+  const fallback = 'Reverse pipeline failed; refusing to report a successful export.';
+  const failures = Array.isArray(trustedSourcePreservation && trustedSourcePreservation.failures)
+    ? trustedSourcePreservation.failures
+    : [];
+  const summary = (trustedSourcePreservation && trustedSourcePreservation.summary) || {};
+  const count = failures.length || Number(summary.mutations || 0) + Number(summary.missing || 0);
+  if (!count) return fallback;
+  const first = failures[0] || {};
+  const location = [
+    first.pageId ? `page ${first.pageId}` : null,
+    first.itemId ? `item ${first.itemId}` : null,
+  ].filter(Boolean).join(', ');
+  const prefix = `Trusted-source preservation check failed: ${count} issue${count === 1 ? '' : 's'} found`;
+  const reason = first.message || first.code;
+  if (!reason) return `${prefix}.`;
+  return `${prefix}. First issue${location ? ` at ${location}` : ''}: ${reason}`;
+}
+
+function reversePipelineFailureResponse(result, metrics, reportPath) {
   if (result && result.ok === true) return null;
   const baseDetails = result && result.report ? result.report : result || null;
+  const trustedSourcePreservation = baseDetails
+    && baseDetails.reconstruction
+    && baseDetails.reconstruction.trustedSourcePreservation;
   const details = baseDetails && typeof baseDetails === 'object'
-    ? { ...baseDetails, stage: 'export', ...(metrics && Object.keys(metrics).length ? { metrics } : {}) }
+    ? {
+      ...baseDetails,
+      stage: 'export',
+      ...(metrics && Object.keys(metrics).length ? { metrics } : {}),
+      ...(reportPath ? { reportPath } : {}),
+    }
     : baseDetails;
   return {
     status: 'error',
     error: {
       code: 'REVERSE_PIPELINE_FAILED',
-      message: 'Reverse pipeline failed; refusing to report a successful export.',
+      message: reverseTrustedSourceFailureMessage(trustedSourcePreservation),
       stage: 'export',
+      hint: reportPath
+        ? `Read ${reportPath} for the full trusted-source preservation and reconstruction report, fix the named page/item, then start a new reverse export.`
+        : 'Reverse pipeline failed; refusing to report a successful export.',
       details,
     },
   };
@@ -239,4 +277,5 @@ module.exports = {
   call,
   resume,
   reversePipelineFailureResponse,
+  underlyingHostFailure,
 };

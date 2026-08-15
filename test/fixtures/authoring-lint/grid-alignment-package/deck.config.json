@@ -1,0 +1,24 @@
+{
+    "schemaVersion":  1,
+    "id":  "亮马西院_高端餐饮_INDD作者包",
+    "title":  "亮马西院｜1000+高端餐饮策划",
+    "profile":  "architecture-report",
+    "unitMode":  "presentation",
+    "targetSize":  "source",
+    "entry":  "deck.html",
+    "styles":  [
+                   "styles/tokens.css",
+                   "styles/layout.css",
+                   "styles/components.css",
+                   "styles/pages.css"
+               ],
+    "pages":  [
+                  { "id": "audience-time", "file": "pages/01-audience-time.html" },
+                  { "id": "spatial-zoning", "file": "pages/02-spatial-zoning.html" },
+                  { "id": "circulation", "file": "pages/03-circulation.html" },
+                  { "id": "daypart-operation", "file": "pages/04-daypart-operation.html" }
+              ],
+    "assets":  {
+                   "root":  "assets"
+               }
+}

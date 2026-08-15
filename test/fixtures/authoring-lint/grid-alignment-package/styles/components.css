@@ -1,0 +1,20 @@
+.report-head { border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; }
+.report-head p, .report-title h1, .report-title p, .folio { margin: 0; }
+.project-name { color: var(--muted); font: 14px/1.45 Arial, "思源黑体", sans-serif; }
+.section-name { color: var(--muted); font: 13px/1.45 Arial, "思源黑体", sans-serif; text-align: right; }
+.report-title { display: flex; justify-content: space-between; align-items: center; }
+.report-title h1 { max-width: 72%; font-size: 42px; line-height: 1.12; }
+.report-title p { width: 27%; color: var(--muted); font-size: 14px; line-height: 1.55; text-align: right; }
+.accent { color: var(--accent); }
+.folio { align-self: end; display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.panel { background: var(--white); border: 1px solid var(--line); }
+.dark-panel { background: var(--ink); color: var(--white); }
+.small { font-size: 12px; line-height: 1.5; }
+.mono { font-family: Arial, sans-serif; }
+table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; background: var(--white); }
+th, td { border: 1px solid var(--line); padding: 10px 12px; vertical-align: top; text-align: left; }
+th { color: var(--muted); font-size: 12px; font-weight: 400; text-align: center; }
+td { font-size: 12px; line-height: 1.45; }
+td strong { display: block; margin-bottom: 6px; font-size: 15px; }
+.level { color: var(--accent); font-size: 18px; }
+.dot-scale { color: var(--accent); font-size: 16px; line-height: 1; }

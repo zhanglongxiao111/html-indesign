@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-const { canonicalizePath, isPathInside } = require('../../src/shared/path-containment');
+const { canonicalizePath, isPathInside, tryCanonicalizePath } = require('../../src/shared/path-containment');
 const { ensureOutputDir } = require('../../src/indesign-cli-plugin/path-policy');
 
 const isWindows = process.platform === 'win32';
@@ -38,6 +38,22 @@ function removeSubstDrive(drive) {
     execFileSync('subst', ['/d', drive], { stdio: 'ignore' });
   } catch (_error) {
     // 留给系统会话回收；不因清理失败拖垮测试。
+  }
+}
+
+// 用注入的假 fs.realpathSync.native 模拟 NAS 抖动/超时/权限错误：
+// 对 failingPath 精确匹配时抛 errorToThrow，其余路径落回真实实现。
+// `node --test` 默认每个测试文件独立进程，全局猴补丁不会串到其它文件。
+function withStubbedRealpathNative(failingPath, errorToThrow, run) {
+  const originalNative = fs.realpathSync.native;
+  fs.realpathSync.native = (candidate) => {
+    if (candidate === failingPath) throw errorToThrow;
+    return originalNative(candidate);
+  };
+  try {
+    return run();
+  } finally {
+    fs.realpathSync.native = originalNative;
   }
 }
 
@@ -102,4 +118,73 @@ test('ensureOutputDir still rejects an outDir outside the project and names both
       return true;
     },
   );
+});
+
+test('tryCanonicalizePath keeps walking past ENOENT the way canonicalizePath always has', () => {
+  const root = makeTempDir('path-containment-try-enoent-');
+  const deep = path.join(root, 'not-created-yet', 'build');
+  const result = tryCanonicalizePath(deep);
+  assert.equal(result.ok, true);
+  assert.equal(result.error, null);
+  assert.equal(result.path, canonicalizePath(deep));
+});
+
+test('tryCanonicalizePath flags non-ENOENT errors instead of silently walking past them', () => {
+  const root = makeTempDir('path-containment-try-degrade-');
+  const target = path.join(root, 'build');
+  const boom = Object.assign(new Error('simulated NAS timeout'), { code: 'ETIMEDOUT' });
+
+  withStubbedRealpathNative(target, boom, () => {
+    const result = tryCanonicalizePath(target);
+    assert.equal(result.ok, false);
+    assert.equal(result.error, boom);
+    assert.equal(result.path, target);
+  });
+});
+
+test('canonicalizePath keeps returning a plain string fallback (no throw) when degraded', () => {
+  const root = makeTempDir('path-containment-canon-degrade-');
+  const target = path.join(root, 'build');
+  const boom = Object.assign(new Error('simulated permission denial'), { code: 'EACCES' });
+
+  withStubbedRealpathNative(target, boom, () => {
+    const result = canonicalizePath(target);
+    assert.equal(typeof result, 'string');
+    assert.equal(result, target);
+  });
+});
+
+test('isPathInside stays a non-throwing boolean when canonicalization degrades', () => {
+  const root = makeTempDir('path-containment-inside-degrade-');
+  const target = path.join(root, 'build');
+  const boom = Object.assign(new Error('simulated network error'), { code: 'ENETUNREACH' });
+
+  withStubbedRealpathNative(target, boom, () => {
+    assert.doesNotThrow(() => isPathInside(root, target));
+    assert.equal(isPathInside(root, target), true);
+  });
+});
+
+test('ensureOutputDir names the canonical paths and flags degraded canonicalization instead of promising equivalence', () => {
+  const cwd = makeTempDir('path-policy-degrade-cwd-');
+  const outside = makeTempDir('path-policy-degrade-outside-');
+  const boom = Object.assign(new Error('simulated permission denial'), { code: 'EACCES' });
+
+  withStubbedRealpathNative(outside, boom, () => {
+    assert.throws(
+      () => ensureOutputDir({ cwd }, outside, 'test'),
+      (error) => {
+        assert.equal(error.code, 'OUTPUT_OUTSIDE_PROJECT');
+        assert.equal(error.canonicalizationDegraded, true);
+        assert.equal(error.canonicalOutDir, outside);
+        assert.equal(error.canonicalCwd, canonicalizePath(cwd));
+        assert.equal(error.message.includes('EACCES'), true);
+        assert.equal(
+          error.message.includes('UNC and mapped-drive spellings of the same location are treated as equal'),
+          false,
+        );
+        return true;
+      },
+    );
+  });
 });
