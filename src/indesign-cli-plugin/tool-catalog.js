@@ -23,6 +23,13 @@ const tools = [
     needs_indesign: false,
     produces_artifacts: true,
     preconditions: ['package 必须指向可读取的 deck.config.json。'],
+    // 不声明的话，宿主会按 side_effects 含 filesystem_write 自动追加
+    // "Run indesign-cli export verify"——本工具产出的是 JSON 报告，不是可校验的成品。
+    common_next_steps: [
+      '失败时先读 error.details.errors，按 code 分类看分布，不要逐条改。',
+      '同一 code 高度集中时是单一系统性成因：改网格声明、调 gridTolerance，或对个别元素声明网格豁免属性（见 Skill 的 HTML 创作章节）。',
+      '通过后再调用 html.build_indesign；本工具默认 strict:false，而 build 内部固定 strict:true。',
+    ],
     return_example: { status: 'complete', data: { ok: true, issueCount: 0 }, artifacts: [] },
     failure_example: {
       code: 'AUTHORING_LINT_FAILED',
@@ -50,6 +57,11 @@ const tools = [
     needs_indesign: false,
     produces_artifacts: true,
     preconditions: ['package 必须是已组装且可读取的作者源码包。'],
+    // 产出 instructions.json，不是 PDF/IDML；对它跑 export verify 没有意义。
+    common_next_steps: [
+      '校验失败时读 error.details.validation，按 pageId/itemId 定位到具体元素再改。',
+      '成功后把 instructions.json 交给 html.build_indesign，不要对它运行 export verify。',
+    ],
     return_example: {
       status: 'complete',
       data: { ok: true, pageCount: 1 },
@@ -81,6 +93,13 @@ const tools = [
     needs_indesign: true,
     produces_artifacts: true,
     preconditions: ['package 必须通过严格作者检查。', '宿主必须允许 manifest 声明的 script.run 和 export.verify actions。'],
+    // mode:'final' 时内部已经调过 export.verify，宿主自动追加的"再跑一次"是误导。
+    common_next_steps: [
+      '失败时先看 error.details.stage 决定重跑范围：lint/compile 阶段改作者源码即可，无需重开 InDesign。',
+      'stage 为 fidelity 时读 forward-fidelity-report.json，按报告命名的页/对象/字段改源码，不要用相同输入重试。',
+      '导出阶段失败时看 details.partialArtifacts：INDD 可能已经落盘，不必重走整条链路。',
+      'mode 为 final 时本工具内部已执行 export.verify，无需再手动运行一次。',
+    ],
     return_example: {
       status: 'requires_host_actions',
       actions: [{ id: 'html-build-script', tool_id: 'script.run' }],
@@ -111,6 +130,12 @@ const tools = [
     needs_indesign: true,
     produces_artifacts: true,
     preconditions: ['indd 必须指向可读取的 InDesign 文档。', '宿主必须允许 script.run action。'],
+    // 产出 HTML 作者包，不是 PDF/IDML；对它跑 export verify 没有意义。
+    common_next_steps: [
+      'structured 模式要求语义 profile：源 INDD 若非由带 profile 的正向构建产生，必须传 sourceRoot 指向配置了 semanticPreset 的作者包目录，否则报 SEMANTIC_PRESET_LOAD_FAILED。',
+      '失败时读 details.reportPath 指向的 report.json，按其中命名的页/对象定位。',
+      '产出的是 HTML 作者包，不要对它运行 export verify；要回到 InDesign 请接 html.build_indesign。',
+    ],
     return_example: {
       status: 'requires_host_actions',
       actions: [{ id: 'html-reverse-snapshot', tool_id: 'script.run' }],

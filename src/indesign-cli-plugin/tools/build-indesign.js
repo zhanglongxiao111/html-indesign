@@ -58,11 +58,12 @@ async function call(args, context) {
   const lintMs = Date.now() - lintStartedAt;
   const lintCounts = { errorCount: lint.errorCount, warningCount: lint.warningCount };
   if (!lint.ok) {
-    const reportPath = writeLintFailureReport(lint, {
+    const report = writeLintFailureReport(lint, {
       outDir: args.outDir,
       cwd: context && context.cwd,
       packagePath,
     });
+    const reportPath = report.path;
     const hint = lintFailureHint(lint, { reportPath });
     const error = new Error(lintFailureMessage(lint, { strict: true, reportPath }));
     error.code = 'AUTHORING_LINT_FAILED';
@@ -75,6 +76,7 @@ async function call(args, context) {
       hint,
       retryable: false,
       reportPath,
+      ...(report.error ? { reportWriteError: report.error } : {}),
       metrics: buildMetrics({
         lint_ms: lintMs,
         error_count: lintCounts.errorCount,

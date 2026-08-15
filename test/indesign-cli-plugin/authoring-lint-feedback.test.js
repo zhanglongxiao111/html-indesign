@@ -14,7 +14,7 @@ const {
 // 2026-08-12 生产事故的真实作者包（已重新组装）。实测基准：73 errors / 100% GRID_ALIGNMENT_OFF /
 // 23 warnings / page-2 27、page-3 15、page-4 31 / top 59、left 58、right 57。
 const GRID_FIXTURE = path.join(repoRoot, 'test', 'fixtures', 'authoring-lint', 'grid-alignment-package');
-const CONCENTRATION_SENTENCE = 'All errors share code GRID_ALIGNMENT_OFF'
+const CONCENTRATION_SENTENCE = 'All 73 errors share code GRID_ALIGNMENT_OFF'
   + ' — this is one systemic cause, not 73 independent fixes.';
 
 function copyGridFixture(name) {
@@ -105,6 +105,23 @@ test('html.authoring_lint 接受 outDir 作为报告落点', () => {
   assert.equal(fs.existsSync(response.error.details.reportPath), true);
 });
 
+test('报告落盘受项目围栏约束，越界时不写且留痕', () => {
+  // 报告写盘是本轮新增的写入点。outDir 是 Agent 可控参数，若不校验就等于给
+  // OUTPUT_OUTSIDE_PROJECT 开后门，越界路径还会作为 artifacts 回给 Agent。
+  const packageDir = copyGridFixture('lint-feedback-grid-escape');
+  const outside = path.join(repoRoot, '..', 'lint-feedback-outside-project');
+  fs.rmSync(outside, { recursive: true, force: true });
+
+  const response = callLint(packageDir, { outDir: outside });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'AUTHORING_LINT_FAILED', '围栏不得盖掉真正的 lint 失败');
+  assert.equal(response.error.details.reportPath, null);
+  assert.match(response.error.details.reportWriteError, /OUTPUT_OUTSIDE_PROJECT/);
+  assert.deepEqual(response.artifacts, [], '越界路径不得作为 artifacts 回给 Agent');
+  assert.equal(fs.existsSync(outside), false, '越界目录不得被创建');
+});
+
 test('html.authoring_lint 与 html.build_indesign 对同一作者包给出同口径首条消息', () => {
   const packageDir = copyGridFixture('lint-feedback-parity');
   const lintResponse = callLint(packageDir);
@@ -179,7 +196,7 @@ test('多类错误时不出现集中提示句', () => {
   assert.doesNotMatch(message, /one systemic cause/);
 });
 
-test('单一 code 占比达到 80% 时追加集中提示句', () => {
+test('占比达到 80% 但不足 100% 时，集中提示句不得声称全部同类', () => {
   const lint = {
     ok: false,
     errorCount: 5,
@@ -192,7 +209,21 @@ test('单一 code 占比达到 80% 时追加集中提示句', () => {
 
   const message = lintFailureMessage(lint, { strict: false });
   assert.match(message, /^Authoring checks found 5 errors \(A_CODE: 4, B_CODE: 1\)\./);
-  assert.match(message, /All errors share code A_CODE — this is one systemic cause, not 5 independent fixes\./);
+  assert.match(message, /4 of 5 errors share code A_CODE — treat those as one systemic cause, then handle the remaining 1 separately\./);
+  // 前半句刚说有两类、后半句就说全部同一类，会让 Agent 以为修完 A_CODE 就清零
+  assert.doesNotMatch(message, /All errors share/);
+});
+
+test('100% 集中时才可以说全部同类', () => {
+  const lint = {
+    ok: false,
+    errorCount: 3,
+    errors: repeatError('A_CODE', 3, 'page-1'),
+    warnings: [],
+  };
+
+  const message = lintFailureMessage(lint, { strict: true });
+  assert.match(message, /All 3 errors share code A_CODE — this is one systemic cause, not 3 independent fixes\./);
 });
 
 test('lintFailureHint 优先上浮下层错误自带的 hint', () => {

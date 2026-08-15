@@ -131,9 +131,15 @@ First issue at <pageId> / <itemId>: <message>
 ```
 
 - `<N>` 取 `errorCount`；分类按 `errors[].code` 计数降序，最多列三类，其余归 `other`。
-- **集中提示**：当单一 code 占比 ≥ 80% 时追加一句
-  `All errors share code <code> — this is one systemic cause, not <N> independent fixes.`
+- **集中提示**：当单一 code 占比 ≥ 80% 时追加，措辞随集中度分两种——
+
+  100%：`All <N> errors share code <code> — this is one systemic cause, not <N> independent fixes.`
+
+  80%–99%：`<n> of <N> errors share code <code> — treat those as one systemic cause, then handle the remaining <N-n> separately.`
+
   本案 100% 集中，这句话是 Agent 判断「该调整网格/容差」而非「逐个改 73 处」的关键。
+
+  **两种措辞不可合并。** 阈值是 80%，但 `All errors share code X` 只在 100% 时成立；9:1 的情况下沿用该措辞，Agent 会以为调一次容差就能清零，漏掉剩下那一条——本设计的主题恰恰是不许首条消息误导 Agent，在这里说假话等于自伤。
 - 首条定位沿用 `lintFailureMessage()` 既有逻辑。
 - 非严格与严格模式共用结构，前缀词按 `strict` 取值区分。
 

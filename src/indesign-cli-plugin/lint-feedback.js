@@ -4,6 +4,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { isPathInside } = require('../shared');
+
 const MAX_LISTED_CODES = 3;
 const CONCENTRATION_RATIO = 0.8;
 const OTHER_CODE = 'other';
@@ -87,18 +89,29 @@ function lintFailureHint(lint, options = {}) {
   return parts.join(' ');
 }
 
-// 失败也落报告：离线复盘时这是唯一的材料来源。写盘失败绝不能盖掉真正的 lint 失败。
+// 失败也落报告：离线复盘时这是唯一的材料来源。
+//
+// 两条纪律：
+//   1. 写盘失败绝不能盖掉真正的 lint 失败——所以这里吞掉自己的异常，不外抛；
+//   2. 但"吞掉"不等于"不留痕"。返回 { path, error }，让调用方把失败原因放进
+//      details.reportWriteError，否则就是本轮在修的那个毛病自己再犯一遍。
 function writeLintFailureReport(lint, options = {}) {
   try {
     const dir = resolveReportDir(options);
-    if (!dir) return null;
+    if (!dir) return { path: null, error: null };
     fs.mkdirSync(dir, { recursive: true });
     const reportPath = path.join(dir, REPORT_FILE_NAME);
     fs.writeFileSync(reportPath, JSON.stringify(withoutLintSnapshot(lint), null, 2), 'utf8');
-    return reportPath;
-  } catch (_error) {
-    return null;
+    return { path: reportPath, error: null };
+  } catch (error) {
+    return { path: null, error: describeReportWriteError(error) };
   }
+}
+
+function describeReportWriteError(error) {
+  if (!error) return 'unknown error';
+  const code = error.code ? `${error.code}: ` : '';
+  return `${code}${error.message || String(error)}`;
 }
 
 // 报告里不带浏览器快照：快照体积远大于问题清单，且对定位问题没有帮助。
@@ -117,8 +130,22 @@ function underlyingHostFailure(result) {
   return { code: null, message: null };
 }
 
+// outDir 是 Agent 可控参数，必须和其他吃 outDir 的工具受同一道围栏约束。
+// 报告写盘是本轮新增的写入点，若不校验就等于给 OUTPUT_OUTSIDE_PROJECT 开了个
+// 后门，而且越界写出的路径还会作为 artifacts 回给 Agent，把越界正常化。
+// 这里不抛错——报告只是辅助材料，不该盖掉真正的 lint 失败；越界就不写，
+// 由 writeLintFailureReport 把原因带回 details。
 function resolveReportDir(options) {
-  if (options.outDir) return path.resolve(options.cwd || process.cwd(), options.outDir);
+  const cwd = path.resolve(options.cwd || process.cwd());
+  if (options.outDir) {
+    const resolved = path.resolve(cwd, options.outDir);
+    if (!isPathInside(cwd, resolved)) {
+      const error = new Error(`outDir must stay inside project cwd: ${resolved}`);
+      error.code = 'OUTPUT_OUTSIDE_PROJECT';
+      throw error;
+    }
+    return resolved;
+  }
   if (options.packagePath) {
     return path.join(path.dirname(path.resolve(options.packagePath)), FALLBACK_REPORT_DIR);
   }
@@ -133,11 +160,21 @@ function headline(classification, strict) {
 }
 
 // 只给总数无法区分「多处独立问题」和「单一系统性成因」，高度集中时必须显式点明。
+//
+// 措辞必须随集中度变化：阈值是 80%，"All errors share code X" 只在 100% 时
+// 成立。9:1 的情况下说"全部同一类、不是 10 处独立修改"，会让 Agent 以为调一次
+// 容差就能清零，漏掉剩下那一条——而这批改动的主题正是不许首条消息误导 Agent。
 function concentrationSentence(classification) {
   if (!classification.concentration) return '';
-  const { code } = classification.concentration;
-  return `All errors share code ${code} — this is one systemic cause,`
-    + ` not ${classification.total} independent fixes.`;
+  const { code, count } = classification.concentration;
+  const { total } = classification;
+  if (count === total) {
+    return `All ${total} errors share code ${code} — this is one systemic cause,`
+      + ` not ${total} independent fixes.`;
+  }
+  const rest = total - count;
+  return `${count} of ${total} errors share code ${code} — treat those as one systemic cause,`
+    + ` then handle the remaining ${rest} separately.`;
 }
 
 function distributionSentence(classification) {

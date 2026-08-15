@@ -23,11 +23,12 @@ async function call(args, context) {
   });
 
   if (result && result.ok === false) {
-    const reportPath = writeLintFailureReport(result, {
+    const report = writeLintFailureReport(result, {
       outDir: args.outDir,
       cwd: context && context.cwd,
       packagePath,
     });
+    const reportPath = report.path;
     const hint = lintFailureHint(result, { reportPath });
     return {
       status: 'error',
@@ -44,6 +45,8 @@ async function call(args, context) {
           hint,
           retryable: false,
           reportPath,
+          // 报告没写成时留痕：静默吞掉就是本轮在修的那个毛病自己再犯一遍。
+          ...(report.error ? { reportWriteError: report.error } : {}),
           metrics,
         },
       },
