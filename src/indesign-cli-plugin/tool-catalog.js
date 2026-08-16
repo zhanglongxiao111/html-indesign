@@ -10,27 +10,42 @@ const tools = [
     domain: 'html',
     name: '作者包规则检查',
     one_line_purpose: '检查固定分页 HTML 作者源码包是否满足项目作者规范。',
-    arg_names: ['package', 'strict'],
+    arg_names: ['package', 'strict', 'gridTolerance', 'outDir'],
     rank: 10,
     schema_size: 'small',
     callable: true,
     requires: [],
-    side_effects: [],
+    // 失败时写出 authoring-lint-report.json（成功路径不产出）。
+    side_effects: ['filesystem_write'],
     artifact_kinds: ['json'],
     destructive: false,
     target_scope: 'project',
     needs_indesign: false,
-    produces_artifacts: false,
+    produces_artifacts: true,
     preconditions: ['package 必须指向可读取的 deck.config.json。'],
+    // 不声明的话，宿主会按 side_effects 含 filesystem_write 自动追加
+    // "Run indesign-cli export verify"——本工具产出的是 JSON 报告，不是可校验的成品。
+    common_next_steps: [
+      '失败时先读 error.details.errors，按 code 分类看分布，不要逐条改。',
+      '同一 code 高度集中时是单一系统性成因：改网格声明、调 gridTolerance，或对个别元素声明网格豁免属性（见 Skill 的 HTML 创作章节）。',
+      '通过后再调用 html.build_indesign；本工具默认 strict:false，而 build 内部固定 strict:true。',
+    ],
     return_example: { status: 'complete', data: { ok: true, issueCount: 0 }, artifacts: [] },
-    failure_example: { code: 'AUTHORING_LINT_FAILED', message: 'Authoring lint reported errors.' },
+    failure_example: {
+      code: 'AUTHORING_LINT_FAILED',
+      message: 'Strict authoring checks found 73 errors (GRID_ALIGNMENT_OFF: 73). '
+        + 'All errors share code GRID_ALIGNMENT_OFF — this is one systemic cause, not 73 independent fixes. '
+        + 'Affected: page-2 (27), page-3 (15), page-4 (31); edges top/left/right. '
+        + 'First issue at page-2 / p2-el1: Item edges do not align to the declared authoring grid. '
+        + 'Full report: <outDir>\\authoring-lint-report.json',
+    },
   },
   {
     id: 'html.compile_instructions',
     domain: 'html',
     name: '编译 InDesign 指令',
     one_line_purpose: '把作者源码包编译成可由 InDesign executor 执行的 instructions.json。',
-    arg_names: ['package', 'outDir', 'targetSize', 'unitMode'],
+    arg_names: ['package', 'outDir', 'targetSize', 'unitMode', 'outputName'],
     rank: 20,
     schema_size: 'medium',
     callable: true,
@@ -42,19 +57,31 @@ const tools = [
     needs_indesign: false,
     produces_artifacts: true,
     preconditions: ['package 必须是已组装且可读取的作者源码包。'],
+    // 产出 instructions.json，不是 PDF/IDML；对它跑 export verify 没有意义。
+    common_next_steps: [
+      '校验失败时读 error.details.validation，按 pageId/itemId 定位到具体元素再改。',
+      '成功后把 instructions.json 交给 html.build_indesign，不要对它运行 export verify。',
+    ],
     return_example: {
       status: 'complete',
       data: { ok: true, pageCount: 1 },
       artifacts: [{ kind: 'json', path: 'test/workspace/html-plugin-compile/instructions.json' }],
     },
-    failure_example: { code: 'INSTRUCTIONS_VALIDATION_FAILED', message: 'Compiled instructions failed validation.' },
+    failure_example: {
+      code: 'INSTRUCTIONS_VALIDATION_FAILED',
+      message: "Compiled instructions failed validation: Paragraph style 'body-copy' was not found; "
+        + "Asset 'hero-image' file was not found.",
+    },
   },
   {
     id: 'html.build_indesign',
     domain: 'html',
     name: '构建 InDesign 文件',
     one_line_purpose: '严格检查作者包，构建 INDD/PDF/IDML，并核对真实 InDesign 内容是否忠于 HTML。',
-    arg_names: ['package', 'outDir', 'targetSize', 'unitMode', 'outputBaseName', 'mode'],
+    arg_names: [
+      'package', 'outDir', 'targetSize', 'unitMode', 'outputBaseName', 'mode',
+      'exportPdf', 'exportIdml', 'timeout', 'gridTolerance',
+    ],
     rank: 30,
     schema_size: 'medium',
     callable: true,
@@ -66,19 +93,32 @@ const tools = [
     needs_indesign: true,
     produces_artifacts: true,
     preconditions: ['package 必须通过严格作者检查。', '宿主必须允许 manifest 声明的 script.run 和 export.verify actions。'],
+    // mode:'final' 时内部已经调过 export.verify，宿主自动追加的"再跑一次"是误导。
+    common_next_steps: [
+      '失败时先看 error.details.stage 决定重跑范围：lint/compile 阶段改作者源码即可，无需重开 InDesign。',
+      'stage 为 fidelity 时读 forward-fidelity-report.json，按报告命名的页/对象/字段改源码，不要用相同输入重试。',
+      '导出阶段失败时看 details.partialArtifacts：INDD 可能已经落盘，不必重走整条链路。',
+      'mode 为 final 时本工具内部已执行 export.verify，无需再手动运行一次。',
+    ],
     return_example: {
       status: 'requires_host_actions',
       actions: [{ id: 'html-build-script', tool_id: 'script.run' }],
       resume: { method: 'tools/resume' },
     },
-    failure_example: { code: 'FIDELITY_GATE_FAILED', message: 'Built InDesign content differs from the HTML source.' },
+    failure_example: {
+      code: 'FIDELITY_GATE_FAILED',
+      message: 'Built InDesign content differs from the HTML source at page page-2, item p2-el1, field fill; 3 issue(s) found.',
+    },
   },
   {
     id: 'html.reverse_export',
     domain: 'html',
     name: 'InDesign 反向导出 HTML',
     one_line_purpose: '从 INDD 生成 reverse snapshot，再写出固定语义 HTML 作者包。',
-    arg_names: ['indd', 'outDir', 'mode', 'assetPolicy', 'reconstructionProfile', 'reconstruct'],
+    arg_names: [
+      'indd', 'outDir', 'mode', 'assetPolicy', 'sourceRoot', 'nasPublicRoot',
+      'reconstructionProfile', 'reconstruct', 'timeout',
+    ],
     rank: 40,
     schema_size: 'medium',
     callable: true,
@@ -90,12 +130,21 @@ const tools = [
     needs_indesign: true,
     produces_artifacts: true,
     preconditions: ['indd 必须指向可读取的 InDesign 文档。', '宿主必须允许 script.run action。'],
+    // 产出 HTML 作者包，不是 PDF/IDML；对它跑 export verify 没有意义。
+    common_next_steps: [
+      'structured 模式要求语义 profile：源 INDD 若非由带 profile 的正向构建产生，必须传 sourceRoot 指向配置了 semanticPreset 的作者包目录，否则报 SEMANTIC_PRESET_LOAD_FAILED。',
+      '失败时读 details.reportPath 指向的 report.json，按其中命名的页/对象定位。',
+      '产出的是 HTML 作者包，不要对它运行 export verify；要回到 InDesign 请接 html.build_indesign。',
+    ],
     return_example: {
       status: 'requires_host_actions',
       actions: [{ id: 'html-reverse-snapshot', tool_id: 'script.run' }],
       resume: { method: 'tools/resume' },
     },
-    failure_example: { code: 'REVERSE_PIPELINE_FAILED', message: 'Reverse pipeline failed.' },
+    failure_example: {
+      code: 'REVERSE_PIPELINE_FAILED',
+      message: 'Reverse pipeline failed; refusing to report a successful export.',
+    },
   },
 ];
 
@@ -106,7 +155,25 @@ const schemas = {
     required: ['package'],
     properties: {
       package: { type: 'string', description: '作者源码包 deck.config.json，路径相对 context.cwd 或绝对路径。' },
-      strict: { type: 'boolean', default: false, description: '开启严格检查，把网格偏移和语义 token 缺失作为错误。' },
+      strict: {
+        type: 'boolean',
+        default: false,
+        description: '开启严格检查后，网格偏移（GRID_ALIGNMENT_OFF）与未登记的语义 token（SEMANTIC_TOKEN_UNKNOWN，即样式/图层类'
+          + '属性用了语义库词表之外的值）会被提升为 error；语义 token 缺失（SEMANTIC_TOKEN_MISSING，即角色靠内容推断、未显式标注）'
+          + '始终只是 warning，不会被 strict 提升。html.build_indesign 内部固定 strict: true，即使本工具用默认参数报告通过，'
+          + 'build 阶段仍可能因严格检查失败。',
+      },
+      gridTolerance: {
+        type: 'number',
+        default: 1,
+        minimum: 0,
+        description: '网格对齐容差，单位 mm；用于放宽 GRID_ALIGNMENT_OFF 的判定阈值，默认 1mm。',
+      },
+      outDir: {
+        type: 'string',
+        description: '检查失败时 authoring-lint-report.json 的写入目录，相对 CLI 调用时的工作目录解析，'
+          + '且必须落在该工作目录内（否则报 OUTPUT_OUTSIDE_PROJECT）。省略时写入作者包根目录下的 .indesign-cli/。',
+      },
     },
   },
   'html.compile_instructions': {
@@ -114,8 +181,15 @@ const schemas = {
     additionalProperties: false,
     required: ['package'],
     properties: {
-      package: { type: 'string', description: '作者源码包 deck.config.json。' },
-      outDir: { type: 'string', description: '输出目录，默认写入 test/workspace/html-plugin-compile-<timestamp>。' },
+      package: {
+        type: 'string',
+        description: '作者源码包 deck.config.json。路径相对 CLI 调用时的工作目录（context.cwd，缺省回落进程 cwd）解析，也可传绝对路径。',
+      },
+      outDir: {
+        type: 'string',
+        description: '输出目录，默认写入 test/workspace/html-plugin-compile-<timestamp>。路径相对 CLI 调用时的工作目录（context.cwd）'
+          + '解析，也可传绝对路径；必须落在该工作目录内，否则返回 OUTPUT_OUTSIDE_PROJECT。',
+      },
       targetSize: { type: 'string', default: 'same', description: '页面目标尺寸，例如 same、qhd、2048x1152。' },
       unitMode: { type: 'string', enum: ['presentation', 'print'], default: 'presentation' },
       outputName: { type: 'string', default: 'instructions.json' },
@@ -126,8 +200,15 @@ const schemas = {
     additionalProperties: false,
     required: ['package'],
     properties: {
-      package: { type: 'string', description: '作者源码包 deck.config.json。' },
-      outDir: { type: 'string', description: '输出目录，默认写入 test/workspace/html-plugin-build-<timestamp>。' },
+      package: {
+        type: 'string',
+        description: '作者源码包 deck.config.json。路径相对 CLI 调用时的工作目录（context.cwd，缺省回落进程 cwd）解析，也可传绝对路径。',
+      },
+      outDir: {
+        type: 'string',
+        description: '输出目录，默认写入 test/workspace/html-plugin-build-<timestamp>。路径相对 CLI 调用时的工作目录（context.cwd）'
+          + '解析，也可传绝对路径；必须落在该工作目录内，否则返回 OUTPUT_OUTSIDE_PROJECT。',
+      },
       targetSize: { type: 'string', default: 'same' },
       unitMode: { type: 'string', enum: ['presentation', 'print'], default: 'presentation' },
       outputBaseName: { type: 'string', default: 'html-indesign-output' },
@@ -140,6 +221,12 @@ const schemas = {
       exportPdf: { type: 'boolean', default: true },
       exportIdml: { type: 'boolean', default: true },
       timeout: { type: 'integer', default: 300, minimum: 1 },
+      gridTolerance: {
+        type: 'number',
+        default: 1,
+        minimum: 0,
+        description: '网格对齐容差，单位 mm；用于放宽严格作者检查阶段 GRID_ALIGNMENT_OFF 的判定阈值，默认 1mm。',
+      },
     },
   },
   'html.reverse_export': {
@@ -147,12 +234,30 @@ const schemas = {
     additionalProperties: false,
     required: ['indd'],
     properties: {
-      indd: { type: 'string', description: '待反向导出的 INDD 文件路径。' },
-      outDir: { type: 'string', description: '输出目录，默认写入 test/workspace/html-plugin-reverse-<timestamp>。' },
+      indd: {
+        type: 'string',
+        description: '待反向导出的 INDD 文件路径，路径相对 CLI 调用时的工作目录（context.cwd，缺省回落进程 cwd）解析，也可传绝对路径。',
+      },
+      outDir: {
+        type: 'string',
+        description: '输出目录，默认写入 test/workspace/html-plugin-reverse-<timestamp>。路径相对 CLI 调用时的工作目录（context.cwd）'
+          + '解析，也可传绝对路径；必须落在该工作目录内，否则返回 OUTPUT_OUTSIDE_PROJECT。',
+      },
       mode: { type: 'string', enum: ['structured', 'inferred', 'observation'], default: 'structured' },
       assetPolicy: { type: 'string', enum: ['reference', 'copy'], default: 'reference' },
-      sourceRoot: { type: 'string', description: '可选的原作者包目录，用于源码回环辅助报告。' },
-      nasPublicRoot: { type: 'string', default: '/nas' },
+      sourceRoot: {
+        type: 'string',
+        description: '可选的原作者包目录，用于源码回环辅助报告与语义预设（semanticPreset）来源；路径相对 CLI 调用时的工作目录'
+          + '（context.cwd）解析，也可传绝对路径。mode 为 structured（默认）或 inferred 时需要 semanticProfile：若 INDD 是由 '
+          + 'html.build_indesign 构建、其文档标签自带该信息则可省略，否则必须指定 sourceRoot（指向配置了 semanticPreset 的作者'
+          + '包目录），缺失时首次调用会以 SEMANTIC_PRESET_LOAD_FAILED:profile-required 失败；仅 mode=observation 不需要。',
+      },
+      nasPublicRoot: {
+        type: 'string',
+        default: '/nas',
+        description: '生成的作者/可视化 HTML 中，NAS 与 UNC 资源路径改写成的浏览器可访问 URL 前缀；这是一个 URL 前缀，不是文件系统'
+          + '路径，不按 context.cwd 解析。默认 /nas。',
+      },
       reconstructionProfile: {
         type: 'string',
         enum: [...RECONSTRUCTION_PROFILE_NAMES],

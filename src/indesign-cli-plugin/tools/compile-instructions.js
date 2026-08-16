@@ -52,7 +52,6 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   if (!validation.valid) {
     const err = new Error(`Compiled instructions failed validation: ${validation.errors.map((item) => item.message || item.code).join('; ')}`);
     err.code = 'INSTRUCTIONS_VALIDATION_FAILED';
-    err.validation = validation;
     err.details = {
       stage: 'compile',
       metrics: buildMetrics({
@@ -61,6 +60,7 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
         error_count: validation.errors.length,
       }),
       compatibility,
+      validation,
     };
     throw err;
   }

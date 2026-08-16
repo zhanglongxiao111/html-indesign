@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { test } = require('node:test');
 const { callPlugin, repoRoot, workspaceRoot } = require('./plugin-test-helper');
-const { reversePipelineFailureResponse } = require('../../src/indesign-cli-plugin/tools/reverse-export');
+const { reversePipelineFailureResponse, underlyingHostFailure } = require('../../src/indesign-cli-plugin/tools/reverse-export');
 const { compileAuthoringPackage } = require('../../src/indesign-cli-plugin/tools/compile-instructions');
 
 test('html.authoring_lint validates the architecture report author package', () => {
@@ -207,6 +207,60 @@ test('html.compile_instructions reports compile_ms, snapshot_ms and task-size me
   assert.equal(typeof metrics.assets, 'number');
   assert.equal(metrics.error_count, 0);
   assert.equal(metrics.artifacts, 2);
+});
+
+test('html.compile_instructions attaches structured validation errors to err.details when instructions fail validation', async () => {
+  const scenarioRoot = path.join(repoRoot, 'test', 'workspace', 'plugin-compile-validation-failure');
+  fs.rmSync(scenarioRoot, { recursive: true, force: true });
+  const packageRoot = path.join(scenarioRoot, 'architecture-report');
+  // 有意只复制包本身、不复制同级 smoke-assets 目录，使资产解析必然失败，
+  // 从而可靠触发 INSTRUCTIONS_VALIDATION_FAILED（ASSET_FILE_NOT_FOUND）。
+  fs.cpSync(path.join(repoRoot, 'test', 'fixtures', 'e2e', 'architecture-report'), packageRoot, { recursive: true });
+
+  const outDir = path.join('test', 'workspace', 'plugin-compile-validation-failure', 'out');
+
+  await assert.rejects(
+    () => compileAuthoringPackage({
+      package: 'test/workspace/plugin-compile-validation-failure/architecture-report/deck.config.json',
+      outDir,
+    }, { cwd: repoRoot }, 'html-plugin-compile'),
+    (error) => {
+      assert.equal(error.code, 'INSTRUCTIONS_VALIDATION_FAILED');
+      assert.ok(error.details);
+      assert.ok(error.details.validation, 'err.details.validation must be populated; dispatcher.errorDetails() only reads err.details');
+      assert.equal(error.details.validation.valid, false);
+      assert.equal(Array.isArray(error.details.validation.errors), true);
+      assert.ok(error.details.validation.errors.length > 0);
+      assert.equal(error.details.validation.errors.every((item) => item.code === 'ASSET_FILE_NOT_FOUND'), true);
+      assert.ok(error.details.validation.errors[0].assetId);
+      return true;
+    },
+  );
+  assert.equal(fs.existsSync(path.join(repoRoot, outDir, 'instructions.json')), false);
+});
+
+test('html.compile_instructions plugin response surfaces validation.errors with structured locations on failure', () => {
+  const scenarioRoot = path.join(repoRoot, 'test', 'workspace', 'plugin-compile-validation-failure-response');
+  fs.rmSync(scenarioRoot, { recursive: true, force: true });
+  const packageRoot = path.join(scenarioRoot, 'architecture-report');
+  fs.cpSync(path.join(repoRoot, 'test', 'fixtures', 'e2e', 'architecture-report'), packageRoot, { recursive: true });
+
+  const response = callPlugin('tools/call', {
+    id: 'html.compile_instructions',
+    args: {
+      package: 'test/workspace/plugin-compile-validation-failure-response/architecture-report/deck.config.json',
+      outDir: 'test/workspace/plugin-compile-validation-failure-response/out',
+    },
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'INSTRUCTIONS_VALIDATION_FAILED');
+  assert.ok(response.error.details.validation);
+  assert.equal(response.error.details.validation.valid, false);
+  assert.equal(
+    response.error.details.validation.errors.some((item) => item.code === 'ASSET_FILE_NOT_FOUND' && item.assetId),
+    true,
+  );
 });
 
 test('html.build_indesign starts with one build action and defers dependent actions', () => {
@@ -783,6 +837,89 @@ test('html.reverse_export resume maps a failed trusted-source gate to an error r
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'REVERSE_PIPELINE_FAILED');
   assert.equal(response.error.details.reconstruction.trustedSourcePreservation.ok, false);
+  assert.match(response.error.message, /TRUSTED_SOURCE_STRUCTURE_MUTATED/);
+  assert.notEqual(response.error.message, 'Reverse pipeline failed; refusing to report a successful export.');
+});
+
+test('html.reverse_export resume pipeline failure message carries the trusted-source count, first reason and reportPath', () => {
+  const reportPath = path.join(repoRoot, 'test', 'workspace', 'fake-reverse-report.json');
+  const response = reversePipelineFailureResponse({
+    ok: false,
+    report: {
+      reconstruction: {
+        trustedSourcePreservation: {
+          ok: false,
+          summary: { trustedPages: 3, trustedItems: 12, checked: 15, mutations: 2, missing: 0 },
+          failures: [
+            {
+              code: 'TRUSTED_SOURCE_STRUCTURE_MUTATED',
+              message: 'Trusted source item field changed after reconstruction.',
+              pageId: 'page-1',
+              itemId: 'headline-1',
+            },
+            { code: 'TRUSTED_SOURCE_STRUCTURE_MUTATED', pageId: 'page-2', itemId: 'headline-2' },
+          ],
+        },
+      },
+    },
+  }, {}, reportPath);
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'REVERSE_PIPELINE_FAILED');
+  assert.match(response.error.message, /2 issues/);
+  assert.match(response.error.message, /page-1/);
+  assert.match(response.error.message, /headline-1/);
+  assert.match(response.error.message, /Trusted source item field changed after reconstruction\./);
+  assert.ok(response.error.hint);
+  assert.match(response.error.hint, new RegExp(escapeRegExp(reportPath)));
+  assert.equal(response.error.details.reportPath, reportPath);
+});
+
+test('underlyingHostFailure extracts the real cause from a failed host_results entry', () => {
+  assert.deepEqual(
+    underlyingHostFailure({ error: { code: 'INDESIGN_SCRIPT_FAILED', message: 'No document open' } }),
+    { code: 'INDESIGN_SCRIPT_FAILED', message: 'No document open' },
+  );
+  assert.deepEqual(
+    underlyingHostFailure({ data: { errors: [{ code: 'NO_ACTIVE_DOCUMENT', message: 'No document open' }] } }),
+    { code: 'NO_ACTIVE_DOCUMENT', message: 'No document open' },
+  );
+  assert.deepEqual(
+    underlyingHostFailure({ data: { error: { code: 'TIMEOUT', message: 'Script timed out' } } }),
+    { code: 'TIMEOUT', message: 'Script timed out' },
+  );
+  assert.deepEqual(underlyingHostFailure({}), { code: null, message: null });
+});
+
+test('html.reverse_export resume surfaces the real host failure reason in the message, not just the action id', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-reverse-host-failure');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      outDir,
+      snapshotPath: path.join(outDir, 'reverse-snapshot.json'),
+      mode: 'structured',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
+    },
+    host_results: [
+      {
+        id: 'html-reverse-snapshot',
+        status: 'error',
+        data: { errors: [{ code: 'NO_ACTIVE_DOCUMENT', message: 'No document open' }] },
+      },
+    ],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'HOST_ACTION_FAILED');
+  assert.match(response.error.message, /No document open/);
+  assert.equal(response.error.details.causeCode, 'NO_ACTIVE_DOCUMENT');
 });
 
 test('html.reverse_export resume fails visibly when reverse author audit fails', () => {
