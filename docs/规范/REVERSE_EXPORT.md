@@ -355,7 +355,7 @@ PDF 反向导出必须保留：
 事务所内部项目默认使用主机名 UNC 路径引用公共素材，例如：
 
 ```text
-\\daga-nas5\project\assets\plan.pdf
+\\<文件服务器主机名>\project\assets\plan.pdf
 ```
 
 反向作者 HTML 默认不打包这些原始素材。资源策略为 `reference` 时：
