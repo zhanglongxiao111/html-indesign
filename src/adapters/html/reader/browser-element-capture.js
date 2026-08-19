@@ -136,12 +136,31 @@
 
   function cssVarsFor(el) {
     const style = getComputedStyle(el);
+    const parent = el.parentElement;
+    const parentStyle = parent ? getComputedStyle(parent) : null;
     const out = {};
     for (const name of ['--grid-col', '--grid-span', '--grid-row', '--grid-row-span']) {
-      const value = style.getPropertyValue(name);
-      if (value && value.trim()) out[name] = value.trim();
+      const value = String(style.getPropertyValue(name) || '').trim();
+      if (!value) continue;
+      // Custom properties inherit; a value identical to the parent's is an
+      // inherited one, not a declaration on this element, and must not count
+      // as this item's own grid placement.
+      const parentValue = parentStyle ? String(parentStyle.getPropertyValue(name) || '').trim() : '';
+      if (value === parentValue) continue;
+      out[name] = value;
     }
     return out;
+  }
+
+  // A flex parent distributes its children; their left/top come from the
+  // distribution, not from anything the author can pin to a grid line.
+  function isFlexFlowChild(el) {
+    const parent = el.parentElement;
+    if (!parent) return false;
+    const display = String(getComputedStyle(parent).display || '').toLowerCase();
+    if (!display.includes('flex')) return false;
+    const position = String(getComputedStyle(el).position || '').toLowerCase();
+    return position === 'static' || position === 'relative';
   }
 
   const SVG_VECTOR_TAGS = ['path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon'];
@@ -754,6 +773,7 @@
     sourcePreviewNodeFor,
     sourceHtmlFor,
     cssVarsFor,
+    isFlexFlowChild,
     vectorElementsFor,
     visualFrameFor,
     mergeFrameAttributes,

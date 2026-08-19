@@ -371,6 +371,30 @@ test('validateAuthoringRules keeps safe neutral-element role inference visible b
   assert.match(warning.suggestedFix, /data-id-role="text"/);
 });
 
+test('validateAuthoringRules does not ask authors to name tool-materialized pseudo spans', () => {
+  const snapshot = snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'gen1',
+      role: 'text',
+      tagName: 'span',
+      classList: [],
+      attributes: { 'data-pseudo-generated': 'before' },
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, {});
+
+  assert.equal(
+    result.warnings.some((entry) => entry.code === 'SEMANTIC_TOKEN_MISSING' && entry.itemId === 'gen1'),
+    false,
+  );
+});
+
 test('validateAuthoringRules rejects graphic protocol fields on a container without its own resource', () => {
   const snapshot = snapshotWithPage({
     attributes: {
@@ -667,6 +691,27 @@ test('text items with a declared width still check the right grid edge', () => {
   const warning = result.warnings.find((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 't1');
   assert.ok(warning);
   assert.deepEqual(warning.edges, ['right']);
+});
+
+test('auto-width text laid out by a flex parent skips grid alignment entirely', () => {
+  const result = validateAuthoringRules({
+    pages: [gridPage([gridTextItem({
+      inFlexFlow: true,
+      boundsMm: { x: 118, y: 22, width: 50, height: 8 },
+    })])],
+  }, { gridTolerance: 1 });
+  assert.equal(result.warnings.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 't1'), false);
+});
+
+test('flex-flow text with a declared width still checks the grid', () => {
+  const result = validateAuthoringRules({
+    pages: [gridPage([gridTextItem({
+      inFlexFlow: true,
+      boundsMm: { x: 118, y: 22, width: 50, height: 8 },
+      authoredStyle: { width: '50mm' },
+    })])],
+  }, { gridTolerance: 1 });
+  assert.ok(result.warnings.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 't1'));
 });
 
 test('text items with a grid span css var still check the right grid edge', () => {

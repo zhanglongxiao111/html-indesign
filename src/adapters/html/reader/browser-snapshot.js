@@ -145,6 +145,7 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     sourceNode: item.sourceNode || null,
     sourceAncestorNodes: item.sourceAncestorNodes || [],
     cssVars: item.cssVars || {},
+    inFlexFlow: item.inFlexFlow === true,
     vectorElements: item.vectorElements || [],
     text: item.text,
     rectPx: item.rectPx,

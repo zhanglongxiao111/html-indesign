@@ -105,6 +105,9 @@ function validateAuthoringRules(snapshot, options = {}) {
         ));
       }
       if (!isMappableItem(item) || hasStableSemanticToken(item)) return;
+      // Materialized pseudo spans are tool output, not authored markup;
+      // telling the author to name one is advice they cannot act on.
+      if (attributeValue(attributesFor(item), 'data-pseudo-generated') != null) return;
       const itemId = itemIdFor(item, itemIndex);
       const role = String(item && item.role || '').trim().toLowerCase();
       warnings.push({
@@ -524,6 +527,12 @@ function shouldCheckGrid(item, page) {
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) === 'folio') return false;
+  // Text furniture laid out by a flex parent (auto width, no own grid
+  // placement) cannot be aligned to the page grid by the author; checking
+  // any edge only produces noise. Promoted orphan spans land here too.
+  if (String(item && item.role || '').toLowerCase() === ITEM_ROLE.TEXT
+    && item.inFlexFlow === true
+    && !hasDeclaredWidth(item)) return false;
   const bounds = item && item.boundsMm;
   return bounds
     && Number.isFinite(Number(bounds.x))

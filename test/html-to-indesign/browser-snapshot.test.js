@@ -741,6 +741,51 @@ test('renderSnapshot promotes bare label spans in layout containers to text item
   assert.equal(badge.text, '行业调查');
 });
 
+test('renderSnapshot keeps inherited grid css vars off child items and marks flex flow children', async () => {
+  const outDir = path.resolve('test/workspace/browser-flex-head-css-vars');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .page-head {
+    position: absolute;
+    left: 40px;
+    top: 30px;
+    width: 700px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    --grid-span: 12;
+  }
+</style>
+<section class="page" id="page-1">
+  <div class="page-head">
+    <h2 id="head-title">页面标题</h2>
+    <p id="head-note" style="--grid-span: 4">自有声明</p>
+    <span id="head-badge">徽标</span>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+
+  const title = page.items.find((item) => item.id === 'head-title');
+  assert.ok(title, 'flex heading should be captured');
+  assert.deepEqual(title.cssVars, {});
+  assert.equal(title.inFlexFlow, true);
+
+  const badge = page.items.find((item) => item.id === 'head-badge');
+  assert.ok(badge, 'flex badge span should be captured');
+  assert.deepEqual(badge.cssVars, {});
+  assert.equal(badge.inFlexFlow, true);
+
+  const note = page.items.find((item) => item.id === 'head-note');
+  assert.ok(note, 'flex note should be captured');
+  assert.equal(note.cssVars['--grid-span'], '4');
+});
+
 test('renderSnapshot keeps inline spans inside paragraphs as runs, not items', async () => {
   const outDir = path.resolve('test/workspace/browser-inline-span-run');
   fs.rmSync(outDir, { recursive: true, force: true });

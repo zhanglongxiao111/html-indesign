@@ -57,7 +57,11 @@ async function call(args, context) {
     includeSnapshot: true,
   });
   const lintMs = Date.now() - lintStartedAt;
-  const lintCounts = { errorCount: lint.errorCount, warningCount: lint.warningCount };
+  const lintCounts = {
+    errorCount: lint.errorCount,
+    warningCount: lint.warningCount,
+    normalizedCount: lint.normalizedCount || 0,
+  };
   if (!lint.ok) {
     const report = writeLintFailureReport(lint, {
       outDir: args.outDir,
@@ -82,6 +86,7 @@ async function call(args, context) {
         lint_ms: lintMs,
         error_count: lintCounts.errorCount,
         warning_count: lintCounts.warningCount,
+        normalized_count: lintCounts.normalizedCount ?? 0,
       }),
     };
     throw error;
@@ -109,6 +114,7 @@ async function call(args, context) {
         lint_ms: lintMs,
         compile_ms: compileMsAtFailure,
         warning_count: lintCounts.warningCount,
+        normalized_count: lintCounts.normalizedCount ?? 0,
         ...existingMetrics,
       }),
     };
@@ -579,6 +585,7 @@ function collectMetrics(state, extra) {
     assets: size.assets,
     error_count: lintCounts.errorCount,
     warning_count: lintCounts.warningCount,
+    normalized_count: lintCounts.normalizedCount ?? 0,
     fidelity_error_count: fidelityCounts.errorCount,
     fidelity_warning_count: fidelityCounts.warningCount,
     compatibility_normalized: compatibility.normalized,
