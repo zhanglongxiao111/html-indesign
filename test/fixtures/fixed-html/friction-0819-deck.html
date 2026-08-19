@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>friction-0819</title>
+<style>
+  .page { width: 1122.5px; height: 793.7px; position: relative; background: #fff; }
+  /* 0819 模式 2：自动宽度页标题，右边缘天然不落网格线（A3 豁免对象） */
+  .page-title { position: absolute; left: 37.8px; top: 37.8px; margin: 0; font-size: 28px; }
+  /* 0819 模式 1：布局卡片里的裸 span 徽标（A1 归一化对象） */
+  .card { position: absolute; left: 125px; top: 37.8px; background: #eee; }
+  .badge { font-size: 14px; color: #c00; }
+  /* 0819 模式 3：伪元素静态编号（A2 物化对象） */
+  .gov { position: absolute; left: 37.8px; top: 755.9px; }
+  .gov-item { font-size: 14px; }
+  .gov-item::before { content: "01"; font-weight: 700; margin-right: 8px; }
+</style>
+</head>
+<body>
+<section class="page" id="page-1" data-id-margin="10mm" data-id-grid="12">
+  <h2 class="page-title" id="title">简报</h2>
+  <div class="card" id="card">
+    <span class="badge" id="badge">行业调查</span>
+    <!-- 无文本、无背景的块级子元素：既让 card 不构成纯文本 div（保证 badge 走孤儿 span 通道），又不会自己成为捕获候选 -->
+    <div class="spacer" style="height: 8px;"></div>
+  </div>
+  <div class="gov">
+    <div class="gov-item" id="gov-1">建立可复核流程</div>
+  </div>
+</section>
+</body>
+</html>

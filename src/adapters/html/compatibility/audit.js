@@ -17,6 +17,15 @@ const PROTOCOL_ATTRIBUTE_NAMES = new Set(HTML_DATA_ID_ATTRIBUTE_NAMES);
 function auditHtmlCompatibility(snapshot) {
   const messages = [];
   for (const page of Array.isArray(snapshot && snapshot.pages) ? snapshot.pages : []) {
+    for (const entry of Array.isArray(page && page.pseudoMaterialized) ? page.pseudoMaterialized : []) {
+      messages.push(normalizedMessage(
+        'HTML_PSEUDO_CONTENT_MATERIALIZED',
+        { pageId: page.id, itemId: entry.hostId || null },
+        `Static ::${entry.pseudo} text "${entry.text}" on <${entry.hostTag}> was materialized into a real text element.`,
+        'No authoring rewrite is required; move the text into a real element when it must stay explicit in the source.',
+        'css/pseudo-elements',
+      ));
+    }
     for (const item of Array.isArray(page && page.items) ? page.items : []) {
       auditItem(page, item, messages);
     }

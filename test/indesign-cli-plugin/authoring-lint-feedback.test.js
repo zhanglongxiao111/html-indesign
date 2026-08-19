@@ -11,11 +11,13 @@ const {
   underlyingHostFailure,
 } = require('../../src/indesign-cli-plugin/lint-feedback');
 
-// 2026-08-12 生产事故的真实作者包（已重新组装）。实测基准：73 errors / 100% GRID_ALIGNMENT_OFF /
-// 23 warnings / page-2 27、page-3 15、page-4 31 / top 59、left 58、right 57。
+// 2026-08-12 生产事故的真实作者包（已重新组装）。实测基准：56 errors / 100% GRID_ALIGNMENT_OFF /
+// 23 normalized / page-2 22、page-3 10、page-4 24 / left 52、top 50、right 3。
+// 2026-08-19 之前是 73 errors（top 59、left 58、right 57）：那时 flex 家具文本的 left/top 和
+// 继承 --grid-span 撑起的 right 都在报，17 条属于作者无从下手的噪声，A3 修复后不再产出。
 const GRID_FIXTURE = path.join(repoRoot, 'test', 'fixtures', 'authoring-lint', 'grid-alignment-package');
-const CONCENTRATION_SENTENCE = 'All 73 errors share code GRID_ALIGNMENT_OFF'
-  + ' — this is one systemic cause, not 73 independent fixes.';
+const CONCENTRATION_SENTENCE = 'All 56 errors share code GRID_ALIGNMENT_OFF'
+  + ' — this is one systemic cause, not 56 independent fixes.';
 
 function copyGridFixture(name) {
   const target = path.join(repoRoot, 'test', 'workspace', name);
@@ -39,16 +41,16 @@ test('html.authoring_lint 首条消息承载真实作者包的规模、分类与
   assert.equal(response.error.code, 'AUTHORING_LINT_FAILED');
 
   const { message } = response.error;
-  assert.match(message, /^Strict authoring checks found 73 errors \(GRID_ALIGNMENT_OFF: 73\)\./);
+  assert.match(message, /^Strict authoring checks found 56 errors \(GRID_ALIGNMENT_OFF: 56\)\./);
   assert.equal(message.includes(CONCENTRATION_SENTENCE), true, message);
   assert.equal(
-    message.includes('Affected: page-2 (27), page-3 (15), page-4 (31); edges top/left/right.'),
+    message.includes('Affected: page-2 (22), page-3 (10), page-4 (24); edges left/top/right.'),
     true,
     message,
   );
   assert.match(
     message,
-    /First issue at page-2 \/ p2-el1: Item edges do not align to the declared authoring grid\./,
+    /First issue at page-2 \/ p2-el4: Item edges do not align to the declared authoring grid\./,
   );
   assert.match(message, /Full report: .*authoring-lint-report\.json/);
 });
@@ -61,7 +63,7 @@ test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报�
   assert.notEqual(response.error.hint, null);
   assert.equal(typeof response.error.hint, 'string');
   assert.match(response.error.hint, /error\.details\.errors/);
-  assert.match(response.error.hint, /73 条/);
+  assert.match(response.error.hint, /56 条/);
   assert.match(response.error.hint, /authoring-lint-report\.json/);
 
   // 宿主侧当前只读 details，hint/retryable/stage 必须冗余落一份。
@@ -81,10 +83,13 @@ test('html.authoring_lint 失败时落下不含浏览器快照的完整报告 ar
   assert.equal(path.dirname(reportPath), path.join(packageDir, '.indesign-cli'));
 
   const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-  assert.equal(report.errorCount, 73);
-  assert.equal(report.warningCount, 23);
+  assert.equal(report.errorCount, 56);
+  // 归一化条目（工具已自动处理）不再计入 warningCount，单列 normalizedCount；总量口径不变。
+  assert.equal(report.warningCount + report.normalizedCount, 23);
+  assert.equal(report.normalizedCount, 23);
   assert.equal(Array.isArray(report.errors), true);
   assert.equal(Array.isArray(report.warnings), true);
+  assert.equal(Array.isArray(report.normalized), true);
   assert.ok(report.compatibility);
   assert.equal(Object.prototype.hasOwnProperty.call(report, 'snapshot'), false);
 

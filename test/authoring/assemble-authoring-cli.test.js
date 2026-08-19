@@ -24,6 +24,15 @@ test('assemble-authoring CLI writes deck.html and supports --check', () => {
   assert.match(dirty.stderr, /out of date/);
 });
 
+test('unknown argument error points runtime users to the installed-runtime entry', () => {
+  const scriptPath = path.resolve(__dirname, '../../scripts/assemble-authoring.js');
+  const result = spawnSync(process.execPath, [scriptPath, 'first.json', 'second-positional'], { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown argument: second-positional/);
+  assert.match(result.stderr, /prepare-author-package\.ps1 -Package/);
+  assert.match(result.stderr, /assemble-author-package\.cjs <pluginRoot> <deck\.config\.json>/);
+});
+
 function runCli(args) {
   return spawnSync(process.execPath, ['scripts/assemble-authoring.js', ...args], {
     cwd: path.resolve(__dirname, '../..'),

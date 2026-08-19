@@ -89,11 +89,13 @@ function printHumanReport(result) {
 
   console.log(`Errors: ${result.errorCount}`);
   console.log(`Warnings: ${result.warningCount}`);
+  console.log(`Normalized: ${result.normalizedCount || 0}`);
   for (const entry of result.messages || []) {
     const item = entry.itemId ? ` item=${entry.itemId}` : '';
     const edges = entry.edges && entry.edges.length ? ` edges=${entry.edges.join(',')}` : '';
     const page = entry.pageId ? ` page=${entry.pageId}` : '';
     const file = entry.file ? ` file=${entry.file}` : '';
-    console.log(`[${entry.level}] ${entry.code}${page}${file}${item}${edges} ${entry.message}`);
+    const level = entry.action === 'normalized' ? 'normalized' : entry.level;
+    console.log(`[${level}] ${entry.code}${page}${file}${item}${edges} ${entry.message}`);
   }
 }

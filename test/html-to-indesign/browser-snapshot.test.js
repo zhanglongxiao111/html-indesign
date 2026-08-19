@@ -11,6 +11,7 @@ test('browser snapshot reader exposes focused browser-context scripts', () => {
     browserSnapshotScriptPaths.map((scriptPath) => path.basename(scriptPath)),
     [
       'browser-style-capture.js',
+      'browser-pseudo-materialize.js',
       'browser-element-capture.js',
       'browser-snapshot-capture.js',
     ],
@@ -712,4 +713,165 @@ test('renderSnapshot captures page padding and grid semantics for InDesign guide
   assert.equal(page.computedStyle.paddingTop.endsWith('px'), true);
   assert.equal(page.computedStyle.gridTemplateColumns.split(/\s+/).length, 4);
   assert.equal(page.computedStyle.gridTemplateRows.split(/\s+/).length, 3);
+});
+
+test('renderSnapshot promotes bare label spans in layout containers to text items', async () => {
+  const outDir = path.resolve('test/workspace/browser-orphan-text-span');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .card { position: absolute; left: 40px; top: 40px; width: 300px; background: #eee; }
+</style>
+<section class="page" id="page-1">
+  <div class="card">
+    <span class="badge" id="badge">行业调查</span>
+    <p>正文段落</p>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.deepEqual(page.uncapturedText, []);
+  const badge = page.items.find((item) => item.id === 'badge');
+  assert.ok(badge, 'badge span should become a capture item');
+  assert.equal(badge.role, 'text');
+  assert.equal(badge.text, '行业调查');
+});
+
+test('renderSnapshot keeps inherited grid css vars off child items and marks flex flow children', async () => {
+  const outDir = path.resolve('test/workspace/browser-flex-head-css-vars');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .page-head {
+    position: absolute;
+    left: 40px;
+    top: 30px;
+    width: 700px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    --grid-span: 12;
+  }
+</style>
+<section class="page" id="page-1">
+  <div class="page-head">
+    <h2 id="head-title">页面标题</h2>
+    <p id="head-note" style="--grid-span: 4">自有声明</p>
+    <span id="head-badge">徽标</span>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+
+  const title = page.items.find((item) => item.id === 'head-title');
+  assert.ok(title, 'flex heading should be captured');
+  assert.deepEqual(title.cssVars, {});
+  assert.equal(title.inFlexFlow, true);
+
+  const badge = page.items.find((item) => item.id === 'head-badge');
+  assert.ok(badge, 'flex badge span should be captured');
+  assert.deepEqual(badge.cssVars, {});
+  assert.equal(badge.inFlexFlow, true);
+
+  const note = page.items.find((item) => item.id === 'head-note');
+  assert.ok(note, 'flex note should be captured');
+  assert.equal(note.cssVars['--grid-span'], '4');
+});
+
+test('renderSnapshot keeps inline spans inside paragraphs as runs, not items', async () => {
+  const outDir = path.resolve('test/workspace/browser-inline-span-run');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>.page { width: 800px; height: 450px; }</style>
+<section class="page" id="page-1">
+  <p id="para">前缀<span id="inline-run" style="font-weight:700">强调</span>后缀</p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.deepEqual(page.uncapturedText, []);
+  assert.equal(page.items.some((item) => item.id === 'inline-run'), false);
+  const para = page.items.find((item) => item.id === 'para');
+  assert.ok(para);
+  assert.equal(para.runs.some((run) => run.text === '强调'), true);
+});
+
+test('renderSnapshot still reports mixed text-and-block containers as uncaptured', async () => {
+  const outDir = path.resolve('test/workspace/browser-mixed-container');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>.page { width: 800px; height: 450px; }</style>
+<section class="page" id="page-1">
+  <div id="mixed">直接文本<div>块级子内容</div></div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.equal(page.uncapturedText.length, 1);
+  assert.equal(page.uncapturedText[0].text, '直接文本');
+});
+
+test('renderSnapshot materializes static pseudo-element text into real spans', async () => {
+  const outDir = path.resolve('test/workspace/browser-pseudo-materialize');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .gov { position: absolute; left: 40px; top: 40px; }
+  .gov-item::before { content: "01"; font-weight: 700; margin-right: 8px; color: #c00; }
+</style>
+<section class="page" id="page-1">
+  <div class="gov">
+    <div class="gov-item" id="gov-1">建立可复核流程</div>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.equal(page.pseudoMaterialized.length, 1);
+  assert.equal(page.pseudoMaterialized[0].pseudo, 'before');
+  assert.equal(page.pseudoMaterialized[0].text, '01');
+  assert.equal(page.pseudoMaterialized[0].hostId, 'gov-1');
+  const host = page.items.find((item) => item.id === 'gov-1');
+  assert.ok(host);
+  assert.equal(host.unsupported.beforeContent, '');
+  assert.match(host.text, /01/);
+  assert.match(host.text, /建立可复核流程/);
+});
+
+test('renderSnapshot leaves dynamic pseudo content unsupported', async () => {
+  const outDir = path.resolve('test/workspace/browser-pseudo-dynamic');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; counter-reset: idx; }
+  .num { counter-increment: idx; }
+  .num::before { content: counter(idx); }
+</style>
+<section class="page" id="page-1">
+  <div class="num" id="num-1">条目</div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.deepEqual(page.pseudoMaterialized, []);
+  const host = page.items.find((item) => item.id === 'num-1');
+  assert.ok(host);
+  assert.notEqual(host.unsupported.beforeContent, '');
 });

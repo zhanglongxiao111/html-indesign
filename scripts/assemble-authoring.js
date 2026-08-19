@@ -42,7 +42,15 @@ function parseArgs(args) {
     else if (arg === '--package') out.packagePath = args[index += 1];
     else if (arg.startsWith('--package=')) out.packagePath = arg.slice('--package='.length);
     else if (!out.packagePath) out.packagePath = arg;
-    else throw new Error(`Unknown argument: ${arg}`);
+    else {
+      throw new Error([
+        `Unknown argument: ${arg}.`,
+        'This repo-internal script takes one config: --package <deck.config.json>.',
+        'In an installed runtime (outside the html-indesign repo checkout), do not call this script;',
+        'use prepare-author-package.ps1 -Package <deck.config.json>, which runs',
+        'assemble-author-package.cjs <pluginRoot> <deck.config.json> with the runtime Node.',
+      ].join(' '));
+    }
   }
   return out;
 }

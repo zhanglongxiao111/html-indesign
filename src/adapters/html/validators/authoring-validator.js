@@ -39,13 +39,19 @@ function validateAuthoringRules(snapshot, options = {}) {
     const items = Array.isArray(page.items) ? page.items : [];
     for (const issue of Array.isArray(page.uncapturedText) ? page.uncapturedText : []) {
       const itemId = issue.id || issue.sourcePath || null;
-      errors.push(message(
-        'error',
-        HTML_TEXT_NOT_CONVERTIBLE,
-        pageId,
-        itemId,
-        'Visible HTML text cannot be assigned safely to an InDesign text object. Put it in a leaf text element such as p, a heading, or a text-only div; keep layout containers separate.',
-      ));
+      const preview = String(issue.text || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+      errors.push({
+        ...message(
+          'error',
+          HTML_TEXT_NOT_CONVERTIBLE,
+          pageId,
+          itemId,
+          'Visible HTML text cannot be assigned safely to an InDesign text object. '
+            + 'Put it in a leaf text element such as p, a heading, or a text-only div; keep layout containers separate.'
+            + (preview ? ` Text starts with: "${preview}"` : ''),
+        ),
+        ...(preview ? { textPreview: preview } : {}),
+      });
     }
     if (grid.valid && grid.lines) {
       items.forEach((item, itemIndex) => {
@@ -99,6 +105,9 @@ function validateAuthoringRules(snapshot, options = {}) {
         ));
       }
       if (!isMappableItem(item) || hasStableSemanticToken(item)) return;
+      // Materialized pseudo spans are tool output, not authored markup;
+      // telling the author to name one is advice they cannot act on.
+      if (attributeValue(attributesFor(item), 'data-pseudo-generated') != null) return;
       const itemId = itemIdFor(item, itemIndex);
       const role = String(item && item.role || '').trim().toLowerCase();
       warnings.push({
@@ -518,6 +527,12 @@ function shouldCheckGrid(item, page) {
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) === 'folio') return false;
+  // Text furniture laid out by a flex parent (auto width, no own grid
+  // placement) cannot be aligned to the page grid by the author; checking
+  // any edge only produces noise. Promoted orphan spans land here too.
+  if (String(item && item.role || '').toLowerCase() === ITEM_ROLE.TEXT
+    && item.inFlexFlow === true
+    && !hasDeclaredWidth(item)) return false;
   const bounds = item && item.boundsMm;
   return bounds
     && Number.isFinite(Number(bounds.x))
@@ -544,17 +559,31 @@ function offGridEdges(bounds, lines, tolerance, item) {
 }
 
 function gridEdgesForItem(bounds, vertical, horizontal, item) {
-  const edges = [
-    ['left', Number(bounds.x), vertical],
-    ['right', Number(bounds.x) + Number(bounds.width), vertical],
-    ['top', Number(bounds.y), horizontal],
-  ];
   const role = String(item && item.role || '').toLowerCase();
   const authoredRole = String(attributeValue(attributesFor(item), HTML_DATA_ID_ATTRIBUTES.ROLE) || '').trim().toLowerCase();
+  const edges = [
+    ['left', Number(bounds.x), vertical],
+    ['top', Number(bounds.y), horizontal],
+  ];
+  // Auto-width text frames (no authored width or grid span) size to their
+  // content; their right edge cannot land on a grid line by construction,
+  // mirroring the existing bottom-edge exemption for content-grown text.
+  if (role !== ITEM_ROLE.TEXT || hasDeclaredWidth(item)) {
+    edges.push(['right', Number(bounds.x) + Number(bounds.width), vertical]);
+  }
   if (role !== ITEM_ROLE.TEXT && role !== ITEM_ROLE.TABLE && authoredRole !== ITEM_ROLE.CONTAINER) {
     edges.push(['bottom', Number(bounds.y) + Number(bounds.height), horizontal]);
   }
   return edges;
+}
+
+function hasDeclaredWidth(item) {
+  const authored = item && item.authoredStyle || {};
+  const declared = [authored.width, authored.minWidth, authored.gridColumn, authored.gridArea, authored.flexBasis]
+    .some((value) => value != null && String(value).trim() !== '' && String(value).trim().toLowerCase() !== 'auto');
+  if (declared) return true;
+  const cssVars = item && item.cssVars || {};
+  return ['--grid-col', '--grid-span'].some((name) => cssVars[name] != null && String(cssVars[name]).trim() !== '');
 }
 
 function coversWholePage(bounds, page) {

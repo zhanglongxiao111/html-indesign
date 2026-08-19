@@ -136,12 +136,31 @@
 
   function cssVarsFor(el) {
     const style = getComputedStyle(el);
+    const parent = el.parentElement;
+    const parentStyle = parent ? getComputedStyle(parent) : null;
     const out = {};
     for (const name of ['--grid-col', '--grid-span', '--grid-row', '--grid-row-span']) {
-      const value = style.getPropertyValue(name);
-      if (value && value.trim()) out[name] = value.trim();
+      const value = String(style.getPropertyValue(name) || '').trim();
+      if (!value) continue;
+      // Custom properties inherit; a value identical to the parent's is an
+      // inherited one, not a declaration on this element, and must not count
+      // as this item's own grid placement.
+      const parentValue = parentStyle ? String(parentStyle.getPropertyValue(name) || '').trim() : '';
+      if (value === parentValue) continue;
+      out[name] = value;
     }
     return out;
+  }
+
+  // A flex parent distributes its children; their left/top come from the
+  // distribution, not from anything the author can pin to a grid line.
+  function isFlexFlowChild(el) {
+    const parent = el.parentElement;
+    if (!parent) return false;
+    const display = String(getComputedStyle(parent).display || '').toLowerCase();
+    if (!display.includes('flex')) return false;
+    const position = String(getComputedStyle(el).position || '').toLowerCase();
+    return position === 'static' || position === 'relative';
   }
 
   const SVG_VECTOR_TAGS = ['path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon'];
@@ -448,11 +467,39 @@
 
   function isNaturalTextElement(el) {
     const tagName = String(el && el.tagName || '').toLowerCase();
-    if (tagName !== 'div') return false;
+    if (tagName === 'div') return isNaturalTextDiv(el);
+    if (tagName === 'span') return isOrphanTextSpan(el);
+    return false;
+  }
+
+  function isNaturalTextDiv(el) {
     if (!sourceText(el).trim()) return false;
     const dataId = dataIdAttributes();
     if (el.querySelector(`h1,h2,h3,h4,h5,h6,p,li,figcaption,hr,img,object,embed,svg,canvas,table,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`)) return false;
     return Array.from(el.children || []).every(isInlineSourceElement);
+  }
+
+  // A bare span holding visible text inside a layout container is the most
+  // common LLM authoring pattern; treat it as an implicit text leaf when no
+  // ancestor text element already covers it, instead of rejecting it.
+  function isOrphanTextSpan(el) {
+    if (!sourceText(el).trim()) return false;
+    if (!Array.from(el.children || []).every(isInlineSourceElement)) return false;
+    return !hasTextCoveringAncestor(el);
+  }
+
+  function hasTextCoveringAncestor(el) {
+    const dataId = dataIdAttributes();
+    let parent = el.parentElement;
+    while (parent && parent.nodeType === 1) {
+      const tagName = String(parent.tagName || '').toLowerCase();
+      if (isTextTag(tagName)) return true;
+      if (tagName === 'div' && isNaturalTextDiv(parent)) return true;
+      if (parent.hasAttribute(dataId.PARAGRAPH_STYLE)) return true;
+      if (String(parent.getAttribute(dataId.ROLE) || '').trim().toLowerCase() === 'text') return true;
+      parent = parent.parentElement;
+    }
+    return false;
   }
 
   function collectCandidateElements(pageEl) {
@@ -726,6 +773,7 @@
     sourcePreviewNodeFor,
     sourceHtmlFor,
     cssVarsFor,
+    isFlexFlowChild,
     vectorElementsFor,
     visualFrameFor,
     mergeFrameAttributes,

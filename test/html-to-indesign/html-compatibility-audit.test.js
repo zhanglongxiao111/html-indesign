@@ -111,3 +111,22 @@ test('auditHtmlCompatibility reports supported inline SVG primitives as native n
   assert.equal(report.messages.some((message) => message.code === 'HTML_INLINE_SVG_UNSUPPORTED'), false);
   assert.equal(report.summary.blocked, 0);
 });
+
+test('materialized pseudo content surfaces as a normalized compatibility message', () => {
+  const { auditHtmlCompatibility } = require('../../src/adapters/html');
+  const audit = auditHtmlCompatibility({
+    pages: [{
+      id: 'page-1',
+      pseudoMaterialized: [{ pseudo: 'before', text: '01', hostTag: 'div', hostId: 'gov-1' }],
+      items: [],
+    }],
+  });
+  const entry = audit.messages.find((message) => message.code === 'HTML_PSEUDO_CONTENT_MATERIALIZED');
+  assert.ok(entry);
+  assert.equal(entry.action, 'normalized');
+  assert.equal(entry.level, 'warning');
+  assert.equal(entry.pageId, 'page-1');
+  assert.equal(entry.itemId, 'gov-1');
+  assert.equal(audit.summary.normalized, 1);
+  assert.equal(audit.summary.blocked, 0);
+});

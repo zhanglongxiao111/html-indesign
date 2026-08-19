@@ -17,6 +17,12 @@
     return api;
   }
 
+  function pseudoApi() {
+    const api = globalObject && globalObject.htmlIndesignBrowserPseudoMaterialize;
+    if (!api) throw new Error('htmlIndesignBrowserPseudoMaterialize is not installed');
+    return api;
+  }
+
   function collectBrowserSnapshot(selector) {
     const pageEls = Array.from(document.querySelectorAll(selector));
     if (pageEls.length === 0) {
@@ -91,6 +97,7 @@
   }
 
   function collectPageSnapshot(pageEl, pageIndex, styleRules) {
+    const pseudoMaterialized = pseudoApi().materializePseudoContent(pageEl);
     const dataId = dataIdAttributes();
     const elements = elementApi();
     const styles = styleApi();
@@ -114,6 +121,7 @@
       heightCss: pageStyle.height,
       computedStyle: styles.styleObject(pageEl),
       authoredStyle: styles.authoredStyleObject(pageEl, styleRules),
+      pseudoMaterialized,
       uncapturedText: elements.collectUncapturedTextElements(pageEl, candidates),
       items: candidates.map((el, itemIndex) => collectItemSnapshot(el, itemIndex, pageIndex, pageEl, candidates, styleRules)),
     };
@@ -145,6 +153,7 @@
       }),
       sourceAncestorNodes: elements.sourceAncestorNodes(el, pageEl, candidates),
       cssVars: elements.cssVarsFor(el),
+      inFlexFlow: elements.isFlexFlowChild(el),
       vectorElements: elements.vectorElementsFor(el),
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),
