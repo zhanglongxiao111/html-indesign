@@ -550,17 +550,31 @@ function offGridEdges(bounds, lines, tolerance, item) {
 }
 
 function gridEdgesForItem(bounds, vertical, horizontal, item) {
-  const edges = [
-    ['left', Number(bounds.x), vertical],
-    ['right', Number(bounds.x) + Number(bounds.width), vertical],
-    ['top', Number(bounds.y), horizontal],
-  ];
   const role = String(item && item.role || '').toLowerCase();
   const authoredRole = String(attributeValue(attributesFor(item), HTML_DATA_ID_ATTRIBUTES.ROLE) || '').trim().toLowerCase();
+  const edges = [
+    ['left', Number(bounds.x), vertical],
+    ['top', Number(bounds.y), horizontal],
+  ];
+  // Auto-width text frames (no authored width or grid span) size to their
+  // content; their right edge cannot land on a grid line by construction,
+  // mirroring the existing bottom-edge exemption for content-grown text.
+  if (role !== ITEM_ROLE.TEXT || hasDeclaredWidth(item)) {
+    edges.push(['right', Number(bounds.x) + Number(bounds.width), vertical]);
+  }
   if (role !== ITEM_ROLE.TEXT && role !== ITEM_ROLE.TABLE && authoredRole !== ITEM_ROLE.CONTAINER) {
     edges.push(['bottom', Number(bounds.y) + Number(bounds.height), horizontal]);
   }
   return edges;
+}
+
+function hasDeclaredWidth(item) {
+  const authored = item && item.authoredStyle || {};
+  const declared = [authored.width, authored.minWidth, authored.gridColumn, authored.gridArea, authored.flexBasis]
+    .some((value) => value != null && String(value).trim() !== '' && String(value).trim().toLowerCase() !== 'auto');
+  if (declared) return true;
+  const cssVars = item && item.cssVars || {};
+  return ['--grid-col', '--grid-span'].some((name) => cssVars[name] != null && String(cssVars[name]).trim() !== '');
 }
 
 function coversWholePage(bounds, page) {

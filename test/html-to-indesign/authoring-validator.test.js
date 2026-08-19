@@ -148,7 +148,8 @@ test('validateAuthoringRules warns for class-only page-number items that are off
 
   assert.ok(warning);
   assert.equal(warning.itemId, 'class-only-folio');
-  assert.deepEqual(warning.edges, ['left', 'right']);
+  // The folio is an auto-width text item, so only its left edge is grid-checked.
+  assert.deepEqual(warning.edges, ['left']);
 });
 
 test('validateAuthoringRules skips grid checks for registered folio paragraph style', () => {
@@ -623,6 +624,65 @@ test('HTML_TEXT_NOT_CONVERTIBLE carries a text preview for location', () => {
   assert.ok(error);
   assert.equal(error.textPreview, '这是一段超过二十个字符的不可转换文本示例');
   assert.match(error.message, /Text starts with: "这是一段超过二十个字符的不可转换文本示例"/);
+});
+
+function gridPage(items) {
+  return {
+    id: 'page-1',
+    widthMm: 297,
+    heightMm: 210,
+    rectPx: { x: 0, y: 0, width: 1122.5, height: 793.7 },
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '12' },
+    computedStyle: {},
+    authoredStyle: {},
+    uncapturedText: [],
+    items,
+  };
+}
+
+function gridTextItem(overrides) {
+  return {
+    id: 't1',
+    tagName: 'h2',
+    role: 'text',
+    boundsMm: { x: 10, y: 10, width: 50, height: 8 },
+    attributes: {},
+    classList: [],
+    computedStyle: {},
+    authoredStyle: {},
+    cssVars: {},
+    ...overrides,
+  };
+}
+
+test('auto-width text items skip the right grid edge', () => {
+  const result = validateAuthoringRules({ pages: [gridPage([gridTextItem({})])] }, { gridTolerance: 1 });
+  assert.equal(result.warnings.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 't1'), false);
+});
+
+test('text items with a declared width still check the right grid edge', () => {
+  const result = validateAuthoringRules({
+    pages: [gridPage([gridTextItem({ authoredStyle: { width: '50mm' } })])],
+  }, { gridTolerance: 1 });
+  const warning = result.warnings.find((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 't1');
+  assert.ok(warning);
+  assert.deepEqual(warning.edges, ['right']);
+});
+
+test('text items with a grid span css var still check the right grid edge', () => {
+  const result = validateAuthoringRules({
+    pages: [gridPage([gridTextItem({ cssVars: { '--grid-span': '3' } })])],
+  }, { gridTolerance: 1 });
+  assert.ok(result.warnings.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 't1'));
+});
+
+test('non-text items keep full edge checking', () => {
+  const result = validateAuthoringRules({
+    pages: [gridPage([gridTextItem({ id: 's1', tagName: 'div', role: 'shape' })])],
+  }, { gridTolerance: 1 });
+  const warning = result.warnings.find((entry) => entry.code === 'GRID_ALIGNMENT_OFF' && entry.itemId === 's1');
+  assert.ok(warning);
+  assert.equal(warning.edges.includes('right'), true);
 });
 
 function snapshotWithPage(overrides = {}) {
