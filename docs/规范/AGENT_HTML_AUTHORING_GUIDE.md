@@ -71,6 +71,8 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 - 把无显式 role 的纯文字 `div` 识别为 text；原生 `p`、标题、列表、表格和资源标签不要求重复声明显而易见的角色。
 - 把简单内联 SVG 基础图元转换为 native vector，并返回 `HTML_INLINE_SVG_NORMALIZED`。
 - 把 CSS `border-radius: 50%` 的圆/椭圆和方形大圆角圆点转换为 native Oval。
+- 布局容器里的裸 `<span>`/纯文本 `<div>` 文本：自动按文本叶子捕获（`HTML_ROLE_INFERRED`），无需改写；仅当直接文本与块级子元素混排时仍然阻断（报错会带前 20 字预览）。
+- `::before`/`::after` 的纯字符串 `content`：自动物化为真实文本元素（`HTML_PSEUDO_CONTENT_MATERIALIZED`），无需改写；`counter()`/`attr()`/`url()` 等动态 content 仍然阻断。
 
 工作顺序：重新组装作者包后先调用 `html.authoring_lint`，读取全部 `compatibility.messages`；安全归一化可以继续 compile/build，blocked 项必须先修改。需要承诺作者源码回环零漂移或准备长期维护时，应把 `suggestedFix` 写回 `pages/*.html` 或 `styles/*.css`，重新组装并再次 lint。自动归一化只证明本次转换可确定，不等于作者源码已经显式、稳定。
 
@@ -79,7 +81,7 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 | code | 表示什么 | 作者源码应如何改 |
 | ---- | -------- | ---------------- |
 | `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含无效几何、复杂元素、变换、裁切、paint server 或不支持的 path 命令 | 修正基础图元的尺寸/坐标，拆成支持图元，或保存为外部 `.svg` 资源 |
-| `HTML_PSEUDO_ELEMENT_UNSUPPORTED` | 可见内容只存在于 `::before` / `::after` | 改成真实 HTML 元素，装饰几何可改为基础 SVG 图元 |
+| `HTML_PSEUDO_ELEMENT_UNSUPPORTED` | `::before` / `::after` 使用动态 content（`counter()`、`attr()`、`url()`），或是纯装饰 paint 伪元素 | 动态 content 改成真实 HTML 元素写出静态文字，装饰几何可改为基础 SVG 图元 |
 | `HTML_CLIP_PATH_UNSUPPORTED` | 使用 `clip-path` 绘制或裁切可见对象 | 改为 SVG `polygon/path`，或使用外部 SVG |
 | `HTML_GRADIENT_UNSUPPORTED` | 使用多色或无法映射的渐变 | 单色透明度渐变可保留；其他渐变改为外部资源 |
 | `HTML_CSS_BORDER_SHAPE_UNSUPPORTED` | 用零尺寸元素和透明边框拼三角形等轮廓 | 改为 SVG `polygon/path` |
@@ -174,6 +176,8 @@ npm run assemble:authoring -- -- --package <deck.config.json>
 | `data-id-parent-page` | 稳定母版页 ID，只用于页码、页眉、固定装饰线等页面家具 |
 
 页面网格是作者契约。Agent 可以选择不同网格，但不能完全不声明网格，也不能让转换层从对象边缘猜默认网格。
+
+网格对齐校验（`GRID_ALIGNMENT_OFF`）逐边核对，但文本元素未声明宽度（`width`/`min-width`/`grid-column`/`flex-basis`）也未声明网格跨度（`--grid-col`/`--grid-span`）时，宽度由内容撑开，右边缘不参与校验；这与文本按内容增高、底边不参与校验是同一档豁免。页标题这类自动宽度文字不需要为了压线补一个假宽度。
 
 网格回环是硬门槛：
 
