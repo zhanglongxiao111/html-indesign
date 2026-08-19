@@ -39,13 +39,19 @@ function validateAuthoringRules(snapshot, options = {}) {
     const items = Array.isArray(page.items) ? page.items : [];
     for (const issue of Array.isArray(page.uncapturedText) ? page.uncapturedText : []) {
       const itemId = issue.id || issue.sourcePath || null;
-      errors.push(message(
-        'error',
-        HTML_TEXT_NOT_CONVERTIBLE,
-        pageId,
-        itemId,
-        'Visible HTML text cannot be assigned safely to an InDesign text object. Put it in a leaf text element such as p, a heading, or a text-only div; keep layout containers separate.',
-      ));
+      const preview = String(issue.text || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+      errors.push({
+        ...message(
+          'error',
+          HTML_TEXT_NOT_CONVERTIBLE,
+          pageId,
+          itemId,
+          'Visible HTML text cannot be assigned safely to an InDesign text object. '
+            + 'Put it in a leaf text element such as p, a heading, or a text-only div; keep layout containers separate.'
+            + (preview ? ` Text starts with: "${preview}"` : ''),
+        ),
+        ...(preview ? { textPreview: preview } : {}),
+      });
     }
     if (grid.valid && grid.lines) {
       items.forEach((item, itemIndex) => {

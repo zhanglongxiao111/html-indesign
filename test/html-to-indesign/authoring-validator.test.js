@@ -610,6 +610,21 @@ test('validateAuthoringRules accepts a text box whose line fits its inner height
   assert.equal(result.errors.some((entry) => entry.code === 'TEXT_FIRST_LINE_CANNOT_FIT'), false);
 });
 
+test('HTML_TEXT_NOT_CONVERTIBLE carries a text preview for location', () => {
+  const snapshot = {
+    pages: [{
+      id: 'page-1',
+      uncapturedText: [{ sourcePath: 'div:nth-of-type(1)>span:nth-of-type(1)', text: '这是一段超过二十个字符的不可转换文本示例内容' }],
+      items: [],
+    }],
+  };
+  const result = validateAuthoringRules(snapshot, {});
+  const error = result.errors.find((entry) => entry.code === 'HTML_TEXT_NOT_CONVERTIBLE');
+  assert.ok(error);
+  assert.equal(error.textPreview, '这是一段超过二十个字符的不可转换文本示例');
+  assert.match(error.message, /Text starts with: "这是一段超过二十个字符的不可转换文本示例"/);
+});
+
 function snapshotWithPage(overrides = {}) {
   return {
     metadata: { source: 'inline.html' },
