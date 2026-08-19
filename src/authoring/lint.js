@@ -73,8 +73,10 @@ async function lintAuthoringPackage(options = {}) {
 
   const errors = (sourceFormat.errors || [])
     .concat(semanticAudit.errors || [], htmlResult.errors || []);
+  // htmlResult 已过一遍 normalizeLintPayload，归一化条目被拆到 normalized；
+  // 这里必须把它带回警告池，否则包级重新归一化时这批条目会从 warnings 和 normalized 里双双消失。
   const warnings = (sourceFormat.warnings || [])
-    .concat(semanticAudit.warnings || [], htmlResult.warnings || []);
+    .concat(semanticAudit.warnings || [], htmlResult.warnings || [], htmlResult.normalized || []);
 
   return normalizeLintPayload({
     ok: errors.length === 0,
@@ -170,8 +172,10 @@ function normalizeErrorCode(error) {
 
 function normalizeLintPayload(payload, paths = {}) {
   const errors = payload.errors || [];
-  const warnings = payload.warnings || [];
-  const messages = payload.messages || errors.concat(warnings);
+  const allWarnings = payload.warnings || [];
+  const normalized = allWarnings.filter((entry) => entry && entry.action === 'normalized');
+  const warnings = allWarnings.filter((entry) => !entry || entry.action !== 'normalized');
+  const messages = payload.messages || errors.concat(allWarnings);
   return {
     ...payload,
     ok: errors.length === 0,
@@ -180,12 +184,26 @@ function normalizeLintPayload(payload, paths = {}) {
     ...(paths.htmlPath ? { htmlPath: paths.htmlPath } : {}),
     errors,
     warnings,
+    normalized,
+    normalizedSummary: normalizedSummaryByCode(normalized),
     messages,
     issueCount: messages.length,
     errorCount: errors.length,
     warningCount: warnings.length,
+    normalizedCount: normalized.length,
     compatibility: payload.compatibility || emptyCompatibility(),
   };
+}
+
+function normalizedSummaryByCode(normalized) {
+  const counts = new Map();
+  for (const entry of normalized) {
+    const code = entry && entry.code || 'other';
+    counts.set(code, (counts.get(code) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([code, count]) => ({ code, count }));
 }
 
 function withCompatibility(result, compatibility) {
@@ -280,4 +298,5 @@ function publicSemanticPresetMetadata(resolvedPreset) {
 module.exports = {
   lintAuthoringHtml,
   lintAuthoringPackage,
+  normalizeLintPayload,
 };

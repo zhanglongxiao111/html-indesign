@@ -82,9 +82,12 @@ test('html.authoring_lint 失败时落下不含浏览器快照的完整报告 ar
 
   const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
   assert.equal(report.errorCount, 73);
-  assert.equal(report.warningCount, 23);
+  // 归一化条目（工具已自动处理）不再计入 warningCount，单列 normalizedCount；总量口径不变。
+  assert.equal(report.warningCount + report.normalizedCount, 23);
+  assert.equal(report.normalizedCount, 23);
   assert.equal(Array.isArray(report.errors), true);
   assert.equal(Array.isArray(report.warnings), true);
+  assert.equal(Array.isArray(report.normalized), true);
   assert.ok(report.compatibility);
   assert.equal(Object.prototype.hasOwnProperty.call(report, 'snapshot'), false);
 
