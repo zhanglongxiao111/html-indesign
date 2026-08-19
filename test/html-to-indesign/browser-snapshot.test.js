@@ -713,3 +713,66 @@ test('renderSnapshot captures page padding and grid semantics for InDesign guide
   assert.equal(page.computedStyle.gridTemplateColumns.split(/\s+/).length, 4);
   assert.equal(page.computedStyle.gridTemplateRows.split(/\s+/).length, 3);
 });
+
+test('renderSnapshot promotes bare label spans in layout containers to text items', async () => {
+  const outDir = path.resolve('test/workspace/browser-orphan-text-span');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .card { position: absolute; left: 40px; top: 40px; width: 300px; background: #eee; }
+</style>
+<section class="page" id="page-1">
+  <div class="card">
+    <span class="badge" id="badge">行业调查</span>
+    <p>正文段落</p>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.deepEqual(page.uncapturedText, []);
+  const badge = page.items.find((item) => item.id === 'badge');
+  assert.ok(badge, 'badge span should become a capture item');
+  assert.equal(badge.role, 'text');
+  assert.equal(badge.text, '行业调查');
+});
+
+test('renderSnapshot keeps inline spans inside paragraphs as runs, not items', async () => {
+  const outDir = path.resolve('test/workspace/browser-inline-span-run');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>.page { width: 800px; height: 450px; }</style>
+<section class="page" id="page-1">
+  <p id="para">前缀<span id="inline-run" style="font-weight:700">强调</span>后缀</p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.deepEqual(page.uncapturedText, []);
+  assert.equal(page.items.some((item) => item.id === 'inline-run'), false);
+  const para = page.items.find((item) => item.id === 'para');
+  assert.ok(para);
+  assert.equal(para.runs.some((run) => run.text === '强调'), true);
+});
+
+test('renderSnapshot still reports mixed text-and-block containers as uncaptured', async () => {
+  const outDir = path.resolve('test/workspace/browser-mixed-container');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>.page { width: 800px; height: 450px; }</style>
+<section class="page" id="page-1">
+  <div id="mixed">直接文本<div>块级子内容</div></div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.equal(page.uncapturedText.length, 1);
+  assert.equal(page.uncapturedText[0].text, '直接文本');
+});

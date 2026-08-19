@@ -448,11 +448,39 @@
 
   function isNaturalTextElement(el) {
     const tagName = String(el && el.tagName || '').toLowerCase();
-    if (tagName !== 'div') return false;
+    if (tagName === 'div') return isNaturalTextDiv(el);
+    if (tagName === 'span') return isOrphanTextSpan(el);
+    return false;
+  }
+
+  function isNaturalTextDiv(el) {
     if (!sourceText(el).trim()) return false;
     const dataId = dataIdAttributes();
     if (el.querySelector(`h1,h2,h3,h4,h5,h6,p,li,figcaption,hr,img,object,embed,svg,canvas,table,[${dataId.OBJECT}],[${dataId.PARAGRAPH_STYLE}]`)) return false;
     return Array.from(el.children || []).every(isInlineSourceElement);
+  }
+
+  // A bare span holding visible text inside a layout container is the most
+  // common LLM authoring pattern; treat it as an implicit text leaf when no
+  // ancestor text element already covers it, instead of rejecting it.
+  function isOrphanTextSpan(el) {
+    if (!sourceText(el).trim()) return false;
+    if (!Array.from(el.children || []).every(isInlineSourceElement)) return false;
+    return !hasTextCoveringAncestor(el);
+  }
+
+  function hasTextCoveringAncestor(el) {
+    const dataId = dataIdAttributes();
+    let parent = el.parentElement;
+    while (parent && parent.nodeType === 1) {
+      const tagName = String(parent.tagName || '').toLowerCase();
+      if (isTextTag(tagName)) return true;
+      if (tagName === 'div' && isNaturalTextDiv(parent)) return true;
+      if (parent.hasAttribute(dataId.PARAGRAPH_STYLE)) return true;
+      if (String(parent.getAttribute(dataId.ROLE) || '').trim().toLowerCase() === 'text') return true;
+      parent = parent.parentElement;
+    }
+    return false;
   }
 
   function collectCandidateElements(pageEl) {
