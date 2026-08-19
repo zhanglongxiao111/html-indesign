@@ -10,6 +10,7 @@ const { compileAuthoringPackage } = require('./compile-instructions');
 const { getPluginRoot } = require('../path-policy');
 const { resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
+const { writeReportFile } = require('../report-archive');
 const {
   lintFailureHint,
   lintFailureMessage,
@@ -134,7 +135,7 @@ async function call(args, context) {
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
 
-  fs.writeFileSync(lintReportPath, JSON.stringify(withoutLintSnapshot(lint), null, 2), 'utf8');
+  writeReportFile(lintReportPath, withoutLintSnapshot(lint), { failed: false });
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
   fs.writeFileSync(buildScriptPath, buildBuildJsx({
     repoRoot: pluginRoot,
@@ -270,7 +271,9 @@ function resumeAfterSnapshot(state) {
       warningCount: report.summary && report.summary.warnings,
     },
   };
-  fs.writeFileSync(state.fidelityReportPath, JSON.stringify(report, null, 2), 'utf8');
+  writeReportFile(state.fidelityReportPath, report, {
+    failed: Array.isArray(report.errors) && report.errors.length > 0,
+  });
   if (!report.ok) {
     const first = report.errors[0] || {};
     return cleanupThenError(stateWithGateTiming, {

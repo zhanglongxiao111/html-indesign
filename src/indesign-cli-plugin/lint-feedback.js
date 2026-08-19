@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { isPathInside } = require('../shared');
+const { writeReportFile } = require('./report-archive');
 
 const MAX_LISTED_CODES = 3;
 const CONCENTRATION_RATIO = 0.8;
@@ -101,8 +102,8 @@ function writeLintFailureReport(lint, options = {}) {
     if (!dir) return { path: null, error: null };
     fs.mkdirSync(dir, { recursive: true });
     const reportPath = path.join(dir, REPORT_FILE_NAME);
-    fs.writeFileSync(reportPath, JSON.stringify(withoutLintSnapshot(lint), null, 2), 'utf8');
-    return { path: reportPath, error: null };
+    const { archivedPath } = writeReportFile(reportPath, withoutLintSnapshot(lint), { failed: true });
+    return { path: reportPath, archivedPath, error: null };
   } catch (error) {
     return { path: null, error: describeReportWriteError(error) };
   }
