@@ -11,6 +11,7 @@ test('browser snapshot reader exposes focused browser-context scripts', () => {
     browserSnapshotScriptPaths.map((scriptPath) => path.basename(scriptPath)),
     [
       'browser-style-capture.js',
+      'browser-pseudo-materialize.js',
       'browser-element-capture.js',
       'browser-snapshot-capture.js',
     ],
@@ -775,4 +776,57 @@ test('renderSnapshot still reports mixed text-and-block containers as uncaptured
   const page = snapshot.pages[0];
   assert.equal(page.uncapturedText.length, 1);
   assert.equal(page.uncapturedText[0].text, '直接文本');
+});
+
+test('renderSnapshot materializes static pseudo-element text into real spans', async () => {
+  const outDir = path.resolve('test/workspace/browser-pseudo-materialize');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; }
+  .gov { position: absolute; left: 40px; top: 40px; }
+  .gov-item::before { content: "01"; font-weight: 700; margin-right: 8px; color: #c00; }
+</style>
+<section class="page" id="page-1">
+  <div class="gov">
+    <div class="gov-item" id="gov-1">建立可复核流程</div>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.equal(page.pseudoMaterialized.length, 1);
+  assert.equal(page.pseudoMaterialized[0].pseudo, 'before');
+  assert.equal(page.pseudoMaterialized[0].text, '01');
+  assert.equal(page.pseudoMaterialized[0].hostId, 'gov-1');
+  const host = page.items.find((item) => item.id === 'gov-1');
+  assert.ok(host);
+  assert.equal(host.unsupported.beforeContent, '');
+  assert.match(host.text, /01/);
+  assert.match(host.text, /建立可复核流程/);
+});
+
+test('renderSnapshot leaves dynamic pseudo content unsupported', async () => {
+  const outDir = path.resolve('test/workspace/browser-pseudo-dynamic');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; counter-reset: idx; }
+  .num { counter-increment: idx; }
+  .num::before { content: counter(idx); }
+</style>
+<section class="page" id="page-1">
+  <div class="num" id="num-1">条目</div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  assert.deepEqual(page.pseudoMaterialized, []);
+  const host = page.items.find((item) => item.id === 'num-1');
+  assert.ok(host);
+  assert.notEqual(host.unsupported.beforeContent, '');
 });

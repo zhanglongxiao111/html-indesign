@@ -121,6 +121,7 @@ function pageSnapshotToModel(pageInfo) {
     computedStyle: pageInfo.computedStyle || {},
     authoredStyle: pageInfo.authoredStyle || {},
     uncapturedText: pageInfo.uncapturedText || [],
+    pseudoMaterialized: pageInfo.pseudoMaterialized || [],
     mmPerPxX: round(widthMm / pageInfo.rectPx.width),
     mmPerPxY: round(heightMm / pageInfo.rectPx.height),
     items,
