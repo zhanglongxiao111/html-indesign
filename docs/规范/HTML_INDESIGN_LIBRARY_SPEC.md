@@ -290,7 +290,7 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 页面级 `padding` 映射为 InDesign 页边距。若页面使用绝对定位且不能通过 padding 表达边距，可用 `data-id-margin="top right bottom left"` 声明非视觉页边距。页面级主网格必须通过可解析的 CSS Grid 或 `data-id-grid="12"` / `data-id-grid="12x9"` 声明，编译为 InDesign 原生参考线，不生成可打印对象。
 
-边距和主网格也是 Agent 作者侧规则，不只是输出到 InDesign 的辅助信息。新写分页 HTML 时，每个页面必须有可识别页边距和主网格规则；顶层可映射元素应优先贴合页边距、列线、行线、gutter 两侧或 baseline。CSS Grid 的 `gap` 等同于 InDesign 常见的带间距网格，适合表达建筑汇报里的图文列、卡片阵列、图纸区和标注区。嵌套在卡片、图例、表格内部的文字可以服从局部节奏，不强制贴页面主网格。
+边距和主网格也是 Agent 作者侧规则，不只是输出到 InDesign 的辅助信息。新写分页 HTML 时，每个页面必须有可识别页边距和主网格规则。网格对齐校验的对象是承担网格放置的块（带 `--grid-col`/`--grid-row`、`grid-item` 类名或显式 `grid-column`/`grid-row` 的元素，哪怕不是 InDesign 对象的包裹元素也会被量，条目标 `block: true`）与没有放置祖先的可映射元素，两者都应优先贴合页边距、列线、行线、gutter 两侧或 baseline；块内内容不参与校验，块套块只量最外层。CSS Grid 的 `gap` 等同于 InDesign 常见的带间距网格，适合表达建筑汇报里的图文列、卡片阵列、图纸区和标注区。嵌套在卡片、图例、表格内部的文字可以服从局部节奏，不强制贴页面主网格。
 
 页面可以同时声明输出参考线和作者侧吸附网格：
 
@@ -313,12 +313,12 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `PAGE_MARGIN_RULE_MISSING` | error | 页面缺少边距规则 |
 | `PAGE_GRID_RULE_MISSING` | error | 页面缺少网格规则 |
 | `PAGE_GRID_RULE_INVALID` | error | 网格声明不可解析 |
-| `GRID_ALIGNMENT_OFF` | warning | 元素边缘未贴合声明网格 |
+| `GRID_ALIGNMENT_OFF` | warning | 承担网格放置的块（含非 InDesign 对象的包裹元素）或没有放置祖先的元素边缘未贴合声明网格；块内内容不参与校验 |
 | `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定语义 token |
 | `GRAPHIC_ASSET_REFERENCE_MISSING` | error | 图形角色没有写在持有资源路径的元素上 |
 | `TEXT_CONTAINER_HAS_CHILD_OBJECTS` | error | 复合布局容器被错误声明为文本对象，会与子文字重复 |
 
-普通模式下，网格偏移和语义 token 缺失先作为 warning；`strict` 模式会把 warning 提升为 error。
+普通模式下，网格偏移和语义 token 缺失先作为 warning；`strict` 模式会把 warning 提升为 error。每条 `GRID_ALIGNMENT_OFF` 携带 `edges`、`edgeOffsets`、`suggestedFix`；块级条目另带 `block: true`、`blockOf`、`blockOfCount`。结果里的 `gridIgnoredCount`/`gridOffCount`/`gridBlockOffCount`/`gridCheckedCount`/`gridShieldedCount`/`gridBlockCheckedCount`/`gridBlockSkippedCount`/`gridSkippedCount` 记录豁免数、报错数与各类元素的核查覆盖情况。
 
 ### 6.2 可映射元素
 

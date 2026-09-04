@@ -177,7 +177,7 @@ npm run assemble:authoring -- -- --package <deck.config.json>
 
 页面网格是作者契约。Agent 可以选择不同网格，但不能完全不声明网格，也不能让转换层从对象边缘猜默认网格。
 
-网格对齐校验（`GRID_ALIGNMENT_OFF`）逐边核对，但文本元素未声明宽度（`width`/`min-width`/`grid-column`/`flex-basis`）也未声明网格跨度（`--grid-col`/`--grid-span`）时，宽度由内容撑开，右边缘不参与校验；这与文本按内容增高、底边不参与校验是同一档豁免。页标题这类自动宽度文字不需要为了压线补一个假宽度。
+网格对齐校验（`GRID_ALIGNMENT_OFF`）的规则是"承担网格放置的块负责对齐，块内的内容不参与网格校验"：带 `--grid-col`/`--grid-row`、`grid-item` 类名或作为 grid 容器直接子元素的显式 `grid-column`/`grid-row` 的元素是块；块本身（哪怕只是无边框的包裹 `div`，不会成为 InDesign 对象）也会被量，核对 left/top/right；块内内容不量，块套块只量最外层；没有放置祖先的元素仍逐条量。逐边核对时，文本元素未声明宽度（`width`/`min-width`/`grid-column`/`flex-basis`）也未声明网格跨度（`--grid-col`/`--grid-span`）时宽度由内容撑开，右边缘不参与校验；这与文本按内容增高、底边不参与校验是同一档豁免。每条 `GRID_ALIGNMENT_OFF` 带 `edgeOffsets`（每条边的偏移量与最近格线）和 `suggestedFix`；块级条目另带 `block: true`、`blockOf`、`blockOfCount`。lint 结果顶层的 `gridIgnoredCount` / `gridOffCount` / `gridBlockOffCount` / `gridCheckedCount` / `gridShieldedCount` / `gridBlockCheckedCount` / `gridBlockSkippedCount` / `gridSkippedCount` 记录豁免数、偏差数和量了多少，同名（蛇形）进入遥测；`checked + shielded + ignored + skipped` 等于可映射元素数。
 
 网格回环是硬门槛：
 
@@ -315,7 +315,7 @@ HTML 必须能自然浏览器预览。CSS 负责视觉表现，协议字段负�
 非网格对象的 CSS 也是布局契约：
 
 - 封面主图、遮罩、页码、固定装饰线、自由标注等可以使用绝对定位，但必须按 5.1 声明 `id`、`data-id-role` 和 `data-id-placement`。
-- `data-id-grid-ignore` 只能用于明确不参与主网格的对象，并且必须同时说明对象角色和定位契约。
+- `data-id-grid-ignore` 只能用于明确不参与主网格的对象（出血图、贴边色块、跨格标题），并且必须同时说明对象角色和定位契约。块内内容本来就不校验，不要给卡片里的段落贴豁免；`gridIgnoredCount` 会把整包豁免暴露出来。
 - CSS 类不能单独承担协议事实。只有 `.page-number`、`.hero-media`、`.veil` 这类类名，没有协议归类时，回读只能把对象当观察信息。
 - InDesign 回读追加的 `data-id-content-x/y/width/height/scale-*` 是观察字段；Agent 后续整理作者包时可以保留或归并，但不能把它们当作初始作者 HTML 的主要布局表达。
 
