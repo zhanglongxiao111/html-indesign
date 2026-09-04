@@ -420,6 +420,158 @@ test('gridIgnoredCount counts mappable items exempted by data-id-grid-ignore, ow
   assert.equal(result.valid, true, JSON.stringify(result.errors));
 });
 
+const GRID_PAGE_ATTRIBUTES = {
+  'data-id-margin': '10mm',
+  'data-id-grid': '4x2',
+  'data-id-column-gutter': '2mm',
+  'data-id-row-gutter': '2mm',
+};
+
+// 120×80mm / 10mm 页边距 / 4x2 网格 / 2mm 间距 →
+// 纵线 0/10/33.5/35.5/59/61/84.5/86.5/110/120，横线 0/10/39/41/70/80。
+function cardCopyItem(overrides = {}) {
+  return {
+    id: 'card-copy',
+    role: 'text',
+    tagName: 'p',
+    classList: ['card-copy'],
+    attributes: { 'data-id-paragraph-style': 'body-copy' },
+    boundsMm: { x: 16.35, y: 16.35, width: 20, height: 6 },
+    ...overrides,
+  };
+}
+
+function placedNode(overrides = {}) {
+  return {
+    tagName: 'div',
+    id: 'card',
+    sourcePath: 'div:nth-of-type(1)',
+    classList: ['grid-item', 'card'],
+    attributes: {},
+    gridPlaced: true,
+    ...overrides,
+  };
+}
+
+test('a grid-placed block is measured itself when its content is not', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [placedNode({ boundsMm: { x: 13, y: 14, width: 47, height: 25 } })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(result.errors));
+  const [entry] = entries;
+  assert.equal(entry.itemId, 'card');
+  assert.equal(entry.block, true);
+  // 右边缘 60mm 离 59/61 两根线各 1mm，在容差内；底边永远不查。
+  assert.deepEqual(entry.edges, ['left', 'top']);
+  assert.deepEqual(entry.blockOf, ['card-copy']);
+  assert.deepEqual(entry.edgeOffsets[0], {
+    edge: 'left', valueMm: 13, nearestLineMm: 10, offsetMm: 3,
+  });
+  assert.match(entry.suggestedFix, /Move #card left edge to 10mm \(-3mm\)/);
+  assert.equal(result.gridOffCount, 1);
+  // 责任在块上，块内文本不能再被单独报一条。
+  assert.equal(result.errors.some((issue) => issue.itemId === 'card-copy'), false);
+});
+
+test('a grid-placed block sitting on the grid lets its whole subtree pass', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [placedNode({ boundsMm: { x: 10, y: 10, width: 49, height: 29 } })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test('one off-grid block is reported once no matter how many items it holds', () => {
+  const offGrid = { x: 13, y: 14, width: 47, height: 25 };
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [
+      cardCopyItem({ sourceAncestorNodes: [placedNode({ boundsMm: offGrid })] }),
+      cardCopyItem({
+        id: 'card-title',
+        tagName: 'h3',
+        boundsMm: { x: 16.35, y: 25, width: 30, height: 8 },
+        sourceAncestorNodes: [placedNode({ boundsMm: offGrid })],
+      }),
+    ],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(entries));
+  assert.deepEqual(entries[0].blockOf, ['card-copy', 'card-title']);
+  assert.equal(result.gridOffCount, 1);
+});
+
+test('only the outermost placed block is responsible when placed blocks nest', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [
+        placedNode({ id: 'column', sourcePath: 'div:nth-of-type(2)', boundsMm: { x: 10, y: 10, width: 49, height: 29 } }),
+        placedNode({ id: 'inner-card', sourcePath: 'div:nth-of-type(2)>div:nth-of-type(1)', boundsMm: { x: 13, y: 14, width: 20, height: 12 } }),
+      ],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridOffCount, 0);
+});
+
+test('a grid-ignored subtree exempts the placed blocks inside it', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [
+        {
+          tagName: 'figure',
+          id: 'bleed',
+          sourcePath: 'figure:nth-of-type(1)',
+          classList: ['bleed'],
+          attributes: { 'data-id-grid-ignore': '' },
+        },
+        placedNode({ boundsMm: { x: 13, y: 14, width: 47, height: 25 } }),
+      ],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridIgnoredCount, 1);
+  assert.equal(result.gridOffCount, 0);
+});
+
+test('a placed block from an older snapshot without bounds is skipped, not reported', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({ sourceAncestorNodes: [placedNode()] })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
 test('validateAuthoringRules checks text placement by left right and top edges', () => {
   const snapshot = snapshotWithPage({
     attributes: {

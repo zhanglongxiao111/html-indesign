@@ -21,6 +21,11 @@ const { writeAuthorPackageEntry } = require('../../src/authoring');
 // （dayparts 21、zone-map 11、metric-panel 10、flow-cards 6、report-title 3、flow-map 3、
 // reset-bar 2），网格放置由块承担，块内文本的边缘由块的内边距决定，作者无从逐条去改。
 // 这个包因此在 strict 下整体通过（0 errors / 23 normalized），见文末的回归用例。
+// 2026-09-05 起补上母元素规则的另一半：承担放置的 grid-item 包裹层自己参与对齐校验。
+// 这个包里共 20 个这样的块（每页 5 个：report-head / report-title / 主体 / 侧栏或 reset-bar /
+// folio），其中 01 页整页 data-id-grid-ignore、5 个整体豁免，02/03/04 三页的 15 个块逐个被量，
+// 全部压住网格线 —— 整包通过的数字因此不变（0 errors / 23 normalized）。数字不变不等于没在量：
+// 见 "承担放置的包裹层自己压不住线时由块级校验兜住" 一例，注入一个偏 3mm/4mm 的包裹层就必须报错。
 // 失败反馈的口径仍需真实用例：copyOffGridFixture 在同一个包的副本里，往 02/03/04 三页各注入
 // 一个**自己承担放置却压不住线**的块（--grid-col/--grid-row 放置 + margin 3mm/4mm 推离），
 // 这正是新规则要报的那类错误。变体实测基准：3 errors / 100% GRID_ALIGNMENT_OFF /
@@ -31,6 +36,12 @@ const CONCENTRATION_SENTENCE = 'All 3 errors share code GRID_ALIGNMENT_OFF'
 // 自己带网格放置、又被 margin 推离网格线的块：新规则下责任在这个块本身。
 const OFF_GRID_BLOCK = '  <p class="grid-item stray-note" style="--grid-col:2;--grid-span:2;'
   + '--grid-row:2;--grid-row-span:1;margin-left:3mm;margin-top:4mm">stray note</p>\n';
+// 同样偏离网格，但责任落在一个自己永远不会成为 item 的无边框包裹层上：
+// 只有块级对齐校验能发现它，块内段落不该被单独点名。
+const OFF_GRID_WRAPPER = '  <div class="grid-item stray-card" style="--grid-col:2;--grid-span:2;'
+  + '--grid-row:2;--grid-row-span:1;margin-left:3mm;margin-top:4mm">\n'
+  + '    <p class="stray-card-copy">stray card copy</p>\n'
+  + '  </div>\n';
 
 function copyGridFixture(name) {
   const target = path.join(repoRoot, 'test', 'workspace', name);
@@ -47,12 +58,24 @@ function copyOffGridFixture(name) {
   for (const file of fs.readdirSync(pagesDir)) {
     // 01 页整页 data-id-grid-ignore，注入进去只会被豁免掉。
     if (file.startsWith('01-')) continue;
-    const pagePath = path.join(pagesDir, file);
-    const html = fs.readFileSync(pagePath, 'utf8');
-    fs.writeFileSync(pagePath, html.replace(/\n<\/section>/, `\n${OFF_GRID_BLOCK}</section>`), 'utf8');
+    injectIntoPage(path.join(pagesDir, file), OFF_GRID_BLOCK);
   }
   writeAuthorPackageEntry(path.join(target, 'deck.config.json'));
   return target;
+}
+
+function copyOffGridWrapperFixture(name) {
+  const target = copyGridFixture(name);
+  const pagesDir = path.join(target, 'pages');
+  const page = fs.readdirSync(pagesDir).find((file) => file.startsWith('02-'));
+  injectIntoPage(path.join(pagesDir, page), OFF_GRID_WRAPPER);
+  writeAuthorPackageEntry(path.join(target, 'deck.config.json'));
+  return target;
+}
+
+function injectIntoPage(pagePath, markup) {
+  const html = fs.readFileSync(pagePath, 'utf8');
+  fs.writeFileSync(pagePath, html.replace(/\n<\/section>/, `\n${markup}</section>`), 'utf8');
 }
 
 function callLint(packageDir, args = {}) {
@@ -111,6 +134,33 @@ test('2026-08-12 事故包在母元素规则下整体通过 strict 检查', () =
   assert.equal(response.data.errorCount, 0);
   assert.equal(response.data.warningCount, 0);
   assert.equal(response.data.normalizedCount, 23);
+});
+
+// 母元素规则的另一半：块内不量，块本身必须有人量。这个包的 15 个 grid-item 包裹层
+// 都压住了线，所以上一条是 0 errors —— 但"0 errors"不能等于"没在量"。往 02 页注入一个
+// 自己承担放置、又被 margin 推离 3mm/4mm 的包裹层：它永远不会成为 item，只有块级
+// 对齐校验能发现。这条若变绿而不报错，说明块级覆盖又回落到零，先看 authoring-validator
+// 的 responsibleBlocksFor / offGridBlockEdges 与 capture 侧祖先节点的 boundsMm。
+test('承担放置的包裹层自己压不住线时由块级校验兜住', () => {
+  const packageDir = copyOffGridWrapperFixture('lint-feedback-grid-wrapper');
+  const response = callLint(packageDir);
+
+  assert.equal(response.status, 'error');
+  const { errors } = response.error.details;
+  assert.equal(errors.length, 1, JSON.stringify(errors));
+  const [entry] = errors;
+  assert.equal(entry.code, 'GRID_ALIGNMENT_OFF');
+  assert.equal(entry.pageId, 'page-2');
+  assert.equal(entry.block, true);
+  // 包裹层没有 id，条目落回 sourcePath —— 作者仍能按选择器定位。
+  assert.equal(entry.itemId, 'div:nth-of-type(3)');
+  assert.deepEqual(entry.edges, ['left', 'top', 'right']);
+  assert.equal(entry.edgeOffsets.find((offset) => offset.edge === 'left').offsetMm, 3);
+  assert.equal(entry.edgeOffsets.find((offset) => offset.edge === 'top').offsetMm, 4);
+  // 块内段落归属这个块，自己不再被点名。
+  assert.deepEqual(entry.blockOf, ['p2-el28']);
+  assert.equal(errors.some((issue) => issue.itemId === 'p2-el28'), false);
+  assert.match(entry.suggestedFix, /^Move #div:nth-of-type\(3\) left edge to [\d.]+mm \(-3mm\)/);
 });
 
 test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报告文件', () => {

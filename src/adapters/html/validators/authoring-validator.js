@@ -74,6 +74,26 @@ function validateAuthoringRules(snapshot, options = {}) {
           suggestedFix: gridSuggestedFix(itemId, edges),
         });
       });
+      // 母元素规则的另一半：块内内容不量，块本身必须有人量。承担放置的祖先节点
+      // 多半是无边框的定位包裹层，永远不会成为 item，若不在这里收上来当条目报，
+      // 整页网格检查就等于没跑。
+      responsibleBlocksFor(items).forEach(({ node, itemIds }) => {
+        const bounds = node.boundsMm;
+        // 旧快照的祖先节点没有几何：量不出来的块静默跳过，不拿"无法判断"充当错误。
+        if (!hasFiniteBounds(bounds)) return;
+        const edges = offGridBlockEdges(bounds, grid.lines, gridTolerance);
+        if (!edges.length) return;
+        gridOffCount += 1;
+        const blockId = node.id || node.sourcePath;
+        warnings.push({
+          ...message('warning', GRID_ALIGNMENT_OFF, pageId, blockId, gridOffMessage(edges)),
+          block: true,
+          edges: edges.map((entry) => entry.edge),
+          edgeOffsets: edges,
+          blockOf: itemIds.slice(0, 10),
+          suggestedFix: gridSuggestedFix(blockId, edges),
+        });
+      });
     }
 
     items.forEach((item, itemIndex) => {
@@ -547,12 +567,7 @@ function shouldCheckGrid(item, page) {
     && item.inFlexFlow === true
     && !hasDeclaredWidth(item)) return false;
   const bounds = item && item.boundsMm;
-  return bounds
-    && Number.isFinite(Number(bounds.x))
-    && Number.isFinite(Number(bounds.y))
-    && Number.isFinite(Number(bounds.width))
-    && Number.isFinite(Number(bounds.height))
-    && !coversWholePage(bounds, page);
+  return hasFiniteBounds(bounds) && !coversWholePage(bounds, page);
 }
 
 function hasInheritedGridIgnore(item) {
@@ -586,10 +601,62 @@ function isGridPlacedNode(node) {
   return /--grid-(?:col|row)\s*:/.test(style);
 }
 
+// 责任块：从最外层祖先往里走。撞上 data-id-grid-ignore 就整棵子树退出（该条目
+// 已由 isGridIgnored 计入豁免）；第一个承担放置的节点就是责任块，放置块里的
+// 放置块只是外层块的内容，跟着外层块走。
+function responsibleBlockFor(item) {
+  const nodes = Array.isArray(item && item.sourceAncestorNodes) ? item.sourceAncestorNodes : [];
+  for (const node of nodes) {
+    if (attributeValue(attributesFor(node), HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null) return null;
+    if (isGridPlacedNode(node)) return node;
+  }
+  return null;
+}
+
+// 同一个块会被它内部每个条目各指认一次，按 sourcePath 去重，并记住块内条目的
+// id：报告要能从块指回作者看得见的内容。
+function responsibleBlocksFor(items) {
+  const blocks = new Map();
+  items.forEach((item, itemIndex) => {
+    if (!isMappableItem(item)) return;
+    if (isGridIgnored(item)) return;
+    const node = responsibleBlockFor(item);
+    if (!node) return;
+    const key = blockKeyFor(node);
+    const existing = blocks.get(key);
+    if (existing) {
+      existing.itemIds.push(itemIdFor(item, itemIndex));
+      return;
+    }
+    blocks.set(key, { node, itemIds: [itemIdFor(item, itemIndex)] });
+  });
+  return Array.from(blocks.values());
+}
+
+function blockKeyFor(node) {
+  return node.sourcePath || node.id || JSON.stringify(node.boundsMm || null);
+}
+
 function offGridEdges(bounds, lines, tolerance, item) {
   const vertical = lines && Array.isArray(lines.vertical) ? lines.vertical : [];
   const horizontal = lines && Array.isArray(lines.horizontal) ? lines.horizontal : [];
-  return gridEdgesForItem(bounds, vertical, horizontal, item)
+  return offGridEntries(gridEdgesForItem(bounds, vertical, horizontal, item), tolerance);
+}
+
+// 承担放置的块只查 left/top/right：块的高度随内容长，底边落在哪根线上不由作者
+// 决定，与 data-id-role="container" 免检底边同理。
+function offGridBlockEdges(bounds, lines, tolerance) {
+  const vertical = lines && Array.isArray(lines.vertical) ? lines.vertical : [];
+  const horizontal = lines && Array.isArray(lines.horizontal) ? lines.horizontal : [];
+  return offGridEntries([
+    ['left', Number(bounds.x), vertical],
+    ['top', Number(bounds.y), horizontal],
+    ['right', Number(bounds.x) + Number(bounds.width), vertical],
+  ], tolerance);
+}
+
+function offGridEntries(edges, tolerance) {
+  return edges
     .map(([edge, value, candidates]) => {
       const nearest = nearestLine(value, candidates);
       return {
@@ -600,6 +667,11 @@ function offGridEdges(bounds, lines, tolerance, item) {
       };
     })
     .filter((entry) => entry.nearestLineMm == null || Math.abs(entry.offsetMm) > tolerance);
+}
+
+function hasFiniteBounds(bounds) {
+  return Boolean(bounds)
+    && ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(Number(bounds[key])));
 }
 
 function nearestLine(value, lines) {
@@ -630,7 +702,7 @@ function gridSuggestedFix(itemId, edges) {
     .filter((entry) => entry.nearestLineMm != null)
     .map((entry) => `${entry.edge} edge to ${entry.nearestLineMm}mm (${entry.offsetMm > 0 ? '-' : '+'}${Math.abs(entry.offsetMm)}mm)`);
   if (!moves.length) {
-    return `Give #${itemId} a grid placement (--grid-col/--grid-row) or mark it data-id-grid-ignore if it is meant to leave the grid.`;
+    return `Give #${itemId} a grid placement (--grid-col/--grid-row) or mark it ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
   }
   return `Move #${itemId} ${moves.join(', ')}, or place it with --grid-col/--grid-row so the block itself sits on the grid; `
     + 'content inside a placed block is not checked.';
