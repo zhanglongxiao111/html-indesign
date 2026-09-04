@@ -213,13 +213,15 @@ async function resume(params) {
     return hostFailureResponse(state, failedHostResult);
   }
 
-  const nextState = finishStageTiming(state);
+  // 每个阶段的宿主脚本都会报自己的 warning（构建阶段的 PREVIOUS_OUTPUT_CLOSED、快照阶段的
+  // PLACED_ASSET_PREVIEW_EXPORT_FAILED、导出阶段的 IDML_EXPORT_FAILED……）。按分支各收一次
+  // 就会漏掉没写到的分支（快照阶段此前就是这么丢的），所以在这里统一收一次，四个阶段共用。
+  const nextState = withHostWarnings(finishStageTiming(state), hostResults);
   if (state.stage === 'build') {
-    const carried = withHostWarnings(nextState, hostResults);
     if (state.mode === 'draft') {
-      return hostActionResponse(startStage(carried, 'export'), exportAction(state));
+      return hostActionResponse(startStage(nextState, 'export'), exportAction(state));
     }
-    return hostActionResponse(startStage(carried, 'snapshot'), snapshotAction(state));
+    return hostActionResponse(startStage(nextState, 'snapshot'), snapshotAction(state));
   }
 
   if (state.stage === 'snapshot') {
@@ -227,12 +229,10 @@ async function resume(params) {
   }
 
   if (state.stage === 'export') {
-    // 导出脚本自己也会报 warning（IDML_EXPORT_FAILED 只是警告），和构建阶段一样收进 hostWarnings。
-    const carried = withHostWarnings(nextState, hostResults);
     if (state.exportPdf) {
-      return hostActionResponse(startStage(carried, 'verify'), verifyAction(state));
+      return hostActionResponse(startStage(nextState, 'verify'), verifyAction(state));
     }
-    return completeResult(carried);
+    return completeResult(nextState);
   }
 
   if (state.stage === 'verify') {
@@ -540,8 +540,9 @@ function firstFailedHostResult(hostResults) {
 // IDML_EXPORT_FAILED）必须到达调用方。真实 CLI 的 formatScriptResult 把脚本载荷摊进 parsed，
 // 这是 parsed.warnings 存在的唯一原因；插件契约/测试用 data 直挂。回落按字段而不是按对象：
 // parsed 在但没有 warnings 时，仍要看 data.warnings。
-const HOST_WARNING_DETAIL_KEYS = Object.freeze(['pageId', 'pageNumber', 'itemId', 'assetId', 'font']);
 const HOST_WARNING_LIMIT = 100;
+const HOST_WARNING_MESSAGE_LIMIT = 500;
+const HOST_WARNING_DETAIL_STRING_LIMIT = 200;
 
 function hostScriptWarnings(hostResults) {
   const warnings = [];
@@ -553,37 +554,70 @@ function hostScriptWarnings(hostResults) {
       : (data && Array.isArray(data.warnings) ? data.warnings : []);
     for (const warning of list) {
       if (!warning || !warning.code) continue;
-      const entry = { code: warning.code, message: String(warning.message || '') };
-      // 定位字段（哪一页、哪个对象、哪个字体）是作者修问题的唯一线索，白名单透传。
-      const details = hostWarningDetails(warning.details);
+      const entry = {
+        code: warning.code,
+        message: clampText(String(warning.message || ''), HOST_WARNING_MESSAGE_LIMIT),
+      };
+      const details = hostWarningScalarDetails(warning.details);
       if (details) entry.details = details;
       warnings.push(entry);
     }
   }
-  if (warnings.length > HOST_WARNING_LIMIT) {
-    const omitted = warnings.length - HOST_WARNING_LIMIT;
-    return [
-      ...warnings.slice(0, HOST_WARNING_LIMIT),
-      { code: 'HOST_WARNINGS_TRUNCATED', message: `${omitted} more host warnings omitted` },
-    ];
-  }
   return warnings;
 }
 
-function hostWarningDetails(details) {
-  if (!details || typeof details !== 'object') return null;
+// details 里的定位字段（哪一页、哪个对象、请求了什么字体又落到了什么字体）是作者修问题的唯一线索，
+// 而每个 warning 各带一套自己的键：FONT_FALLBACK_APPLIED 是 requestedFont/appliedFont，
+// 文本溢出是 itemId/pageName/textLength，还有 styleName、compositeFont、propertyName……
+// 白名单挡不住新键，只会静默丢掉。所以反过来按形状过滤：标量（字符串/有限数字/布尔）一律透传，
+// 只丢掉对象/数组这类体积无界的结构（bounds、visibleText 之外的嵌套载荷）。
+function hostWarningScalarDetails(details) {
+  if (!details || typeof details !== 'object' || Array.isArray(details)) return null;
   const kept = {};
-  for (const key of HOST_WARNING_DETAIL_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(details, key)) kept[key] = details[key];
+  for (const key of Object.keys(details)) {
+    const value = details[key];
+    if (typeof value === 'string') kept[key] = clampText(value, HOST_WARNING_DETAIL_STRING_LIMIT);
+    else if (typeof value === 'number' && Number.isFinite(value)) kept[key] = value;
+    else if (typeof value === 'boolean') kept[key] = value;
   }
   return Object.keys(kept).length ? kept : null;
 }
 
+// 上限必须按累计后的 state.hostWarnings 计。按单次收割计的话，构建/快照/导出/校验四个阶段
+// 各报 100 条就是 400 条，上限等于不存在；截断条目也只留一条，后续阶段只把它的计数改大。
 function withHostWarnings(state, hostResults) {
   return {
     ...state,
-    hostWarnings: [...(state.hostWarnings || []), ...hostScriptWarnings(hostResults)],
+    hostWarnings: capHostWarnings([...(state.hostWarnings || []), ...hostScriptWarnings(hostResults)]),
   };
+}
+
+function capHostWarnings(warnings) {
+  let omitted = 0;
+  const kept = [];
+  for (const entry of warnings) {
+    if (entry && entry.code === 'HOST_WARNINGS_TRUNCATED') {
+      omitted += truncatedOmittedCount(entry);
+      continue;
+    }
+    if (kept.length < HOST_WARNING_LIMIT) kept.push(entry);
+    else omitted += 1;
+  }
+  if (!omitted) return kept;
+  return [...kept, {
+    code: 'HOST_WARNINGS_TRUNCATED',
+    message: `${omitted} more host warnings omitted`,
+    details: { omitted },
+  }];
+}
+
+function truncatedOmittedCount(entry) {
+  const count = Number(entry.details && entry.details.omitted);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+function clampText(value, limit) {
+  return value.length > limit ? value.slice(0, limit) : value;
 }
 
 function hostActionResponse(state, action) {

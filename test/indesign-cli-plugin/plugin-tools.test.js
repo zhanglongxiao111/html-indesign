@@ -411,7 +411,7 @@ test('html.build_indesign draft mode exports after build and is always marked un
   assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
 });
 
-test('构建阶段宿主脚本的 warnings 透传到成功结果（data 直挂与 data.parsed 两种形状）', () => {
+test('宿主脚本的 warnings 透传到成功结果（data 直挂 / data.parsed / 字段级回落 / 导出阶段 / details）', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings');
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
@@ -429,7 +429,7 @@ test('构建阶段宿主脚本的 warnings 透传到成功结果（data 直挂�
     message: 'Closed the unmodified previous build output that was still open: D:/run/deck.indd',
   };
 
-  function driveDraftBuild(buildHostResult) {
+  function driveDraftBuild(buildHostResult, exportHostResult) {
     const afterBuild = callPlugin('tools/resume', {
       state: {
         tool_id: 'html.build_indesign',
@@ -449,7 +449,7 @@ test('构建阶段宿主脚本的 warnings 透传到成功结果（data 直挂�
 
     const afterExport = callPlugin('tools/resume', {
       state: afterBuild.state,
-      host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
     });
     assert.equal(afterExport.status, 'requires_host_actions');
     assert.equal(afterExport.state.stage, 'verify');
@@ -488,6 +488,57 @@ test('构建阶段宿主脚本的 warnings 透传到成功结果（data 直挂�
   // 没有 warnings 时不得凭空造出条目。
   const clean = driveDraftBuild({ id: 'html-build-script', status: 'complete', data: { ok: true } });
   assert.deepEqual(clean.data.warnings.map((item) => item.code), ['DRAFT_NOT_VERIFIED']);
+
+  // parsed 存在但里面没有 warnings 时，回落是按字段的：仍要读 data.warnings，不能因为
+  // parsed 在就整个换过去，否则真实 CLI 那一侧的 warning 会被 parsed 挡掉。
+  const fieldFallback = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { parsed: { ok: true }, warnings: [{ code: 'PREVIOUS_OUTPUT_CLOSED', message: 'y' }] },
+  });
+  assert.equal(
+    fieldFallback.data.warnings.some((item) => item.code === 'PREVIOUS_OUTPUT_CLOSED'),
+    true,
+    'parsed 没带 warnings 时必须回落到 data.warnings'
+  );
+
+  // 导出脚本自己的 warning（IDML_EXPORT_FAILED 只是警告，不是失败）也必须到达调用方，且只出现一次。
+  const exportWarned = driveDraftBuild(
+    { id: 'html-build-script', status: 'complete', data: { ok: true } },
+    {
+      id: 'html-export-script',
+      status: 'complete',
+      data: { ok: true, warnings: [{ code: 'IDML_EXPORT_FAILED', message: 'x' }] },
+    }
+  );
+  assert.deepEqual(
+    exportWarned.data.warnings.filter((item) => item.code === 'IDML_EXPORT_FAILED').length,
+    1
+  );
+
+  // details 按形状过滤：标量原样透传（不在任何白名单里的 requestedFont/appliedFont 也要活着），
+  // 对象/数组这类无界结构丢掉。
+  const withDetails = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: {
+      ok: true,
+      warnings: [{
+        code: 'FONT_FALLBACK_APPLIED',
+        message: 'z',
+        details: {
+          requestedFont: 'A',
+          appliedFont: 'B',
+          bounds: { x: 1 },
+          textLength: 12,
+          nested: [1],
+        },
+      }],
+    },
+  });
+  const fallbackEntry = withDetails.data.warnings.find((item) => item.code === 'FONT_FALLBACK_APPLIED');
+  assert.ok(fallbackEntry, 'FONT_FALLBACK_APPLIED 必须透传');
+  assert.deepEqual(fallbackEntry.details, { requestedFont: 'A', appliedFont: 'B', textLength: 12 });
 });
 
 test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，并把 stale 路径列出来', () => {
@@ -545,6 +596,135 @@ test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，�
   assert.deepEqual(response.error.details.stale, [inddPath, pdfPath, idmlPath]);
   assert.match(response.error.message, /stale from a previous build/);
   assert.equal(response.artifacts, undefined);
+});
+
+test('本轮真的覆盖了三个产物时照常完成：快照比对只认变化，不认工位时钟', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-fresh-artifacts');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  // 上一轮遗留的三个产物：先落盘再拍快照，state 里带的就是这份“开工前”的样子。
+  for (const file of [inddPath, pdfPath, idmlPath]) fs.writeFileSync(file, 'stale');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const snapshotOf = (file) => {
+    const stat = fs.statSync(file);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  };
+  const preRunDeliverables = {
+    indd: snapshotOf(inddPath),
+    pdf: snapshotOf(pdfPath),
+    idml: snapshotOf(idmlPath),
+  };
+
+  // 本轮宿主脚本把三个产物都重写了：内容与大小都变了，mtime 还往前跳了一小时
+  // （NAS 与工位的钟差常有这个量级，判定不能因此翻脸）。
+  const bumped = new Date(Date.now() + 60 * 60 * 1000);
+  for (const file of [inddPath, pdfPath, idmlPath]) {
+    fs.writeFileSync(file, 'freshly-written-by-this-run');
+    fs.utimesSync(file, bumped, bumped);
+  }
+
+  const afterExport = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+      preRunDeliverables,
+    },
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.data.ok, true);
+  assert.equal(response.data.inddPath, inddPath);
+  assert.equal(response.data.pdfPath, pdfPath);
+  assert.equal(response.data.idmlPath, idmlPath);
+  assert.equal(response.artifacts.some((item) => item.kind === 'indd' && item.path === inddPath), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'pdf' && item.path === pdfPath), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
+});
+
+test('exportIdml 关闭时不去追究上一轮遗留的旧 IDML，idmlPath 报 null 而不是报缺产物', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-idml-opt-out');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  for (const file of [inddPath, pdfPath, idmlPath]) fs.writeFileSync(file, 'stale');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const snapshotOf = (file) => {
+    const stat = fs.statSync(file);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  };
+  const preRunDeliverables = {
+    indd: snapshotOf(inddPath),
+    pdf: snapshotOf(pdfPath),
+    idml: snapshotOf(idmlPath),
+  };
+
+  // 本轮只写 INDD 与 PDF；那个 .idml 是上一轮遗留的、与开工前快照一字不差的旧文件，
+  // 本轮既没要它也没碰它，不该被算成本轮的缺件。
+  const bumped = new Date(Date.now() + 60 * 60 * 1000);
+  for (const file of [inddPath, pdfPath]) {
+    fs.writeFileSync(file, 'freshly-written-by-this-run');
+    fs.utimesSync(file, bumped, bumped);
+  }
+
+  const afterExport = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: false,
+      instructionsPath,
+      summaryPath,
+      preRunDeliverables,
+    },
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.error, undefined);
+  assert.equal(response.data.idmlPath, null);
+  assert.equal(response.data.pdfPath, pdfPath);
+  assert.equal(response.artifacts.some((item) => item.kind === 'idml'), false);
+  assert.equal(fs.existsSync(idmlPath), true);
 });
 
 test('html.build_indesign final mode requests a current-document snapshot after build', () => {
@@ -614,13 +794,23 @@ test('html.build_indesign closes its owned document before returning a fidelity 
       snapshotPath: path.join(outDir, 'missing-snapshot.json'),
       cleanupScriptPath,
     },
-    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+    // 快照脚本自己也会报 warning（预览导出失败之类）。收割 hostWarnings 早先只写在构建/导出两个
+    // 分支里，快照阶段的整批被丢掉；现在四个阶段共用一次收割，这里的条目必须活到下一段 state。
+    host_results: [{
+      id: 'html-fidelity-snapshot',
+      status: 'complete',
+      data: { ok: true, warnings: [{ code: 'PLACED_ASSET_PREVIEW_EXPORT_FAILED', message: 'preview failed' }] },
+    }],
   });
 
   assert.equal(afterSnapshot.status, 'requires_host_actions');
   assert.equal(afterSnapshot.state.stage, 'cleanup');
   assert.equal(afterSnapshot.state.pendingError.code, 'FIDELITY_INPUT_MISSING');
   assert.deepEqual(afterSnapshot.actions.map((action) => action.id), ['html-build-cleanup']);
+  assert.deepEqual(
+    (afterSnapshot.state.hostWarnings || []).map((item) => item.code),
+    ['PLACED_ASSET_PREVIEW_EXPORT_FAILED']
+  );
 
   const response = callPlugin('tools/resume', {
     state: afterSnapshot.state,

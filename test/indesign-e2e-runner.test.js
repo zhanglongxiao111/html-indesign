@@ -84,6 +84,8 @@ test('buildBuildJsx creates an isolated document and loads executor libs', () =>
 test('buildExportJsx exports IDD PDF IDML and closes the temporary document', () => {
   const jsx = buildExportJsx({
     runDir: 'D:/AI/html-indesign/test/workspace/indesign-e2e-20260524-190000',
+    // basename 由调用方给（scripts/indesign-e2e.js 传的就是这个常量），不再依赖 buildExportJsx 的默认值。
+    outputBaseName: 'architecture-report-indesign',
   });
 
   assert.match(jsx, /ExportFormat\.PDF_TYPE/);

@@ -112,9 +112,12 @@ function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-ind
 })();`;
 }
 
+// 默认 basename 曾是 E2E 冒烟用的 architecture-report-indesign，任何忘记传 outputBaseName 的
+// 调用方都会静默写出那个名字的产物。两个生产调用方（build-indesign、scripts/indesign-e2e）现在
+// 都显式传入，默认值收成和下面同一个中性回落值。
 function buildExportJsx({
   runDir,
-  outputBaseName = 'architecture-report-indesign',
+  outputBaseName = 'html-indesign-output',
   exportPdf = true,
   exportIdml = true,
   closeDocument = true,
