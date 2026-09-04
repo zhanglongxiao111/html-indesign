@@ -693,6 +693,7 @@ test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异
     state: callResponse.state,
     host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
   });
+  assert.equal(afterBuild.status, 'requires_host_actions');
   assert.equal(afterBuild.state.stage, 'snapshot');
 
   // 真实 InDesign 没跑过，所以把 instructions / expected model / snapshot 一起换成受控的两项差异：
@@ -706,6 +707,7 @@ test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异
     state: afterBuild.state,
     host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
   });
+  assert.equal(afterSnapshot.status, 'requires_host_actions');
   assert.equal(afterSnapshot.state.stage, 'cleanup');
 
   const response = callPlugin('tools/resume', {
@@ -722,7 +724,9 @@ test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异
   assert.equal(report.errors.some((entry) => entry.reason === 'overset'), true);
 
   assert.match(response.error.hint, /文本框/);
-  assert.match(response.error.hint, /forward-fidelity-report\.json/);
+  assert.match(response.error.hint, /Full list: forward-fidelity-report\.json\.$/);
+  // hint 越过第一条差异指向第二条（body 项），前缀得带上那条自己的定位，不能顶着第一条的名字。
+  assert.match(response.error.hint, /^page-1 \/ body: /);
   // 首条消息仍然报第一条差异，所以那里不该出现溢出口径。
   assert.equal(response.error.message.includes('text overset'), false);
 });
@@ -1063,6 +1067,7 @@ function oversetBehindGeometryFixture() {
       semantic: 'cover',
       layout: 'cover-grid',
       ...pageFacts,
+      // expected model 只提供页面级事实；两项条目差异都从 instructions 与 snapshot 的逐项比对里产生。
       items: [],
     }],
   };

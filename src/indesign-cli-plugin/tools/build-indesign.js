@@ -284,13 +284,18 @@ function resumeAfterSnapshot(state) {
     const first = report.errors[0] || {};
     // 首条差异未必带 hint（例如矢量几何差异排在文本溢出前面）；hint 取第一条能指路的。
     const hintCarrier = report.errors.find((entry) => typeof entry.hint === 'string' && entry.hint.trim()) || first;
+    // hintCarrier 与 first 不是同一条时，message 描述的是 first，hint 描述的是 hintCarrier；
+    // 不带定位前缀就是无名指路，得把 hintCarrier 自己的 page/item 补上。
+    const carrierLocation = hintCarrier === first
+      ? ''
+      : [hintCarrier.pageId, hintCarrier.itemId].filter(Boolean).join(' / ');
     return cleanupThenError(stateWithGateTiming, {
       code: 'FIDELITY_GATE_FAILED',
       message: fidelityFailureMessage(first, report.errors.length),
       stage: 'fidelity',
       retryable: false,
       hint: hintCarrier.hint
-        ? `${hintCarrier.hint} Full list: forward-fidelity-report.json.`
+        ? `${carrierLocation ? `${carrierLocation}: ` : ''}${hintCarrier.hint} Full list: forward-fidelity-report.json.`
         : 'Read forward-fidelity-report.json, fix the named HTML page/object/field, then start a new build.',
       details: {
         reportPath: state.fidelityReportPath,
