@@ -501,7 +501,7 @@ function compareText(expected, actual, actualModelItem, identity, context) {
     code: 'FORWARD_TEXT_CHANGED', ...identity, field: 'content.text',
     ...(overset ? {
       reason: 'overset',
-      hint: 'InDesign 文本框容不下末尾内容（读回文本是源文本的前缀）：加大文本框、缩小字号或缩短文本，然后重新构建。',
+      hint: 'InDesign 文本框容不下末尾内容（读回文本是源文本的前缀）：加大文本框或减少其内边距、缩小字号或缩短文本，然后重新构建。',
     } : {}),
   });
 

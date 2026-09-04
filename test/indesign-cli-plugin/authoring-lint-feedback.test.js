@@ -10,6 +10,7 @@ const {
   lintFailureMessage,
   underlyingHostFailure,
 } = require('../../src/indesign-cli-plugin/lint-feedback');
+const { fidelityFailureMessage } = require('../../src/indesign-cli-plugin/tools/build-indesign');
 
 // 2026-08-12 生产事故的真实作者包（已重新组装）。实测基准：56 errors / 100% GRID_ALIGNMENT_OFF /
 // 23 normalized / page-2 22、page-3 10、page-4 24 / left 52、top 50、right 3。
@@ -331,6 +332,17 @@ test('没有任何产物落盘时宿主失败保持整体失败口径', () => {
   assert.equal(response.artifacts, undefined);
 });
 
+test('fidelityFailureMessage 把溢出原因与表格差异维度写进首条消息', () => {
+  const overset = fidelityFailureMessage({ pageId: 'page-2', itemId: 'p2-el3', field: 'content.text', reason: 'overset' }, 3);
+  assert.match(overset, /at page page-2, item p2-el3, field content\.text; 3 issue\(s\) found \(text overset: the InDesign frame is too small for its text\)\./);
+
+  const table = fidelityFailureMessage({ pageId: 'page-7', itemId: 'p7-el4', field: 'table.rows', dimensions: ['header', 'paragraphStyle'] }, 8);
+  assert.match(table, /8 issue\(s\) found \(table differs in: header, paragraphStyle\)\./);
+
+  const plain = fidelityFailureMessage({ pageId: 'page-1', itemId: 'p1-el2', field: 'bounds' }, 1);
+  assert.equal(plain, 'Built InDesign content differs from the HTML source at page page-1, item p1-el2, field bounds; 1 issue(s) found.');
+});
+
 function repeatError(code, count, pageId) {
   return Array.from({ length: count }, (_value, index) => ({
     level: 'error',
@@ -347,15 +359,3 @@ function withoutReportLine(message) {
     .filter((line) => !line.startsWith('Full report: '))
     .join('\n');
 }
-
-test('fidelityFailureMessage names overset and table dimensions so the agent knows what to change', () => {
-  const { fidelityFailureMessage } = require('../../src/indesign-cli-plugin/tools/build-indesign');
-  const overset = fidelityFailureMessage({ pageId: 'page-2', itemId: 'p2-el3', field: 'content.text', reason: 'overset' }, 3);
-  assert.match(overset, /at page page-2, item p2-el3, field content\.text; 3 issue\(s\) found \(text overset: the InDesign frame is too small for its text\)\./);
-
-  const table = fidelityFailureMessage({ pageId: 'page-7', itemId: 'p7-el4', field: 'table.rows', dimensions: ['header', 'paragraphStyle'] }, 8);
-  assert.match(table, /8 issue\(s\) found \(table differs in: header, paragraphStyle\)\./);
-
-  const plain = fidelityFailureMessage({ pageId: 'page-1', itemId: 'p1-el2', field: 'bounds' }, 1);
-  assert.equal(plain, 'Built InDesign content differs from the HTML source at page page-1, item p1-el2, field bounds; 1 issue(s) found.');
-});

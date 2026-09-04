@@ -282,13 +282,15 @@ function resumeAfterSnapshot(state) {
   });
   if (!report.ok) {
     const first = report.errors[0] || {};
+    // 首条差异未必带 hint（例如矢量几何差异排在文本溢出前面）；hint 取第一条能指路的。
+    const hintCarrier = report.errors.find((entry) => typeof entry.hint === 'string' && entry.hint.trim()) || first;
     return cleanupThenError(stateWithGateTiming, {
       code: 'FIDELITY_GATE_FAILED',
       message: fidelityFailureMessage(first, report.errors.length),
       stage: 'fidelity',
       retryable: false,
-      hint: first.hint
-        ? `${first.hint} Full list: forward-fidelity-report.json.`
+      hint: hintCarrier.hint
+        ? `${hintCarrier.hint} Full list: forward-fidelity-report.json.`
         : 'Read forward-fidelity-report.json, fix the named HTML page/object/field, then start a new build.',
       details: {
         reportPath: state.fidelityReportPath,

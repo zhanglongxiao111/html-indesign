@@ -673,6 +673,60 @@ test('html.build_indesign final mode fidelity-gate failure reports failed stage 
   assert.equal('verify_ms' in metrics, false);
 });
 
+test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异，指向文本溢出', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-build-fidelity-hint-uplift');
+  const absoluteOutDir = path.join(repoRoot, outDir);
+  fs.rmSync(absoluteOutDir, { recursive: true, force: true });
+
+  const callResponse = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+      outputBaseName: 'fidelity-hint-uplift',
+      mode: 'final',
+    },
+  });
+  assert.equal(callResponse.status, 'requires_host_actions');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.state.stage, 'snapshot');
+
+  // 真实 InDesign 没跑过，所以把 instructions / expected model / snapshot 一起换成受控的两项差异：
+  // 页面内第一项是被挪走的矩形（几何差异不带 hint），第二项文本读回是源文本的严格前缀（溢出，带 hint）。
+  const fixture = oversetBehindGeometryFixture();
+  fs.writeFileSync(afterBuild.state.instructionsPath, JSON.stringify(fixture.instructions, null, 2), 'utf8');
+  fs.writeFileSync(afterBuild.state.expectedModelPath, JSON.stringify(fixture.expectedModel, null, 2), 'utf8');
+  fs.writeFileSync(afterBuild.state.snapshotPath, JSON.stringify(fixture.actualSnapshot, null, 2), 'utf8');
+
+  const afterSnapshot = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterSnapshot.state.stage, 'cleanup');
+
+  const response = callPlugin('tools/resume', {
+    state: afterSnapshot.state,
+    host_results: [{ id: 'html-build-cleanup', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'FIDELITY_GATE_FAILED');
+
+  const report = JSON.parse(fs.readFileSync(afterBuild.state.fidelityReportPath, 'utf8'));
+  assert.equal(report.errors[0].code, 'FORWARD_ITEM_GEOMETRY_CHANGED');
+  assert.equal(report.errors[0].hint, undefined);
+  assert.equal(report.errors.some((entry) => entry.reason === 'overset'), true);
+
+  assert.match(response.error.hint, /文本框/);
+  assert.match(response.error.hint, /forward-fidelity-report\.json/);
+  // 首条消息仍然报第一条差异，所以那里不该出现溢出口径。
+  assert.equal(response.error.message.includes('text overset'), false);
+});
+
 test('html.reverse_export returns script.run host action for an INDD file', () => {
   const outDir = path.join('test', 'workspace', 'plugin-reverse-smoke');
   const absoluteOutDir = path.join(repoRoot, outDir);
@@ -973,4 +1027,144 @@ function writeAuthorPackage(root, pageHtml) {
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 单页两项的最小保真夹具：页面事实全对得上，只留两处受控差异，
+// 且顺序固定为「几何差异（无 hint）在前、文本溢出（有 hint）在后」。
+function oversetBehindGeometryFixture() {
+  const sourceText = '项目策划与执行/Project planning and delivery';
+  const readBackText = '项目策划与执行/Project ';
+  const pageFacts = {
+    width: 100,
+    height: 80,
+    margins: { top: 5, right: 5, bottom: 5, left: 5 },
+    guides: [{ orientation: 'vertical', position: 50 }],
+  };
+  const pageLabel = {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'page',
+    id: 'page-1',
+    source: 'html-to-indesign',
+    semantic: 'cover',
+    layout: 'cover-grid',
+  };
+  const shapeLabel = fidelityItemLabel('panel', 'shape', 0, '');
+  const textLabel = fidelityItemLabel('body', 'text', 1, sourceText);
+
+  const expectedModel = {
+    kind: 'DocumentModel',
+    id: 'deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      semantic: 'cover',
+      layout: 'cover-grid',
+      ...pageFacts,
+      items: [],
+    }],
+  };
+  const instructions = {
+    document: { id: 'deck', parentPages: [] },
+    assets: [],
+    pages: [{
+      id: 'page-1',
+      ...pageFacts,
+      labels: [pageLabel],
+      items: [{
+        id: 'panel',
+        role: 'shape',
+        type: 'SHAPE',
+        shapeKind: 'rectangle',
+        bounds: { x: 10, y: 10, width: 80, height: 20 },
+        layer: '图形',
+        text: '',
+        runs: [],
+        labels: [shapeLabel],
+      }, {
+        id: 'body',
+        role: 'text',
+        type: 'TEXT',
+        bounds: { x: 10, y: 35, width: 80, height: 12 },
+        layer: '文字',
+        text: sourceText,
+        runs: [{ text: sourceText, characterStyle: null }],
+        labels: [textLabel],
+      }],
+    }],
+  };
+  const actualSnapshot = {
+    document: { labels: [] },
+    report: { ok: true, errors: [], oversetTextFrames: [] },
+    parentPages: [],
+    assets: [],
+    layers: [],
+    styles: {},
+    pages: [{
+      id: '1',
+      index: 0,
+      bounds: { x: 0, y: 0, width: pageFacts.width, height: pageFacts.height },
+      margins: pageFacts.margins,
+      guides: pageFacts.guides,
+      labels: [pageLabel],
+      items: [{
+        id: '201',
+        type: 'Rectangle',
+        // 差异一：矩形横向被挪了 12pt，远超容差；几何差异不带 hint。
+        bounds: { x: 22, y: 10, width: 80, height: 20 },
+        layerName: '图形',
+        paragraphStyleName: '',
+        objectStyleName: '',
+        text: '',
+        textRuns: [],
+        table: null,
+        placedAsset: null,
+        labels: [shapeLabel],
+      }, {
+        id: '202',
+        type: 'TextFrame',
+        bounds: { x: 10, y: 35, width: 80, height: 12 },
+        layerName: '文字',
+        paragraphStyleName: '',
+        objectStyleName: '',
+        // 差异二：读回文本是源文本的严格前缀 —— 溢出签名，带 hint。
+        text: readBackText,
+        textRuns: [{ text: readBackText, characterStyle: null }],
+        table: null,
+        placedAsset: null,
+        labels: [textLabel],
+      }],
+    }],
+  };
+  return { expectedModel, instructions, actualSnapshot };
+}
+
+function fidelityItemLabel(id, role, order, sourceText) {
+  const tagName = role === 'text' ? 'p' : 'div';
+  return {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id,
+    source: 'html-to-indesign',
+    role,
+    semantic: null,
+    htmlTag: tagName,
+    className: role,
+    sourceFile: 'pages/01.html',
+    sourceNode: {
+      tagName,
+      id,
+      classList: [role],
+      attributes: { id },
+    },
+    sourceText,
+    sourceHtml: null,
+    sourceRuns: [],
+    sourceAncestorNodes: [],
+    structure: { parentId: 'page-1', order, containerPolicy: 'group' },
+    layout: null,
+  };
 }
