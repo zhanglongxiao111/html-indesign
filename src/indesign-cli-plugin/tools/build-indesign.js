@@ -334,6 +334,7 @@ function cleanupThenError(state, error) {
       artifactNote: 'InDesign 文档已构建但未通过核对，未导出 INDD/PDF/IDML；'
         + '可离线复查的中间产物（instructions、读回快照、保真报告）保留在 intermediateDir。',
       intermediateDir: state.runDir || null,
+      ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
       metrics: collectMetrics(state),
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
@@ -392,6 +393,7 @@ function completeResult(state) {
       stage: 'artifacts',
       missing,
       stale,
+      ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
       metrics: collectMetrics(state),
     });
   }
@@ -443,6 +445,10 @@ function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
   const stage = state.stage || 'build';
   const finished = finishStageTiming(state);
+  // resume() 在顶部收割前就把失败结果转给这里，本阶段自己报的 warning（例如导出失败前
+  // 那条 PDF_PAGE_APPLY_FAILED）还没进 state.hostWarnings，得在这里单独补收一次；
+  // 之前阶段的 warning 已经随 state 带过来了，withHostWarnings 只是在它后面追加。
+  const withWarnings = withHostWarnings(finished, [failed]);
   const targetOpen = stage === 'build' && detail.code === 'OUTPUT_TARGET_OPEN';
   const partialArtifacts = targetOpen ? [] : landedDeliverables(state);
   const baseMessage = detail.message || `Host action failed during ${stage}.`;
@@ -468,6 +474,7 @@ function hostFailureResponse(state, failed) {
         artifactsExported: partialArtifacts.length > 0,
         partialArtifacts,
         intermediateDir: state.runDir || null,
+        ...(withWarnings.hostWarnings && withWarnings.hostWarnings.length ? { hostWarnings: withWarnings.hostWarnings } : {}),
         metrics: collectMetrics(finished),
         compatibility: state.compatibility || auditHtmlCompatibility(null),
       },
@@ -547,6 +554,7 @@ function firstFailedHostResult(hostResults) {
 const HOST_WARNING_LIMIT = 100;
 const HOST_WARNING_MESSAGE_LIMIT = 500;
 const HOST_WARNING_DETAIL_STRING_LIMIT = 200;
+const HOST_WARNING_DETAIL_KEY_LIMIT = 24;
 
 function hostScriptWarnings(hostResults) {
   const warnings = [];
@@ -578,7 +586,8 @@ function hostScriptWarnings(hostResults) {
 function hostWarningScalarDetails(details) {
   if (!details || typeof details !== 'object' || Array.isArray(details)) return null;
   const kept = {};
-  for (const key of Object.keys(details)) {
+  // 键数也要封顶，理由同对象/数组：一条 warning 带几百个标量键同样是无界载荷。
+  for (const key of Object.keys(details).slice(0, HOST_WARNING_DETAIL_KEY_LIMIT)) {
     const value = details[key];
     if (typeof value === 'string') kept[key] = clampText(value, HOST_WARNING_DETAIL_STRING_LIMIT);
     else if (typeof value === 'number' && Number.isFinite(value)) kept[key] = value;

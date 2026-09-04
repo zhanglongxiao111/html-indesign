@@ -541,6 +541,227 @@ test('宿主脚本的 warnings 透传到成功结果（data 直挂 / data.parsed
   assert.deepEqual(fallbackEntry.details, { requestedFont: 'A', appliedFont: 'B', textLength: 12 });
 });
 
+test('host warnings 上限按累计后的 state.hostWarnings 算：跨阶段/单阶段溢出都截到 100 条 + 一条计数标记', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings-cap');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  function makeWarnings(count, prefix) {
+    const list = [];
+    for (let i = 0; i < count; i += 1) list.push({ code: 'W', message: `${prefix}-${i}` });
+    return list;
+  }
+
+  function driveDraftBuild(buildHostResult, exportHostResult) {
+    const afterBuild = callPlugin('tools/resume', {
+      state: {
+        tool_id: 'html.build_indesign',
+        stage: 'build',
+        mode: 'draft',
+        runDir: outDir,
+        outputBaseName: 'plugin-smoke',
+        exportPdf: true,
+        exportIdml: true,
+        instructionsPath,
+        summaryPath,
+      },
+      host_results: [buildHostResult],
+    });
+    assert.equal(afterBuild.status, 'requires_host_actions');
+    assert.equal(afterBuild.state.stage, 'export');
+
+    const afterExport = callPlugin('tools/resume', {
+      state: afterBuild.state,
+      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(afterExport.status, 'requires_host_actions');
+    assert.equal(afterExport.state.stage, 'verify');
+
+    const complete = callPlugin('tools/resume', {
+      state: afterExport.state,
+      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(complete.status, 'complete');
+    return complete;
+  }
+
+  // 构建阶段 60 条 + 导出阶段 60 条：单阶段收割都不过 100，只有累计后才会溢出。
+  const twoStage = driveDraftBuild(
+    { id: 'html-build-script', status: 'complete', data: { ok: true, warnings: makeWarnings(60, 'build') } },
+    { id: 'html-export-script', status: 'complete', data: { ok: true, warnings: makeWarnings(60, 'export') } },
+  );
+  const twoStageWarnings = twoStage.data.warnings;
+  assert.equal(twoStageWarnings.filter((item) => item.code === 'W').length, 100);
+  const twoStageTruncated = twoStageWarnings.filter((item) => item.code === 'HOST_WARNINGS_TRUNCATED');
+  assert.equal(twoStageTruncated.length, 1);
+  assert.equal(twoStageTruncated[0].details.omitted, 20);
+  // 顺序：100 条真实 warning，然后截断标记，最后才是 DRAFT_NOT_VERIFIED。
+  assert.equal(twoStageWarnings[100].code, 'HOST_WARNINGS_TRUNCATED');
+  assert.equal(twoStageWarnings[101].code, 'DRAFT_NOT_VERIFIED');
+  assert.equal(twoStageWarnings.length, 102);
+
+  // 单阶段自己就报 120 条：同样截到 100 + 一条 omitted=20 的标记（不是四个阶段各按 100 算）。
+  const singleStage = driveDraftBuild(
+    { id: 'html-build-script', status: 'complete', data: { ok: true, warnings: makeWarnings(120, 'solo') } },
+    { id: 'html-export-script', status: 'complete', data: { ok: true } },
+  );
+  const singleStageWarnings = singleStage.data.warnings;
+  assert.equal(singleStageWarnings.filter((item) => item.code === 'W').length, 100);
+  const singleStageTruncated = singleStageWarnings.filter((item) => item.code === 'HOST_WARNINGS_TRUNCATED');
+  assert.equal(singleStageTruncated.length, 1);
+  assert.equal(singleStageTruncated[0].details.omitted, 20);
+});
+
+test('host warning details 的标量键数上限：单条 warning 30 个键截到 24 个', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings-detail-keys');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  function driveDraftBuild(buildHostResult, exportHostResult) {
+    const afterBuild = callPlugin('tools/resume', {
+      state: {
+        tool_id: 'html.build_indesign',
+        stage: 'build',
+        mode: 'draft',
+        runDir: outDir,
+        outputBaseName: 'plugin-smoke',
+        exportPdf: true,
+        exportIdml: true,
+        instructionsPath,
+        summaryPath,
+      },
+      host_results: [buildHostResult],
+    });
+    assert.equal(afterBuild.status, 'requires_host_actions');
+    assert.equal(afterBuild.state.stage, 'export');
+
+    const afterExport = callPlugin('tools/resume', {
+      state: afterBuild.state,
+      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(afterExport.status, 'requires_host_actions');
+    assert.equal(afterExport.state.stage, 'verify');
+
+    const complete = callPlugin('tools/resume', {
+      state: afterExport.state,
+      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(complete.status, 'complete');
+    return complete;
+  }
+
+  const manyKeys = {};
+  for (let i = 0; i < 30; i += 1) manyKeys[`k${i}`] = i;
+
+  const complete = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, warnings: [{ code: 'MANY_SCALAR_KEYS', message: 'x', details: manyKeys }] },
+  });
+  const entry = complete.data.warnings.find((item) => item.code === 'MANY_SCALAR_KEYS');
+  assert.ok(entry, 'MANY_SCALAR_KEYS 必须透传');
+  const keys = Object.keys(entry.details);
+  assert.equal(keys.length, 24);
+  assert.deepEqual(keys, Array.from({ length: 24 }, (_, i) => `k${i}`));
+});
+
+test('BUILD_ARTIFACTS_MISSING 时把 state.hostWarnings 一并带出（IDML_EXPORT_FAILED 是缺 IDML 的直接原因）', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-artifacts-missing-warnings');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  // INDD、PDF 正常落盘；IDML 故意不写，用来触发 BUILD_ARTIFACTS_MISSING。
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+    },
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'export');
+
+  const afterExport = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{
+      id: 'html-export-script',
+      status: 'complete',
+      data: { ok: true, warnings: [{ code: 'IDML_EXPORT_FAILED', message: 'x' }] },
+    }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'BUILD_ARTIFACTS_MISSING');
+  assert.ok(response.error.details.hostWarnings, 'BUILD_ARTIFACTS_MISSING 的 details 必须带上 hostWarnings');
+  assert.equal(
+    response.error.details.hostWarnings.some((item) => item.code === 'IDML_EXPORT_FAILED'),
+    true
+  );
+});
+
+test('宿主动作失败（hostFailureResponse）时把之前阶段的 hostWarnings 与本阶段失败结果自带的 warning 一并带出', () => {
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'final',
+      hostWarnings: [{ code: 'PREVIOUS_OUTPUT_CLOSED', message: 'z' }],
+    },
+    host_results: [{
+      id: 'html-export-script',
+      status: 'complete',
+      data: {
+        ok: false,
+        errors: [{ code: 'INDD_SAVE_FAILED', message: 'save failed' }],
+        warnings: [{ code: 'PDF_PAGE_APPLY_FAILED', message: 'y' }],
+      },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.ok(response.error.details.hostWarnings, 'hostFailureResponse 的 details 必须带上 hostWarnings');
+  const codes = response.error.details.hostWarnings.map((item) => item.code);
+  assert.equal(codes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
+  assert.equal(codes.includes('PDF_PAGE_APPLY_FAILED'), true);
+});
+
 test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，并把 stale 路径列出来', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-stale-artifacts');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -819,6 +1040,12 @@ test('html.build_indesign closes its owned document before returning a fidelity 
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'FIDELITY_INPUT_MISSING');
   assert.equal(response.error.retryable, false);
+  // cleanupThenError 现在把 state.hostWarnings 一并塞进 details：快照阶段的这条 warning
+  // 不该在 cleanup 之后的最终错误响应里消失。
+  assert.deepEqual(
+    (response.error.details.hostWarnings || []).map((item) => item.code),
+    ['PLACED_ASSET_PREVIEW_EXPORT_FAILED']
+  );
 });
 
 test('html.build_indesign states that a rejected build exported no deliverable', () => {
