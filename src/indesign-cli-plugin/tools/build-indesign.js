@@ -192,6 +192,7 @@ async function call(args, context) {
     sizeMetrics,
     lintCounts,
     compatibility: compile.compatibility || lint.compatibility,
+    runStartedAt: Date.now(),
     stageStartedAt: Date.now(),
   };
 
@@ -464,10 +465,15 @@ const DELIVERABLE_KINDS = Object.freeze([
 function landedDeliverables(state) {
   if (!state || !state.runDir) return [];
   const baseName = state.outputBaseName || 'html-indesign-output';
+  const since = Number(state.runStartedAt);
   const landed = [];
   for (const deliverable of DELIVERABLE_KINDS) {
     const file = path.join(state.runDir, `${baseName}${deliverable.extension}`);
-    if (fs.existsSync(file)) landed.push(artifact(deliverable.kind, file, deliverable.label));
+    if (!fs.existsSync(file)) continue;
+    // Files older than this run are leftovers from a previous build; reporting
+    // them as "saved" right after INDD_SAVE_FAILED would contradict the failure.
+    if (Number.isFinite(since) && fs.statSync(file).mtimeMs < since - 1000) continue;
+    landed.push(artifact(deliverable.kind, file, deliverable.label));
   }
   return landed;
 }

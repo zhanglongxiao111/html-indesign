@@ -375,7 +375,8 @@ test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable 
       mode: 'final',
       runDir: outDir,
       outputBaseName: 'deck',
-      // runStartedAt 由 Task 6 的 mtime 过滤消费；OUTPUT_TARGET_OPEN 这条路径上它不起作用。
+      // runStartedAt 已被 landedDeliverables() 的 mtime 过滤消费；OUTPUT_TARGET_OPEN 这条路径上
+      // partialArtifacts 提前短路成 []，不会走到过滤逻辑，所以它在这里不起作用。
       runStartedAt: Date.now() + 60000,
     },
     host_results: [{
@@ -425,6 +426,39 @@ test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable 
   assert.match(viaHostError.error.hint, /关闭/);
   assert.equal(viaHostError.error.details.artifactsExported, false);
   assert.deepEqual(viaHostError.error.details.partialArtifacts, []);
+});
+
+test('deliverables older than this run are not reported as saved after INDD_SAVE_FAILED', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'lint-feedback-stale-artifacts');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'deck.indd'), 'stale', 'utf8');
+  fs.writeFileSync(path.join(outDir, 'deck.pdf'), 'stale', 'utf8');
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'final',
+      runDir: outDir,
+      outputBaseName: 'deck',
+      exportPdf: true,
+      exportIdml: true,
+      runStartedAt: Date.now() + 60000,
+    },
+    host_results: [{
+      id: 'html-export-script',
+      ok: true,
+      data: { ok: false, errors: [{ code: 'INDD_SAVE_FAILED', message: '无法存储到文件“deck.indd”，因为该文件已打开。' }] },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'INDESIGN_EXPORT_FAILED');
+  assert.equal(response.error.message, '无法存储到文件“deck.indd”，因为该文件已打开。');
+  assert.equal(response.error.details.artifactsExported, false);
+  assert.deepEqual(response.error.details.partialArtifacts, []);
+  assert.equal(response.artifacts, undefined);
 });
 
 function repeatError(code, count, pageId) {
