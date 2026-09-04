@@ -127,7 +127,7 @@ function underlyingHostFailure(result) {
   const data = result && result.data;
   const errors = data && Array.isArray(data.errors) ? data.errors : [];
   if (errors[0]) return errors[0];
-  if (data && data.error) return data.error;
+  if (data && data.error) return unwrapSerializedHostError(data.error);
   if (data && data.code && data.message) return { code: data.code, message: data.message };
   return { code: null, message: null };
 }

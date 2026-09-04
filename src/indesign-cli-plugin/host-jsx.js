@@ -5,8 +5,12 @@ const path = require('node:path');
 const FINISH_FUNCTION = `
     function finish(payload) {
         if (payload && payload.ok === false && payload.errors && payload.errors.length && !payload.message) {
-            payload.code = payload.errors[0].code;
-            payload.message = payload.errors[0].message;
+            var first = payload.errors[0];
+            var text = first && typeof first === "object" ? first.message : (first ? String(first) : "");
+            if (text) {
+                payload.code = (first && first.code) || payload.code;
+                payload.message = text;
+            }
         }
         return JSON.stringify(payload);
     }
