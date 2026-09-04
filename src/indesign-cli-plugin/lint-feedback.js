@@ -73,26 +73,48 @@ function lintFailureMessage(lint, options = {}) {
 }
 
 const MAX_FIX_EXAMPLES = 3;
+const FIX_EXAMPLE_LENGTH_LIMIT = 220;
 
 // "系统性成因"只回答"是不是一处改法"，不回答"怎么改"。带 suggestedFix 的条目
 // 直接给前三条，Agent 不用先去翻完整报告才能动手。
 function fixExamplesSentence(lint) {
   const carriers = lintErrors(lint).filter((entry) => typeof entry.suggestedFix === 'string' && entry.suggestedFix.trim());
   if (!carriers.length) return '';
-  const examples = carriers.slice(0, MAX_FIX_EXAMPLES).map((entry) => {
+  const ordered = fixCarriersByRelevance(carriers, classifyLintErrors(lint).concentration);
+  const examples = ordered.slice(0, MAX_FIX_EXAMPLES).map((entry) => {
     const location = [entry.pageId, entry.itemId].filter(Boolean).join(' / ');
-    return `${location ? `${location}: ` : ''}${entry.suggestedFix.trim()}`;
+    return `${location ? `${location}: ` : ''}${clampFixExample(entry.suggestedFix.trim())}`;
   });
   const rest = carriers.length - MAX_FIX_EXAMPLES;
   const more = rest > 0 ? ` (+${rest} more in error.details.errors[].suggestedFix)` : '';
   return `Fix examples: ${examples.join(' | ')}${more}`;
 }
 
+// 上一句刚点名"这是一处系统性成因"，示例却按文件顺序取前三条，很可能三条都来自
+// 那个零散的少数派 code —— Agent 照着改完再跑，集中的那批一条没动。集中成因存在
+// 时示例必须先出自它，剩下的按文件顺序垫后。
+function fixCarriersByRelevance(carriers, concentration) {
+  if (!concentration) return carriers;
+  const preferred = carriers.filter((entry) => entry.code === concentration.code);
+  if (!preferred.length) return carriers;
+  return [...preferred, ...carriers.filter((entry) => entry.code !== concentration.code)];
+}
+
+// 首条消息是"扫一眼就能动手"，不是完整报告：单条修法本身可以很长（逐边位移清单 +
+// 成因 + 兜底豁免写法），三条不限长就会把 Full report 那行挤出视野。截断处留 …，
+// 原文仍在 error.details.errors[].suggestedFix 里。
+function clampFixExample(text) {
+  return text.length > FIX_EXAMPLE_LENGTH_LIMIT ? `${text.slice(0, FIX_EXAMPLE_LENGTH_LIMIT)}…` : text;
+}
+
 // 整包豁免不能静默：Agent 和人都要看见这个包已经豁免了多少元素。
+// 文案要点明"含继承"：计数本来就把祖先带 data-id-grid-ignore 的条目算在内
+// （isGridIgnored → hasInheritedGridIgnore），只说"carry"会让人以为要逐个元素去找属性。
 function gridExemptionSentence(lint) {
   const count = Number(lint && lint.gridIgnoredCount) || 0;
   if (!count) return '';
-  return `Grid exemptions already in this package: ${count} item(s) carry ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE}.`;
+  return `Grid exemptions already in this package: ${count} item(s) are exempt from grid checks`
+    + ` via ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} (own or inherited).`;
 }
 
 // 顶层 hint 恒为 null 视为缺陷：完整清单在别处时必须写明去哪里看。

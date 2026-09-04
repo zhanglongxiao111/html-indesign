@@ -322,7 +322,9 @@ test('html.build_indesign runs strict authoring checks internally before creatin
   assert.equal(response.error.details.ok, false);
   assert.equal(response.error.details.errorCount > 0, true);
   assert.equal(Array.isArray(response.error.details.errors), true);
-  assert.match(response.error.message, /styles\/tokens\.css/);
+  // 这个夹具触发的是页面契约缺失。原先断言的是"推荐样式文件缺失"，而 strict 已经不再
+  // 因此拦截（见 src/authoring/source-package.js），断言留着只是在测一条被撤掉的规则。
+  assert.match(response.error.message, /AUTHOR_PAGE_CONTRACT_MISSING/);
   assert.equal(fs.existsSync(path.join(root, 'output', 'build.jsx')), false);
 });
 
@@ -412,55 +414,12 @@ test('html.build_indesign draft mode exports after build and is always marked un
 });
 
 test('宿主脚本的 warnings 透传到成功结果（data 直挂 / data.parsed / 字段级回落 / 导出阶段 / details）', () => {
-  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings');
-  fs.rmSync(outDir, { recursive: true, force: true });
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const instructionsPath = path.join(outDir, 'instructions.json');
-  const summaryPath = path.join(outDir, 'compile-summary.json');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
-  fs.writeFileSync(instructionsPath, '{}');
-  fs.writeFileSync(summaryPath, '{}');
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings');
 
   const previousOutputClosed = {
     code: 'PREVIOUS_OUTPUT_CLOSED',
     message: 'Closed the unmodified previous build output that was still open: D:/run/deck.indd',
   };
-
-  function driveDraftBuild(buildHostResult, exportHostResult) {
-    const afterBuild = callPlugin('tools/resume', {
-      state: {
-        tool_id: 'html.build_indesign',
-        stage: 'build',
-        mode: 'draft',
-        runDir: outDir,
-        outputBaseName: 'plugin-smoke',
-        exportPdf: true,
-        exportIdml: true,
-        instructionsPath,
-        summaryPath,
-      },
-      host_results: [buildHostResult],
-    });
-    assert.equal(afterBuild.status, 'requires_host_actions');
-    assert.equal(afterBuild.state.stage, 'export');
-
-    const afterExport = callPlugin('tools/resume', {
-      state: afterBuild.state,
-      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
-    });
-    assert.equal(afterExport.status, 'requires_host_actions');
-    assert.equal(afterExport.state.stage, 'verify');
-
-    const complete = callPlugin('tools/resume', {
-      state: afterExport.state,
-      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
-    });
-    assert.equal(complete.status, 'complete');
-    return complete;
-  }
 
   const flat = driveDraftBuild({
     id: 'html-build-script',
@@ -542,55 +501,12 @@ test('宿主脚本的 warnings 透传到成功结果（data 直挂 / data.parsed
 });
 
 test('host warnings 上限按累计后的 state.hostWarnings 算：跨阶段/单阶段溢出都截到 100 条 + 一条计数标记', () => {
-  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings-cap');
-  fs.rmSync(outDir, { recursive: true, force: true });
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const instructionsPath = path.join(outDir, 'instructions.json');
-  const summaryPath = path.join(outDir, 'compile-summary.json');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
-  fs.writeFileSync(instructionsPath, '{}');
-  fs.writeFileSync(summaryPath, '{}');
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings-cap');
 
   function makeWarnings(count, prefix) {
     const list = [];
     for (let i = 0; i < count; i += 1) list.push({ code: 'W', message: `${prefix}-${i}` });
     return list;
-  }
-
-  function driveDraftBuild(buildHostResult, exportHostResult) {
-    const afterBuild = callPlugin('tools/resume', {
-      state: {
-        tool_id: 'html.build_indesign',
-        stage: 'build',
-        mode: 'draft',
-        runDir: outDir,
-        outputBaseName: 'plugin-smoke',
-        exportPdf: true,
-        exportIdml: true,
-        instructionsPath,
-        summaryPath,
-      },
-      host_results: [buildHostResult],
-    });
-    assert.equal(afterBuild.status, 'requires_host_actions');
-    assert.equal(afterBuild.state.stage, 'export');
-
-    const afterExport = callPlugin('tools/resume', {
-      state: afterBuild.state,
-      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
-    });
-    assert.equal(afterExport.status, 'requires_host_actions');
-    assert.equal(afterExport.state.stage, 'verify');
-
-    const complete = callPlugin('tools/resume', {
-      state: afterExport.state,
-      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
-    });
-    assert.equal(complete.status, 'complete');
-    return complete;
   }
 
   // 构建阶段 60 条 + 导出阶段 60 条：单阶段收割都不过 100，只有累计后才会溢出。
@@ -621,50 +537,7 @@ test('host warnings 上限按累计后的 state.hostWarnings 算：跨阶段/单
 });
 
 test('host warning details 的标量键数上限：单条 warning 30 个键截到 24 个', () => {
-  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings-detail-keys');
-  fs.rmSync(outDir, { recursive: true, force: true });
-  fs.mkdirSync(outDir, { recursive: true });
-
-  const instructionsPath = path.join(outDir, 'instructions.json');
-  const summaryPath = path.join(outDir, 'compile-summary.json');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
-  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
-  fs.writeFileSync(instructionsPath, '{}');
-  fs.writeFileSync(summaryPath, '{}');
-
-  function driveDraftBuild(buildHostResult, exportHostResult) {
-    const afterBuild = callPlugin('tools/resume', {
-      state: {
-        tool_id: 'html.build_indesign',
-        stage: 'build',
-        mode: 'draft',
-        runDir: outDir,
-        outputBaseName: 'plugin-smoke',
-        exportPdf: true,
-        exportIdml: true,
-        instructionsPath,
-        summaryPath,
-      },
-      host_results: [buildHostResult],
-    });
-    assert.equal(afterBuild.status, 'requires_host_actions');
-    assert.equal(afterBuild.state.stage, 'export');
-
-    const afterExport = callPlugin('tools/resume', {
-      state: afterBuild.state,
-      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
-    });
-    assert.equal(afterExport.status, 'requires_host_actions');
-    assert.equal(afterExport.state.stage, 'verify');
-
-    const complete = callPlugin('tools/resume', {
-      state: afterExport.state,
-      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
-    });
-    assert.equal(complete.status, 'complete');
-    return complete;
-  }
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings-detail-keys');
 
   const manyKeys = {};
   for (let i = 0; i < 30; i += 1) manyKeys[`k${i}`] = i;
@@ -676,6 +549,27 @@ test('host warning details 的标量键数上限：单条 warning 30 个键截�
   });
   const entry = complete.data.warnings.find((item) => item.code === 'MANY_SCALAR_KEYS');
   assert.ok(entry, 'MANY_SCALAR_KEYS 必须透传');
+  const keys = Object.keys(entry.details);
+  assert.equal(keys.length, 24);
+  assert.deepEqual(keys, Array.from({ length: 24 }, (_, i) => `k${i}`));
+});
+
+// 上限数的是"留下来的标量键"，不是"看过的键"：前面五个对象键若也占名额，真正有用的
+// 定位字段就只剩 19 个位置，而被丢掉的那五个键本来一个字节都不占。
+test('host warning details 的键数上限只数留下的标量键：5 个对象键在前也仍留 24 个标量键', () => {
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings-detail-key-order');
+
+  const mixedKeys = {};
+  for (let i = 0; i < 5; i += 1) mixedKeys[`obj${i}`] = { nested: i };
+  for (let i = 0; i < 30; i += 1) mixedKeys[`k${i}`] = i;
+
+  const complete = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, warnings: [{ code: 'MIXED_DETAIL_KEYS', message: 'x', details: mixedKeys }] },
+  });
+  const entry = complete.data.warnings.find((item) => item.code === 'MIXED_DETAIL_KEYS');
+  assert.ok(entry, 'MIXED_DETAIL_KEYS 必须透传');
   const keys = Object.keys(entry.details);
   assert.equal(keys.length, 24);
   assert.deepEqual(keys, Array.from({ length: 24 }, (_, i) => `k${i}`));
@@ -760,6 +654,40 @@ test('宿主动作失败（hostFailureResponse）时把之前阶段的 hostWarni
   const codes = response.error.details.hostWarnings.map((item) => item.code);
   assert.equal(codes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
   assert.equal(codes.includes('PDF_PAGE_APPLY_FAILED'), true);
+});
+
+// 上一条用的是插件契约里的 data 直挂形状。真实 CLI 失败时给的是
+// { ok:false, error:{ code:'INDESIGN_SCRIPT_FAILED', message:<整段 JSON 文本> } }：没有 data，
+// warnings 只存在于那段被序列化的载荷里。只按 data 收割等于在生产路径上一条都收不到。
+test('宿主失败结果被 CLI 序列化成 JSON 文本时，warning 也要从解包后的载荷里收上来', () => {
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'final',
+    },
+    host_results: [{
+      id: 'html-export-script',
+      ok: false,
+      error: {
+        code: 'INDESIGN_SCRIPT_FAILED',
+        message: JSON.stringify({
+          ok: false,
+          errors: [{ code: 'INDD_SAVE_FAILED', message: 'busy' }],
+          warnings: [{ code: 'PDF_PAGE_APPLY_FAILED', message: 'y' }],
+        }),
+      },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  // 下层 code 仍从序列化载荷里解回来（既有行为，一并锁住）。
+  assert.equal(response.error.details.causeCode, 'INDD_SAVE_FAILED');
+  assert.ok(response.error.details.hostWarnings, '序列化载荷里的 warning 必须进 details.hostWarnings');
+  const codes = response.error.details.hostWarnings.map((item) => item.code);
+  assert.equal(codes.includes('PDF_PAGE_APPLY_FAILED'), true);
+  // 同一条 warning 只能出现一次：failed 与解包后的载荷都被收割，不许重复计数。
+  assert.equal(codes.filter((code) => code === 'PDF_PAGE_APPLY_FAILED').length, 1);
 });
 
 test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，并把 stale 路径列出来', () => {
@@ -1570,6 +1498,56 @@ module.exports = {
   repoRoot,
   workspaceRoot,
 };
+
+// 三处 host warning 用例的驱动步骤此前逐字抄了三份：备好 outDir 与三个产物，再走
+// build → export → verify 的 draft 全程。抄三份的代价是口径各自漂移（改一处忘两处），
+// 收成一个助手：入参只有工作目录名，返回的就是那三个用例原来各自定义的 driveDraftBuild。
+function draftBuildDriver(workspaceName) {
+  const outDir = path.join(repoRoot, 'test', 'workspace', workspaceName);
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  return function driveDraftBuild(buildHostResult, exportHostResult) {
+    const afterBuild = callPlugin('tools/resume', {
+      state: {
+        tool_id: 'html.build_indesign',
+        stage: 'build',
+        mode: 'draft',
+        runDir: outDir,
+        outputBaseName: 'plugin-smoke',
+        exportPdf: true,
+        exportIdml: true,
+        instructionsPath,
+        summaryPath,
+      },
+      host_results: [buildHostResult],
+    });
+    assert.equal(afterBuild.status, 'requires_host_actions');
+    assert.equal(afterBuild.state.stage, 'export');
+
+    const afterExport = callPlugin('tools/resume', {
+      state: afterBuild.state,
+      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(afterExport.status, 'requires_host_actions');
+    assert.equal(afterExport.state.stage, 'verify');
+
+    const complete = callPlugin('tools/resume', {
+      state: afterExport.state,
+      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(complete.status, 'complete');
+    return complete;
+  };
+}
 
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });

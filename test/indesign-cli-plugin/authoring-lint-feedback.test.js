@@ -651,11 +651,64 @@ test('lintFailureMessage 把前三条 suggestedFix 与豁免计数写进首条�
   assert.match(message, /\| page-3 \/ p3-el1: Move #p3-el1/);
   assert.equal(message.includes('p3-el2: Move'), false, 'only the first three fixes are inlined');
   assert.match(message, /\(\+1 more in error\.details\.errors\[\]\.suggestedFix\)/);
-  assert.match(message, /Grid exemptions already in this package: 12 item\(s\) carry data-id-grid-ignore\./);
+  assert.match(
+    message,
+    /Grid exemptions already in this package: 12 item\(s\) are exempt from grid checks via data-id-grid-ignore \(own or inherited\)\./,
+  );
 
   const withoutFixes = lintFailureMessage({ errors: [{ level: 'error', code: 'HTML_TEXT_NOT_CONVERTIBLE', pageId: 'page-1', itemId: 'p1-el1', message: 'x' }], errorCount: 1 }, { strict: true });
   assert.equal(withoutFixes.includes('Fix examples'), false);
   assert.equal(withoutFixes.includes('Grid exemptions'), false);
+});
+
+// 首条消息不是完整报告：一条过长的修法会把另外两条示例和 Full report 那行挤出视野。
+test('lintFailureMessage 把过长的 suggestedFix 截到 220 字符并留下省略号', () => {
+  const message = lintFailureMessage({
+    errors: [{
+      level: 'error',
+      code: 'GRID_ALIGNMENT_OFF',
+      pageId: 'page-2',
+      itemId: 'p2-el1',
+      message: 'x',
+      suggestedFix: 'M'.repeat(300),
+    }],
+    errorCount: 1,
+  }, { strict: true });
+
+  const line = message.split('\n').find((entry) => entry.startsWith('Fix examples: '));
+  assert.ok(line, message);
+  const example = line.slice('Fix examples: page-2 / p2-el1: '.length);
+  assert.equal(example.endsWith('…'), true, example);
+  assert.equal(example.length <= 224, true, `example length ${example.length}`);
+  assert.equal(example.length, 221);
+  // 截断只发生在首条消息里，完整原文仍在 error.details.errors[].suggestedFix。
+  assert.equal(message.includes('M'.repeat(221)), false);
+});
+
+// 上一句刚说"这是一处系统性成因"，示例却来自那个零散的少数派 code，Agent 就会照着
+// 改完再跑，集中的那批一条没动。
+test('lintFailureMessage 的 Fix examples 优先取集中成因的 code，而不是文件顺序里的第一条', () => {
+  const errors = [
+    // 文件顺序里的第一条带修法的条目属于少数派 code。
+    { level: 'error', code: 'TEXT_FIRST_LINE_CANNOT_FIT', pageId: 'page-1', itemId: 'p1-el9', message: 'x', suggestedFix: 'Enlarge #p1-el9 so the first line fits.' },
+    ...Array.from({ length: 4 }, (_value, index) => ({
+      level: 'error',
+      code: 'GRID_ALIGNMENT_OFF',
+      pageId: 'page-2',
+      itemId: `p2-el${index + 1}`,
+      message: 'x',
+      suggestedFix: `Move #p2-el${index + 1} left edge to 10mm (-3mm).`,
+    })),
+  ];
+  const message = lintFailureMessage({ errors, errorCount: 5 }, { strict: true });
+
+  const line = message.split('\n').find((entry) => entry.startsWith('Fix examples: '));
+  assert.ok(line, message);
+  const [first] = line.slice('Fix examples: '.length).split(' | ');
+  assert.match(first, /^page-2 \/ p2-el1: Move #p2-el1 left edge/, line);
+  // 少数派那条没有被丢掉，只是排到集中成因后面，本例里被三条上限挤出示例。
+  assert.equal(line.includes('p1-el9'), false, line);
+  assert.match(line, /\(\+2 more in error\.details\.errors\[\]\.suggestedFix\)/);
 });
 
 function deliverableSnapshot(file) {

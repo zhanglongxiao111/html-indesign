@@ -259,6 +259,9 @@ async function resume(params) {
 
   return errorResponse('BUILD_STATE_INVALID', `Unknown html.build_indesign stage: ${state.stage || 'missing'}`, {
     stage: state.stage || null,
+    // 其余三条失败出口都带 hostWarnings，这里也带：阶段名对不上时之前阶段收到的
+    // warning 往往正是解释"怎么走到这一步"的线索，没理由只在这个出口丢掉。
+    ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
     metrics: collectMetrics(state),
   });
 }
@@ -462,7 +465,15 @@ function hostFailureResponse(state, failed) {
   // resume() 在顶部收割前就把失败结果转给这里，本阶段自己报的 warning（例如导出失败前
   // 那条 PDF_PAGE_APPLY_FAILED）还没进 state.hostWarnings，得在这里单独补收一次；
   // 之前阶段的 warning 已经随 state 带过来了，withHostWarnings 只是在它后面追加。
-  const withWarnings = withHostWarnings(finished, [failed]);
+  //
+  // 真实 CLI 的失败形状是 { ok:false, error:{ code:'INDESIGN_SCRIPT_FAILED', message:<整段
+  // JSON 文本> } }，根本没有 data —— 只收 failed 就等于在生产路径上一条 warning 都收不到。
+  // unwrapSerializedHostError 已经把那段文本解成 detail.hostResult，这里按 data 的形状再收
+  // 一次；插件契约/测试的 data 直挂形状不产出 hostResult，因此不会重复计数。
+  const withWarnings = withHostWarnings(finished, [
+    failed,
+    ...(detail.hostResult && typeof detail.hostResult === 'object' ? [{ data: detail.hostResult }] : []),
+  ]);
   const targetOpen = stage === 'build' && detail.code === 'OUTPUT_TARGET_OPEN';
   const partialArtifacts = targetOpen ? [] : landedDeliverables(state);
   const baseMessage = detail.message || `Host action failed during ${stage}.`;
@@ -601,11 +612,17 @@ function hostWarningScalarDetails(details) {
   if (!details || typeof details !== 'object' || Array.isArray(details)) return null;
   const kept = {};
   // 键数也要封顶，理由同对象/数组：一条 warning 带几百个标量键同样是无界载荷。
-  for (const key of Object.keys(details).slice(0, HOST_WARNING_DETAIL_KEY_LIMIT)) {
+  // 但上限只能数"留下来的标量键"：先对键名 slice 的话，排在前面的对象/数组键会把名额
+  // 花在根本不会留下的键上（bounds 之类占五个名额，后面真正有用的定位字段就被挤没了）。
+  let keptCount = 0;
+  for (const key of Object.keys(details)) {
+    if (keptCount >= HOST_WARNING_DETAIL_KEY_LIMIT) break;
     const value = details[key];
     if (typeof value === 'string') kept[key] = clampText(value, HOST_WARNING_DETAIL_STRING_LIMIT);
     else if (typeof value === 'number' && Number.isFinite(value)) kept[key] = value;
     else if (typeof value === 'boolean') kept[key] = value;
+    else continue;
+    keptCount += 1;
   }
   return Object.keys(kept).length ? kept : null;
 }
