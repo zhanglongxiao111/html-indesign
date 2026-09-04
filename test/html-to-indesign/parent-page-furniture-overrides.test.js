@@ -15,7 +15,7 @@ test('compileInstructions emits per-page parent-page furniture overrides with pe
   });
 
   const overridesByPage = instructions.pages.map((page) => page.parentPageItemOverrides || []);
-  assert.equal(overridesByPage.length, 7);
+  assert.equal(overridesByPage.length, 8);
   for (const overrides of overridesByPage) {
     assert.equal(overrides.length, 1);
     const override = overrides[0];
@@ -28,7 +28,7 @@ test('compileInstructions emits per-page parent-page furniture overrides with pe
   }
   assert.deepEqual(
     overridesByPage.map((overrides) => overrides[0].text),
-    ['00', '01', '02', '03', '04', '05', '06'],
+    ['00', '01', '02', '03', '04', '05', '06', '07'],
   );
   assert.deepEqual(
     overridesByPage.map((overrides) => overrides[0].id).slice(0, 2),
