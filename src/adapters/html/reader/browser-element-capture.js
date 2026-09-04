@@ -61,14 +61,19 @@
   }
 
   function sourceNodeFor(el, pageEl, extra) {
+    const gridPlaced = isGridPlaced(el);
     const node = {
       tagName: el.tagName.toLowerCase(),
       id: el.id || null,
       classList: classList(el),
       attributes: attrs(el),
       sourcePath: sourcePathFor(el, pageEl),
-      gridPlaced: isGridPlaced(el),
+      gridPlaced,
     };
+    // A node that carries grid placement is the block responsible for its
+    // subtree's alignment, so the lint needs its own geometry. Nodes that place
+    // nothing are never measured and stay geometry-free.
+    if (gridPlaced) node.rectPx = rectObject(el.getBoundingClientRect());
     if (extra) {
       for (const key of Object.keys(extra)) node[key] = extra[key];
     }
@@ -153,15 +158,24 @@
     return out;
   }
 
-  // An element "carries grid placement" when the author pinned it to the page
-  // grid: its own --grid-col/--grid-row custom properties, the grid-item
-  // class, or an explicit CSS grid-column/grid-row start. Its descendants are
-  // that block's content and are never measured against the page grid.
+  // An element "carries grid placement" when it declares explicit placement on
+  // its own grid container — the page grid or a nested one: the grid-item class,
+  // its own --grid-col/--grid-row custom properties, or a CSS
+  // grid-column/grid-row start resolved against a parent that really is a grid.
+  // That last branch must be gated: a stray grid-column on a block inside an
+  // absolutely-positioned host resolves to a non-auto start without placing
+  // anything, and would silently shield the whole subtree. This is only valid
+  // as a skip signal for the element's descendants and as the block responsible
+  // for the alignment of that subtree.
   function isGridPlaced(el) {
     if (!el || el.nodeType !== 1) return false;
+    if (classList(el).includes('grid-item')) return true;
     const own = cssVarsFor(el);
     if (own['--grid-col'] || own['--grid-row']) return true;
-    if (classList(el).includes('grid-item')) return true;
+    const parent = el.parentElement;
+    if (!parent) return false;
+    const parentDisplay = String(getComputedStyle(parent).display || '').toLowerCase();
+    if (!parentDisplay.includes('grid')) return false;
     const style = getComputedStyle(el);
     return ['gridColumnStart', 'gridRowStart'].some((prop) => {
       const value = String(style[prop] || '').trim().toLowerCase();
