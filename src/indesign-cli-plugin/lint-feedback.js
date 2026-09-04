@@ -123,12 +123,29 @@ function withoutLintSnapshot(lint) {
 
 // 宿主动作失败时，下层已经算好的 code 与真实文本必须保留，不得只报动作 ID。
 function underlyingHostFailure(result) {
-  if (result && result.error) return result.error;
+  if (result && result.error) return unwrapSerializedHostError(result.error);
   const data = result && result.data;
   const errors = data && Array.isArray(data.errors) ? data.errors : [];
   if (errors[0]) return errors[0];
   if (data && data.error) return data.error;
+  if (data && data.code && data.message) return { code: data.code, message: data.message };
   return { code: null, message: null };
+}
+
+// CLI 的 script.run 遇到 ok:false 且没有顶层 message 的脚本结果时，会把整段
+// JSON 当作 error.message。这里把首条结构化错误解回来，原文放 hostResult。
+function unwrapSerializedHostError(error) {
+  const message = error && typeof error.message === 'string' ? error.message.trim() : '';
+  if (!message.startsWith('{')) return error;
+  let parsed;
+  try {
+    parsed = JSON.parse(message);
+  } catch (_) {
+    return error;
+  }
+  const first = parsed && Array.isArray(parsed.errors) ? parsed.errors[0] : null;
+  if (!first || !first.message) return error;
+  return { ...error, code: first.code || error.code, message: first.message, hostResult: parsed };
 }
 
 // outDir 是 Agent 可控参数，必须和其他吃 outDir 的工具受同一道围栏约束。

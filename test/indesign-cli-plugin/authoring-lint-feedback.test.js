@@ -266,6 +266,25 @@ test('underlyingHostFailure 从共享模块导出，保留下层 code 与文本'
   assert.deepEqual(underlyingHostFailure({}), { code: null, message: null });
 });
 
+test('underlyingHostFailure 把被 CLI 序列化成 JSON 文本的脚本结果解回首条结构化错误', () => {
+  const blob = JSON.stringify({
+    ok: false,
+    outputs: { pdf: 'D:/run/deck.pdf' },
+    errors: [{ code: 'INDD_SAVE_FAILED', message: '无法存储到文件“deck.indd”，因为该文件已打开。' }],
+    audit: { panelNames: { layers: ['内容'] } },
+  });
+  const failure = underlyingHostFailure({ error: { code: 'INDESIGN_SCRIPT_FAILED', message: blob } });
+  assert.equal(failure.code, 'INDD_SAVE_FAILED');
+  assert.equal(failure.message, '无法存储到文件“deck.indd”，因为该文件已打开。');
+  assert.equal(failure.hostResult.outputs.pdf, 'D:/run/deck.pdf');
+
+  const plain = underlyingHostFailure({ error: { code: 'X', message: 'not json' } });
+  assert.deepEqual(plain, { code: 'X', message: 'not json' });
+
+  const lifted = underlyingHostFailure({ data: { ok: false, code: 'OUTPUT_TARGET_OPEN', message: 'busy' } });
+  assert.deepEqual(lifted, { code: 'OUTPUT_TARGET_OPEN', message: 'busy' });
+});
+
 test('导出后宿主失败必须报出已落盘的 INDD/PDF/IDML，而不是整体吞掉', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'lint-feedback-partial-artifacts');
   fs.rmSync(outDir, { recursive: true, force: true });

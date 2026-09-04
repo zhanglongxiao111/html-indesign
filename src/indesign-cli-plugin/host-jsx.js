@@ -1,9 +1,21 @@
 const path = require('node:path');
 
+// 每个宿主脚本都用它收尾：脚本失败时把 errors[0] 抬到顶层 code/message。
+// CLI 的 script.run 只认顶层 message，没有就把整段 JSON 当文案给 Agent。
+const FINISH_FUNCTION = `
+    function finish(payload) {
+        if (payload && payload.ok === false && payload.errors && payload.errors.length && !payload.message) {
+            payload.code = payload.errors[0].code;
+            payload.message = payload.errors[0].message;
+        }
+        return JSON.stringify(payload);
+    }
+`;
+
 function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-indesign-e2e' }) {
   const base = toJsxPath(repoRoot);
   const instructions = toJsxPath(instructionsPath);
-  return `(function () {
+  return `(function () {${FINISH_FUNCTION}
     var base = ${JSON.stringify(base)};
     function includeLib(name) {
         var lib = File(base + "/_indesign_scripts/lib/" + name);
@@ -56,7 +68,7 @@ function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-ind
         }
     }
 
-    return JSON.stringify(result);
+    return finish(result);
 })();`;
 }
 
@@ -107,7 +119,7 @@ function buildExportJsx({
 ` : `
     result.closed = false;
 `;
-  return `(function () {
+  return `(function () {${FINISH_FUNCTION}
     var runDir = ${JSON.stringify(outDir)};
     var result = { ok: true, outputs: {}, counts: {}, errors: [], warnings: [] };
 
@@ -118,14 +130,14 @@ function buildExportJsx({
 
     if (app.documents.length < 1) {
         add("error", "NO_ACTIVE_DOCUMENT", "No active document to export.");
-        return JSON.stringify(result);
+        return finish(result);
     }
 
     var doc = app.activeDocument;
     var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
     if (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker) {
         add("error", "ACTIVE_DOCUMENT_MISMATCH", "The active InDesign document does not belong to this build run.");
-        return JSON.stringify(result);
+        return finish(result);
     }
     var indd = File(runDir + "/${escapeJsxString(baseName)}.indd");
 ${pdfDeclaration}
@@ -201,7 +213,7 @@ ${idmlExportBlock}
 
 ${closeBlock}
 
-    return JSON.stringify(result);
+    return finish(result);
 })();`;
 }
 
@@ -229,7 +241,7 @@ function buildReverseSnapshotJsx({
         if (result.ok !== false) result.ok = true;
     }
 ` : '';
-  return `(function () {
+  return `(function () {${FINISH_FUNCTION}
     var result = { ok: false, outputPath: ${JSON.stringify(output)}, errors: [], warnings: [] };
     var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
     var ownedDocument = null;
@@ -265,22 +277,22 @@ function buildReverseSnapshotJsx({
         }
     }
 ${closeBlock}
-    return JSON.stringify(result);
+    return finish(result);
 })();`;
 }
 
 function buildCloseJsx({ expectedMarker }) {
   const marker = String(expectedMarker || '');
-  return `(function () {
+  return `(function () {${FINISH_FUNCTION}
     var result = { ok: false, closed: false, errors: [], warnings: [] };
     if (app.documents.length < 1) {
         result.ok = true;
-        return JSON.stringify(result);
+        return finish(result);
     }
     var doc = app.activeDocument;
     if (${JSON.stringify(marker)} && doc.extractLabel("html_indesign_e2e_marker") !== ${JSON.stringify(marker)}) {
         result.errors.push({ code: "ACTIVE_DOCUMENT_MISMATCH", message: "Refusing to close a document not created by this build run." });
-        return JSON.stringify(result);
+        return finish(result);
     }
     try {
         doc.close(SaveOptions.NO);
@@ -289,7 +301,7 @@ function buildCloseJsx({ expectedMarker }) {
     } catch (error) {
         result.errors.push({ code: "BUILD_DOCUMENT_CLOSE_FAILED", message: String(error) });
     }
-    return JSON.stringify(result);
+    return finish(result);
 })();`;
 }
 
