@@ -287,7 +287,9 @@ function resumeAfterSnapshot(state) {
       message: fidelityFailureMessage(first, report.errors.length),
       stage: 'fidelity',
       retryable: false,
-      hint: 'Read forward-fidelity-report.json, fix the named HTML page/object/field, then start a new build.',
+      hint: first.hint
+        ? `${first.hint} Full list: forward-fidelity-report.json.`
+        : 'Read forward-fidelity-report.json, fix the named HTML page/object/field, then start a new build.',
       details: {
         reportPath: state.fidelityReportPath,
         summary: report.summary,
@@ -546,7 +548,13 @@ function fidelityFailureMessage(first, count) {
     first.itemId ? `item ${first.itemId}` : null,
     first.field ? `field ${first.field}` : null,
   ].filter(Boolean).join(', ');
-  return `Built InDesign content differs from the HTML source${location ? ` at ${location}` : ''}; ${count} issue(s) found.`;
+  // 首条差异的原因直接进 message：Agent 只读 message 就能决定是改框还是改内容。
+  const detail = first.reason === 'overset'
+    ? ' (text overset: the InDesign frame is too small for its text)'
+    : Array.isArray(first.dimensions) && first.dimensions.length
+      ? ` (table differs in: ${first.dimensions.join(', ')})`
+      : '';
+  return `Built InDesign content differs from the HTML source${location ? ` at ${location}` : ''}; ${count} issue(s) found${detail}.`;
 }
 
 function errorResponse(code, message, details) {
@@ -606,4 +614,6 @@ function buildMetrics(values) {
 module.exports = {
   call,
   resume,
+  // 仅供测试断言文案；宿主只走 call/resume。
+  fidelityFailureMessage,
 };

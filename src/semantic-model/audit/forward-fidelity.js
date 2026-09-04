@@ -496,8 +496,13 @@ function compareText(expected, actual, actualModelItem, identity, context) {
       ? actualModelItem.content.text
       : actual.text || '',
   );
+  const overset = isOversetTruncation(expectedText, actualText);
   compareField(context, 'items[].content.text', expectedText, actualText, {
     code: 'FORWARD_TEXT_CHANGED', ...identity, field: 'content.text',
+    ...(overset ? {
+      reason: 'overset',
+      hint: 'InDesign 文本框容不下末尾内容（读回文本是源文本的前缀）：加大文本框、缩小字号或缩短文本，然后重新构建。',
+    } : {}),
   });
 
   const expectedRuns = runFacts(expected.runs);
@@ -506,6 +511,15 @@ function compareText(expected, actual, actualModelItem, identity, context) {
   compareField(context, 'items[].content.runs', expectedRuns, actualRuns, {
     code: 'FORWARD_TEXT_RUNS_CHANGED', ...identity, field: 'content.runs',
   });
+}
+
+// A read-back text that is a strict prefix of the source is the signature of
+// an overset frame: InDesign composed what fit and dropped the rest.
+function isOversetTruncation(expectedText, actualText) {
+  const expectedTrim = String(expectedText || '').replace(/\s+$/, '');
+  const actualTrim = String(actualText || '').replace(/\s+$/, '');
+  if (!expectedTrim || actualTrim.length >= expectedTrim.length) return false;
+  return expectedTrim.startsWith(actualTrim);
 }
 
 function compareTable(expectedRows, actualTable, identity, context) {

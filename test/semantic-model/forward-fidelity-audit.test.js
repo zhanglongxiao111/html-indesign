@@ -340,6 +340,33 @@ test('forward fidelity audit names the rowCount dimension when rows are missing'
   assert.deepEqual(issue.dimensions, ['rowCount']);
 });
 
+test('forward fidelity audit flags a read-back prefix as overset with a hint', () => {
+  const fixture = matchingFixture();
+  fixture.instructions.pages[0].items[0].text = '项目策划/Project planning';
+  fixture.actualSnapshot.pages[0].items[0].text = '项目策划/Project ';
+  fixture.actualModel.pages[0].items[0].content.text = '项目策划/Project ';
+
+  const report = auditForwardFidelity(fixture);
+
+  const issue = report.errors.find((entry) => entry.code === 'FORWARD_TEXT_CHANGED' && entry.field === 'content.text');
+  assert.ok(issue, 'truncated text must still fail');
+  assert.equal(issue.reason, 'overset');
+  assert.match(issue.hint, /文本框/);
+});
+
+test('forward fidelity audit does not call a genuinely different text overset', () => {
+  const fixture = matchingFixture();
+  fixture.instructions.pages[0].items[0].text = 'Alpha';
+  fixture.actualSnapshot.pages[0].items[0].text = 'Beta';
+  fixture.actualModel.pages[0].items[0].content.text = 'Beta';
+
+  const report = auditForwardFidelity(fixture);
+
+  const issue = report.errors.find((entry) => entry.code === 'FORWARD_TEXT_CHANGED' && entry.field === 'content.text');
+  assert.ok(issue);
+  assert.equal(issue.reason, undefined);
+});
+
 test('forward fidelity audit compares rotated lines by endpoints', () => {
   const fixture = matchingFixture();
   const expectedLine = {

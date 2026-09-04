@@ -347,3 +347,15 @@ function withoutReportLine(message) {
     .filter((line) => !line.startsWith('Full report: '))
     .join('\n');
 }
+
+test('fidelityFailureMessage names overset and table dimensions so the agent knows what to change', () => {
+  const { fidelityFailureMessage } = require('../../src/indesign-cli-plugin/tools/build-indesign');
+  const overset = fidelityFailureMessage({ pageId: 'page-2', itemId: 'p2-el3', field: 'content.text', reason: 'overset' }, 3);
+  assert.match(overset, /at page page-2, item p2-el3, field content\.text; 3 issue\(s\) found \(text overset: the InDesign frame is too small for its text\)\./);
+
+  const table = fidelityFailureMessage({ pageId: 'page-7', itemId: 'p7-el4', field: 'table.rows', dimensions: ['header', 'paragraphStyle'] }, 8);
+  assert.match(table, /8 issue\(s\) found \(table differs in: header, paragraphStyle\)\./);
+
+  const plain = fidelityFailureMessage({ pageId: 'page-1', itemId: 'p1-el2', field: 'bounds' }, 1);
+  assert.equal(plain, 'Built InDesign content differs from the HTML source at page page-1, item p1-el2, field bounds; 1 issue(s) found.');
+});
