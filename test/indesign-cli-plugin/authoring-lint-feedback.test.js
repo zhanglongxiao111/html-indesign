@@ -616,6 +616,27 @@ test('only deliverables that changed since the pre-run snapshot are reported as 
   assert.equal(response.error.details.artifactsExported, true);
 });
 
+test('lintFailureMessage 把前三条 suggestedFix 与豁免计数写进首条消息', () => {
+  const errors = [
+    { level: 'error', code: 'GRID_ALIGNMENT_OFF', pageId: 'page-2', itemId: 'p2-el4', message: 'Item edges do not align to the declared authoring grid: left at 13mm is 3mm right of the column line at 10mm.', edges: ['left'], suggestedFix: 'Move #p2-el4 left edge to 10mm (-3mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked.' },
+    { level: 'error', code: 'GRID_ALIGNMENT_OFF', pageId: 'page-2', itemId: 'p2-el5', message: 'x', edges: ['top'], suggestedFix: 'Move #p2-el5 top edge to 41mm (+2mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked.' },
+    { level: 'error', code: 'GRID_ALIGNMENT_OFF', pageId: 'page-3', itemId: 'p3-el1', message: 'x', edges: ['left'], suggestedFix: 'Move #p3-el1 left edge to 10mm (-1.5mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked.' },
+    { level: 'error', code: 'GRID_ALIGNMENT_OFF', pageId: 'page-3', itemId: 'p3-el2', message: 'x', edges: ['left'], suggestedFix: 'Move #p3-el2 left edge to 10mm (-1mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked.' },
+  ];
+  const message = lintFailureMessage({ errors, errorCount: 4, gridIgnoredCount: 12 }, { strict: true });
+
+  assert.match(message, /Fix examples: page-2 \/ p2-el4: Move #p2-el4 left edge to 10mm \(-3mm\)/);
+  assert.match(message, /\| page-2 \/ p2-el5: Move #p2-el5 top edge/);
+  assert.match(message, /\| page-3 \/ p3-el1: Move #p3-el1/);
+  assert.equal(message.includes('p3-el2: Move'), false, 'only the first three fixes are inlined');
+  assert.match(message, /\(\+1 more in error\.details\.errors\[\]\.suggestedFix\)/);
+  assert.match(message, /Grid exemptions already in this package: 12 item\(s\) carry data-id-grid-ignore\./);
+
+  const withoutFixes = lintFailureMessage({ errors: [{ level: 'error', code: 'HTML_TEXT_NOT_CONVERTIBLE', pageId: 'page-1', itemId: 'p1-el1', message: 'x' }], errorCount: 1 }, { strict: true });
+  assert.equal(withoutFixes.includes('Fix examples'), false);
+  assert.equal(withoutFixes.includes('Grid exemptions'), false);
+});
+
 function deliverableSnapshot(file) {
   const stat = fs.statSync(file);
   return { mtimeMs: stat.mtimeMs, size: stat.size };

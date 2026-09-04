@@ -27,16 +27,20 @@ const tools = [
     // "Run indesign-cli export verify"——本工具产出的是 JSON 报告，不是可校验的成品。
     common_next_steps: [
       '失败时先读 error.details.errors，按 code 分类看分布，不要逐条改。',
-      '同一 code 高度集中时是单一系统性成因：改网格声明、调 gridTolerance，或对个别元素声明网格豁免属性（见 Skill 的 HTML 创作章节）。',
+      '同一 code 高度集中时是单一系统性成因：先看首条消息里的 Fix examples 与每条的 edgeOffsets/suggestedFix；'
+        + 'GRID_ALIGNMENT_OFF 只量承担网格放置的块（grid-item / --grid-col 的元素），块内内容不检查，'
+        + '所以通常是块本身没坐在网格上或网格声明与 CSS 不符。gridTolerance 只用于确认版式正确后的取整误差。',
       '通过后再调用 html.build_indesign；本工具默认 strict:false，而 build 内部固定 strict:true。',
     ],
     return_example: { status: 'complete', data: { ok: true, issueCount: 0 }, artifacts: [] },
     failure_example: {
       code: 'AUTHORING_LINT_FAILED',
-      message: 'Strict authoring checks found 73 errors (GRID_ALIGNMENT_OFF: 73). '
-        + 'All errors share code GRID_ALIGNMENT_OFF — this is one systemic cause, not 73 independent fixes. '
-        + 'Affected: page-2 (27), page-3 (15), page-4 (31); edges top/left/right. '
-        + 'First issue at page-2 / p2-el1: Item edges do not align to the declared authoring grid. '
+      message: 'Strict authoring checks found 12 errors (GRID_ALIGNMENT_OFF: 12). '
+        + 'All 12 errors share code GRID_ALIGNMENT_OFF — this is one systemic cause, not 12 independent fixes. '
+        + 'Affected: page-2 (7), page-3 (5); edges left/top. '
+        + 'First issue at page-2 / p2-el1: Item edges do not align to the declared authoring grid: left at 13mm is 3mm right of the column line at 10mm. '
+        + 'Fix examples: page-2 / p2-el1: Move #p2-el1 left edge to 10mm (-3mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked. '
+        + '(+11 more in error.details.errors[].suggestedFix) '
         + 'Full report: <outDir>\\authoring-lint-report.json',
     },
   },
@@ -167,7 +171,8 @@ const schemas = {
         type: 'number',
         default: 1,
         minimum: 0,
-        description: '网格对齐容差，单位 mm；用于放宽 GRID_ALIGNMENT_OFF 的判定阈值，默认 1mm。',
+        description: '网格对齐容差，单位 mm，默认 1mm。GRID_ALIGNMENT_OFF 只量承担网格放置的块（grid-item / --grid-col 元素），'
+          + '块内内容不检查；条目自带 edgeOffsets 与 suggestedFix。放宽容差只用于确认版式正确后的取整误差，不要用它盖住真实偏差。',
       },
       outDir: {
         type: 'string',
@@ -225,7 +230,8 @@ const schemas = {
         type: 'number',
         default: 1,
         minimum: 0,
-        description: '网格对齐容差，单位 mm；用于放宽严格作者检查阶段 GRID_ALIGNMENT_OFF 的判定阈值，默认 1mm。',
+        description: '网格对齐容差，单位 mm，默认 1mm。GRID_ALIGNMENT_OFF 只量承担网格放置的块（grid-item / --grid-col 元素），'
+          + '块内内容不检查；条目自带 edgeOffsets 与 suggestedFix。放宽容差只用于确认版式正确后的取整误差，不要用它盖住真实偏差。',
       },
     },
   },

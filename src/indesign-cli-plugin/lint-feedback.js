@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { isPathInside } = require('../shared');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const { writeReportFile } = require('./report-archive');
 
 const MAX_LISTED_CODES = 3;
@@ -62,9 +63,36 @@ function lintFailureMessage(lint, options = {}) {
 
   const firstIssue = firstIssueSentence(lint);
   if (firstIssue) lines.push(firstIssue);
+  const fixes = fixExamplesSentence(lint);
+  if (fixes) lines.push(fixes);
+  const exemptions = gridExemptionSentence(lint);
+  if (exemptions) lines.push(exemptions);
   if (options.reportPath) lines.push(`Full report: ${options.reportPath}`);
 
   return lines.join('\n');
+}
+
+const MAX_FIX_EXAMPLES = 3;
+
+// "系统性成因"只回答"是不是一处改法"，不回答"怎么改"。带 suggestedFix 的条目
+// 直接给前三条，Agent 不用先去翻完整报告才能动手。
+function fixExamplesSentence(lint) {
+  const carriers = lintErrors(lint).filter((entry) => typeof entry.suggestedFix === 'string' && entry.suggestedFix.trim());
+  if (!carriers.length) return '';
+  const examples = carriers.slice(0, MAX_FIX_EXAMPLES).map((entry) => {
+    const location = [entry.pageId, entry.itemId].filter(Boolean).join(' / ');
+    return `${location ? `${location}: ` : ''}${entry.suggestedFix.trim()}`;
+  });
+  const rest = carriers.length - MAX_FIX_EXAMPLES;
+  const more = rest > 0 ? ` (+${rest} more in error.details.errors[].suggestedFix)` : '';
+  return `Fix examples: ${examples.join(' | ')}${more}`;
+}
+
+// 整包豁免不能静默：Agent 和人都要看见这个包已经豁免了多少元素。
+function gridExemptionSentence(lint) {
+  const count = Number(lint && lint.gridIgnoredCount) || 0;
+  if (!count) return '';
+  return `Grid exemptions already in this package: ${count} item(s) carry ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE}.`;
 }
 
 // 顶层 hint 恒为 null 视为缺陷：完整清单在别处时必须写明去哪里看。
