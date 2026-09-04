@@ -147,6 +147,7 @@ async function call(args, context) {
     repoRoot: pluginRoot,
     instructionsPath: compile.instructionsPath,
     marker: runMarker,
+    targetInddPath: path.join(compile.outDir, `${outputBaseName}.indd`),
   }), 'utf8');
   fs.writeFileSync(snapshotScriptPath, buildReverseSnapshotJsx({
     repoRoot: pluginRoot,
@@ -409,24 +410,29 @@ function completeResult(state) {
 
 // 导出阶段可能只失败一半：INDD 已经落盘、PDF 没有。把整次调用报成失败而不提已落盘产物，
 // 调用方就无法判断重跑范围。cleanupThenError() 已是这个模式，这里对称应用。
+// OUTPUT_TARGET_OPEN 是构建前预检：什么都没写，原因也不是作者源码，单独映射并标记可重试。
 function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
   const stage = state.stage || 'build';
   const finished = finishStageTiming(state);
-  const partialArtifacts = landedDeliverables(state);
+  const targetOpen = detail.code === 'OUTPUT_TARGET_OPEN';
+  const partialArtifacts = targetOpen ? [] : landedDeliverables(state);
   const baseMessage = detail.message || `Host action failed during ${stage}.`;
   const prefix = landedArtifactPrefix(partialArtifacts);
+  const hint = targetOpen
+    ? '目标 INDD 正在 InDesign 中打开：在 InDesign 里关闭它（或改用其他 outputBaseName），然后重跑同一命令。'
+    : partialArtifacts.length
+      ? '已落盘的产物见 error.details.partialArtifacts，重跑前先确认是否需要保留；'
+        + 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.'
+      : 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.';
   return {
     status: 'error',
     error: {
-      code: STAGE_ERROR_CODES[stage] || 'HOST_ACTION_FAILED',
+      code: targetOpen ? 'OUTPUT_TARGET_OPEN' : (STAGE_ERROR_CODES[stage] || 'HOST_ACTION_FAILED'),
       message: prefix ? `${prefix}${baseMessage}` : baseMessage,
       stage,
-      retryable: false,
-      hint: partialArtifacts.length
-        ? '已落盘的产物见 error.details.partialArtifacts，重跑前先确认是否需要保留；'
-          + 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.'
-        : 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.',
+      retryable: targetOpen,
+      hint,
       details: {
         causeCode: detail.code || null,
         hostResult: failed,

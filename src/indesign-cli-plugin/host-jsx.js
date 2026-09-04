@@ -16,9 +16,10 @@ const FINISH_FUNCTION = `
     }
 `;
 
-function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-indesign-e2e' }) {
+function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-indesign-e2e', targetInddPath = null }) {
   const base = toJsxPath(repoRoot);
   const instructions = toJsxPath(instructionsPath);
+  const targetIndd = targetInddPath ? JSON.stringify(toJsxPath(targetInddPath)) : 'null';
   return `(function () {${FINISH_FUNCTION}
     var base = ${JSON.stringify(base)};
     function includeLib(name) {
@@ -44,8 +45,42 @@ function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-ind
     includeLib("hi_executor.jsxinc");
 
     var marker = ${JSON.stringify(String(marker))};
+    var targetIndd = ${targetIndd};
     var doc = null;
     var result = { ok: false, marker: marker, pageCount: 0, counts: {}, errors: [], warnings: [], closedOnFailure: false };
+
+    // Saving over an INDD that is open in InDesign fails only at the very end
+    // of the run. Look for it up front: our own unmodified previous output can
+    // be closed; anything else is the user's and the build stops here.
+    function findOpenDocumentAt(fsPath) {
+        var wanted = String(File(fsPath).fsName).toLowerCase();
+        for (var i = 0; i < app.documents.length; i++) {
+            var candidate = app.documents[i];
+            try {
+                if (candidate.saved && String(candidate.fullName.fsName).toLowerCase() === wanted) return candidate;
+            } catch (_) {}
+        }
+        return null;
+    }
+
+    var openTarget = targetIndd ? findOpenDocumentAt(targetIndd) : null;
+    if (openTarget) {
+        var ownOutput = false;
+        try { ownOutput = !!openTarget.extractLabel("html_indesign_e2e_marker") && openTarget.modified === false; } catch (_) {}
+        if (ownOutput) {
+            try {
+                openTarget.close(SaveOptions.NO);
+                result.warnings.push({ code: "PREVIOUS_OUTPUT_CLOSED", message: "Closed the unmodified previous build output that was still open: " + targetIndd });
+            } catch (closeError) {
+                result.errors.push({ code: "OUTPUT_TARGET_OPEN", message: "Target INDD is open in InDesign and could not be closed: " + targetIndd + " (" + String(closeError) + ")" });
+                return finish(result);
+            }
+        } else {
+            result.errors.push({ code: "OUTPUT_TARGET_OPEN", message: "Target INDD is open in InDesign; close it (or choose another outputBaseName) before building: " + targetIndd });
+            return finish(result);
+        }
+    }
+
     try {
         doc = app.documents.add();
         doc.insertLabel("html_indesign_e2e_marker", marker);

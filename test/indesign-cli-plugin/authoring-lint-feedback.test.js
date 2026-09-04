@@ -362,6 +362,42 @@ test('fidelityFailureMessage 把溢出原因与表格差异维度写进首条消
   assert.equal(plain, 'Built InDesign content differs from the HTML source at page page-1, item p1-el2, field bounds; 1 issue(s) found.');
 });
 
+test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable error with a close-it hint', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'lint-feedback-target-open');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'deck.indd'), 'stale', 'utf8');
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'final',
+      runDir: outDir,
+      outputBaseName: 'deck',
+      runStartedAt: Date.now() + 60000,
+    },
+    host_results: [{
+      id: 'html-build-script',
+      ok: true,
+      data: {
+        ok: false,
+        code: 'OUTPUT_TARGET_OPEN',
+        message: 'Target INDD is open in InDesign; close it (or choose another outputBaseName) before building: D:/run/deck.indd',
+        errors: [{ code: 'OUTPUT_TARGET_OPEN', message: 'Target INDD is open in InDesign; close it (or choose another outputBaseName) before building: D:/run/deck.indd' }],
+      },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'OUTPUT_TARGET_OPEN');
+  assert.equal(response.error.retryable, true);
+  assert.match(response.error.message, /^Target INDD is open in InDesign/);
+  assert.match(response.error.hint, /关闭/);
+  assert.equal(response.error.details.artifactsExported, false);
+  assert.deepEqual(response.error.details.partialArtifacts, []);
+});
+
 function repeatError(code, count, pageId) {
   return Array.from({ length: count }, (_value, index) => ({
     level: 'error',

@@ -65,3 +65,20 @@ test('finish() lifts errors[0] to a top-level code/message without tripping over
   const empty = JSON.parse(finish({ ok: false, errors: [] }));
   assert.equal(empty.message, undefined);
 });
+
+test('build template checks whether the target INDD is already open before creating a document', () => {
+  const source = buildBuildJsx({
+    repoRoot: 'D:/plugin',
+    instructionsPath: 'D:/run/instructions.json',
+    marker: 'run-1',
+    targetInddPath: 'D:\\run\\deck.indd',
+  });
+  assert.match(source, /var targetIndd = "D:\/run\/deck\.indd";/);
+  assert.match(source, /function findOpenDocumentAt\(fsPath\)/);
+  assert.match(source, /OUTPUT_TARGET_OPEN/);
+  assert.match(source, /PREVIOUS_OUTPUT_CLOSED/);
+  assert.ok(source.indexOf('findOpenDocumentAt(targetIndd)') < source.indexOf('app.documents.add()'), 'pre-check must run before the document is created');
+
+  const withoutTarget = buildBuildJsx({ repoRoot: 'D:/plugin', instructionsPath: 'D:/run/instructions.json', marker: 'run-1' });
+  assert.match(withoutTarget, /var targetIndd = null;/);
+});
