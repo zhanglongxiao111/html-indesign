@@ -63,6 +63,38 @@ HI.cleanTableCellText = function (value) {
     return String(value || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ");
 };
 
+// Leading rows whose author flagged them as header rows, or whose every cell
+// came from <th>, become InDesign header rows. Only leading rows count:
+// InDesign has no notion of a header row in the middle of a table, and the
+// forward fidelity audit normalizes header facts with the same rule so the
+// two sides agree by construction.
+HI.leadingHeaderRowCount = function (rows) {
+    var count = 0;
+    for (var r = 0; r < (rows || []).length; r++) {
+        var row = rows[r] || {};
+        var cells = row.cells || [];
+        var allHeader = cells.length > 0;
+        for (var c = 0; c < cells.length; c++) {
+            if (!cells[c] || !cells[c].header) { allHeader = false; break; }
+        }
+        if (!(row.header === true || allHeader)) break;
+        count += 1;
+    }
+    return count;
+};
+
+HI.applyTableHeaderRows = function (table, rows, report) {
+    var count = HI.leadingHeaderRowCount(rows);
+    if (!count) return 0;
+    try {
+        table.headerRowCount = count;
+    } catch (error) {
+        HI.addMessage(report, "warning", "TABLE_HEADER_APPLY_FAILED", String(error), { headerRowCount: count });
+        return 0;
+    }
+    return count;
+};
+
 HI.applyTableStyle = function (doc, table, styleName, report) {
     if (!styleName) return;
     try {

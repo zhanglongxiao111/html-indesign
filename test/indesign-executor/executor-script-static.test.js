@@ -61,7 +61,7 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     'hi_blend_modes.jsxinc': ['HI.applyBlendMode', 'HI.blendModeKey', 'HI.blendModeValue'],
     'hi_vector_styles.jsxinc': ['HI.applyStrokeOpacity', 'HI.applyLineMarker', 'HI.lineMarkerName', 'HI.createVectorGroupFrame'],
     'hi_assets.jsxinc': ['HI.resolveAssetFile', 'HI.placeAssetInFrame', 'HI.applyFitting'],
-    'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells'],
+    'hi_tables.jsxinc': ['HI.tableGridFromRows', 'HI.applyTableSpans', 'HI.applyTableCells', 'HI.leadingHeaderRowCount', 'HI.applyTableHeaderRows'],
     'hi_text_fit.jsxinc': ['HI.resolveTextFrameOverflow', 'HI.applyTextFitNudge', 'TEXT_FIT_APPLIED', 'TEXT_FIT_NUDGE_APPLIED', 'TEXT_FIT_UNRESOLVED'],
     'hi_items.jsxinc': ['HI.buildInstructionItems', 'HI.createTextFrame', 'HI.createGraphicFrame'],
     'hi_executor.jsxinc': ['HI.runBuildFromInstructions', 'HI.runBuildInstructions'],
@@ -80,6 +80,21 @@ test('executor lib files expose expected HI APIs and stay focused', () => {
     }
     assert.ok(source.split(/\r?\n/).length <= 340, `${fileName} should stay small`);
   }
+});
+
+test('table frames set InDesign header rows from leading header rows before spans and cells', () => {
+  const items = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const tables = fs.readFileSync(path.join(libDir, 'hi_tables.jsxinc'), 'utf8');
+
+  const headerCall = items.indexOf('HI.applyTableHeaderRows(table, item.rows || [], report);');
+  const spansCall = items.indexOf('HI.applyTableSpans(table, grid, report);');
+  assert.ok(headerCall > 0, 'createTableFrame must apply header rows');
+  assert.ok(headerCall < spansCall, 'header rows must be set before spans are merged');
+
+  assert.match(tables, /table\.headerRowCount = count;/);
+  assert.match(tables, /TABLE_HEADER_APPLY_FAILED/);
+  // Only leading rows count: a header row in the middle of a table has no InDesign equivalent.
+  assert.match(tables, /if \(!\(row\.header === true \|\| allHeader\)\) break;/);
 });
 
 test('executor label helpers report key label write failures', () => {

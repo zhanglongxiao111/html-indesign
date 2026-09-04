@@ -261,6 +261,7 @@ HI.createTableFrame = function (doc, page, item, context, report) {
 
     if (table) {
         HI.applyTableStyle(doc, table, item.tableStyle, report);
+        HI.applyTableHeaderRows(table, item.rows || [], report);
         HI.fitTableToFrame(table, item, context, report);
         HI.applyTableSpans(table, grid, report);
         HI.applyTableCells(doc, table, grid, report);
