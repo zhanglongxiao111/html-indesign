@@ -86,13 +86,19 @@ HI.leadingHeaderRowCount = function (rows) {
 HI.applyTableHeaderRows = function (table, rows, report) {
     var count = HI.leadingHeaderRowCount(rows);
     if (!count) return 0;
-    try {
-        table.headerRowCount = count;
-    } catch (error) {
-        HI.addMessage(report, "warning", "TABLE_HEADER_APPLY_FAILED", String(error), { headerRowCount: count });
-        return 0;
+    // Assigning table.headerRowCount APPENDS empty header rows (rowCount = header + body + footer);
+    // converting the existing leading body rows keeps content and indices intact.
+    var converted = 0;
+    for (var r = 0; r < count; r++) {
+        try {
+            table.rows[r].rowType = RowTypes.HEADER_ROW;
+            converted += 1;
+        } catch (error) {
+            HI.addMessage(report, "warning", "TABLE_HEADER_APPLY_FAILED", String(error), { row: r, headerRowCount: count });
+            break;
+        }
     }
-    return count;
+    return converted;
 };
 
 HI.applyTableStyle = function (doc, table, styleName, report) {

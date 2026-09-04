@@ -91,7 +91,8 @@ test('table frames set InDesign header rows from leading header rows before span
   assert.ok(headerCall > 0, 'createTableFrame must apply header rows');
   assert.ok(headerCall < spansCall, 'header rows must be set before spans are merged');
 
-  assert.match(tables, /table\.headerRowCount = count;/);
+  assert.match(tables, /table\.rows\[r\]\.rowType = RowTypes\.HEADER_ROW;/);
+  assert.equal(tables.includes('table.headerRowCount = count'), false, 'assigning headerRowCount appends rows instead of converting them');
   assert.match(tables, /TABLE_HEADER_APPLY_FAILED/);
   // Only leading rows count: a header row in the middle of a table has no InDesign equivalent.
   assert.match(tables, /if \(!\(row\.header === true \|\| allHeader\)\) break;/);
