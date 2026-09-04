@@ -195,7 +195,8 @@ function auditAuthorPackageSourceFormat(configPath, options = {}) {
   const styleSet = new Set(sourcePackage.styleFiles.map((file) => file.relativePath));
   for (const file of RECOMMENDED_STYLE_FILES) {
     if (!styleSet.has(file)) {
-      warnings.push(sourceIssue('warning', 'AUTHOR_STYLE_BUCKET_MISSING', `Recommended authoring style file is missing: ${file}`, file));
+      // 推荐项不是硬要求：strict 下也只提醒，不拦构建。
+      warnings.push(sourceIssue('warning', 'AUTHOR_STYLE_BUCKET_MISSING', `Recommended authoring style file is missing: ${file}`, file, { strictBlocking: false }));
     }
   }
 
@@ -231,8 +232,10 @@ function auditPageFragment(page, html, errors, warnings) {
     errors.push(sourceIssue(
       'error',
       'AUTHOR_PAGE_SECTION_INVALID',
-      'Each page source file must contain exactly one page section.',
-      page.relativePath
+      `Found ${pageSections.length} page section(s) in ${page.relativePath}; each page source file must contain exactly one `
+        + '<section class="page" data-page="..."> as its root, with all page content inside it.',
+      page.relativePath,
+      { found: pageSections.length }
     ));
     return;
   }
@@ -279,9 +282,12 @@ function addSourceFileAttribute(fragment, sourceFile) {
 
 function formatAuditResult(errors, warnings, options = {}) {
   const strict = !!options.strict;
-  const promoted = strict ? warnings.map((entry) => ({ ...entry, level: 'error' })) : [];
+  // 与 authoring-validator.js 同一机制：strictBlocking:false 的 warning 不因 strict 升级。
+  const promoted = strict
+    ? warnings.filter((entry) => entry.strictBlocking !== false).map((entry) => ({ ...entry, level: 'error' }))
+    : [];
   const resultErrors = errors.concat(promoted);
-  const resultWarnings = strict ? [] : warnings;
+  const resultWarnings = strict ? warnings.filter((entry) => entry.strictBlocking === false) : warnings;
   return {
     valid: resultErrors.length === 0,
     errors: resultErrors,
