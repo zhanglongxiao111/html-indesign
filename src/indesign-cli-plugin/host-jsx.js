@@ -90,7 +90,7 @@ function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-ind
         result.pageCount = doc.pages.length;
         result.counts = report.counts || {};
         result.errors = report.errors || [];
-        result.warnings = report.warnings || [];
+        result.warnings = result.warnings.concat(report.warnings || []);
     } catch (error) {
         result.ok = false;
         result.errors.push({ code: "INDESIGN_BUILD_EXCEPTION", message: String(error) });

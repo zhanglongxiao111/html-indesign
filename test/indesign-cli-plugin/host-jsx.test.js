@@ -78,6 +78,8 @@ test('build template checks whether the target INDD is already open before creat
   assert.match(source, /OUTPUT_TARGET_OPEN/);
   assert.match(source, /PREVIOUS_OUTPUT_CLOSED/);
   assert.ok(source.indexOf('findOpenDocumentAt(targetIndd)') < source.indexOf('app.documents.add()'), 'pre-check must run before the document is created');
+  // the pre-check warning (e.g. PREVIOUS_OUTPUT_CLOSED) must be concatenated, not overwritten, by the build report's own warnings
+  assert.match(source, /result\.warnings = result\.warnings\.concat\(report\.warnings \|\| \[\]\);/);
 
   const withoutTarget = buildBuildJsx({ repoRoot: 'D:/plugin', instructionsPath: 'D:/run/instructions.json', marker: 'run-1' });
   assert.match(withoutTarget, /var targetIndd = null;/);
