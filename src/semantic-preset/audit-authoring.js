@@ -1,6 +1,6 @@
-const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 'use strict';
 
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const fs = require('fs');
 const cheerio = require('cheerio');
 const { collectKnownSemanticTokens } = require('./maps');
@@ -51,6 +51,7 @@ function auditAuthoringSemanticTokens(options = {}) {
             token,
             kind,
             knownTokens,
+            totalKnown: known[kind] ? known[kind].size : 0,
           });
         });
       });

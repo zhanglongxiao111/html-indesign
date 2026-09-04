@@ -228,6 +228,7 @@ function autoNamePrefix(prefix) {
     character: '自动字符',
     object: '自动对象',
     frame: '自动框架',
+    table: '自动表格',
   };
   return labels[prefix] || '自动样式';
 }

@@ -140,8 +140,12 @@ function compileItemStyles(item, styles, report, options) {
   }
 
   if (item.role === 'table') {
+    // Tables carry no computed style signature at this call site (unlike
+    // paragraph/character/object/frame, which hash a signature object via
+    // stableAutoName), so there is nothing to hash into an auto-name; fall
+    // back to a fixed Chinese default name instead of a Latin literal.
     const tableStyleName = styleNameForKind(item, 'tableStyles', null, options)
-      || 'default-table';
+      || '默认表格';
     styleRefs.tableStyle = tableStyleName;
     if (!styles.tableStyles[styleRefs.tableStyle]) {
       const identity = styleIdentityForKind(item, 'tableStyles', tableStyleName, options);

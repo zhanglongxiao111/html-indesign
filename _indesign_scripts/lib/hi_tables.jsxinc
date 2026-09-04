@@ -86,6 +86,20 @@ HI.leadingHeaderRowCount = function (rows) {
 HI.applyTableHeaderRows = function (table, rows, report) {
     var count = HI.leadingHeaderRowCount(rows);
     if (!count) return 0;
+    // InDesign refuses a cell merge that crosses the header/body boundary, and
+    // header conversion runs before HI.applyTableSpans merges cells. A header
+    // cell whose rowSpan reaches past the last header row would later fail
+    // TABLE_CELL_MERGE_FAILED, so skip the conversion entirely when detected.
+    for (var r = 0; r < count; r++) {
+        var cells = (rows[r] && rows[r].cells) || [];
+        for (var c = 0; c < cells.length; c++) {
+            var rowSpan = Number(cells[c] && cells[c].rowSpan || 1);
+            if (rowSpan > 1 && r + rowSpan > count) {
+                HI.addMessage(report, "warning", "TABLE_HEADER_SPAN_CROSSES_BODY", "Header rows are not converted because a header cell spans into body rows.", { row: r, rowSpan: rowSpan, headerRowCount: count });
+                return 0;
+            }
+        }
+    }
     // Assigning table.headerRowCount APPENDS empty header rows (rowCount = header + body + footer);
     // converting the existing leading body rows keeps content and indices intact.
     var converted = 0;

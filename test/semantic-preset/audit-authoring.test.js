@@ -27,6 +27,7 @@ test('SEMANTIC_TOKEN_UNKNOWN lists the registered tokens of that kind when there
   assert.equal(issue.token, 'body-text');
   assert.equal(issue.message, 'Unknown semantic token "body-text" in data-id-paragraph-style. Known paragraphStyles: body-copy, page-title, table-body.');
   assert.deepEqual(issue.knownTokens, ['body-copy', 'page-title', 'table-body']);
+  assert.equal(issue.totalKnown, 3);
 });
 
 test('SEMANTIC_TOKEN_UNKNOWN suggests the closest tokens when many are registered', () => {
@@ -43,6 +44,7 @@ test('SEMANTIC_TOKEN_UNKNOWN suggests the closest tokens when many are registere
   assert.match(issue.message, /^Unknown semantic token "body-text" in data-id-paragraph-style\. 31 paragraphStyles tokens are registered; closest: body-copy, /);
   assert.equal(issue.knownTokens.length, 5);
   assert.equal(issue.knownTokens[0], 'body-copy');
+  assert.equal(issue.totalKnown, 31);
 });
 
 test('SEMANTIC_TOKEN_UNKNOWN says so when nothing of that kind is registered', () => {
@@ -56,4 +58,5 @@ test('SEMANTIC_TOKEN_UNKNOWN says so when nothing of that kind is registered', (
   assert.ok(issue);
   assert.equal(issue.message, 'Unknown semantic token "decor" in data-id-layer. No layers tokens are registered in the semantic preset; add it to the preset before using it.');
   assert.deepEqual(issue.knownTokens, []);
+  assert.equal(issue.totalKnown, 0);
 });
