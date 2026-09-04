@@ -21,6 +21,9 @@ function validateAuthoringRules(snapshot, options = {}) {
   const errors = [];
   const warnings = [];
   const gridTolerance = Number.isFinite(Number(options.gridTolerance)) ? Number(options.gridTolerance) : 1;
+  // 豁免与偏差都计数：整包豁免不能静默通过，报告和遥测要看得见。
+  let gridIgnoredCount = 0;
+  let gridOffCount = 0;
 
   pages.forEach((page, pageIndex) => {
     const pageId = pageIdFor(page, pageIndex);
@@ -55,12 +58,20 @@ function validateAuthoringRules(snapshot, options = {}) {
     }
     if (grid.valid && grid.lines) {
       items.forEach((item, itemIndex) => {
+        if (isGridIgnored(item)) {
+          gridIgnoredCount += 1;
+          return;
+        }
         if (!shouldCheckGrid(item, page)) return;
         const edges = offGridEdges(item.boundsMm, grid.lines, gridTolerance, item);
         if (!edges.length) return;
+        gridOffCount += 1;
+        const itemId = itemIdFor(item, itemIndex);
         warnings.push({
-          ...message('warning', GRID_ALIGNMENT_OFF, pageId, itemIdFor(item, itemIndex), 'Item edges do not align to the declared authoring grid.'),
-          edges,
+          ...message('warning', GRID_ALIGNMENT_OFF, pageId, itemId, gridOffMessage(edges)),
+          edges: edges.map((entry) => entry.edge),
+          edgeOffsets: edges,
+          suggestedFix: gridSuggestedFix(itemId, edges),
         });
       });
     }
@@ -134,6 +145,8 @@ function validateAuthoringRules(snapshot, options = {}) {
     errors: resultErrors,
     warnings: resultWarnings,
     messages: resultErrors.concat(resultWarnings),
+    gridIgnoredCount,
+    gridOffCount,
   };
 }
 
@@ -522,8 +535,8 @@ function pageHeight(page) {
 function shouldCheckGrid(item, page) {
   if (!isMappableItem(item)) return false;
   const attrs = attributesFor(item);
-  if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null) return false;
-  if (hasInheritedGridIgnore(item)) return false;
+  if (isGridIgnored(item)) return false;
+  if (isPlacedBlockContent(item)) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) === 'folio') return false;
@@ -549,13 +562,78 @@ function hasInheritedGridIgnore(item) {
     ));
 }
 
+function isGridIgnored(item) {
+  if (!isMappableItem(item)) return false;
+  return attributeValue(attributesFor(item), HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null
+    || hasInheritedGridIgnore(item);
+}
+
+// Grid alignment is the placed block's responsibility: an element inside an
+// ancestor that carries grid placement (a card, a column, a header band) is
+// that block's content, and its own edges sit wherever the block's padding
+// puts them. Mappable ancestors are already excluded via ancestorCandidateIndexes;
+// this covers the borderless wrappers that only exist for positioning.
+function isPlacedBlockContent(item) {
+  return Array.isArray(item && item.sourceAncestorNodes)
+    && item.sourceAncestorNodes.some(isGridPlacedNode);
+}
+
+function isGridPlacedNode(node) {
+  if (!node) return false;
+  if (node.gridPlaced === true) return true;
+  if (Array.isArray(node.classList) && node.classList.includes('grid-item')) return true;
+  const style = String(attributeValue(attributesFor(node), 'style') || '');
+  return /--grid-(?:col|row)\s*:/.test(style);
+}
+
 function offGridEdges(bounds, lines, tolerance, item) {
   const vertical = lines && Array.isArray(lines.vertical) ? lines.vertical : [];
   const horizontal = lines && Array.isArray(lines.horizontal) ? lines.horizontal : [];
-  const edges = gridEdgesForItem(bounds, vertical, horizontal, item);
-  return edges
-    .filter(([, value, candidates]) => !nearAnyLine(value, candidates, tolerance))
-    .map(([name]) => name);
+  return gridEdgesForItem(bounds, vertical, horizontal, item)
+    .map(([edge, value, candidates]) => {
+      const nearest = nearestLine(value, candidates);
+      return {
+        edge,
+        valueMm: round(Number(value), 2),
+        nearestLineMm: nearest,
+        offsetMm: nearest == null ? null : round(Number(value) - nearest, 2),
+      };
+    })
+    .filter((entry) => entry.nearestLineMm == null || Math.abs(entry.offsetMm) > tolerance);
+}
+
+function nearestLine(value, lines) {
+  let best = null;
+  for (const line of lines || []) {
+    const candidate = Number(line);
+    if (!Number.isFinite(candidate)) continue;
+    if (best == null || Math.abs(Number(value) - candidate) < Math.abs(Number(value) - best)) best = candidate;
+  }
+  return best;
+}
+
+function gridOffMessage(edges) {
+  return `Item edges do not align to the declared authoring grid: ${edges.map(describeEdgeOffset).join('; ')}.`;
+}
+
+function describeEdgeOffset(entry) {
+  if (entry.nearestLineMm == null) return `${entry.edge} at ${entry.valueMm}mm has no grid line to align to`;
+  const axis = entry.edge === 'left' || entry.edge === 'right' ? 'column' : 'row';
+  const direction = entry.offsetMm > 0
+    ? (axis === 'column' ? 'right of' : 'below')
+    : (axis === 'column' ? 'left of' : 'above');
+  return `${entry.edge} at ${entry.valueMm}mm is ${Math.abs(entry.offsetMm)}mm ${direction} the ${axis} line at ${entry.nearestLineMm}mm`;
+}
+
+function gridSuggestedFix(itemId, edges) {
+  const moves = edges
+    .filter((entry) => entry.nearestLineMm != null)
+    .map((entry) => `${entry.edge} edge to ${entry.nearestLineMm}mm (${entry.offsetMm > 0 ? '-' : '+'}${Math.abs(entry.offsetMm)}mm)`);
+  if (!moves.length) {
+    return `Give #${itemId} a grid placement (--grid-col/--grid-row) or mark it data-id-grid-ignore if it is meant to leave the grid.`;
+  }
+  return `Move #${itemId} ${moves.join(', ')}, or place it with --grid-col/--grid-row so the block itself sits on the grid; `
+    + 'content inside a placed block is not checked.';
 }
 
 function gridEdgesForItem(bounds, vertical, horizontal, item) {
@@ -592,10 +670,6 @@ function coversWholePage(bounds, page) {
     && Math.abs(Number(bounds.y || 0)) < 0.01
     && Math.abs(Number(bounds.width || 0) - pageWidth(page)) < 0.01
     && Math.abs(Number(bounds.height || 0) - pageHeight(page)) < 0.01;
-}
-
-function nearAnyLine(value, lines, tolerance) {
-  return (lines || []).some((line) => Math.abs(Number(value) - Number(line)) <= tolerance);
 }
 
 function isMappableItem(item) {

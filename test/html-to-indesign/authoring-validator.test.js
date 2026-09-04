@@ -300,6 +300,126 @@ test('validateAuthoringRules inherits grid-ignore from a non-mappable authoring 
   assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
 });
 
+test('content inside a grid-placed block is not measured against the page grid', () => {
+  const snapshot = snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2', 'data-id-column-gutter': '2mm', 'data-id-row-gutter': '2mm' },
+    items: [{
+      id: 'card-copy',
+      role: 'text',
+      tagName: 'p',
+      classList: ['card-copy'],
+      attributes: { 'data-id-paragraph-style': 'body-copy' },
+      sourceAncestorNodes: [{
+        tagName: 'div',
+        id: 'card',
+        classList: ['grid-item', 'card'],
+        attributes: { style: '--grid-col:1;--grid-span:2;--grid-row:1;--grid-row-span:1' },
+        gridPlaced: true,
+      }],
+      boundsMm: { x: 16.35, y: 16.35, width: 20, height: 6 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+  assert.equal(result.gridIgnoredCount, 0);
+  assert.equal(result.gridOffCount, 0);
+});
+
+test('an ancestor without gridPlaced is still recognised by its grid-item class or --grid-col style', () => {
+  const base = {
+    id: 'card-copy',
+    role: 'text',
+    tagName: 'p',
+    classList: ['card-copy'],
+    attributes: { 'data-id-paragraph-style': 'body-copy' },
+    boundsMm: { x: 16.35, y: 16.35, width: 20, height: 6 },
+  };
+  const byClass = validateAuthoringRules(snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{ ...base, sourceAncestorNodes: [{ tagName: 'div', classList: ['grid-item'], attributes: {} }] }],
+  }), { strict: true, gridTolerance: 1 });
+  assert.equal(byClass.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+
+  const byStyle = validateAuthoringRules(snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{ ...base, sourceAncestorNodes: [{ tagName: 'div', classList: ['band'], attributes: { style: '--grid-row: 2; --grid-row-span: 1' } }] }],
+  }), { strict: true, gridTolerance: 1 });
+  assert.equal(byStyle.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+
+  const plainWrapper = validateAuthoringRules(snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{ ...base, sourceAncestorNodes: [{ tagName: 'div', classList: ['wrapper'], attributes: {} }] }],
+  }), { strict: true, gridTolerance: 1 });
+  assert.equal(plainWrapper.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), true, 'a wrapper that is not on the grid does not shield its content');
+});
+
+test('GRID_ALIGNMENT_OFF entries carry per-edge offsets, the nearest line and a concrete fix', () => {
+  const snapshot = snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2', 'data-id-column-gutter': '2mm', 'data-id-row-gutter': '2mm' },
+    items: [{
+      id: 'title',
+      role: 'text',
+      tagName: 'h2',
+      classList: ['page-title'],
+      attributes: { 'data-id-paragraph-style': 'page-title' },
+      boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entry = result.errors.find((issue) => issue.code === 'GRID_ALIGNMENT_OFF' && issue.itemId === 'title');
+  assert.ok(entry);
+  assert.deepEqual(entry.edges, ['left', 'top']);
+  assert.deepEqual(entry.edgeOffsets, [
+    { edge: 'left', valueMm: 13, nearestLineMm: 10, offsetMm: 3 },
+    { edge: 'top', valueMm: 14, nearestLineMm: 10, offsetMm: 4 },
+  ]);
+  assert.match(entry.message, /left at 13mm is 3mm right of the column line at 10mm/);
+  assert.match(entry.message, /top at 14mm is 4mm below the row line at 10mm/);
+  assert.match(entry.suggestedFix, /Move #title left edge to 10mm \(-3mm\), top edge to 10mm \(-4mm\)/);
+  assert.match(entry.suggestedFix, /content inside a placed block is not checked/);
+  assert.equal(result.gridOffCount, 1);
+});
+
+test('gridIgnoredCount counts mappable items exempted by data-id-grid-ignore, own or inherited', () => {
+  const snapshot = snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{
+      id: 'bleed',
+      role: 'graphic',
+      tagName: 'img',
+      classList: ['hero'],
+      attributes: { src: 'hero.png', 'data-id-grid-ignore': '' },
+      boundsMm: { x: 3, y: 3, width: 50, height: 30 },
+    }, {
+      id: 'caption',
+      role: 'text',
+      tagName: 'p',
+      classList: ['caption'],
+      attributes: { 'data-id-paragraph-style': 'caption' },
+      sourceAncestorNodes: [{ tagName: 'figure', classList: ['figure'], attributes: { 'data-id-grid-ignore': '' } }],
+      boundsMm: { x: 3, y: 36, width: 20, height: 5 },
+    }, {
+      id: 'aligned',
+      role: 'text',
+      tagName: 'p',
+      classList: ['body-copy'],
+      attributes: { 'data-id-paragraph-style': 'body-copy' },
+      boundsMm: { x: 10, y: 10, width: 20, height: 5 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.gridIgnoredCount, 2);
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
 test('validateAuthoringRules checks text placement by left right and top edges', () => {
   const snapshot = snapshotWithPage({
     attributes: {

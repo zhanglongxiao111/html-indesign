@@ -11,19 +11,47 @@ const {
   underlyingHostFailure,
 } = require('../../src/indesign-cli-plugin/lint-feedback');
 const { fidelityFailureMessage } = require('../../src/indesign-cli-plugin/tools/build-indesign');
+const { writeAuthorPackageEntry } = require('../../src/authoring');
 
-// 2026-08-12 生产事故的真实作者包（已重新组装）。实测基准：56 errors / 100% GRID_ALIGNMENT_OFF /
+// 2026-08-12 生产事故的真实作者包（已重新组装）。历史基准：56 errors / 100% GRID_ALIGNMENT_OFF /
 // 23 normalized / page-2 22、page-3 10、page-4 24 / left 52、top 50、right 3。
 // 2026-08-19 之前是 73 errors（top 59、left 58、right 57）：那时 flex 家具文本的 left/top 和
 // 继承 --grid-span 撑起的 right 都在报，17 条属于作者无从下手的噪声，A3 修复后不再产出。
+// 2026-09-04 起：母元素规则让块内元素不再计入——那 56 条全部位于 grid-item 祖先内部
+// （dayparts 21、zone-map 11、metric-panel 10、flow-cards 6、report-title 3、flow-map 3、
+// reset-bar 2），网格放置由块承担，块内文本的边缘由块的内边距决定，作者无从逐条去改。
+// 这个包因此在 strict 下整体通过（0 errors / 23 normalized），见文末的回归用例。
+// 失败反馈的口径仍需真实用例：copyOffGridFixture 在同一个包的副本里，往 02/03/04 三页各注入
+// 一个**自己承担放置却压不住线**的块（--grid-col/--grid-row 放置 + margin 3mm/4mm 推离），
+// 这正是新规则要报的那类错误。变体实测基准：3 errors / 100% GRID_ALIGNMENT_OFF /
+// 23 normalized / page-2 1、page-3 1、page-4 1 / left 3、top 3、right 3。
 const GRID_FIXTURE = path.join(repoRoot, 'test', 'fixtures', 'authoring-lint', 'grid-alignment-package');
-const CONCENTRATION_SENTENCE = 'All 56 errors share code GRID_ALIGNMENT_OFF'
-  + ' — this is one systemic cause, not 56 independent fixes.';
+const CONCENTRATION_SENTENCE = 'All 3 errors share code GRID_ALIGNMENT_OFF'
+  + ' — this is one systemic cause, not 3 independent fixes.';
+// 自己带网格放置、又被 margin 推离网格线的块：新规则下责任在这个块本身。
+const OFF_GRID_BLOCK = '  <p class="grid-item stray-note" style="--grid-col:2;--grid-span:2;'
+  + '--grid-row:2;--grid-row-span:1;margin-left:3mm;margin-top:4mm">stray note</p>\n';
 
 function copyGridFixture(name) {
   const target = path.join(repoRoot, 'test', 'workspace', name);
   fs.rmSync(target, { recursive: true, force: true });
   fs.cpSync(GRID_FIXTURE, target, { recursive: true });
+  return target;
+}
+
+// 注入后必须重写生成入口，否则 checkAuthorPackageEntry 会先以
+// AUTHOR_GENERATED_ENTRY_DIRTY 短路，测的就不是网格失败反馈了。
+function copyOffGridFixture(name) {
+  const target = copyGridFixture(name);
+  const pagesDir = path.join(target, 'pages');
+  for (const file of fs.readdirSync(pagesDir)) {
+    // 01 页整页 data-id-grid-ignore，注入进去只会被豁免掉。
+    if (file.startsWith('01-')) continue;
+    const pagePath = path.join(pagesDir, file);
+    const html = fs.readFileSync(pagePath, 'utf8');
+    fs.writeFileSync(pagePath, html.replace(/\n<\/section>/, `\n${OFF_GRID_BLOCK}</section>`), 'utf8');
+  }
+  writeAuthorPackageEntry(path.join(target, 'deck.config.json'));
   return target;
 }
 
@@ -35,36 +63,65 @@ function callLint(packageDir, args = {}) {
 }
 
 test('html.authoring_lint 首条消息承载真实作者包的规模、分类与首条定位', () => {
-  const packageDir = copyGridFixture('lint-feedback-grid-scale');
+  const packageDir = copyOffGridFixture('lint-feedback-grid-scale');
   const response = callLint(packageDir);
 
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'AUTHORING_LINT_FAILED');
 
   const { message } = response.error;
-  assert.match(message, /^Strict authoring checks found 56 errors \(GRID_ALIGNMENT_OFF: 56\)\./);
+  assert.match(message, /^Strict authoring checks found 3 errors \(GRID_ALIGNMENT_OFF: 3\)\./);
   assert.equal(message.includes(CONCENTRATION_SENTENCE), true, message);
   assert.equal(
-    message.includes('Affected: page-2 (22), page-3 (10), page-4 (24); edges left/top/right.'),
+    message.includes('Affected: page-2 (1), page-3 (1), page-4 (1); edges left/top/right.'),
     true,
     message,
   );
+  // 首条定位后面要带得走的偏差：3mm/4mm 就是注入时推离网格线的量。
   assert.match(
     message,
-    /First issue at page-2 \/ p2-el4: Item edges do not align to the declared authoring grid\./,
+    /First issue at page-2 \/ p2-el28: Item edges do not align to the declared authoring grid: left at [\d.]+mm is 3mm right of the column line at [\d.]+mm; top at [\d.]+mm is 4mm below the row line at [\d.]+mm/,
   );
   assert.match(message, /Full report: .*authoring-lint-report\.json/);
 });
 
+// 母元素规则的另一半：块自己压不住线时，修法必须落在这个块上，而且要点明块内内容不被检查。
+test('html.authoring_lint 的失败条目带着逐边偏移与可执行修法', () => {
+  const packageDir = copyOffGridFixture('lint-feedback-grid-offsets');
+  const response = callLint(packageDir);
+
+  const entry = response.error.details.errors.find((issue) => issue.itemId === 'p2-el28');
+  assert.ok(entry, JSON.stringify(response.error.details.errors));
+  assert.deepEqual(entry.edges, ['left', 'top', 'right']);
+  const left = entry.edgeOffsets.find((offset) => offset.edge === 'left');
+  assert.equal(left.offsetMm, 3);
+  assert.equal(typeof left.nearestLineMm, 'number');
+  assert.match(entry.suggestedFix, /^Move #p2-el28 left edge to [\d.]+mm \(-3mm\)/);
+  assert.match(entry.suggestedFix, /content inside a placed block is not checked/);
+});
+
+// 母元素规则的收益就是这一条：2026-08-12 事故包原样跑 strict 不再报 56 条网格偏移。
+// 若这条重新变红，说明块内后代又被拉回逐条检查，先看 authoring-validator 的
+// isPlacedBlockContent，别改这里的数字。
+test('2026-08-12 事故包在母元素规则下整体通过 strict 检查', () => {
+  const packageDir = copyGridFixture('lint-feedback-grid-clean');
+  const response = callLint(packageDir);
+
+  assert.equal(response.status, 'complete', JSON.stringify(response.error || null));
+  assert.equal(response.data.errorCount, 0);
+  assert.equal(response.data.warningCount, 0);
+  assert.equal(response.data.normalizedCount, 23);
+});
+
 test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报告文件', () => {
-  const packageDir = copyGridFixture('lint-feedback-grid-hint');
+  const packageDir = copyOffGridFixture('lint-feedback-grid-hint');
   const response = callLint(packageDir);
 
   assert.equal(response.status, 'error');
   assert.notEqual(response.error.hint, null);
   assert.equal(typeof response.error.hint, 'string');
   assert.match(response.error.hint, /error\.details\.errors/);
-  assert.match(response.error.hint, /56 条/);
+  assert.match(response.error.hint, /3 条/);
   assert.match(response.error.hint, /authoring-lint-report\.json/);
 
   // 宿主侧当前只读 details，hint/retryable/stage 必须冗余落一份。
@@ -75,7 +132,7 @@ test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报�
 });
 
 test('html.authoring_lint 失败时落下不含浏览器快照的完整报告 artifact', () => {
-  const packageDir = copyGridFixture('lint-feedback-grid-report');
+  const packageDir = copyOffGridFixture('lint-feedback-grid-report');
   const response = callLint(packageDir);
 
   const { reportPath } = response.error.details;
@@ -84,7 +141,7 @@ test('html.authoring_lint 失败时落下不含浏览器快照的完整报告 ar
   assert.equal(path.dirname(reportPath), path.join(packageDir, '.indesign-cli'));
 
   const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-  assert.equal(report.errorCount, 56);
+  assert.equal(report.errorCount, 3);
   // 归一化条目（工具已自动处理）不再计入 warningCount，单列 normalizedCount；总量口径不变。
   assert.equal(report.warningCount + report.normalizedCount, 23);
   assert.equal(report.normalizedCount, 23);
@@ -101,7 +158,7 @@ test('html.authoring_lint 失败时落下不含浏览器快照的完整报告 ar
 });
 
 test('html.authoring_lint 接受 outDir 作为报告落点', () => {
-  const packageDir = copyGridFixture('lint-feedback-grid-outdir');
+  const packageDir = copyOffGridFixture('lint-feedback-grid-outdir');
   const outDir = path.join(repoRoot, 'test', 'workspace', 'lint-feedback-grid-outdir-report');
   fs.rmSync(outDir, { recursive: true, force: true });
   const response = callLint(packageDir, { outDir });
@@ -114,7 +171,7 @@ test('html.authoring_lint 接受 outDir 作为报告落点', () => {
 test('报告落盘受项目围栏约束，越界时不写且留痕', () => {
   // 报告写盘是本轮新增的写入点。outDir 是 Agent 可控参数，若不校验就等于给
   // OUTPUT_OUTSIDE_PROJECT 开后门，越界路径还会作为 artifacts 回给 Agent。
-  const packageDir = copyGridFixture('lint-feedback-grid-escape');
+  const packageDir = copyOffGridFixture('lint-feedback-grid-escape');
   const outside = path.join(repoRoot, '..', 'lint-feedback-outside-project');
   fs.rmSync(outside, { recursive: true, force: true });
 
@@ -129,7 +186,7 @@ test('报告落盘受项目围栏约束，越界时不写且留痕', () => {
 });
 
 test('html.authoring_lint 与 html.build_indesign 对同一作者包给出同口径首条消息', () => {
-  const packageDir = copyGridFixture('lint-feedback-parity');
+  const packageDir = copyOffGridFixture('lint-feedback-parity');
   const lintResponse = callLint(packageDir);
   const buildResponse = callPlugin('tools/call', {
     id: 'html.build_indesign',
