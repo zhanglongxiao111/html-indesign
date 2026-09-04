@@ -375,9 +375,6 @@ test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable 
       mode: 'final',
       runDir: outDir,
       outputBaseName: 'deck',
-      // runStartedAt 已被 landedDeliverables() 的 mtime 过滤消费；OUTPUT_TARGET_OPEN 这条路径上
-      // partialArtifacts 提前短路成 []，不会走到过滤逻辑，所以它在这里不起作用。
-      runStartedAt: Date.now() + 60000,
     },
     host_results: [{
       id: 'html-build-script',
@@ -407,7 +404,6 @@ test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable 
       mode: 'final',
       runDir: outDir,
       outputBaseName: 'deck',
-      runStartedAt: Date.now() + 60000,
     },
     host_results: [{
       id: 'html-build-script',
@@ -432,8 +428,10 @@ test('deliverables older than this run are not reported as saved after INDD_SAVE
   const outDir = path.join(repoRoot, 'test', 'workspace', 'lint-feedback-stale-artifacts');
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'deck.indd'), 'stale', 'utf8');
-  fs.writeFileSync(path.join(outDir, 'deck.pdf'), 'stale', 'utf8');
+  const inddPath = path.join(outDir, 'deck.indd');
+  const pdfPath = path.join(outDir, 'deck.pdf');
+  fs.writeFileSync(inddPath, 'stale', 'utf8');
+  fs.writeFileSync(pdfPath, 'stale', 'utf8');
 
   const response = callPlugin('tools/resume', {
     state: {
@@ -444,7 +442,12 @@ test('deliverables older than this run are not reported as saved after INDD_SAVE
       outputBaseName: 'deck',
       exportPdf: true,
       exportIdml: true,
-      runStartedAt: Date.now() + 60000,
+      // 开工前快照就是这两个文件本身：本轮一个字节都没写，不能报成已落盘。
+      preRunDeliverables: {
+        indd: deliverableSnapshot(inddPath),
+        pdf: deliverableSnapshot(pdfPath),
+        idml: null,
+      },
     },
     host_results: [{
       id: 'html-export-script',
@@ -460,6 +463,56 @@ test('deliverables older than this run are not reported as saved after INDD_SAVE
   assert.deepEqual(response.error.details.partialArtifacts, []);
   assert.equal(response.artifacts, undefined);
 });
+
+test('only deliverables that changed since the pre-run snapshot are reported as landed', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'lint-feedback-mixed-freshness');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const inddPath = path.join(outDir, 'deck.indd');
+  const pdfPath = path.join(outDir, 'deck.pdf');
+
+  // 上一轮遗留的 INDD：mtime 推到一小时前，和本轮写出的 PDF 明显区分开。
+  fs.writeFileSync(inddPath, 'stale', 'utf8');
+  const anHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  fs.utimesSync(inddPath, anHourAgo, anHourAgo);
+  const preRunDeliverables = {
+    indd: deliverableSnapshot(inddPath),
+    pdf: null,
+    idml: null,
+  };
+
+  // 快照之后才落盘的 PDF 才是本轮成果。
+  fs.writeFileSync(pdfPath, 'fresh', 'utf8');
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'final',
+      runDir: outDir,
+      outputBaseName: 'deck',
+      exportPdf: true,
+      exportIdml: true,
+      preRunDeliverables,
+    },
+    host_results: [{
+      id: 'html-export-script',
+      ok: true,
+      data: { ok: false, errors: [{ code: 'INDD_SAVE_FAILED', message: '无法存储到文件“deck.indd”，因为该文件已打开。' }] },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'INDESIGN_EXPORT_FAILED');
+  assert.deepEqual(response.error.details.partialArtifacts.map((item) => item.path), [pdfPath]);
+  assert.match(response.error.message, /^PDF 已保存于/);
+  assert.equal(response.error.details.artifactsExported, true);
+});
+
+function deliverableSnapshot(file) {
+  const stat = fs.statSync(file);
+  return { mtimeMs: stat.mtimeMs, size: stat.size };
+}
 
 function repeatError(code, count, pageId) {
   return Array.from({ length: count }, (_value, index) => ({

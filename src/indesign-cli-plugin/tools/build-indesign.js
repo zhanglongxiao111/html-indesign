@@ -140,6 +140,7 @@ async function call(args, context) {
   const lintReportPath = path.join(compile.outDir, 'authoring-lint-report.json');
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
+  const preRunDeliverables = snapshotDeliverables(compile.outDir, outputBaseName);
 
   writeReportFile(lintReportPath, withoutLintSnapshot(lint), { failed: false });
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
@@ -192,7 +193,7 @@ async function call(args, context) {
     sizeMetrics,
     lintCounts,
     compatibility: compile.compatibility || lint.compatibility,
-    runStartedAt: Date.now(),
+    preRunDeliverables,
     stageStartedAt: Date.now(),
   };
 
@@ -214,10 +215,7 @@ async function resume(params) {
 
   const nextState = finishStageTiming(state);
   if (state.stage === 'build') {
-    const carried = {
-      ...nextState,
-      hostWarnings: [...(nextState.hostWarnings || []), ...hostScriptWarnings(hostResults)],
-    };
+    const carried = withHostWarnings(nextState, hostResults);
     if (state.mode === 'draft') {
       return hostActionResponse(startStage(carried, 'export'), exportAction(state));
     }
@@ -229,10 +227,12 @@ async function resume(params) {
   }
 
   if (state.stage === 'export') {
+    // 导出脚本自己也会报 warning（IDML_EXPORT_FAILED 只是警告），和构建阶段一样收进 hostWarnings。
+    const carried = withHostWarnings(nextState, hostResults);
     if (state.exportPdf) {
-      return hostActionResponse(startStage(nextState, 'verify'), verifyAction(state));
+      return hostActionResponse(startStage(carried, 'verify'), verifyAction(state));
     }
-    return completeResult(nextState);
+    return completeResult(carried);
   }
 
   if (state.stage === 'verify') {
@@ -364,14 +364,30 @@ function completeResult(state) {
   const inddPath = path.join(runDir, `${outputBaseName}.indd`);
   const pdfPath = path.join(runDir, `${outputBaseName}.pdf`);
   const idmlPath = path.join(runDir, `${outputBaseName}.idml`);
+  // IDML_EXPORT_FAILED 只是 warning，光看 existsSync 会把上一轮遗留的旧文件当成本轮成果报出去。
+  // 与开工前的 {mtimeMs, size} 快照比对：存在但没变的算 stale，同样不能当交付。
+  const before = state.preRunDeliverables || {};
+  const expected = [
+    { kind: 'indd', file: inddPath },
+    ...(state.exportPdf ? [{ kind: 'pdf', file: pdfPath }] : []),
+    ...(state.exportIdml ? [{ kind: 'idml', file: idmlPath }] : []),
+  ];
   const missing = [];
-  if (!fs.existsSync(inddPath)) missing.push(inddPath);
-  if (state.exportPdf && !fs.existsSync(pdfPath)) missing.push(pdfPath);
-  if (state.exportIdml && !fs.existsSync(idmlPath)) missing.push(idmlPath);
+  const stale = [];
+  for (const item of expected) {
+    if (deliverableIsFresh(item.file, before[item.kind])) continue;
+    missing.push(item.file);
+    if (fs.existsSync(item.file)) stale.push(item.file);
+  }
   if (missing.length) {
-    return errorResponse('BUILD_ARTIFACTS_MISSING', `Expected build artifacts are missing: ${missing.join(', ')}`, {
+    const absent = missing.filter((file) => !stale.includes(file));
+    const parts = [];
+    if (absent.length) parts.push(`missing: ${absent.join(', ')}`);
+    if (stale.length) parts.push(`unchanged since the run started (stale from a previous build): ${stale.join(', ')}`);
+    return errorResponse('BUILD_ARTIFACTS_MISSING', `Expected build artifacts are ${parts.join('; ')}`, {
       stage: 'artifacts',
       missing,
+      stale,
       metrics: collectMetrics(state),
     });
   }
@@ -462,17 +478,42 @@ const DELIVERABLE_KINDS = Object.freeze([
   { kind: 'idml', extension: '.idml', label: 'IDML export', prefixLabel: 'IDML' },
 ]);
 
+// 产物新鲜度不能靠工位时钟和 NAS 文件时间戳互比（两台机器的钟可以差几分钟）。
+// 开工前给三个产物拍 {mtimeMs, size} 快照，收尾时同一台文件服务器的数据自己和自己比。
+function snapshotDeliverables(runDir, baseName) {
+  const snapshot = {};
+  for (const deliverable of DELIVERABLE_KINDS) {
+    snapshot[deliverable.kind] = statDeliverable(path.join(runDir, `${baseName}${deliverable.extension}`));
+  }
+  return snapshot;
+}
+
+function statDeliverable(file) {
+  try {
+    const stat = fs.statSync(file, { throwIfNoEntry: false });
+    return stat ? { mtimeMs: stat.mtimeMs, size: stat.size } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// 存在且不同于开工前快照才算本轮写出的；没有快照（旧 state）时退回“存在即算”。
+function deliverableIsFresh(file, before) {
+  const now = statDeliverable(file);
+  if (!now) return false;
+  if (before === undefined) return true;
+  if (before === null) return true;
+  return now.mtimeMs !== before.mtimeMs || now.size !== before.size;
+}
+
 function landedDeliverables(state) {
   if (!state || !state.runDir) return [];
   const baseName = state.outputBaseName || 'html-indesign-output';
-  const since = Number(state.runStartedAt);
+  const before = state.preRunDeliverables || {};
   const landed = [];
   for (const deliverable of DELIVERABLE_KINDS) {
     const file = path.join(state.runDir, `${baseName}${deliverable.extension}`);
-    if (!fs.existsSync(file)) continue;
-    // Files older than this run are leftovers from a previous build; reporting
-    // them as "saved" right after INDD_SAVE_FAILED would contradict the failure.
-    if (Number.isFinite(since) && fs.statSync(file).mtimeMs < since - 1000) continue;
+    if (!deliverableIsFresh(file, before[deliverable.kind])) continue;
     landed.push(artifact(deliverable.kind, file, deliverable.label));
   }
   return landed;
@@ -495,18 +536,54 @@ function firstFailedHostResult(hostResults) {
   }) || null;
 }
 
-// 宿主脚本的 warnings（例如预检自动关闭旧产物的 PREVIOUS_OUTPUT_CLOSED）必须到达调用方；
-// 真实 CLI 把脚本载荷放在 data.parsed，插件契约/测试用 data 直挂，两种形状都读。
+// 宿主脚本的 warnings（例如预检自动关闭旧产物的 PREVIOUS_OUTPUT_CLOSED、导出阶段的
+// IDML_EXPORT_FAILED）必须到达调用方。真实 CLI 的 formatScriptResult 把脚本载荷摊进 parsed，
+// 这是 parsed.warnings 存在的唯一原因；插件契约/测试用 data 直挂。回落按字段而不是按对象：
+// parsed 在但没有 warnings 时，仍要看 data.warnings。
+const HOST_WARNING_DETAIL_KEYS = Object.freeze(['pageId', 'pageNumber', 'itemId', 'assetId', 'font']);
+const HOST_WARNING_LIMIT = 100;
+
 function hostScriptWarnings(hostResults) {
   const warnings = [];
   for (const result of hostResults || []) {
     const data = result && result.data;
-    const payload = data && data.parsed && typeof data.parsed === 'object' ? data.parsed : data;
-    for (const warning of Array.isArray(payload && payload.warnings) ? payload.warnings : []) {
-      if (warning && warning.code) warnings.push({ code: warning.code, message: String(warning.message || '') });
+    const payload = data && data.parsed && typeof data.parsed === 'object' ? data.parsed : null;
+    const list = (payload && Array.isArray(payload.warnings))
+      ? payload.warnings
+      : (data && Array.isArray(data.warnings) ? data.warnings : []);
+    for (const warning of list) {
+      if (!warning || !warning.code) continue;
+      const entry = { code: warning.code, message: String(warning.message || '') };
+      // 定位字段（哪一页、哪个对象、哪个字体）是作者修问题的唯一线索，白名单透传。
+      const details = hostWarningDetails(warning.details);
+      if (details) entry.details = details;
+      warnings.push(entry);
     }
   }
+  if (warnings.length > HOST_WARNING_LIMIT) {
+    const omitted = warnings.length - HOST_WARNING_LIMIT;
+    return [
+      ...warnings.slice(0, HOST_WARNING_LIMIT),
+      { code: 'HOST_WARNINGS_TRUNCATED', message: `${omitted} more host warnings omitted` },
+    ];
+  }
   return warnings;
+}
+
+function hostWarningDetails(details) {
+  if (!details || typeof details !== 'object') return null;
+  const kept = {};
+  for (const key of HOST_WARNING_DETAIL_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(details, key)) kept[key] = details[key];
+  }
+  return Object.keys(kept).length ? kept : null;
+}
+
+function withHostWarnings(state, hostResults) {
+  return {
+    ...state,
+    hostWarnings: [...(state.hostWarnings || []), ...hostScriptWarnings(hostResults)],
+  };
 }
 
 function hostActionResponse(state, action) {

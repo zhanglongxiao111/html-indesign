@@ -490,6 +490,63 @@ test('构建阶段宿主脚本的 warnings 透传到成功结果（data 直挂�
   assert.deepEqual(clean.data.warnings.map((item) => item.code), ['DRAFT_NOT_VERIFIED']);
 });
 
+test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，并把 stale 路径列出来', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-stale-artifacts');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  // 上一轮遗留的三个产物：先落盘再拍快照，本轮宿主脚本什么都没写出来。
+  fs.writeFileSync(inddPath, 'fake');
+  fs.writeFileSync(pdfPath, 'fake');
+  fs.writeFileSync(idmlPath, 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const snapshotOf = (file) => {
+    const stat = fs.statSync(file);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  };
+
+  const afterExport = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+      preRunDeliverables: {
+        indd: snapshotOf(inddPath),
+        pdf: snapshotOf(pdfPath),
+        idml: snapshotOf(idmlPath),
+      },
+    },
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'BUILD_ARTIFACTS_MISSING');
+  assert.deepEqual(response.error.details.missing, [inddPath, pdfPath, idmlPath]);
+  assert.deepEqual(response.error.details.stale, [inddPath, pdfPath, idmlPath]);
+  assert.match(response.error.message, /stale from a previous build/);
+  assert.equal(response.artifacts, undefined);
+});
+
 test('html.build_indesign final mode requests a current-document snapshot after build', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-final-stage');
   fs.rmSync(outDir, { recursive: true, force: true });
