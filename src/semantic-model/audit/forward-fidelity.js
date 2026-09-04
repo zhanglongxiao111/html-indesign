@@ -1,7 +1,7 @@
 const path = require('node:path');
 
 const { fieldRegistry } = require('../../protocol');
-const { normalizeLineEndings } = require('../../shared/text');
+const { normalizeLineEndings, collapseWhitespace } = require('../../shared/text');
 
 const DEFAULT_OPTIONS = Object.freeze({
   boundsTolerance: 1,
@@ -495,10 +495,55 @@ function compareText(expected, actual, actualModelItem, identity, context) {
 
 function compareTable(expectedRows, actualTable, identity, context) {
   const expected = tableFacts(expectedRows);
-  const actual = tableFacts(actualTable && actualTable.rows);
+  const actual = alignActualTableFacts(expected, tableFacts(actualTable && actualTable.rows));
+  const dimensions = tableDifferenceDimensions(expected, actual);
   compareField(context, 'items[].table.rows', expected, actual, {
     code: 'FORWARD_TABLE_CHANGED', ...identity, field: 'table.rows', tolerance: context.opts.numberTolerance,
+    ...(dimensions.length ? { dimensions } : {}),
   });
+}
+
+// The author declares styles per cell; a cell without a declaration accepts
+// whatever InDesign assigned (normally the built-in default), so the actual
+// style is dropped wherever the expected side declared none. A declared style
+// that did not apply still shows up as a difference.
+function alignActualTableFacts(expected, actual) {
+  return actual.map((row, rowIndex) => {
+    const expectedRow = expected[rowIndex];
+    return {
+      ...row,
+      cells: row.cells.map((cellFact, cellIndex) => {
+        const expectedCell = expectedRow && expectedRow.cells[cellIndex];
+        if (!expectedCell) return cellFact;
+        const aligned = { ...cellFact };
+        if (!expectedCell.paragraphStyle) delete aligned.paragraphStyle;
+        if (!expectedCell.cellStyle) delete aligned.cellStyle;
+        return aligned;
+      }),
+    };
+  });
+}
+
+const TABLE_CELL_DIMENSIONS = ['text', 'header', 'paragraphStyle', 'cellStyle', 'rowSpan', 'colSpan'];
+
+function tableDifferenceDimensions(expected, actual) {
+  const dimensions = new Set();
+  if (expected.length !== actual.length) dimensions.add('rowCount');
+  expected.forEach((row, rowIndex) => {
+    const actualRow = actual[rowIndex];
+    if (!actualRow) return;
+    if (row.cells.length !== actualRow.cells.length) dimensions.add('cellCount');
+    row.cells.forEach((cellFact, cellIndex) => {
+      const actualCell = actualRow.cells[cellIndex];
+      if (!actualCell) return;
+      for (const key of TABLE_CELL_DIMENSIONS) {
+        const left = cellFact[key] === undefined ? null : cellFact[key];
+        const right = actualCell[key] === undefined ? null : actualCell[key];
+        if (left !== right) dimensions.add(key === 'rowSpan' || key === 'colSpan' ? 'span' : key);
+      }
+    });
+  });
+  return [...dimensions];
 }
 
 function comparePlacedAsset(expected, actual, actualModelItem, identity, context) {
@@ -883,22 +928,35 @@ function runFacts(runs) {
 }
 
 function tableFacts(rows) {
-  return array(rows).map((row, rowIndex) => {
+  const facts = array(rows).map((row, rowIndex) => {
     const cells = array(row && row.cells).map((cell, cellIndex) => ({
       index: cell && cell.index != null ? cell.index : cellIndex,
-      text: normalizeLineEndings(cell && cell.text || ''),
+      // The executor writes cell text through HI.cleanTableCellText (whitespace
+      // collapsed to single spaces); mirror that before comparing.
+      text: collapseWhitespace(normalizeLineEndings(cell && cell.text || '')),
       header: Boolean(cell && cell.header),
       rowSpan: Number(cell && cell.rowSpan || 1),
       colSpan: Number(cell && cell.colSpan || 1),
-      ...(cell && cell.paragraphStyle ? { paragraphStyle: cell.paragraphStyle } : {}),
-      ...(cell && cell.cellStyle && !isBuiltinNoneStyle(cell.cellStyle) ? { cellStyle: cell.cellStyle } : {}),
+      ...(cell && cell.paragraphStyle && !isBuiltinIndesignStyle(cell.paragraphStyle) ? { paragraphStyle: cell.paragraphStyle } : {}),
+      ...(cell && cell.cellStyle && !isBuiltinIndesignStyle(cell.cellStyle) ? { cellStyle: cell.cellStyle } : {}),
     }));
     return {
       index: row && row.index != null ? row.index : rowIndex,
-      header: Boolean(row && row.header) || (cells.length > 0 && cells.every((cell) => cell.header)),
+      header: Boolean(row && row.header) || (cells.length > 0 && cells.every((cellFact) => cellFact.header)),
       cells,
     };
   });
+  // InDesign only knows leading header rows (table.headerRowCount, set by
+  // HI.applyTableHeaderRows). A <th> outside that band cannot survive the
+  // round trip, so header facts on both sides are normalized to
+  // "row index < leading header count".
+  let leading = 0;
+  while (leading < facts.length && facts[leading].header) leading += 1;
+  return facts.map((row, rowIndex) => ({
+    ...row,
+    header: rowIndex < leading,
+    cells: row.cells.map((cellFact) => ({ ...cellFact, header: rowIndex < leading })),
+  }));
 }
 
 function vectorAssetPreservedInDocument(expectedAsset, actualAssets) {
@@ -908,8 +966,11 @@ function vectorAssetPreservedInDocument(expectedAsset, actualAssets) {
     && (!asset.status || ['NORMAL', 'LINK_EMBEDDED'].includes(String(asset.status).toUpperCase())));
 }
 
-function isBuiltinNoneStyle(value) {
-  return /^\[(?:无|none)\]$/i.test(String(value || ''));
+// InDesign built-in style names are bracketed: [基本段落] / [Basic Paragraph],
+// [无段落样式] / [No Paragraph Style], [无] / [None]. Reading one back means
+// "nothing was applied", never an authored choice.
+function isBuiltinIndesignStyle(value) {
+  return /^\[.+\]$/.test(String(value || '').trim());
 }
 
 function effectiveExpectedVisualStyle(item, styles) {

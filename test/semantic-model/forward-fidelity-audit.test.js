@@ -216,6 +216,92 @@ test('forward fidelity audit compares native table cells instead of InDesign tab
   assert.equal(report.ok, true);
 });
 
+function tableFixture(expectedRows, actualRows) {
+  const fixture = matchingFixture();
+  fixture.instructions.pages[0].items = [{
+    id: 'table-1',
+    role: 'table',
+    type: 'TABLE',
+    bounds: { x: 10, y: 40, width: 80, height: 30 },
+    layer: '表格',
+    labels: [itemLabel('table-1', 'table', { order: 2 })],
+    rows: expectedRows,
+  }];
+  const actualTable = {
+    id: '203',
+    type: 'TextFrame',
+    bounds: { x: 10, y: 40, width: 80, height: 30 },
+    layerName: '表格',
+    text: '\u0016',
+    textRuns: [{ text: '\u0016', characterStyle: null }],
+    table: { rows: actualRows },
+    placedAsset: null,
+    labels: [itemLabel('table-1', 'table', { order: 2 })],
+  };
+  fixture.actualSnapshot.pages[0].items = [actualTable];
+  fixture.actualModel.pages[0].items = [{
+    id: 'table-1',
+    role: 'table',
+    bounds: actualTable.bounds,
+    content: { text: '', runs: [] },
+    table: actualTable.table,
+  }];
+  return fixture;
+}
+
+function cell(index, text, extra = {}) {
+  return { index, text, header: false, rowSpan: 1, colSpan: 1, ...extra };
+}
+
+test('forward fidelity audit accepts th header rows, built-in default cell styles and collapsed cell whitespace', () => {
+  const fixture = tableFixture([
+    { index: 0, header: true, cells: [cell(0, 'Area', { header: true }), cell(1, 'Ratio', { header: true })] },
+    { index: 1, header: false, cells: [cell(0, '\nRink'), cell(1, '32%')] },
+  ], [
+    { index: 0, cells: [
+      cell(0, 'Area', { header: true, paragraphStyle: '[基本段落]', cellStyle: '[无]' }),
+      cell(1, 'Ratio', { header: true, paragraphStyle: '[基本段落]', cellStyle: '[无]' }),
+    ] },
+    { index: 1, cells: [
+      cell(0, ' Rink', { paragraphStyle: '[基本段落]', cellStyle: '[无]' }),
+      cell(1, '32%', { paragraphStyle: '[基本段落]', cellStyle: '[无]' }),
+    ] },
+  ]);
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.errors.filter((issue) => issue.code === 'FORWARD_TABLE_CHANGED').length, 0, JSON.stringify(report.errors));
+  assert.equal(report.ok, true);
+});
+
+test('forward fidelity audit still fails when a declared cell paragraph style did not apply, and names the dimension', () => {
+  const fixture = tableFixture([
+    { index: 0, header: false, cells: [cell(0, 'Rink', { paragraphStyle: 'table-body' })] },
+  ], [
+    { index: 0, cells: [cell(0, 'Rink', { paragraphStyle: '[基本段落]' })] },
+  ]);
+
+  const report = auditForwardFidelity(fixture);
+
+  const issue = report.errors.find((entry) => entry.code === 'FORWARD_TABLE_CHANGED');
+  assert.ok(issue, 'declared style that did not apply must fail');
+  assert.deepEqual(issue.dimensions, ['paragraphStyle']);
+});
+
+test('forward fidelity audit ignores th cells outside the leading header rows', () => {
+  const fixture = tableFixture([
+    { index: 0, header: false, cells: [cell(0, 'Zone', { header: true }), cell(1, '7,600')] },
+    { index: 1, header: false, cells: [cell(0, 'Lobby', { header: true }), cell(1, '900')] },
+  ], [
+    { index: 0, cells: [cell(0, 'Zone'), cell(1, '7,600')] },
+    { index: 1, cells: [cell(0, 'Lobby'), cell(1, '900')] },
+  ]);
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.errors.some((issue) => issue.code === 'FORWARD_TABLE_CHANGED'), false, JSON.stringify(report.errors));
+});
+
 test('forward fidelity audit compares rotated lines by endpoints', () => {
   const fixture = matchingFixture();
   const expectedLine = {
