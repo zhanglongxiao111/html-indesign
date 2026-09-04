@@ -471,10 +471,15 @@ test('a grid-placed block is measured itself when its content is not', () => {
   // 右边缘 60mm 离 59/61 两根线各 1mm，在容差内；底边永远不查。
   assert.deepEqual(entry.edges, ['left', 'top']);
   assert.deepEqual(entry.blockOf, ['card-copy']);
+  assert.equal(entry.blockOfCount, 1);
   assert.deepEqual(entry.edgeOffsets[0], {
     edge: 'left', valueMm: 13, nearestLineMm: 10, offsetMm: 3,
   });
   assert.match(entry.suggestedFix, /Move #card left edge to 10mm \(-3mm\)/);
+  // 块级修法不能再叫作者"放到网格上"——它已经带着放置，偏移来自它自己的盒模型。
+  assert.match(entry.suggestedFix, /this block already carries a grid placement/);
+  assert.match(entry.suggestedFix, /own margin, transform or padding/);
+  assert.equal(entry.suggestedFix.includes('content inside a placed block is not checked'), false);
   assert.equal(result.gridOffCount, 1);
   // 责任在块上，块内文本不能再被单独报一条。
   assert.equal(result.errors.some((issue) => issue.itemId === 'card-copy'), false);
@@ -570,6 +575,94 @@ test('a placed block from an older snapshot without bounds is skipped, not repor
   assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
   assert.equal(result.gridOffCount, 0);
   assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.equal(result.gridBlockSkippedCount, 1);
+  assert.equal(result.gridBlockCheckedCount, 0);
+});
+
+// 决策：块内只有注解 / folio 时，块照样要量。免检的是条目自己的边缘，
+// 而块是作者亲手放上网格的东西。
+test('a placed block whose only content is an annotation is still measured itself', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      id: 'card-note',
+      attributes: { 'data-id-role': 'annotation' },
+      sourceAncestorNodes: [placedNode({ boundsMm: { x: 13, y: 14, width: 47, height: 25 } })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(result.errors));
+  assert.equal(entries[0].block, true);
+  assert.equal(entries[0].itemId, 'card');
+  // 注解条目自己不被点名，只作为块的归属内容出现。
+  assert.equal(result.errors.some((issue) => issue.itemId === 'card-note'), false);
+  assert.deepEqual(entries[0].blockOf, ['card-note']);
+  assert.equal(result.gridBlockCheckedCount, 1);
+});
+
+test('a placed block with no id and no sourcePath falls back to a positional label', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [placedNode({
+        id: undefined,
+        sourcePath: undefined,
+        boundsMm: { x: 13, y: 14, width: 47, height: 25 },
+      })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(result.errors));
+  const [entry] = entries;
+  assert.match(entry.itemId, /^div@/);
+  assert.equal(entry.itemId, 'div@13,14mm');
+  assert.equal(entry.message.includes('#undefined'), false, entry.message);
+  assert.equal(entry.suggestedFix.includes('#undefined'), false, entry.suggestedFix);
+  assert.match(entry.suggestedFix, /^Move div@13,14mm left edge to 10mm \(-3mm\)/);
+});
+
+// 计数分开的意义就在这一条：0 偏移可以是"都压住线"，也可以是"一个都没量"。
+test('grid counters separate what was measured, what a block shielded and what could not be measured', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [
+      // 压住线的块里的内容：块量、内容不量。
+      cardCopyItem({
+        id: 'shielded-copy',
+        sourceAncestorNodes: [placedNode({ boundsMm: { x: 10, y: 10, width: 49, height: 29 } })],
+      }),
+      // 没有祖先块，自己直接被量，而且压住了线。
+      cardCopyItem({ id: 'measured-copy', boundsMm: { x: 10, y: 10, width: 23.5, height: 6 } }),
+      // 整体豁免。
+      cardCopyItem({
+        id: 'ignored-copy',
+        attributes: { 'data-id-paragraph-style': 'body-copy', 'data-id-grid-ignore': '' },
+        boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+      }),
+      // 承担放置但没有几何的块：量不出来，只能留痕。
+      cardCopyItem({
+        id: 'boundless-copy',
+        sourceAncestorNodes: [placedNode({ id: 'boundless-card', sourcePath: 'div:nth-of-type(9)' })],
+      }),
+    ],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.equal(result.gridCheckedCount, 1);
+  // 块挡住的条目按条目计数：让 boundless-card 被指认出来的那个条目同样被挡住。
+  assert.equal(result.gridShieldedCount, 2);
+  assert.equal(result.gridBlockCheckedCount, 1);
+  assert.equal(result.gridBlockSkippedCount, 1);
+  assert.equal(result.gridIgnoredCount, 1);
+  assert.equal(result.gridOffCount, 0);
 });
 
 test('validateAuthoringRules checks text placement by left right and top edges', () => {

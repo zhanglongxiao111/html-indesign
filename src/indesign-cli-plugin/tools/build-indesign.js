@@ -63,6 +63,10 @@ async function call(args, context) {
     normalizedCount: lint.normalizedCount || 0,
     gridIgnoredCount: lint.gridIgnoredCount || 0,
     gridOffCount: lint.gridOffCount || 0,
+    gridCheckedCount: lint.gridCheckedCount || 0,
+    gridShieldedCount: lint.gridShieldedCount || 0,
+    gridBlockCheckedCount: lint.gridBlockCheckedCount || 0,
+    gridBlockSkippedCount: lint.gridBlockSkippedCount || 0,
   };
   if (!lint.ok) {
     const report = writeLintFailureReport(lint, {
@@ -91,6 +95,10 @@ async function call(args, context) {
         normalized_count: lintCounts.normalizedCount ?? 0,
         grid_ignored_count: lintCounts.gridIgnoredCount,
         grid_off_count: lintCounts.gridOffCount,
+        grid_checked_count: lintCounts.gridCheckedCount,
+        grid_shielded_count: lintCounts.gridShieldedCount,
+        grid_block_checked_count: lintCounts.gridBlockCheckedCount,
+        grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
       }),
     };
     throw error;
@@ -119,6 +127,12 @@ async function call(args, context) {
         compile_ms: compileMsAtFailure,
         warning_count: lintCounts.warningCount,
         normalized_count: lintCounts.normalizedCount ?? 0,
+        grid_ignored_count: lintCounts.gridIgnoredCount,
+        grid_off_count: lintCounts.gridOffCount,
+        grid_checked_count: lintCounts.gridCheckedCount,
+        grid_shielded_count: lintCounts.gridShieldedCount,
+        grid_block_checked_count: lintCounts.gridBlockCheckedCount,
+        grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
         ...existingMetrics,
       }),
     };
@@ -760,6 +774,10 @@ function collectMetrics(state, extra) {
     normalized_count: lintCounts.normalizedCount ?? 0,
     grid_ignored_count: lintCounts.gridIgnoredCount,
     grid_off_count: lintCounts.gridOffCount,
+    grid_checked_count: lintCounts.gridCheckedCount,
+    grid_shielded_count: lintCounts.gridShieldedCount,
+    grid_block_checked_count: lintCounts.gridBlockCheckedCount,
+    grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
     fidelity_error_count: fidelityCounts.errorCount,
     fidelity_warning_count: fidelityCounts.warningCount,
     compatibility_normalized: compatibility.normalized,

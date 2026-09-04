@@ -68,6 +68,10 @@ function copyOffGridWrapperFixture(name) {
   const target = copyGridFixture(name);
   const pagesDir = path.join(target, 'pages');
   const page = fs.readdirSync(pagesDir).find((file) => file.startsWith('02-'));
+  // 页面重命名后 find 会静默返回 undefined，注入无声跳过，测试就变成在测一个干净包。
+  if (!page) {
+    throw new Error(`fixture has no 02- page to inject into: ${pagesDir}`);
+  }
   injectIntoPage(path.join(pagesDir, page), OFF_GRID_WRAPPER);
   writeAuthorPackageEntry(path.join(target, 'deck.config.json'));
   return target;
@@ -75,7 +79,12 @@ function copyOffGridWrapperFixture(name) {
 
 function injectIntoPage(pagePath, markup) {
   const html = fs.readFileSync(pagePath, 'utf8');
-  fs.writeFileSync(pagePath, html.replace(/\n<\/section>/, `\n${markup}</section>`), 'utf8');
+  const injected = html.replace(/\n<\/section>/, `\n${markup}</section>`);
+  // 注入失败必须炸：替换没命中时写回原文，整条用例会变成"干净包也报错"式的假绿。
+  if (injected === html) {
+    throw new Error(`injection point \\n</section> not found in ${pagePath}`);
+  }
+  fs.writeFileSync(pagePath, injected, 'utf8');
 }
 
 function callLint(packageDir, args = {}) {
@@ -134,6 +143,14 @@ test('2026-08-12 事故包在母元素规则下整体通过 strict 检查', () =
   assert.equal(response.data.errorCount, 0);
   assert.equal(response.data.warningCount, 0);
   assert.equal(response.data.normalizedCount, 23);
+  // "0 errors"必须能被证明是"量过且都压住线"，不是"一条都没量"：
+  // 02/03/04 三页 15 个承担放置的块逐个被量、无一被跳过，75 个块内条目由块承担，
+  // 19 个条目整体豁免（01 页整页 data-id-grid-ignore），因此没有条目走逐条检查。
+  assert.equal(response.data.gridBlockCheckedCount, 15);
+  assert.equal(response.data.gridBlockSkippedCount, 0);
+  assert.equal(response.data.gridShieldedCount, 75);
+  assert.equal(response.data.gridCheckedCount, 0);
+  assert.equal(response.data.gridIgnoredCount, 19);
 });
 
 // 母元素规则的另一半：块内不量，块本身必须有人量。这个包的 15 个 grid-item 包裹层
@@ -159,8 +176,12 @@ test('承担放置的包裹层自己压不住线时由块级校验兜住', () =>
   assert.equal(entry.edgeOffsets.find((offset) => offset.edge === 'top').offsetMm, 4);
   // 块内段落归属这个块，自己不再被点名。
   assert.deepEqual(entry.blockOf, ['p2-el28']);
+  assert.equal(entry.blockOfCount, 1);
   assert.equal(errors.some((issue) => issue.itemId === 'p2-el28'), false);
-  assert.match(entry.suggestedFix, /^Move #div:nth-of-type\(3\) left edge to [\d.]+mm \(-3mm\)/);
+  // 选择器路径不是 id，前面不加 #；修法也不能叫作者"再放到网格上"。
+  assert.match(entry.suggestedFix, /^Move div:nth-of-type\(3\) left edge to [\d.]+mm \(-3mm\)/);
+  assert.match(entry.suggestedFix, /this block already carries a grid placement/);
+  assert.match(entry.suggestedFix, /data-id-grid-ignore/);
 });
 
 test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报告文件', () => {

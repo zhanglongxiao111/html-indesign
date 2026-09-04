@@ -41,11 +41,24 @@ test('grid exemption and offset counts pass through normalizeLintPayload as numb
     warnings: [],
     gridIgnoredCount: 1147,
     gridOffCount: '3',
+    // 覆盖率口径的四个计数：0 偏移到底是"都压住线"还是"一个都没量"，靠它们区分。
+    gridCheckedCount: 12,
+    gridShieldedCount: '75',
+    gridBlockCheckedCount: '15',
+    gridBlockSkippedCount: 2,
   });
   assert.equal(payload.gridIgnoredCount, 1147);
   assert.equal(payload.gridOffCount, 3);
+  assert.equal(payload.gridCheckedCount, 12);
+  assert.equal(payload.gridShieldedCount, 75);
+  assert.equal(payload.gridBlockCheckedCount, 15);
+  assert.equal(payload.gridBlockSkippedCount, 2);
 
   const missing = normalizeLintPayload({ errors: [], warnings: [] });
   assert.equal(missing.gridIgnoredCount, 0);
   assert.equal(missing.gridOffCount, 0);
+  assert.equal(missing.gridCheckedCount, 0);
+  assert.equal(missing.gridShieldedCount, 0);
+  assert.equal(missing.gridBlockCheckedCount, 0);
+  assert.equal(missing.gridBlockSkippedCount, 0);
 });

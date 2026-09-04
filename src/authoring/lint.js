@@ -90,6 +90,10 @@ async function lintAuthoringPackage(options = {}) {
     compatibility: htmlResult.compatibility,
     gridIgnoredCount: htmlResult.gridIgnoredCount || 0,
     gridOffCount: htmlResult.gridOffCount || 0,
+    gridCheckedCount: htmlResult.gridCheckedCount || 0,
+    gridShieldedCount: htmlResult.gridShieldedCount || 0,
+    gridBlockCheckedCount: htmlResult.gridBlockCheckedCount || 0,
+    gridBlockSkippedCount: htmlResult.gridBlockSkippedCount || 0,
     errors,
     warnings,
     messages: errors.concat(warnings),
@@ -195,6 +199,10 @@ function normalizeLintPayload(payload, paths = {}) {
     normalizedCount: normalized.length,
     gridIgnoredCount: Number(payload.gridIgnoredCount) || 0,
     gridOffCount: Number(payload.gridOffCount) || 0,
+    gridCheckedCount: Number(payload.gridCheckedCount) || 0,
+    gridShieldedCount: Number(payload.gridShieldedCount) || 0,
+    gridBlockCheckedCount: Number(payload.gridBlockCheckedCount) || 0,
+    gridBlockSkippedCount: Number(payload.gridBlockSkippedCount) || 0,
     compatibility: payload.compatibility || emptyCompatibility(),
   };
 }

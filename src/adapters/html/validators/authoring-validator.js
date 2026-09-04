@@ -24,6 +24,12 @@ function validateAuthoringRules(snapshot, options = {}) {
   // 豁免与偏差都计数：整包豁免不能静默通过，报告和遥测要看得见。
   let gridIgnoredCount = 0;
   let gridOffCount = 0;
+  // "0 偏移"有两种来源：真的都压住线了，和一个都没量。只有把量过的、被块挡住的、
+  // 量不出来的分开计数，报告才能把两者区分开。
+  let gridCheckedCount = 0;
+  let gridShieldedCount = 0;
+  let gridBlockCheckedCount = 0;
+  let gridBlockSkippedCount = 0;
 
   pages.forEach((page, pageIndex) => {
     const pageId = pageIdFor(page, pageIndex);
@@ -62,7 +68,13 @@ function validateAuthoringRules(snapshot, options = {}) {
           gridIgnoredCount += 1;
           return;
         }
+        // 豁免优先：豁免过的条目不再算进"被块挡住"，两个计数不能重叠。
+        if (isMappableItem(item) && isPlacedBlockContent(item)) {
+          gridShieldedCount += 1;
+          return;
+        }
         if (!shouldCheckGrid(item, page)) return;
+        gridCheckedCount += 1;
         const edges = offGridEdges(item.boundsMm, grid.lines, gridTolerance, item);
         if (!edges.length) return;
         gridOffCount += 1;
@@ -80,18 +92,30 @@ function validateAuthoringRules(snapshot, options = {}) {
       responsibleBlocksFor(items).forEach(({ node, itemIds }) => {
         const bounds = node.boundsMm;
         // 旧快照的祖先节点没有几何：量不出来的块静默跳过，不拿"无法判断"充当错误。
-        if (!hasFiniteBounds(bounds)) return;
+        // 但跳过要留痕，否则"块级覆盖回落到零"和"块全都压住线"在报告里长得一样。
+        if (!hasFiniteBounds(bounds)) {
+          gridBlockSkippedCount += 1;
+          return;
+        }
+        gridBlockCheckedCount += 1;
         const edges = offGridBlockEdges(bounds, grid.lines, gridTolerance);
         if (!edges.length) return;
         gridOffCount += 1;
-        const blockId = node.id || node.sourcePath;
+        const blockLabel = blockLabelFor(node, bounds);
         warnings.push({
-          ...message('warning', GRID_ALIGNMENT_OFF, pageId, blockId, gridOffMessage(edges)),
+          ...message(
+            'warning',
+            GRID_ALIGNMENT_OFF,
+            pageId,
+            node.id || node.sourcePath || blockLabel,
+            gridOffMessage(edges),
+          ),
           block: true,
           edges: edges.map((entry) => entry.edge),
           edgeOffsets: edges,
           blockOf: itemIds.slice(0, 10),
-          suggestedFix: gridSuggestedFix(blockId, edges),
+          blockOfCount: itemIds.length,
+          suggestedFix: gridBlockSuggestedFix(blockLabel, edges),
         });
       });
     }
@@ -167,6 +191,10 @@ function validateAuthoringRules(snapshot, options = {}) {
     messages: resultErrors.concat(resultWarnings),
     gridIgnoredCount,
     gridOffCount,
+    gridCheckedCount,
+    gridShieldedCount,
+    gridBlockCheckedCount,
+    gridBlockSkippedCount,
   };
 }
 
@@ -615,6 +643,9 @@ function responsibleBlockFor(item) {
 
 // 同一个块会被它内部每个条目各指认一次，按 sourcePath 去重，并记住块内条目的
 // id：报告要能从块指回作者看得见的内容。
+// 决策：块内只有 data-id-role="annotation" 或 folio 段落时，这个块照样要量。
+// 免检的是"条目自己的边缘"（注解与页码的位置由排版惯例决定，作者不逐条对齐），
+// 而块是作者亲手放上网格的东西，它压不住线仍然是作者能改、也该改的偏差。
 function responsibleBlocksFor(items) {
   const blocks = new Map();
   items.forEach((item, itemIndex) => {
@@ -634,7 +665,20 @@ function responsibleBlocksFor(items) {
 }
 
 function blockKeyFor(node) {
-  return node.sourcePath || node.id || JSON.stringify(node.boundsMm || null);
+  // 兜底键要带上 tagName：两个都没 id/sourcePath 的包裹层可能占同一块几何
+  // （一个套着另一个），只按 boundsMm 去重会把它们并成一条。
+  return node.sourcePath
+    || node.id
+    || `${node.tagName || ''}|${JSON.stringify(node.boundsMm || null)}`;
+}
+
+// 块的作者可见名字：id 最准，其次是选择器路径，两者都没有就用标签加几何坐标。
+// 直接拼 `#${node.id || node.sourcePath}` 会在两者皆空时给出 "#undefined"。
+function blockLabelFor(node, bounds) {
+  if (node && node.id) return `#${node.id}`;
+  if (node && node.sourcePath) return String(node.sourcePath);
+  const box = bounds || {};
+  return `${(node && node.tagName) || 'block'}@${box.x},${box.y}mm`;
 }
 
 function offGridEdges(bounds, lines, tolerance, item) {
@@ -698,14 +742,29 @@ function describeEdgeOffset(entry) {
 }
 
 function gridSuggestedFix(itemId, edges) {
-  const moves = edges
-    .filter((entry) => entry.nearestLineMm != null)
-    .map((entry) => `${entry.edge} edge to ${entry.nearestLineMm}mm (${entry.offsetMm > 0 ? '-' : '+'}${Math.abs(entry.offsetMm)}mm)`);
+  const moves = edgeMoves(edges);
   if (!moves.length) {
     return `Give #${itemId} a grid placement (--grid-col/--grid-row) or mark it ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
   }
   return `Move #${itemId} ${moves.join(', ')}, or place it with --grid-col/--grid-row so the block itself sits on the grid; `
     + 'content inside a placed block is not checked.';
+}
+
+// 块级修法不能照抄条目版：块被报出来正是因为它已经带着网格放置，"再放一次"是
+// 自相矛盾的建议。偏移只可能来自这个块自己的 margin / transform / padding。
+function gridBlockSuggestedFix(blockLabel, edges) {
+  const moves = edgeMoves(edges);
+  const tail = `remove that, or mark the block ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
+  const cause = 'this block already carries a grid placement, so the offset comes from its own '
+    + `margin, transform or padding — ${tail}`;
+  if (!moves.length) return `Realign ${blockLabel}; ${cause}`;
+  return `Move ${blockLabel} ${moves.join(', ')}; ${cause}`;
+}
+
+function edgeMoves(edges) {
+  return edges
+    .filter((entry) => entry.nearestLineMm != null)
+    .map((entry) => `${entry.edge} edge to ${entry.nearestLineMm}mm (${entry.offsetMm > 0 ? '-' : '+'}${Math.abs(entry.offsetMm)}mm)`);
 }
 
 function gridEdgesForItem(bounds, vertical, horizontal, item) {
