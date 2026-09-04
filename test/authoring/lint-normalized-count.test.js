@@ -34,3 +34,18 @@ test('payloads without normalized entries keep their counts unchanged', () => {
   assert.equal(payload.normalizedCount, 0);
   assert.deepEqual(payload.normalizedSummary, []);
 });
+
+test('grid exemption and offset counts pass through normalizeLintPayload as numbers', () => {
+  const payload = normalizeLintPayload({
+    errors: [],
+    warnings: [],
+    gridIgnoredCount: 1147,
+    gridOffCount: '3',
+  });
+  assert.equal(payload.gridIgnoredCount, 1147);
+  assert.equal(payload.gridOffCount, 3);
+
+  const missing = normalizeLintPayload({ errors: [], warnings: [] });
+  assert.equal(missing.gridIgnoredCount, 0);
+  assert.equal(missing.gridOffCount, 0);
+});

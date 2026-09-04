@@ -19,6 +19,8 @@ async function call(args, context) {
     error_count: result && result.errorCount,
     warning_count: result && result.warningCount,
     normalized_count: (result && result.normalizedCount) || 0,
+    grid_ignored_count: (result && result.gridIgnoredCount) || 0,
+    grid_off_count: (result && result.gridOffCount) || 0,
     compatibility_normalized: result && result.compatibility && result.compatibility.summary.normalized,
     compatibility_blocked: result && result.compatibility && result.compatibility.summary.blocked,
   });

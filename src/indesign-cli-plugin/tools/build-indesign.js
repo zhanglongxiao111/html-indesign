@@ -61,6 +61,8 @@ async function call(args, context) {
     errorCount: lint.errorCount,
     warningCount: lint.warningCount,
     normalizedCount: lint.normalizedCount || 0,
+    gridIgnoredCount: lint.gridIgnoredCount || 0,
+    gridOffCount: lint.gridOffCount || 0,
   };
   if (!lint.ok) {
     const report = writeLintFailureReport(lint, {
@@ -87,6 +89,8 @@ async function call(args, context) {
         error_count: lintCounts.errorCount,
         warning_count: lintCounts.warningCount,
         normalized_count: lintCounts.normalizedCount ?? 0,
+        grid_ignored_count: lintCounts.gridIgnoredCount,
+        grid_off_count: lintCounts.gridOffCount,
       }),
     };
     throw error;
@@ -745,6 +749,8 @@ function collectMetrics(state, extra) {
     error_count: lintCounts.errorCount,
     warning_count: lintCounts.warningCount,
     normalized_count: lintCounts.normalizedCount ?? 0,
+    grid_ignored_count: lintCounts.gridIgnoredCount,
+    grid_off_count: lintCounts.gridOffCount,
     fidelity_error_count: fidelityCounts.errorCount,
     fidelity_warning_count: fidelityCounts.warningCount,
     compatibility_normalized: compatibility.normalized,

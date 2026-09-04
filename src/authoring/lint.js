@@ -88,6 +88,8 @@ async function lintAuthoringPackage(options = {}) {
     semanticPreset,
     semanticAudit,
     compatibility: htmlResult.compatibility,
+    gridIgnoredCount: htmlResult.gridIgnoredCount || 0,
+    gridOffCount: htmlResult.gridOffCount || 0,
     errors,
     warnings,
     messages: errors.concat(warnings),
@@ -191,6 +193,8 @@ function normalizeLintPayload(payload, paths = {}) {
     errorCount: errors.length,
     warningCount: warnings.length,
     normalizedCount: normalized.length,
+    gridIgnoredCount: Number(payload.gridIgnoredCount) || 0,
+    gridOffCount: Number(payload.gridOffCount) || 0,
     compatibility: payload.compatibility || emptyCompatibility(),
   };
 }
