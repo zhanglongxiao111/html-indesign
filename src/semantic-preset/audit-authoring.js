@@ -41,14 +41,16 @@ function auditAuthoringSemanticTokens(options = {}) {
           if (known[kind] && known[kind].has(token)) return;
           const enumError = code !== 'SEMANTIC_TOKEN_UNKNOWN';
           const level = enumError || strict ? 'error' : 'warning';
+          const knownTokens = suggestedTokens(token, known[kind]);
           messages.push({
             level,
             code,
-            message: `Unknown semantic token "${token}" in ${attrName}.`,
+            message: unknownTokenMessage(token, attrName, kind, known[kind], knownTokens),
             file,
             attr: attrName,
             token,
             kind,
+            knownTokens,
           });
         });
       });
@@ -63,6 +65,46 @@ function auditAuthoringSemanticTokens(options = {}) {
     warnings,
     messages,
   };
+}
+
+const MAX_LISTED_TOKENS = 20;
+const MAX_SUGGESTED_TOKENS = 5;
+
+// 只说 unknown 等于让 Agent 再猜一次；把本 kind 已登记的词表给出来，
+// 词表太长时按编辑距离给最近的几个。
+function suggestedTokens(token, knownSet) {
+  const known = [...(knownSet || [])].sort();
+  if (known.length <= MAX_LISTED_TOKENS) return known;
+  return known
+    .map((name) => [levenshtein(token, name), name])
+    .sort((left, right) => left[0] - right[0] || left[1].localeCompare(right[1]))
+    .slice(0, MAX_SUGGESTED_TOKENS)
+    .map(([, name]) => name);
+}
+
+function unknownTokenMessage(token, attrName, kind, knownSet, suggested) {
+  const base = `Unknown semantic token "${token}" in ${attrName}.`;
+  const total = knownSet ? knownSet.size : 0;
+  if (!total) return `${base} No ${kind} tokens are registered in the semantic preset; add it to the preset before using it.`;
+  if (total <= MAX_LISTED_TOKENS) return `${base} Known ${kind}: ${suggested.join(', ')}.`;
+  return `${base} ${total} ${kind} tokens are registered; closest: ${suggested.join(', ')}.`;
+}
+
+function levenshtein(left, right) {
+  const a = String(left || '');
+  const b = String(right || '');
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let previous = Array.from({ length: b.length + 1 }, (_value, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+    }
+    previous = current;
+  }
+  return previous[b.length];
 }
 
 function splitTokens(value) {
