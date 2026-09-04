@@ -193,6 +193,9 @@ async function runIndesignE2E(options = {}) {
   fs.writeFileSync(context.buildScriptPath, buildBuildJsx({
     repoRoot: context.repoRoot,
     instructionsPath: context.runInstructionsPath,
+    // 预检需要知道最终要覆盖的 INDD。这里的 basename 必须与下面 buildExportJsx 的
+    // outputBaseName 默认值保持一致；改一处就要改另一处。
+    targetInddPath: path.join(context.runDir, 'architecture-report-indesign.indd'),
   }), 'utf8');
 
   const buildCli = runCli(['--json', '--pretty', 'script', 'run', context.buildScriptPath], context.repoRoot);
@@ -543,8 +546,8 @@ function assertCliResultOk(result, message) {
   }
 }
 
-function buildBuildJsx({ repoRoot, instructionsPath }) {
-  return hostJsx.buildBuildJsx({ repoRoot, instructionsPath });
+function buildBuildJsx({ repoRoot, instructionsPath, targetInddPath = null }) {
+  return hostJsx.buildBuildJsx({ repoRoot, instructionsPath, targetInddPath });
 }
 
 function buildExportJsx(options) {

@@ -411,6 +411,85 @@ test('html.build_indesign draft mode exports after build and is always marked un
   assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
 });
 
+test('构建阶段宿主脚本的 warnings 透传到成功结果（data 直挂与 data.parsed 两种形状）', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-host-warnings');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const previousOutputClosed = {
+    code: 'PREVIOUS_OUTPUT_CLOSED',
+    message: 'Closed the unmodified previous build output that was still open: D:/run/deck.indd',
+  };
+
+  function driveDraftBuild(buildHostResult) {
+    const afterBuild = callPlugin('tools/resume', {
+      state: {
+        tool_id: 'html.build_indesign',
+        stage: 'build',
+        mode: 'draft',
+        runDir: outDir,
+        outputBaseName: 'plugin-smoke',
+        exportPdf: true,
+        exportIdml: true,
+        instructionsPath,
+        summaryPath,
+      },
+      host_results: [buildHostResult],
+    });
+    assert.equal(afterBuild.status, 'requires_host_actions');
+    assert.equal(afterBuild.state.stage, 'export');
+
+    const afterExport = callPlugin('tools/resume', {
+      state: afterBuild.state,
+      host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(afterExport.status, 'requires_host_actions');
+    assert.equal(afterExport.state.stage, 'verify');
+
+    const complete = callPlugin('tools/resume', {
+      state: afterExport.state,
+      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(complete.status, 'complete');
+    return complete;
+  }
+
+  const flat = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, warnings: [previousOutputClosed] },
+  });
+  const flatCodes = flat.data.warnings.map((item) => item.code);
+  assert.equal(flatCodes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
+  assert.equal(flatCodes.includes('DRAFT_NOT_VERIFIED'), true);
+  assert.match(
+    flat.data.warnings.find((item) => item.code === 'PREVIOUS_OUTPUT_CLOSED').message,
+    /previous build output/
+  );
+
+  // 真实 CLI（mcp-indesign 的 _parse_tool_response）把脚本载荷放在 data.parsed。
+  const nested = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, parsed: { ok: true, warnings: [previousOutputClosed] } },
+  });
+  const nestedCodes = nested.data.warnings.map((item) => item.code);
+  assert.equal(nestedCodes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
+  assert.equal(nestedCodes.includes('DRAFT_NOT_VERIFIED'), true);
+
+  // 没有 warnings 时不得凭空造出条目。
+  const clean = driveDraftBuild({ id: 'html-build-script', status: 'complete', data: { ok: true } });
+  assert.deepEqual(clean.data.warnings.map((item) => item.code), ['DRAFT_NOT_VERIFIED']);
+});
+
 test('html.build_indesign final mode requests a current-document snapshot after build', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-final-stage');
   fs.rmSync(outDir, { recursive: true, force: true });

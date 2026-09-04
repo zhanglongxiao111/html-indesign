@@ -375,6 +375,7 @@ test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable 
       mode: 'final',
       runDir: outDir,
       outputBaseName: 'deck',
+      // runStartedAt 由 Task 6 的 mtime 过滤消费；OUTPUT_TARGET_OPEN 这条路径上它不起作用。
       runStartedAt: Date.now() + 60000,
     },
     host_results: [{
@@ -396,6 +397,34 @@ test('OUTPUT_TARGET_OPEN from the build pre-check surfaces as its own retryable 
   assert.match(response.error.hint, /关闭/);
   assert.equal(response.error.details.artifactsExported, false);
   assert.deepEqual(response.error.details.partialArtifacts, []);
+
+  // 真实 CLI 的形状：script.run 把脚本的首条错误抬到 host_result.error，data 不再挂 errors。
+  const viaHostError = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'final',
+      runDir: outDir,
+      outputBaseName: 'deck',
+      runStartedAt: Date.now() + 60000,
+    },
+    host_results: [{
+      id: 'html-build-script',
+      ok: false,
+      error: {
+        code: 'OUTPUT_TARGET_OPEN',
+        message: 'Target INDD is open in InDesign; close it (or choose another outputBaseName) before building: D:/run/deck.indd',
+      },
+    }],
+  });
+
+  assert.equal(viaHostError.status, 'error');
+  assert.equal(viaHostError.error.code, 'OUTPUT_TARGET_OPEN');
+  assert.equal(viaHostError.error.retryable, true);
+  assert.match(viaHostError.error.message, /^Target INDD is open in InDesign/);
+  assert.match(viaHostError.error.hint, /关闭/);
+  assert.equal(viaHostError.error.details.artifactsExported, false);
+  assert.deepEqual(viaHostError.error.details.partialArtifacts, []);
 });
 
 function repeatError(code, count, pageId) {

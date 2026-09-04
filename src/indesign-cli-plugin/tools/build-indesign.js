@@ -213,10 +213,14 @@ async function resume(params) {
 
   const nextState = finishStageTiming(state);
   if (state.stage === 'build') {
+    const carried = {
+      ...nextState,
+      hostWarnings: [...(nextState.hostWarnings || []), ...hostScriptWarnings(hostResults)],
+    };
     if (state.mode === 'draft') {
-      return hostActionResponse(startStage(nextState, 'export'), exportAction(state));
+      return hostActionResponse(startStage(carried, 'export'), exportAction(state));
     }
-    return hostActionResponse(startStage(nextState, 'snapshot'), snapshotAction(state));
+    return hostActionResponse(startStage(carried, 'snapshot'), snapshotAction(state));
   }
 
   if (state.stage === 'snapshot') {
@@ -397,10 +401,13 @@ function completeResult(state) {
       fidelityReportPath: verified ? state.fidelityReportPath : null,
       fidelitySummary: verified ? state.fidelitySummary || null : null,
       timings: state.timings || {},
-      warnings: verified ? [] : [{
-        code: 'DRAFT_NOT_VERIFIED',
-        message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
-      }],
+      warnings: [
+        ...(state.hostWarnings || []),
+        ...(verified ? [] : [{
+          code: 'DRAFT_NOT_VERIFIED',
+          message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
+        }]),
+      ],
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
     metrics: collectMetrics(state, { artifacts: artifacts.length }),
@@ -415,7 +422,7 @@ function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
   const stage = state.stage || 'build';
   const finished = finishStageTiming(state);
-  const targetOpen = detail.code === 'OUTPUT_TARGET_OPEN';
+  const targetOpen = stage === 'build' && detail.code === 'OUTPUT_TARGET_OPEN';
   const partialArtifacts = targetOpen ? [] : landedDeliverables(state);
   const baseMessage = detail.message || `Host action failed during ${stage}.`;
   const prefix = landedArtifactPrefix(partialArtifacts);
@@ -480,6 +487,20 @@ function firstFailedHostResult(hostResults) {
     if (result.data && result.data.ok === false) return true;
     return false;
   }) || null;
+}
+
+// 宿主脚本的 warnings（例如预检自动关闭旧产物的 PREVIOUS_OUTPUT_CLOSED）必须到达调用方；
+// 真实 CLI 把脚本载荷放在 data.parsed，插件契约/测试用 data 直挂，两种形状都读。
+function hostScriptWarnings(hostResults) {
+  const warnings = [];
+  for (const result of hostResults || []) {
+    const data = result && result.data;
+    const payload = data && data.parsed && typeof data.parsed === 'object' ? data.parsed : data;
+    for (const warning of Array.isArray(payload && payload.warnings) ? payload.warnings : []) {
+      if (warning && warning.code) warnings.push({ code: warning.code, message: String(warning.message || '') });
+    }
+  }
+  return warnings;
 }
 
 function hostActionResponse(state, action) {

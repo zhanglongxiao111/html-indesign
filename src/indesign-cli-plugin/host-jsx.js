@@ -52,6 +52,7 @@ function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-ind
     // Saving over an INDD that is open in InDesign fails only at the very end
     // of the run. Look for it up front: our own unmodified previous output can
     // be closed; anything else is the user's and the build stops here.
+    // Limits: only documents in this InDesign instance are visible, and a UNC path vs a mapped-drive path do not compare equal; those cases still fail later at save time.
     function findOpenDocumentAt(fsPath) {
         var wanted = String(File(fsPath).fsName).toLowerCase();
         for (var i = 0; i < app.documents.length; i++) {
