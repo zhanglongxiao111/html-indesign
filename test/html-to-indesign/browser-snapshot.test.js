@@ -875,3 +875,39 @@ test('renderSnapshot leaves dynamic pseudo content unsupported', async () => {
   assert.ok(host);
   assert.notEqual(host.unsupported.beforeContent, '');
 });
+
+test('renderSnapshot marks grid-placed blocks and their ancestors with gridPlaced', async () => {
+  const outDir = path.resolve(__dirname, '../workspace/browser-snapshot-grid-placed');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; box-sizing: border-box; padding: 40px;
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); gap: 16px; }
+  .grid-item { grid-column: var(--grid-col) / span var(--grid-span); grid-row: var(--grid-row) / span var(--grid-row-span); }
+  .card { padding: 24px; }
+  .loose { position: absolute; left: 520px; top: 300px; }
+</style>
+<section class="page" id="page-1">
+  <div class="grid-item card" id="card" style="--grid-col:1;--grid-span:6;--grid-row:1;--grid-row-span:3">
+    <p id="card-copy">卡片正文</p>
+  </div>
+  <p class="loose" id="loose-copy">自由文本</p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+
+  const copy = page.items.find((item) => item.id === 'card-copy');
+  assert.ok(copy, 'card paragraph should be captured');
+  assert.equal(copy.gridPlaced, false);
+  const cardAncestor = copy.sourceAncestorNodes.find((node) => node.id === 'card');
+  assert.ok(cardAncestor, 'the card must be recorded as a source ancestor');
+  assert.equal(cardAncestor.gridPlaced, true);
+
+  const loose = page.items.find((item) => item.id === 'loose-copy');
+  assert.ok(loose, 'loose paragraph should be captured');
+  assert.equal(loose.gridPlaced, false);
+  assert.equal(loose.sourceAncestorNodes.some((node) => node.gridPlaced === true), false);
+});

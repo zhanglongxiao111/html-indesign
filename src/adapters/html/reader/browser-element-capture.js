@@ -67,6 +67,7 @@
       classList: classList(el),
       attributes: attrs(el),
       sourcePath: sourcePathFor(el, pageEl),
+      gridPlaced: isGridPlaced(el),
     };
     if (extra) {
       for (const key of Object.keys(extra)) node[key] = extra[key];
@@ -150,6 +151,22 @@
       out[name] = value;
     }
     return out;
+  }
+
+  // An element "carries grid placement" when the author pinned it to the page
+  // grid: its own --grid-col/--grid-row custom properties, the grid-item
+  // class, or an explicit CSS grid-column/grid-row start. Its descendants are
+  // that block's content and are never measured against the page grid.
+  function isGridPlaced(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const own = cssVarsFor(el);
+    if (own['--grid-col'] || own['--grid-row']) return true;
+    if (classList(el).includes('grid-item')) return true;
+    const style = getComputedStyle(el);
+    return ['gridColumnStart', 'gridRowStart'].some((prop) => {
+      const value = String(style[prop] || '').trim().toLowerCase();
+      return value !== '' && value !== 'auto';
+    });
   }
 
   // A flex parent distributes its children; their left/top come from the
@@ -774,6 +791,7 @@
     sourceHtmlFor,
     cssVarsFor,
     isFlexFlowChild,
+    isGridPlaced,
     vectorElementsFor,
     visualFrameFor,
     mergeFrameAttributes,

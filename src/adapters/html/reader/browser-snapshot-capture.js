@@ -154,6 +154,7 @@
       sourceAncestorNodes: elements.sourceAncestorNodes(el, pageEl, candidates),
       cssVars: elements.cssVarsFor(el),
       inFlexFlow: elements.isFlexFlowChild(el),
+      gridPlaced: elements.isGridPlaced(el),
       vectorElements: elements.vectorElementsFor(el),
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),

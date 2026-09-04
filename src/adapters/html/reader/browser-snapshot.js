@@ -146,6 +146,7 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     sourceAncestorNodes: item.sourceAncestorNodes || [],
     cssVars: item.cssVars || {},
     inFlexFlow: item.inFlexFlow === true,
+    gridPlaced: item.gridPlaced === true,
     vectorElements: item.vectorElements || [],
     text: item.text,
     rectPx: item.rectPx,
