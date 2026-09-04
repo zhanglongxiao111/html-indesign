@@ -26,10 +26,20 @@ function validateAuthoringRules(snapshot, options = {}) {
   let gridOffCount = 0;
   // "0 偏移"有两种来源：真的都压住线了，和一个都没量。只有把量过的、被块挡住的、
   // 量不出来的分开计数，报告才能把两者区分开。
+  //
+  // 条目侧的四个计数必须凑成一本闭合的账：每个可映射条目恰好落进
+  // ignored / shielded / checked / skipped 之一，四者相加等于跑过网格检查的页面上
+  // 可映射条目的总数。少一类（此前缺 skipped）就等于账不平——条目被 shouldCheckGrid
+  // 的其他规则（annotation、folio、flex 自适应文本、整页、无几何、有可映射祖先）
+  // 悄悄挡掉，报告里看不出来，"覆盖率回落到零"仍然可以装成"都压住线"。
   let gridCheckedCount = 0;
   let gridShieldedCount = 0;
+  let gridSkippedCount = 0;
   let gridBlockCheckedCount = 0;
   let gridBlockSkippedCount = 0;
+  // gridOffCount 是条目 + 块的总数，单看它分不出块级覆盖有没有在报错，
+  // 所以块级另计一份 gridBlockOffCount。
+  let gridBlockOffCount = 0;
 
   pages.forEach((page, pageIndex) => {
     const pageId = pageIdFor(page, pageIndex);
@@ -73,7 +83,12 @@ function validateAuthoringRules(snapshot, options = {}) {
           gridShieldedCount += 1;
           return;
         }
-        if (!shouldCheckGrid(item, page)) return;
+        if (!shouldCheckGrid(item, page)) {
+          // 只有可映射条目参与这本账：不可映射的节点从来不是网格检查的对象，
+          // 把它们算进 skipped 只会让"跳过"这个数字失去意义。
+          if (isMappableItem(item)) gridSkippedCount += 1;
+          return;
+        }
         gridCheckedCount += 1;
         const edges = offGridEdges(item.boundsMm, grid.lines, gridTolerance, item);
         if (!edges.length) return;
@@ -101,6 +116,7 @@ function validateAuthoringRules(snapshot, options = {}) {
         const edges = offGridBlockEdges(bounds, grid.lines, gridTolerance);
         if (!edges.length) return;
         gridOffCount += 1;
+        gridBlockOffCount += 1;
         const blockLabel = blockLabelFor(node, bounds);
         warnings.push({
           ...message(
@@ -191,8 +207,10 @@ function validateAuthoringRules(snapshot, options = {}) {
     messages: resultErrors.concat(resultWarnings),
     gridIgnoredCount,
     gridOffCount,
+    gridBlockOffCount,
     gridCheckedCount,
     gridShieldedCount,
+    gridSkippedCount,
     gridBlockCheckedCount,
     gridBlockSkippedCount,
   };
@@ -751,12 +769,16 @@ function gridSuggestedFix(itemId, edges) {
 }
 
 // 块级修法不能照抄条目版：块被报出来正是因为它已经带着网格放置，"再放一次"是
-// 自相矛盾的建议。偏移只可能来自这个块自己的 margin / transform / padding。
+// 自相矛盾的建议。成因清单也要说准：padding 推不动一个 border-box 的左/上边缘，
+// 写进去只是让作者去改一个不可能是成因的属性。真正只有两类——块自己的 margin /
+// transform，或者声明的网格（data-id-grid / 间距）与它实际被放置的那套 CSS grid
+// 不一致（这一类才是整块整块偏的成因，改单个块反而是白改）。
 function gridBlockSuggestedFix(blockLabel, edges) {
   const moves = edgeMoves(edges);
-  const tail = `remove that, or mark the block ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
   const cause = 'this block already carries a grid placement, so the offset comes from its own '
-    + `margin, transform or padding — ${tail}`;
+    + `margin or transform, or from the declared grid (${HTML_DATA_ID_ATTRIBUTES.GRID} / gutters) `
+    + 'not matching the CSS grid it is placed on; fix that, or mark the block '
+    + `${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
   if (!moves.length) return `Realign ${blockLabel}; ${cause}`;
   return `Move ${blockLabel} ${moves.join(', ')}; ${cause}`;
 }

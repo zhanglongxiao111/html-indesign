@@ -476,9 +476,13 @@ test('a grid-placed block is measured itself when its content is not', () => {
     edge: 'left', valueMm: 13, nearestLineMm: 10, offsetMm: 3,
   });
   assert.match(entry.suggestedFix, /Move #card left edge to 10mm \(-3mm\)/);
-  // 块级修法不能再叫作者"放到网格上"——它已经带着放置，偏移来自它自己的盒模型。
+  // 块级修法不能再叫作者"放到网格上"——它已经带着放置。成因只有两类：块自己的
+  // margin / transform，或者声明的网格与它实际被放置的 CSS grid 不一致。
+  // padding 推不动 border-box 的左/上边缘，不许再写进成因里。
   assert.match(entry.suggestedFix, /this block already carries a grid placement/);
-  assert.match(entry.suggestedFix, /own margin, transform or padding/);
+  assert.match(entry.suggestedFix, /margin or transform/);
+  assert.match(entry.suggestedFix, /not matching the CSS grid it is placed on/);
+  assert.equal(entry.suggestedFix.includes('padding'), false, entry.suggestedFix);
   assert.equal(entry.suggestedFix.includes('content inside a placed block is not checked'), false);
   assert.equal(result.gridOffCount, 1);
   // 责任在块上，块内文本不能再被单独报一条。
@@ -628,6 +632,8 @@ test('a placed block with no id and no sourcePath falls back to a positional lab
 });
 
 // 计数分开的意义就在这一条：0 偏移可以是"都压住线"，也可以是"一个都没量"。
+// 而且这本账必须闭合：每个可映射条目恰好落进 ignored / shielded / checked / skipped
+// 之一，缺一类就等于有条目被悄悄挡掉而报告里看不出来。
 test('grid counters separate what was measured, what a block shielded and what could not be measured', () => {
   const snapshot = snapshotWithPage({
     attributes: GRID_PAGE_ATTRIBUTES,
@@ -663,6 +669,58 @@ test('grid counters separate what was measured, what a block shielded and what c
   assert.equal(result.gridBlockSkippedCount, 1);
   assert.equal(result.gridIgnoredCount, 1);
   assert.equal(result.gridOffCount, 0);
+  assert.equal(result.gridBlockOffCount, 0);
+  // 这个夹具里没有条目被 shouldCheckGrid 的其他规则挡掉（没有 annotation / folio /
+  // flex 自适应文本 / 整页 / 无几何条目），所以 skipped 是 0。
+  assert.equal(result.gridSkippedCount, 0);
+  // 账要平：四类相加等于本页可映射条目总数（这个夹具四个条目都是可映射的）。
+  const mappableItems = snapshot.pages[0].items.length;
+  assert.equal(mappableItems, 4);
+  assert.equal(
+    result.gridCheckedCount + result.gridShieldedCount + result.gridIgnoredCount + result.gridSkippedCount,
+    mappableItems,
+    JSON.stringify({
+      checked: result.gridCheckedCount,
+      shielded: result.gridShieldedCount,
+      ignored: result.gridIgnoredCount,
+      skipped: result.gridSkippedCount,
+    }),
+  );
+});
+
+// skipped 这一类不是摆设：一个 annotation 条目、一个整页条目都会走 shouldCheckGrid 的
+// 其他规则被挡掉，缺了这个计数它们就凭空消失，账也就永远差两条。
+test('gridSkippedCount catches mappable items dropped by the other shouldCheckGrid rules', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [
+      // annotation 角色：条目自己的边缘免检。
+      cardCopyItem({
+        id: 'note',
+        attributes: { 'data-id-paragraph-style': 'body-copy', 'data-id-role': 'annotation' },
+        boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+      }),
+      // folio 段落样式：页码位置由排版惯例决定。
+      cardCopyItem({
+        id: 'folio',
+        attributes: { 'data-id-paragraph-style': 'folio' },
+        boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+      }),
+      // 压住线、正常被量的条目：证明 skipped 不是把所有条目都算进去。
+      cardCopyItem({ id: 'measured-copy', boundsMm: { x: 10, y: 10, width: 23.5, height: 6 } }),
+    ],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.gridSkippedCount, 2);
+  assert.equal(result.gridCheckedCount, 1);
+  assert.equal(result.gridShieldedCount, 0);
+  assert.equal(result.gridIgnoredCount, 0);
+  assert.equal(
+    result.gridCheckedCount + result.gridShieldedCount + result.gridIgnoredCount + result.gridSkippedCount,
+    snapshot.pages[0].items.length,
+  );
 });
 
 test('validateAuthoringRules checks text placement by left right and top edges', () => {

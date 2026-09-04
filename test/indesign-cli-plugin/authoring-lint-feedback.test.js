@@ -151,6 +151,20 @@ test('2026-08-12 事故包在母元素规则下整体通过 strict 检查', () =
   assert.equal(response.data.gridShieldedCount, 75);
   assert.equal(response.data.gridCheckedCount, 0);
   assert.equal(response.data.gridIgnoredCount, 19);
+  // 没有条目被 shouldCheckGrid 的其他规则挡掉（这个包里的 annotation/folio 段落
+  // 都在承担放置的块内，先被 shielded 计走）。
+  assert.equal(response.data.gridSkippedCount, 0);
+  // 块级偏移单独一份：15 个块全部压住线，所以是 0；gridOffCount 也是 0。
+  assert.equal(response.data.gridBlockOffCount, 0);
+  // 账要闭合：四类相加 = 这四页可映射条目总数 94（19 + 27 + 16 + 32）。
+  // 这才是"0 errors 是量过的结果"的完整证据——不是某一类计数正好凑巧对上。
+  assert.equal(
+    response.data.gridCheckedCount
+      + response.data.gridShieldedCount
+      + response.data.gridIgnoredCount
+      + response.data.gridSkippedCount,
+    94,
+  );
 });
 
 // 母元素规则的另一半：块内不量，块本身必须有人量。这个包的 15 个 grid-item 包裹层

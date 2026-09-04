@@ -95,6 +95,8 @@ test('failure_example messages reflect the real formatted output for each tool',
   assert.match(lintMsg, /Strict authoring checks found \d+ errors/);
   assert.match(lintMsg, /systemic cause/);
   assert.match(lintMsg, /First issue at/);
+  // 首条消息实际给三条修法示例，示例里只写一条会让 Agent 以为要自己去翻报告才有第二条。
+  assert.match(lintMsg, /Fix examples: .+ \| .+ \| .+ \(\+9 more/);
 
   const buildMsg = tools['html.build_indesign'].failure_example.message;
   assert.match(buildMsg, /at page .+, item .+, field .+; \d+ issue\(s\) found/);
