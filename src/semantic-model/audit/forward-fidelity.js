@@ -2,6 +2,7 @@ const path = require('node:path');
 
 const { fieldRegistry } = require('../../protocol');
 const { normalizeLineEndings, collapseWhitespace } = require('../../shared/text');
+const { isIndesignBuiltinStyleName } = require('../../shared/style-utils');
 
 const DEFAULT_OPTIONS = Object.freeze({
   boundsTolerance: 1,
@@ -49,6 +50,20 @@ const VECTOR_PATH_STYLE_FIELDS = Object.freeze([
   'lineStartMarker',
   'lineEndMarker',
 ]);
+
+// Cell-level facts the table comparison can name in a difference. Note the
+// compiler currently never emits `cellStyle` on expected cells, so that
+// dimension is only reachable when a cell explicitly declares one.
+const TABLE_CELL_DIMENSIONS = Object.freeze([
+  'text',
+  'header',
+  'paragraphStyle',
+  'cellStyle',
+  'rowSpan',
+  'colSpan',
+]);
+
+const TABLE_DIMENSION_ALIASES = Object.freeze({ rowSpan: 'span', colSpan: 'span' });
 
 function auditForwardFidelity(input = {}, options = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
@@ -498,14 +513,22 @@ function compareTable(expectedRows, actualTable, identity, context) {
   const actual = alignActualTableFacts(expected, tableFacts(actualTable && actualTable.rows));
   const dimensions = tableDifferenceDimensions(expected, actual);
   compareField(context, 'items[].table.rows', expected, actual, {
-    code: 'FORWARD_TABLE_CHANGED', ...identity, field: 'table.rows', tolerance: context.opts.numberTolerance,
+    // The only numbers left in a table fact are the rowSpan/colSpan integers,
+    // so a fuzzy match would only hide real differences.
+    code: 'FORWARD_TABLE_CHANGED', ...identity, field: 'table.rows', tolerance: 0,
     ...(dimensions.length ? { dimensions } : {}),
   });
 }
 
+// Consumes `tableFacts` output on both sides, so rows and cells are already
+// positionally aligned and can be zipped by index.
+//
 // The author declares styles per cell; a cell without a declaration accepts
 // whatever InDesign assigned (normally the built-in default), so the actual
-// style is dropped wherever the expected side declared none. A declared style
+// style is dropped wherever the expected side declared none. That is not just
+// about built-in defaults: a table style or an item-level paragraph style can
+// legitimately cascade a real style name onto cells the author never styled
+// individually, and such a cascade is not an infidelity. A declared style
 // that did not apply still shows up as a difference.
 function alignActualTableFacts(expected, actual) {
   return actual.map((row, rowIndex) => {
@@ -524,8 +547,6 @@ function alignActualTableFacts(expected, actual) {
   });
 }
 
-const TABLE_CELL_DIMENSIONS = ['text', 'header', 'paragraphStyle', 'cellStyle', 'rowSpan', 'colSpan'];
-
 function tableDifferenceDimensions(expected, actual) {
   const dimensions = new Set();
   if (expected.length !== actual.length) dimensions.add('rowCount');
@@ -539,7 +560,7 @@ function tableDifferenceDimensions(expected, actual) {
       for (const key of TABLE_CELL_DIMENSIONS) {
         const left = cellFact[key] === undefined ? null : cellFact[key];
         const right = actualCell[key] === undefined ? null : actualCell[key];
-        if (left !== right) dimensions.add(key === 'rowSpan' || key === 'colSpan' ? 'span' : key);
+        if (left !== right) dimensions.add(TABLE_DIMENSION_ALIASES[key] || key);
       }
     });
   });
@@ -833,7 +854,7 @@ function compareField(context, protocolPath, expected, actual, issue) {
   context.comparedPaths.add(protocolPath);
   const left = normalizeComparableValue(protocolPath, expected);
   const right = normalizeComparableValue(protocolPath, actual);
-  if (deepEqualWithTolerance(left, right, issue.tolerance || context.opts.numberTolerance)) return;
+  if (deepEqualWithTolerance(left, right, issue.tolerance ?? context.opts.numberTolerance)) return;
   context.errors.push({ ...issue, expected: left, actual: right });
 }
 
@@ -928,20 +949,21 @@ function runFacts(runs) {
 }
 
 function tableFacts(rows) {
-  const facts = array(rows).map((row, rowIndex) => {
-    const cells = array(row && row.cells).map((cell, cellIndex) => ({
-      index: cell && cell.index != null ? cell.index : cellIndex,
-      // The executor writes cell text through HI.cleanTableCellText (whitespace
-      // collapsed to single spaces); mirror that before comparing.
-      text: collapseWhitespace(normalizeLineEndings(cell && cell.text || '')),
+  // No `index` fact on either side: both producers derive it positionally and
+  // this comparison aligns by position, so an index difference could only
+  // raise a FORWARD_TABLE_CHANGED with no nameable dimension.
+  const facts = array(rows).map((row) => {
+    const cells = array(row && row.cells).map((cell) => ({
+      // The executor collapses whitespace via HI.cleanTableCellText and the readback keeps the
+      // resulting leading space; collapse AND trim here so both sides meet in the middle.
+      text: collapseWhitespace(cell && cell.text || ''),
       header: Boolean(cell && cell.header),
       rowSpan: Number(cell && cell.rowSpan || 1),
       colSpan: Number(cell && cell.colSpan || 1),
-      ...(cell && cell.paragraphStyle && !isBuiltinIndesignStyle(cell.paragraphStyle) ? { paragraphStyle: cell.paragraphStyle } : {}),
-      ...(cell && cell.cellStyle && !isBuiltinIndesignStyle(cell.cellStyle) ? { cellStyle: cell.cellStyle } : {}),
+      ...(cell && cell.paragraphStyle && !isIndesignBuiltinStyleName(cell.paragraphStyle) ? { paragraphStyle: cell.paragraphStyle } : {}),
+      ...(cell && cell.cellStyle && !isIndesignBuiltinStyleName(cell.cellStyle) ? { cellStyle: cell.cellStyle } : {}),
     }));
     return {
-      index: row && row.index != null ? row.index : rowIndex,
       header: Boolean(row && row.header) || (cells.length > 0 && cells.every((cellFact) => cellFact.header)),
       cells,
     };
@@ -964,13 +986,6 @@ function vectorAssetPreservedInDocument(expectedAsset, actualAssets) {
   const expectedPath = normalizePath(expectedAsset.resolvedPath || expectedAsset.path);
   return array(actualAssets).some((asset) => normalizePath(asset && asset.path) === expectedPath
     && (!asset.status || ['NORMAL', 'LINK_EMBEDDED'].includes(String(asset.status).toUpperCase())));
-}
-
-// InDesign built-in style names are bracketed: [基本段落] / [Basic Paragraph],
-// [无段落样式] / [No Paragraph Style], [无] / [None]. Reading one back means
-// "nothing was applied", never an authored choice.
-function isBuiltinIndesignStyle(value) {
-  return /^\[.+\]$/.test(String(value || '').trim());
 }
 
 function effectiveExpectedVisualStyle(item, styles) {

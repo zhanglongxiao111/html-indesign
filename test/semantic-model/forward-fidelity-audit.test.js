@@ -302,6 +302,44 @@ test('forward fidelity audit ignores th cells outside the leading header rows', 
   assert.equal(report.errors.some((issue) => issue.code === 'FORWARD_TABLE_CHANGED'), false, JSON.stringify(report.errors));
 });
 
+test('forward fidelity audit ignores row and cell index drift', () => {
+  const fixture = tableFixture([
+    { header: false, cells: [cell(0, 'Rink')] },
+  ], [
+    { index: 3, cells: [cell(5, 'Rink')] },
+  ]);
+
+  const report = auditForwardFidelity(fixture);
+
+  assert.equal(report.errors.some((issue) => issue.code === 'FORWARD_TABLE_CHANGED'), false, JSON.stringify(report.errors));
+});
+
+test('forward fidelity audit names the span dimension when a merged cell did not apply', () => {
+  const fixture = tableFixture([
+    { header: false, cells: [cell(0, 'Rink', { colSpan: 2 })] },
+  ], [
+    { cells: [cell(0, 'Rink')] },
+  ]);
+
+  const report = auditForwardFidelity(fixture);
+
+  const issue = report.errors.find((entry) => entry.code === 'FORWARD_TABLE_CHANGED');
+  assert.ok(issue, 'a dropped colSpan must fail');
+  assert.deepEqual(issue.dimensions, ['span']);
+});
+
+test('forward fidelity audit names the rowCount dimension when rows are missing', () => {
+  const fixture = tableFixture([
+    { header: false, cells: [cell(0, 'Rink')] },
+  ], []);
+
+  const report = auditForwardFidelity(fixture);
+
+  const issue = report.errors.find((entry) => entry.code === 'FORWARD_TABLE_CHANGED');
+  assert.ok(issue, 'a table that lost every row must fail');
+  assert.deepEqual(issue.dimensions, ['rowCount']);
+});
+
 test('forward fidelity audit compares rotated lines by endpoints', () => {
   const fixture = matchingFixture();
   const expectedLine = {
