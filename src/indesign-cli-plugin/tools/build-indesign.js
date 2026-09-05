@@ -61,6 +61,14 @@ async function call(args, context) {
     errorCount: lint.errorCount,
     warningCount: lint.warningCount,
     normalizedCount: lint.normalizedCount || 0,
+    gridIgnoredCount: lint.gridIgnoredCount || 0,
+    gridOffCount: lint.gridOffCount || 0,
+    gridBlockOffCount: lint.gridBlockOffCount || 0,
+    gridCheckedCount: lint.gridCheckedCount || 0,
+    gridShieldedCount: lint.gridShieldedCount || 0,
+    gridSkippedCount: lint.gridSkippedCount || 0,
+    gridBlockCheckedCount: lint.gridBlockCheckedCount || 0,
+    gridBlockSkippedCount: lint.gridBlockSkippedCount || 0,
   };
   if (!lint.ok) {
     const report = writeLintFailureReport(lint, {
@@ -87,6 +95,14 @@ async function call(args, context) {
         error_count: lintCounts.errorCount,
         warning_count: lintCounts.warningCount,
         normalized_count: lintCounts.normalizedCount ?? 0,
+        grid_ignored_count: lintCounts.gridIgnoredCount,
+        grid_off_count: lintCounts.gridOffCount,
+        grid_block_off_count: lintCounts.gridBlockOffCount,
+        grid_checked_count: lintCounts.gridCheckedCount,
+        grid_shielded_count: lintCounts.gridShieldedCount,
+        grid_skipped_count: lintCounts.gridSkippedCount,
+        grid_block_checked_count: lintCounts.gridBlockCheckedCount,
+        grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
       }),
     };
     throw error;
@@ -115,6 +131,14 @@ async function call(args, context) {
         compile_ms: compileMsAtFailure,
         warning_count: lintCounts.warningCount,
         normalized_count: lintCounts.normalizedCount ?? 0,
+        grid_ignored_count: lintCounts.gridIgnoredCount,
+        grid_off_count: lintCounts.gridOffCount,
+        grid_block_off_count: lintCounts.gridBlockOffCount,
+        grid_checked_count: lintCounts.gridCheckedCount,
+        grid_shielded_count: lintCounts.gridShieldedCount,
+        grid_skipped_count: lintCounts.gridSkippedCount,
+        grid_block_checked_count: lintCounts.gridBlockCheckedCount,
+        grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
         ...existingMetrics,
       }),
     };
@@ -140,6 +164,7 @@ async function call(args, context) {
   const lintReportPath = path.join(compile.outDir, 'authoring-lint-report.json');
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
+  const preRunDeliverables = snapshotDeliverables(compile.outDir, outputBaseName);
 
   writeReportFile(lintReportPath, withoutLintSnapshot(lint), { failed: false });
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
@@ -147,6 +172,7 @@ async function call(args, context) {
     repoRoot: pluginRoot,
     instructionsPath: compile.instructionsPath,
     marker: runMarker,
+    targetInddPath: path.join(compile.outDir, `${outputBaseName}.indd`),
   }), 'utf8');
   fs.writeFileSync(snapshotScriptPath, buildReverseSnapshotJsx({
     repoRoot: pluginRoot,
@@ -191,6 +217,7 @@ async function call(args, context) {
     sizeMetrics,
     lintCounts,
     compatibility: compile.compatibility || lint.compatibility,
+    preRunDeliverables,
     stageStartedAt: Date.now(),
   };
 
@@ -210,7 +237,10 @@ async function resume(params) {
     return hostFailureResponse(state, failedHostResult);
   }
 
-  const nextState = finishStageTiming(state);
+  // 每个阶段的宿主脚本都会报自己的 warning（构建阶段的 PREVIOUS_OUTPUT_CLOSED、快照阶段的
+  // PLACED_ASSET_PREVIEW_EXPORT_FAILED、导出阶段的 IDML_EXPORT_FAILED……）。按分支各收一次
+  // 就会漏掉没写到的分支（快照阶段此前就是这么丢的），所以在这里统一收一次，四个阶段共用。
+  const nextState = withHostWarnings(finishStageTiming(state), hostResults);
   if (state.stage === 'build') {
     if (state.mode === 'draft') {
       return hostActionResponse(startStage(nextState, 'export'), exportAction(state));
@@ -235,6 +265,9 @@ async function resume(params) {
 
   return errorResponse('BUILD_STATE_INVALID', `Unknown html.build_indesign stage: ${state.stage || 'missing'}`, {
     stage: state.stage || null,
+    // 其余三条失败出口都带 hostWarnings，这里也带：阶段名对不上时之前阶段收到的
+    // warning 往往正是解释"怎么走到这一步"的线索，没理由只在这个出口丢掉。
+    ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
     metrics: collectMetrics(state),
   });
 }
@@ -282,12 +315,21 @@ function resumeAfterSnapshot(state) {
   });
   if (!report.ok) {
     const first = report.errors[0] || {};
+    // 首条差异未必带 hint（例如矢量几何差异排在文本溢出前面）；hint 取第一条能指路的。
+    const hintCarrier = report.errors.find((entry) => typeof entry.hint === 'string' && entry.hint.trim()) || first;
+    // hintCarrier 与 first 不是同一条时，message 描述的是 first，hint 描述的是 hintCarrier；
+    // 不带定位前缀就是无名指路，得把 hintCarrier 自己的 page/item 补上。
+    const carrierLocation = hintCarrier === first
+      ? ''
+      : [hintCarrier.pageId, hintCarrier.itemId].filter(Boolean).join(' / ');
     return cleanupThenError(stateWithGateTiming, {
       code: 'FIDELITY_GATE_FAILED',
       message: fidelityFailureMessage(first, report.errors.length),
       stage: 'fidelity',
       retryable: false,
-      hint: 'Read forward-fidelity-report.json, fix the named HTML page/object/field, then start a new build.',
+      hint: hintCarrier.hint
+        ? `${carrierLocation ? `${carrierLocation}: ` : ''}${hintCarrier.hint} Full list: forward-fidelity-report.json.`
+        : 'Read forward-fidelity-report.json, fix the named HTML page/object/field, then start a new build.',
       details: {
         reportPath: state.fidelityReportPath,
         summary: report.summary,
@@ -315,6 +357,7 @@ function cleanupThenError(state, error) {
       artifactNote: 'InDesign 文档已构建但未通过核对，未导出 INDD/PDF/IDML；'
         + '可离线复查的中间产物（instructions、读回快照、保真报告）保留在 intermediateDir。',
       intermediateDir: state.runDir || null,
+      ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
       metrics: collectMetrics(state),
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
@@ -349,14 +392,31 @@ function completeResult(state) {
   const inddPath = path.join(runDir, `${outputBaseName}.indd`);
   const pdfPath = path.join(runDir, `${outputBaseName}.pdf`);
   const idmlPath = path.join(runDir, `${outputBaseName}.idml`);
+  // IDML_EXPORT_FAILED 只是 warning，光看 existsSync 会把上一轮遗留的旧文件当成本轮成果报出去。
+  // 与开工前的 {mtimeMs, size} 快照比对：存在但没变的算 stale，同样不能当交付。
+  const before = state.preRunDeliverables || {};
+  const expected = [
+    { kind: 'indd', file: inddPath },
+    ...(state.exportPdf ? [{ kind: 'pdf', file: pdfPath }] : []),
+    ...(state.exportIdml ? [{ kind: 'idml', file: idmlPath }] : []),
+  ];
   const missing = [];
-  if (!fs.existsSync(inddPath)) missing.push(inddPath);
-  if (state.exportPdf && !fs.existsSync(pdfPath)) missing.push(pdfPath);
-  if (state.exportIdml && !fs.existsSync(idmlPath)) missing.push(idmlPath);
+  const stale = [];
+  for (const item of expected) {
+    if (deliverableIsFresh(item.file, before[item.kind])) continue;
+    missing.push(item.file);
+    if (fs.existsSync(item.file)) stale.push(item.file);
+  }
   if (missing.length) {
-    return errorResponse('BUILD_ARTIFACTS_MISSING', `Expected build artifacts are missing: ${missing.join(', ')}`, {
+    const absent = missing.filter((file) => !stale.includes(file));
+    const parts = [];
+    if (absent.length) parts.push(`missing: ${absent.join(', ')}`);
+    if (stale.length) parts.push(`unchanged since the run started (stale from a previous build): ${stale.join(', ')}`);
+    return errorResponse('BUILD_ARTIFACTS_MISSING', `Expected build artifacts are ${parts.join('; ')}`, {
       stage: 'artifacts',
       missing,
+      stale,
+      ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
       metrics: collectMetrics(state),
     });
   }
@@ -387,10 +447,13 @@ function completeResult(state) {
       fidelityReportPath: verified ? state.fidelityReportPath : null,
       fidelitySummary: verified ? state.fidelitySummary || null : null,
       timings: state.timings || {},
-      warnings: verified ? [] : [{
-        code: 'DRAFT_NOT_VERIFIED',
-        message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
-      }],
+      warnings: [
+        ...(state.hostWarnings || []),
+        ...(verified ? [] : [{
+          code: 'DRAFT_NOT_VERIFIED',
+          message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
+        }]),
+      ],
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
     metrics: collectMetrics(state, { artifacts: artifacts.length }),
@@ -400,24 +463,41 @@ function completeResult(state) {
 
 // 导出阶段可能只失败一半：INDD 已经落盘、PDF 没有。把整次调用报成失败而不提已落盘产物，
 // 调用方就无法判断重跑范围。cleanupThenError() 已是这个模式，这里对称应用。
+// OUTPUT_TARGET_OPEN 是构建前预检：什么都没写，原因也不是作者源码，单独映射并标记可重试。
 function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
   const stage = state.stage || 'build';
   const finished = finishStageTiming(state);
-  const partialArtifacts = landedDeliverables(state);
+  // resume() 在顶部收割前就把失败结果转给这里，本阶段自己报的 warning（例如导出失败前
+  // 那条 PDF_PAGE_APPLY_FAILED）还没进 state.hostWarnings，得在这里单独补收一次；
+  // 之前阶段的 warning 已经随 state 带过来了，withHostWarnings 只是在它后面追加。
+  //
+  // 真实 CLI 的失败形状是 { ok:false, error:{ code:'INDESIGN_SCRIPT_FAILED', message:<整段
+  // JSON 文本> } }，根本没有 data —— 只收 failed 就等于在生产路径上一条 warning 都收不到。
+  // unwrapSerializedHostError 已经把那段文本解成 detail.hostResult，这里按 data 的形状再收
+  // 一次；插件契约/测试的 data 直挂形状不产出 hostResult，因此不会重复计数。
+  const withWarnings = withHostWarnings(finished, [
+    failed,
+    ...(detail.hostResult && typeof detail.hostResult === 'object' ? [{ data: detail.hostResult }] : []),
+  ]);
+  const targetOpen = stage === 'build' && detail.code === 'OUTPUT_TARGET_OPEN';
+  const partialArtifacts = targetOpen ? [] : landedDeliverables(state);
   const baseMessage = detail.message || `Host action failed during ${stage}.`;
   const prefix = landedArtifactPrefix(partialArtifacts);
+  const hint = targetOpen
+    ? '目标 INDD 正在 InDesign 中打开：在 InDesign 里关闭它（或改用其他 outputBaseName），然后重跑同一命令。'
+    : partialArtifacts.length
+      ? '已落盘的产物见 error.details.partialArtifacts，重跑前先确认是否需要保留；'
+        + 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.'
+      : 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.';
   return {
     status: 'error',
     error: {
-      code: STAGE_ERROR_CODES[stage] || 'HOST_ACTION_FAILED',
+      code: targetOpen ? 'OUTPUT_TARGET_OPEN' : (STAGE_ERROR_CODES[stage] || 'HOST_ACTION_FAILED'),
       message: prefix ? `${prefix}${baseMessage}` : baseMessage,
       stage,
-      retryable: false,
-      hint: partialArtifacts.length
-        ? '已落盘的产物见 error.details.partialArtifacts，重跑前先确认是否需要保留；'
-          + 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.'
-        : 'Fix the reported cause before starting a new build; unchanged input must not be retried automatically.',
+      retryable: targetOpen,
+      hint,
       details: {
         causeCode: detail.code || null,
         hostResult: failed,
@@ -425,6 +505,7 @@ function hostFailureResponse(state, failed) {
         artifactsExported: partialArtifacts.length > 0,
         partialArtifacts,
         intermediateDir: state.runDir || null,
+        ...(withWarnings.hostWarnings && withWarnings.hostWarnings.length ? { hostWarnings: withWarnings.hostWarnings } : {}),
         metrics: collectMetrics(finished),
         compatibility: state.compatibility || auditHtmlCompatibility(null),
       },
@@ -439,13 +520,43 @@ const DELIVERABLE_KINDS = Object.freeze([
   { kind: 'idml', extension: '.idml', label: 'IDML export', prefixLabel: 'IDML' },
 ]);
 
+// 产物新鲜度不能靠工位时钟和 NAS 文件时间戳互比（两台机器的钟可以差几分钟）。
+// 开工前给三个产物拍 {mtimeMs, size} 快照，收尾时同一台文件服务器的数据自己和自己比。
+function snapshotDeliverables(runDir, baseName) {
+  const snapshot = {};
+  for (const deliverable of DELIVERABLE_KINDS) {
+    snapshot[deliverable.kind] = statDeliverable(path.join(runDir, `${baseName}${deliverable.extension}`));
+  }
+  return snapshot;
+}
+
+function statDeliverable(file) {
+  try {
+    const stat = fs.statSync(file, { throwIfNoEntry: false });
+    return stat ? { mtimeMs: stat.mtimeMs, size: stat.size } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// 存在且不同于开工前快照才算本轮写出的；没有快照（旧 state）时退回“存在即算”。
+function deliverableIsFresh(file, before) {
+  const now = statDeliverable(file);
+  if (!now) return false;
+  if (before === undefined) return true;
+  if (before === null) return true;
+  return now.mtimeMs !== before.mtimeMs || now.size !== before.size;
+}
+
 function landedDeliverables(state) {
   if (!state || !state.runDir) return [];
   const baseName = state.outputBaseName || 'html-indesign-output';
+  const before = state.preRunDeliverables || {};
   const landed = [];
   for (const deliverable of DELIVERABLE_KINDS) {
     const file = path.join(state.runDir, `${baseName}${deliverable.extension}`);
-    if (fs.existsSync(file)) landed.push(artifact(deliverable.kind, file, deliverable.label));
+    if (!deliverableIsFresh(file, before[deliverable.kind])) continue;
+    landed.push(artifact(deliverable.kind, file, deliverable.label));
   }
   return landed;
 }
@@ -465,6 +576,98 @@ function firstFailedHostResult(hostResults) {
     if (result.data && result.data.ok === false) return true;
     return false;
   }) || null;
+}
+
+// 宿主脚本的 warnings（例如预检自动关闭旧产物的 PREVIOUS_OUTPUT_CLOSED、导出阶段的
+// IDML_EXPORT_FAILED）必须到达调用方。真实 CLI 的 formatScriptResult 把脚本载荷摊进 parsed，
+// 这是 parsed.warnings 存在的唯一原因；插件契约/测试用 data 直挂。回落按字段而不是按对象：
+// parsed 在但没有 warnings 时，仍要看 data.warnings。
+const HOST_WARNING_LIMIT = 100;
+const HOST_WARNING_MESSAGE_LIMIT = 500;
+const HOST_WARNING_DETAIL_STRING_LIMIT = 200;
+const HOST_WARNING_DETAIL_KEY_LIMIT = 24;
+
+function hostScriptWarnings(hostResults) {
+  const warnings = [];
+  for (const result of hostResults || []) {
+    const data = result && result.data;
+    const payload = data && data.parsed && typeof data.parsed === 'object' ? data.parsed : null;
+    const list = (payload && Array.isArray(payload.warnings))
+      ? payload.warnings
+      : (data && Array.isArray(data.warnings) ? data.warnings : []);
+    for (const warning of list) {
+      if (!warning || !warning.code) continue;
+      const entry = {
+        code: warning.code,
+        message: clampText(String(warning.message || ''), HOST_WARNING_MESSAGE_LIMIT),
+      };
+      const details = hostWarningScalarDetails(warning.details);
+      if (details) entry.details = details;
+      warnings.push(entry);
+    }
+  }
+  return warnings;
+}
+
+// details 里的定位字段（哪一页、哪个对象、请求了什么字体又落到了什么字体）是作者修问题的唯一线索，
+// 而每个 warning 各带一套自己的键：FONT_FALLBACK_APPLIED 是 requestedFont/appliedFont，
+// 文本溢出是 itemId/pageName/textLength，还有 styleName、compositeFont、propertyName……
+// 白名单挡不住新键，只会静默丢掉。所以反过来按形状过滤：标量（字符串/有限数字/布尔）一律透传，
+// 只丢掉对象/数组这类体积无界的结构（bounds、visibleText 之外的嵌套载荷）。
+function hostWarningScalarDetails(details) {
+  if (!details || typeof details !== 'object' || Array.isArray(details)) return null;
+  const kept = {};
+  // 键数也要封顶，理由同对象/数组：一条 warning 带几百个标量键同样是无界载荷。
+  // 但上限只能数"留下来的标量键"：先对键名 slice 的话，排在前面的对象/数组键会把名额
+  // 花在根本不会留下的键上（bounds 之类占五个名额，后面真正有用的定位字段就被挤没了）。
+  let keptCount = 0;
+  for (const key of Object.keys(details)) {
+    if (keptCount >= HOST_WARNING_DETAIL_KEY_LIMIT) break;
+    const value = details[key];
+    if (typeof value === 'string') kept[key] = clampText(value, HOST_WARNING_DETAIL_STRING_LIMIT);
+    else if (typeof value === 'number' && Number.isFinite(value)) kept[key] = value;
+    else if (typeof value === 'boolean') kept[key] = value;
+    else continue;
+    keptCount += 1;
+  }
+  return Object.keys(kept).length ? kept : null;
+}
+
+// 上限必须按累计后的 state.hostWarnings 计。按单次收割计的话，构建/快照/导出/校验四个阶段
+// 各报 100 条就是 400 条，上限等于不存在；截断条目也只留一条，后续阶段只把它的计数改大。
+function withHostWarnings(state, hostResults) {
+  return {
+    ...state,
+    hostWarnings: capHostWarnings([...(state.hostWarnings || []), ...hostScriptWarnings(hostResults)]),
+  };
+}
+
+function capHostWarnings(warnings) {
+  let omitted = 0;
+  const kept = [];
+  for (const entry of warnings) {
+    if (entry && entry.code === 'HOST_WARNINGS_TRUNCATED') {
+      omitted += truncatedOmittedCount(entry);
+      continue;
+    }
+    if (kept.length < HOST_WARNING_LIMIT) kept.push(entry);
+    else omitted += 1;
+  }
+  if (!omitted) return kept;
+  return [...kept, {
+    code: 'HOST_WARNINGS_TRUNCATED',
+    message: `${omitted} more host warnings omitted`,
+    details: { omitted },
+  }];
+}
+
+function truncatedOmittedCount(entry) {
+  const count = Number(entry.details && entry.details.omitted);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+function clampText(value, limit) {
+  return value.length > limit ? value.slice(0, limit) : value;
 }
 
 function hostActionResponse(state, action) {
@@ -546,7 +749,13 @@ function fidelityFailureMessage(first, count) {
     first.itemId ? `item ${first.itemId}` : null,
     first.field ? `field ${first.field}` : null,
   ].filter(Boolean).join(', ');
-  return `Built InDesign content differs from the HTML source${location ? ` at ${location}` : ''}; ${count} issue(s) found.`;
+  // 首条差异的原因直接进 message：Agent 只读 message 就能决定是改框还是改内容。
+  const detail = first.reason === 'overset'
+    ? ' (text overset: the InDesign frame is too small for its text)'
+    : Array.isArray(first.dimensions) && first.dimensions.length
+      ? ` (table differs in: ${first.dimensions.join(', ')})`
+      : '';
+  return `Built InDesign content differs from the HTML source${location ? ` at ${location}` : ''}; ${count} issue(s) found${detail}.`;
 }
 
 function errorResponse(code, message, details) {
@@ -586,6 +795,14 @@ function collectMetrics(state, extra) {
     error_count: lintCounts.errorCount,
     warning_count: lintCounts.warningCount,
     normalized_count: lintCounts.normalizedCount ?? 0,
+    grid_ignored_count: lintCounts.gridIgnoredCount,
+    grid_off_count: lintCounts.gridOffCount,
+    grid_block_off_count: lintCounts.gridBlockOffCount,
+    grid_checked_count: lintCounts.gridCheckedCount,
+    grid_shielded_count: lintCounts.gridShieldedCount,
+    grid_skipped_count: lintCounts.gridSkippedCount,
+    grid_block_checked_count: lintCounts.gridBlockCheckedCount,
+    grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
     fidelity_error_count: fidelityCounts.errorCount,
     fidelity_warning_count: fidelityCounts.warningCount,
     compatibility_normalized: compatibility.normalized,
@@ -606,4 +823,6 @@ function buildMetrics(values) {
 module.exports = {
   call,
   resume,
+  // 仅供测试断言文案；宿主只走 call/resume。
+  fidelityFailureMessage,
 };

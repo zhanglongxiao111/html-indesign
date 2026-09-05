@@ -115,6 +115,7 @@
       "caption-frame": "图解框架"
     },
     "tableStyles": {
+      "data-table": "数据表格",
       "area-table": "面积指标表",
       "area-schedule": "面积指标表",
       "material-schedule": "材料清单表",

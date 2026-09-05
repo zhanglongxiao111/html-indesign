@@ -143,9 +143,22 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     classList: item.classList,
     attributes: item.attributes,
     sourceNode: item.sourceNode || null,
-    sourceAncestorNodes: item.sourceAncestorNodes || [],
+    sourceAncestorNodes: (item.sourceAncestorNodes || []).map((node) => (
+      node && node.rectPx
+        ? {
+          ...node,
+          boundsMm: roundBounds(rectPxToMm({
+            rectPx: node.rectPx,
+            pageRectPx: pageInfo.rectPx,
+            pageWidthMm: widthMm,
+            pageHeightMm: heightMm,
+          }), 2),
+        }
+        : node
+    )),
     cssVars: item.cssVars || {},
     inFlexFlow: item.inFlexFlow === true,
+    gridPlaced: item.gridPlaced === true,
     vectorElements: item.vectorElements || [],
     text: item.text,
     rectPx: item.rectPx,

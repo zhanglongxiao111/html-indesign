@@ -300,6 +300,429 @@ test('validateAuthoringRules inherits grid-ignore from a non-mappable authoring 
   assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
 });
 
+test('content inside a grid-placed block is not measured against the page grid', () => {
+  const snapshot = snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2', 'data-id-column-gutter': '2mm', 'data-id-row-gutter': '2mm' },
+    items: [{
+      id: 'card-copy',
+      role: 'text',
+      tagName: 'p',
+      classList: ['card-copy'],
+      attributes: { 'data-id-paragraph-style': 'body-copy' },
+      sourceAncestorNodes: [{
+        tagName: 'div',
+        id: 'card',
+        classList: ['grid-item', 'card'],
+        attributes: { style: '--grid-col:1;--grid-span:2;--grid-row:1;--grid-row-span:1' },
+        gridPlaced: true,
+      }],
+      boundsMm: { x: 16.35, y: 16.35, width: 20, height: 6 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.equal(result.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+  assert.equal(result.gridIgnoredCount, 0);
+  assert.equal(result.gridOffCount, 0);
+});
+
+test('an ancestor without gridPlaced is still recognised by its grid-item class or --grid-col style', () => {
+  const base = {
+    id: 'card-copy',
+    role: 'text',
+    tagName: 'p',
+    classList: ['card-copy'],
+    attributes: { 'data-id-paragraph-style': 'body-copy' },
+    boundsMm: { x: 16.35, y: 16.35, width: 20, height: 6 },
+  };
+  const byClass = validateAuthoringRules(snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{ ...base, sourceAncestorNodes: [{ tagName: 'div', classList: ['grid-item'], attributes: {} }] }],
+  }), { strict: true, gridTolerance: 1 });
+  assert.equal(byClass.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+
+  const byStyle = validateAuthoringRules(snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{ ...base, sourceAncestorNodes: [{ tagName: 'div', classList: ['band'], attributes: { style: '--grid-row: 2; --grid-row-span: 1' } }] }],
+  }), { strict: true, gridTolerance: 1 });
+  assert.equal(byStyle.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), false);
+
+  const plainWrapper = validateAuthoringRules(snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{ ...base, sourceAncestorNodes: [{ tagName: 'div', classList: ['wrapper'], attributes: {} }] }],
+  }), { strict: true, gridTolerance: 1 });
+  assert.equal(plainWrapper.errors.some((entry) => entry.code === 'GRID_ALIGNMENT_OFF'), true, 'a wrapper that is not on the grid does not shield its content');
+});
+
+test('GRID_ALIGNMENT_OFF entries carry per-edge offsets, the nearest line and a concrete fix', () => {
+  const snapshot = snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2', 'data-id-column-gutter': '2mm', 'data-id-row-gutter': '2mm' },
+    items: [{
+      id: 'title',
+      role: 'text',
+      tagName: 'h2',
+      classList: ['page-title'],
+      attributes: { 'data-id-paragraph-style': 'page-title' },
+      boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entry = result.errors.find((issue) => issue.code === 'GRID_ALIGNMENT_OFF' && issue.itemId === 'title');
+  assert.ok(entry);
+  assert.deepEqual(entry.edges, ['left', 'top']);
+  assert.deepEqual(entry.edgeOffsets, [
+    { edge: 'left', valueMm: 13, nearestLineMm: 10, offsetMm: 3 },
+    { edge: 'top', valueMm: 14, nearestLineMm: 10, offsetMm: 4 },
+  ]);
+  assert.match(entry.message, /left at 13mm is 3mm right of the column line at 10mm/);
+  assert.match(entry.message, /top at 14mm is 4mm below the row line at 10mm/);
+  assert.match(entry.suggestedFix, /Move #title left edge to 10mm \(-3mm\), top edge to 10mm \(-4mm\)/);
+  assert.match(entry.suggestedFix, /content inside a placed block is not checked/);
+  assert.equal(result.gridOffCount, 1);
+});
+
+test('gridIgnoredCount counts mappable items exempted by data-id-grid-ignore, own or inherited', () => {
+  const snapshot = snapshotWithPage({
+    attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
+    items: [{
+      id: 'bleed',
+      role: 'graphic',
+      tagName: 'img',
+      classList: ['hero'],
+      attributes: { src: 'hero.png', 'data-id-grid-ignore': '' },
+      boundsMm: { x: 3, y: 3, width: 50, height: 30 },
+    }, {
+      id: 'caption',
+      role: 'text',
+      tagName: 'p',
+      classList: ['caption'],
+      attributes: { 'data-id-paragraph-style': 'caption' },
+      sourceAncestorNodes: [{ tagName: 'figure', classList: ['figure'], attributes: { 'data-id-grid-ignore': '' } }],
+      boundsMm: { x: 3, y: 36, width: 20, height: 5 },
+    }, {
+      id: 'aligned',
+      role: 'text',
+      tagName: 'p',
+      classList: ['body-copy'],
+      attributes: { 'data-id-paragraph-style': 'body-copy' },
+      boundsMm: { x: 10, y: 10, width: 20, height: 5 },
+    }],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.gridIgnoredCount, 2);
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+const GRID_PAGE_ATTRIBUTES = {
+  'data-id-margin': '10mm',
+  'data-id-grid': '4x2',
+  'data-id-column-gutter': '2mm',
+  'data-id-row-gutter': '2mm',
+};
+
+// 120×80mm / 10mm 页边距 / 4x2 网格 / 2mm 间距 →
+// 纵线 0/10/33.5/35.5/59/61/84.5/86.5/110/120，横线 0/10/39/41/70/80。
+function cardCopyItem(overrides = {}) {
+  return {
+    id: 'card-copy',
+    role: 'text',
+    tagName: 'p',
+    classList: ['card-copy'],
+    attributes: { 'data-id-paragraph-style': 'body-copy' },
+    boundsMm: { x: 16.35, y: 16.35, width: 20, height: 6 },
+    ...overrides,
+  };
+}
+
+function placedNode(overrides = {}) {
+  return {
+    tagName: 'div',
+    id: 'card',
+    sourcePath: 'div:nth-of-type(1)',
+    classList: ['grid-item', 'card'],
+    attributes: {},
+    gridPlaced: true,
+    ...overrides,
+  };
+}
+
+test('a grid-placed block is measured itself when its content is not', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [placedNode({ boundsMm: { x: 13, y: 14, width: 47, height: 25 } })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(result.errors));
+  const [entry] = entries;
+  assert.equal(entry.itemId, 'card');
+  assert.equal(entry.block, true);
+  // 右边缘 60mm 离 59/61 两根线各 1mm，在容差内；底边永远不查。
+  assert.deepEqual(entry.edges, ['left', 'top']);
+  assert.deepEqual(entry.blockOf, ['card-copy']);
+  assert.equal(entry.blockOfCount, 1);
+  assert.deepEqual(entry.edgeOffsets[0], {
+    edge: 'left', valueMm: 13, nearestLineMm: 10, offsetMm: 3,
+  });
+  assert.match(entry.suggestedFix, /Move #card left edge to 10mm \(-3mm\)/);
+  // 块级修法不能再叫作者"放到网格上"——它已经带着放置。成因只有两类：块自己的
+  // margin / transform，或者声明的网格与它实际被放置的 CSS grid 不一致。
+  // padding 推不动 border-box 的左/上边缘，不许再写进成因里。
+  assert.match(entry.suggestedFix, /this block already carries a grid placement/);
+  assert.match(entry.suggestedFix, /margin or transform/);
+  assert.match(entry.suggestedFix, /not matching the CSS grid it is placed on/);
+  assert.equal(entry.suggestedFix.includes('padding'), false, entry.suggestedFix);
+  assert.equal(entry.suggestedFix.includes('content inside a placed block is not checked'), false);
+  assert.equal(result.gridOffCount, 1);
+  // 责任在块上，块内文本不能再被单独报一条。
+  assert.equal(result.errors.some((issue) => issue.itemId === 'card-copy'), false);
+});
+
+test('a grid-placed block sitting on the grid lets its whole subtree pass', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [placedNode({ boundsMm: { x: 10, y: 10, width: 49, height: 29 } })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test('one off-grid block is reported once no matter how many items it holds', () => {
+  const offGrid = { x: 13, y: 14, width: 47, height: 25 };
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [
+      cardCopyItem({ sourceAncestorNodes: [placedNode({ boundsMm: offGrid })] }),
+      cardCopyItem({
+        id: 'card-title',
+        tagName: 'h3',
+        boundsMm: { x: 16.35, y: 25, width: 30, height: 8 },
+        sourceAncestorNodes: [placedNode({ boundsMm: offGrid })],
+      }),
+    ],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(entries));
+  assert.deepEqual(entries[0].blockOf, ['card-copy', 'card-title']);
+  assert.equal(result.gridOffCount, 1);
+});
+
+test('only the outermost placed block is responsible when placed blocks nest', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [
+        placedNode({ id: 'column', sourcePath: 'div:nth-of-type(2)', boundsMm: { x: 10, y: 10, width: 49, height: 29 } }),
+        placedNode({ id: 'inner-card', sourcePath: 'div:nth-of-type(2)>div:nth-of-type(1)', boundsMm: { x: 13, y: 14, width: 20, height: 12 } }),
+      ],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridOffCount, 0);
+});
+
+test('a grid-ignored subtree exempts the placed blocks inside it', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [
+        {
+          tagName: 'figure',
+          id: 'bleed',
+          sourcePath: 'figure:nth-of-type(1)',
+          classList: ['bleed'],
+          attributes: { 'data-id-grid-ignore': '' },
+        },
+        placedNode({ boundsMm: { x: 13, y: 14, width: 47, height: 25 } }),
+      ],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridIgnoredCount, 1);
+  assert.equal(result.gridOffCount, 0);
+});
+
+test('a placed block from an older snapshot without bounds is skipped, not reported', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({ sourceAncestorNodes: [placedNode()] })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.errors.some((issue) => issue.code === 'GRID_ALIGNMENT_OFF'), false, JSON.stringify(result.errors));
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.equal(result.gridBlockSkippedCount, 1);
+  assert.equal(result.gridBlockCheckedCount, 0);
+});
+
+// 决策：块内只有注解 / folio 时，块照样要量。免检的是条目自己的边缘，
+// 而块是作者亲手放上网格的东西。
+test('a placed block whose only content is an annotation is still measured itself', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      id: 'card-note',
+      attributes: { 'data-id-role': 'annotation' },
+      sourceAncestorNodes: [placedNode({ boundsMm: { x: 13, y: 14, width: 47, height: 25 } })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(result.errors));
+  assert.equal(entries[0].block, true);
+  assert.equal(entries[0].itemId, 'card');
+  // 注解条目自己不被点名，只作为块的归属内容出现。
+  assert.equal(result.errors.some((issue) => issue.itemId === 'card-note'), false);
+  assert.deepEqual(entries[0].blockOf, ['card-note']);
+  assert.equal(result.gridBlockCheckedCount, 1);
+});
+
+test('a placed block with no id and no sourcePath falls back to a positional label', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [cardCopyItem({
+      sourceAncestorNodes: [placedNode({
+        id: undefined,
+        sourcePath: undefined,
+        boundsMm: { x: 13, y: 14, width: 47, height: 25 },
+      })],
+    })],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  const entries = result.errors.filter((issue) => issue.code === 'GRID_ALIGNMENT_OFF');
+  assert.equal(entries.length, 1, JSON.stringify(result.errors));
+  const [entry] = entries;
+  assert.match(entry.itemId, /^div@/);
+  assert.equal(entry.itemId, 'div@13,14mm');
+  assert.equal(entry.message.includes('#undefined'), false, entry.message);
+  assert.equal(entry.suggestedFix.includes('#undefined'), false, entry.suggestedFix);
+  assert.match(entry.suggestedFix, /^Move div@13,14mm left edge to 10mm \(-3mm\)/);
+});
+
+// 计数分开的意义就在这一条：0 偏移可以是"都压住线"，也可以是"一个都没量"。
+// 而且这本账必须闭合：每个可映射条目恰好落进 ignored / shielded / checked / skipped
+// 之一，缺一类就等于有条目被悄悄挡掉而报告里看不出来。
+test('grid counters separate what was measured, what a block shielded and what could not be measured', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [
+      // 压住线的块里的内容：块量、内容不量。
+      cardCopyItem({
+        id: 'shielded-copy',
+        sourceAncestorNodes: [placedNode({ boundsMm: { x: 10, y: 10, width: 49, height: 29 } })],
+      }),
+      // 没有祖先块，自己直接被量，而且压住了线。
+      cardCopyItem({ id: 'measured-copy', boundsMm: { x: 10, y: 10, width: 23.5, height: 6 } }),
+      // 整体豁免。
+      cardCopyItem({
+        id: 'ignored-copy',
+        attributes: { 'data-id-paragraph-style': 'body-copy', 'data-id-grid-ignore': '' },
+        boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+      }),
+      // 承担放置但没有几何的块：量不出来，只能留痕。
+      cardCopyItem({
+        id: 'boundless-copy',
+        sourceAncestorNodes: [placedNode({ id: 'boundless-card', sourcePath: 'div:nth-of-type(9)' })],
+      }),
+    ],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+  assert.equal(result.gridCheckedCount, 1);
+  // 块挡住的条目按条目计数：让 boundless-card 被指认出来的那个条目同样被挡住。
+  assert.equal(result.gridShieldedCount, 2);
+  assert.equal(result.gridBlockCheckedCount, 1);
+  assert.equal(result.gridBlockSkippedCount, 1);
+  assert.equal(result.gridIgnoredCount, 1);
+  assert.equal(result.gridOffCount, 0);
+  assert.equal(result.gridBlockOffCount, 0);
+  // 这个夹具里没有条目被 shouldCheckGrid 的其他规则挡掉（没有 annotation / folio /
+  // flex 自适应文本 / 整页 / 无几何条目），所以 skipped 是 0。
+  assert.equal(result.gridSkippedCount, 0);
+  // 账要平：四类相加等于本页可映射条目总数（这个夹具四个条目都是可映射的）。
+  const mappableItems = snapshot.pages[0].items.length;
+  assert.equal(mappableItems, 4);
+  assert.equal(
+    result.gridCheckedCount + result.gridShieldedCount + result.gridIgnoredCount + result.gridSkippedCount,
+    mappableItems,
+    JSON.stringify({
+      checked: result.gridCheckedCount,
+      shielded: result.gridShieldedCount,
+      ignored: result.gridIgnoredCount,
+      skipped: result.gridSkippedCount,
+    }),
+  );
+});
+
+// skipped 这一类不是摆设：一个 annotation 条目、一个整页条目都会走 shouldCheckGrid 的
+// 其他规则被挡掉，缺了这个计数它们就凭空消失，账也就永远差两条。
+test('gridSkippedCount catches mappable items dropped by the other shouldCheckGrid rules', () => {
+  const snapshot = snapshotWithPage({
+    attributes: GRID_PAGE_ATTRIBUTES,
+    items: [
+      // annotation 角色：条目自己的边缘免检。
+      cardCopyItem({
+        id: 'note',
+        attributes: { 'data-id-paragraph-style': 'body-copy', 'data-id-role': 'annotation' },
+        boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+      }),
+      // folio 段落样式：页码位置由排版惯例决定。
+      cardCopyItem({
+        id: 'folio',
+        attributes: { 'data-id-paragraph-style': 'folio' },
+        boundsMm: { x: 13, y: 14, width: 20, height: 6 },
+      }),
+      // 压住线、正常被量的条目：证明 skipped 不是把所有条目都算进去。
+      cardCopyItem({ id: 'measured-copy', boundsMm: { x: 10, y: 10, width: 23.5, height: 6 } }),
+    ],
+  });
+
+  const result = validateAuthoringRules(snapshot, { strict: true, gridTolerance: 1 });
+
+  assert.equal(result.gridSkippedCount, 2);
+  assert.equal(result.gridCheckedCount, 1);
+  assert.equal(result.gridShieldedCount, 0);
+  assert.equal(result.gridIgnoredCount, 0);
+  assert.equal(
+    result.gridCheckedCount + result.gridShieldedCount + result.gridIgnoredCount + result.gridSkippedCount,
+    snapshot.pages[0].items.length,
+  );
+});
+
 test('validateAuthoringRules checks text placement by left right and top edges', () => {
   const snapshot = snapshotWithPage({
     attributes: {

@@ -259,7 +259,7 @@ HTML 示例：
 
 `sourceNode` 描述作者源码节点，反向作者源码包必须优先使用它恢复标签名、class 和稳定属性。`sourceAsset` 描述作者源码中的资源引用，服务 `img`、`object`、`embed`、`picture` 等标签恢复。`structure.parentId` 描述作者源码父子关系；当它指向同页对象时，反向源码包应嵌套输出，而不是平铺。
 
-网格不是给人工拖拽使用的装饰层，而是 Agent 编写分页 HTML 的版面契约。每个页面必须声明边距和主网格；顶层可映射元素的关键边缘应贴合页边距、列线、栏间距两侧、行线或 baseline。允许浏览器继续使用自然 CSS Grid / gap / padding 预览，但翻译层会把这些规则沉淀为 InDesign 页边距和原生参考线。卡片、图例、表格内部的嵌套文字可以使用局部节奏，不强制贴页面主网格。
+网格不是给人工拖拽使用的装饰层，而是 Agent 编写分页 HTML 的版面契约。每个页面必须声明边距和主网格。网格对齐校验对象是承担网格放置的块（带 `--grid-col`/`--grid-row`、`grid-item` 类名或显式 `grid-column`/`grid-row` 的元素；哪怕不是 InDesign 对象的包裹元素也会被量，条目标 `block: true`）与没有放置祖先的可映射元素——这两类的关键边缘应贴合页边距、列线、栏间距两侧、行线或 baseline；块内内容不参与校验，块套块只量最外层。允许浏览器继续使用自然 CSS Grid / gap / padding 预览，但翻译层会把这些规则沉淀为 InDesign 页边距和原生参考线。卡片、图例、表格内部的嵌套文字可以使用局部节奏，不强制贴页面主网格。
 
 建筑汇报页面推荐声明 12 列、6 个粗行模块的主网格，同时声明栏间距和作者侧 baseline：
 
@@ -282,10 +282,10 @@ HTML 示例：
 | `PAGE_MARGIN_RULE_MISSING` | error | 页面缺少 `data-id-margin`、`data-id-margin-*` 或可识别页面 padding |
 | `PAGE_GRID_RULE_MISSING` | error | 页面缺少 `data-id-grid` 或可解析 CSS Grid；`data-id-snap-grid` 不能单独满足 |
 | `PAGE_GRID_RULE_INVALID` | error | 页面声明了网格但格式不可解析 |
-| `GRID_ALIGNMENT_OFF` | warning | 顶层可映射元素关键边缘没有贴合声明主网格或 baseline |
+| `GRID_ALIGNMENT_OFF` | warning | 承担网格放置的块（含非 InDesign 对象的包裹元素）或没有放置祖先的可映射元素，关键边缘没有贴合声明主网格或 baseline |
 | `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定 class 或 `data-id-*` 语义 token |
 
-`strict` 模式会把 warning 提升为 error，适合交付前或 CI 使用。普通开发阶段可以先保留 warning，让 Agent 逐步修正 HTML。
+`strict` 模式会把 warning 提升为 error，适合交付前或 CI 使用。普通开发阶段可以先保留 warning，让 Agent 逐步修正 HTML。每条 `GRID_ALIGNMENT_OFF` 携带 `edges`（核对了哪几条边）、`edgeOffsets`（每条边偏移量与最近格线）和 `suggestedFix`；块级条目额外带 `block: true`、`blockOf`、`blockOfCount`。结果里的 `gridIgnoredCount`/`gridOffCount`/`gridBlockOffCount`/`gridCheckedCount`/`gridShieldedCount`/`gridBlockCheckedCount`/`gridBlockSkippedCount`/`gridSkippedCount` 分别记录豁免、报错、逐条量过、被块遮蔽、量过的块、缺几何未量的块和其他跳过的数量。
 
 ## 7. InDesign 标签对应
 

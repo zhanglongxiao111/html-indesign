@@ -525,6 +525,46 @@ test('compileInstructions keeps semantic table rows for native InDesign tables',
   assert.equal(table.rows[1].cells[1].text, '7600 sqm');
 });
 
+test('compileInstructions falls back to a Chinese default table style when unstyled', () => {
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [{
+        id: 'plain-table',
+        role: 'table',
+        tagName: 'table',
+        classList: [],
+        attributes: {},
+        text: '',
+        boundsMm: { x: 10, y: 10, width: 40, height: 20 },
+        zIndex: 1,
+        computedStyle: {},
+        table: [{
+          index: 0,
+          header: false,
+          cells: [
+            { index: 0, text: 'A', header: false, rowSpan: 1, colSpan: 1, boundsMm: { x: 10, y: 10, width: 20, height: 10 }, computedStyle: {}, attributes: {}, runs: [] },
+            { index: 1, text: 'B', header: false, rowSpan: 1, colSpan: 1, boundsMm: { x: 30, y: 10, width: 20, height: 10 }, computedStyle: {}, attributes: {}, runs: [] },
+          ],
+        }],
+      }],
+    }],
+    assets: [],
+  };
+
+  const instructions = compileInstructions(snapshot);
+  const table = instructions.pages[0].items.find((item) => item.id === 'plain-table');
+
+  assert.ok(table);
+  assert.equal(table.type, 'TABLE');
+  assert.match(table.tableStyle, /^[^A-Za-z]+$/);
+  assert.notEqual(table.tableStyle, 'default-table');
+});
+
 test('compileInstructions creates paragraph styles referenced by table cells', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

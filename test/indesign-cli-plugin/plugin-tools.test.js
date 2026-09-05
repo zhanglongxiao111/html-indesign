@@ -322,7 +322,9 @@ test('html.build_indesign runs strict authoring checks internally before creatin
   assert.equal(response.error.details.ok, false);
   assert.equal(response.error.details.errorCount > 0, true);
   assert.equal(Array.isArray(response.error.details.errors), true);
-  assert.match(response.error.message, /styles\/tokens\.css/);
+  // 这个夹具触发的是页面契约缺失。原先断言的是"推荐样式文件缺失"，而 strict 已经不再
+  // 因此拦截（见 src/authoring/source-package.js），断言留着只是在测一条被撤掉的规则。
+  assert.match(response.error.message, /AUTHOR_PAGE_CONTRACT_MISSING/);
   assert.equal(fs.existsSync(path.join(root, 'output', 'build.jsx')), false);
 });
 
@@ -411,6 +413,469 @@ test('html.build_indesign draft mode exports after build and is always marked un
   assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
 });
 
+test('宿主脚本的 warnings 透传到成功结果（data 直挂 / data.parsed / 字段级回落 / 导出阶段 / details）', () => {
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings');
+
+  const previousOutputClosed = {
+    code: 'PREVIOUS_OUTPUT_CLOSED',
+    message: 'Closed the unmodified previous build output that was still open: D:/run/deck.indd',
+  };
+
+  const flat = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, warnings: [previousOutputClosed] },
+  });
+  const flatCodes = flat.data.warnings.map((item) => item.code);
+  assert.equal(flatCodes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
+  assert.equal(flatCodes.includes('DRAFT_NOT_VERIFIED'), true);
+  assert.match(
+    flat.data.warnings.find((item) => item.code === 'PREVIOUS_OUTPUT_CLOSED').message,
+    /previous build output/
+  );
+
+  // 真实 CLI（mcp-indesign 的 _parse_tool_response）把脚本载荷放在 data.parsed。
+  const nested = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, parsed: { ok: true, warnings: [previousOutputClosed] } },
+  });
+  const nestedCodes = nested.data.warnings.map((item) => item.code);
+  assert.equal(nestedCodes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
+  assert.equal(nestedCodes.includes('DRAFT_NOT_VERIFIED'), true);
+
+  // 没有 warnings 时不得凭空造出条目。
+  const clean = driveDraftBuild({ id: 'html-build-script', status: 'complete', data: { ok: true } });
+  assert.deepEqual(clean.data.warnings.map((item) => item.code), ['DRAFT_NOT_VERIFIED']);
+
+  // parsed 存在但里面没有 warnings 时，回落是按字段的：仍要读 data.warnings，不能因为
+  // parsed 在就整个换过去，否则真实 CLI 那一侧的 warning 会被 parsed 挡掉。
+  const fieldFallback = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { parsed: { ok: true }, warnings: [{ code: 'PREVIOUS_OUTPUT_CLOSED', message: 'y' }] },
+  });
+  assert.equal(
+    fieldFallback.data.warnings.some((item) => item.code === 'PREVIOUS_OUTPUT_CLOSED'),
+    true,
+    'parsed 没带 warnings 时必须回落到 data.warnings'
+  );
+
+  // 导出脚本自己的 warning（IDML_EXPORT_FAILED 只是警告，不是失败）也必须到达调用方，且只出现一次。
+  const exportWarned = driveDraftBuild(
+    { id: 'html-build-script', status: 'complete', data: { ok: true } },
+    {
+      id: 'html-export-script',
+      status: 'complete',
+      data: { ok: true, warnings: [{ code: 'IDML_EXPORT_FAILED', message: 'x' }] },
+    }
+  );
+  assert.deepEqual(
+    exportWarned.data.warnings.filter((item) => item.code === 'IDML_EXPORT_FAILED').length,
+    1
+  );
+
+  // details 按形状过滤：标量原样透传（不在任何白名单里的 requestedFont/appliedFont 也要活着），
+  // 对象/数组这类无界结构丢掉。
+  const withDetails = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: {
+      ok: true,
+      warnings: [{
+        code: 'FONT_FALLBACK_APPLIED',
+        message: 'z',
+        details: {
+          requestedFont: 'A',
+          appliedFont: 'B',
+          bounds: { x: 1 },
+          textLength: 12,
+          nested: [1],
+        },
+      }],
+    },
+  });
+  const fallbackEntry = withDetails.data.warnings.find((item) => item.code === 'FONT_FALLBACK_APPLIED');
+  assert.ok(fallbackEntry, 'FONT_FALLBACK_APPLIED 必须透传');
+  assert.deepEqual(fallbackEntry.details, { requestedFont: 'A', appliedFont: 'B', textLength: 12 });
+});
+
+test('host warnings 上限按累计后的 state.hostWarnings 算：跨阶段/单阶段溢出都截到 100 条 + 一条计数标记', () => {
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings-cap');
+
+  function makeWarnings(count, prefix) {
+    const list = [];
+    for (let i = 0; i < count; i += 1) list.push({ code: 'W', message: `${prefix}-${i}` });
+    return list;
+  }
+
+  // 构建阶段 60 条 + 导出阶段 60 条：单阶段收割都不过 100，只有累计后才会溢出。
+  const twoStage = driveDraftBuild(
+    { id: 'html-build-script', status: 'complete', data: { ok: true, warnings: makeWarnings(60, 'build') } },
+    { id: 'html-export-script', status: 'complete', data: { ok: true, warnings: makeWarnings(60, 'export') } },
+  );
+  const twoStageWarnings = twoStage.data.warnings;
+  assert.equal(twoStageWarnings.filter((item) => item.code === 'W').length, 100);
+  const twoStageTruncated = twoStageWarnings.filter((item) => item.code === 'HOST_WARNINGS_TRUNCATED');
+  assert.equal(twoStageTruncated.length, 1);
+  assert.equal(twoStageTruncated[0].details.omitted, 20);
+  // 顺序：100 条真实 warning，然后截断标记，最后才是 DRAFT_NOT_VERIFIED。
+  assert.equal(twoStageWarnings[100].code, 'HOST_WARNINGS_TRUNCATED');
+  assert.equal(twoStageWarnings[101].code, 'DRAFT_NOT_VERIFIED');
+  assert.equal(twoStageWarnings.length, 102);
+
+  // 单阶段自己就报 120 条：同样截到 100 + 一条 omitted=20 的标记（不是四个阶段各按 100 算）。
+  const singleStage = driveDraftBuild(
+    { id: 'html-build-script', status: 'complete', data: { ok: true, warnings: makeWarnings(120, 'solo') } },
+    { id: 'html-export-script', status: 'complete', data: { ok: true } },
+  );
+  const singleStageWarnings = singleStage.data.warnings;
+  assert.equal(singleStageWarnings.filter((item) => item.code === 'W').length, 100);
+  const singleStageTruncated = singleStageWarnings.filter((item) => item.code === 'HOST_WARNINGS_TRUNCATED');
+  assert.equal(singleStageTruncated.length, 1);
+  assert.equal(singleStageTruncated[0].details.omitted, 20);
+});
+
+test('host warning details 的标量键数上限：单条 warning 30 个键截到 24 个', () => {
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings-detail-keys');
+
+  const manyKeys = {};
+  for (let i = 0; i < 30; i += 1) manyKeys[`k${i}`] = i;
+
+  const complete = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, warnings: [{ code: 'MANY_SCALAR_KEYS', message: 'x', details: manyKeys }] },
+  });
+  const entry = complete.data.warnings.find((item) => item.code === 'MANY_SCALAR_KEYS');
+  assert.ok(entry, 'MANY_SCALAR_KEYS 必须透传');
+  const keys = Object.keys(entry.details);
+  assert.equal(keys.length, 24);
+  assert.deepEqual(keys, Array.from({ length: 24 }, (_, i) => `k${i}`));
+});
+
+// 上限数的是"留下来的标量键"，不是"看过的键"：前面五个对象键若也占名额，真正有用的
+// 定位字段就只剩 19 个位置，而被丢掉的那五个键本来一个字节都不占。
+test('host warning details 的键数上限只数留下的标量键：5 个对象键在前也仍留 24 个标量键', () => {
+  const driveDraftBuild = draftBuildDriver('plugin-build-host-warnings-detail-key-order');
+
+  const mixedKeys = {};
+  for (let i = 0; i < 5; i += 1) mixedKeys[`obj${i}`] = { nested: i };
+  for (let i = 0; i < 30; i += 1) mixedKeys[`k${i}`] = i;
+
+  const complete = driveDraftBuild({
+    id: 'html-build-script',
+    status: 'complete',
+    data: { ok: true, warnings: [{ code: 'MIXED_DETAIL_KEYS', message: 'x', details: mixedKeys }] },
+  });
+  const entry = complete.data.warnings.find((item) => item.code === 'MIXED_DETAIL_KEYS');
+  assert.ok(entry, 'MIXED_DETAIL_KEYS 必须透传');
+  const keys = Object.keys(entry.details);
+  assert.equal(keys.length, 24);
+  assert.deepEqual(keys, Array.from({ length: 24 }, (_, i) => `k${i}`));
+});
+
+test('BUILD_ARTIFACTS_MISSING 时把 state.hostWarnings 一并带出（IDML_EXPORT_FAILED 是缺 IDML 的直接原因）', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-artifacts-missing-warnings');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  // INDD、PDF 正常落盘；IDML 故意不写，用来触发 BUILD_ARTIFACTS_MISSING。
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'build',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+    },
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'export');
+
+  const afterExport = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{
+      id: 'html-export-script',
+      status: 'complete',
+      data: { ok: true, warnings: [{ code: 'IDML_EXPORT_FAILED', message: 'x' }] },
+    }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'BUILD_ARTIFACTS_MISSING');
+  assert.ok(response.error.details.hostWarnings, 'BUILD_ARTIFACTS_MISSING 的 details 必须带上 hostWarnings');
+  assert.equal(
+    response.error.details.hostWarnings.some((item) => item.code === 'IDML_EXPORT_FAILED'),
+    true
+  );
+});
+
+test('宿主动作失败（hostFailureResponse）时把之前阶段的 hostWarnings 与本阶段失败结果自带的 warning 一并带出', () => {
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'final',
+      hostWarnings: [{ code: 'PREVIOUS_OUTPUT_CLOSED', message: 'z' }],
+    },
+    host_results: [{
+      id: 'html-export-script',
+      status: 'complete',
+      data: {
+        ok: false,
+        errors: [{ code: 'INDD_SAVE_FAILED', message: 'save failed' }],
+        warnings: [{ code: 'PDF_PAGE_APPLY_FAILED', message: 'y' }],
+      },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.ok(response.error.details.hostWarnings, 'hostFailureResponse 的 details 必须带上 hostWarnings');
+  const codes = response.error.details.hostWarnings.map((item) => item.code);
+  assert.equal(codes.includes('PREVIOUS_OUTPUT_CLOSED'), true);
+  assert.equal(codes.includes('PDF_PAGE_APPLY_FAILED'), true);
+});
+
+// 上一条用的是插件契约里的 data 直挂形状。真实 CLI 失败时给的是
+// { ok:false, error:{ code:'INDESIGN_SCRIPT_FAILED', message:<整段 JSON 文本> } }：没有 data，
+// warnings 只存在于那段被序列化的载荷里。只按 data 收割等于在生产路径上一条都收不到。
+test('宿主失败结果被 CLI 序列化成 JSON 文本时，warning 也要从解包后的载荷里收上来', () => {
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'final',
+    },
+    host_results: [{
+      id: 'html-export-script',
+      ok: false,
+      error: {
+        code: 'INDESIGN_SCRIPT_FAILED',
+        message: JSON.stringify({
+          ok: false,
+          errors: [{ code: 'INDD_SAVE_FAILED', message: 'busy' }],
+          warnings: [{ code: 'PDF_PAGE_APPLY_FAILED', message: 'y' }],
+        }),
+      },
+    }],
+  });
+
+  assert.equal(response.status, 'error');
+  // 下层 code 仍从序列化载荷里解回来（既有行为，一并锁住）。
+  assert.equal(response.error.details.causeCode, 'INDD_SAVE_FAILED');
+  assert.ok(response.error.details.hostWarnings, '序列化载荷里的 warning 必须进 details.hostWarnings');
+  const codes = response.error.details.hostWarnings.map((item) => item.code);
+  assert.equal(codes.includes('PDF_PAGE_APPLY_FAILED'), true);
+  // 同一条 warning 只能出现一次：failed 与解包后的载荷都被收割，不许重复计数。
+  assert.equal(codes.filter((code) => code === 'PDF_PAGE_APPLY_FAILED').length, 1);
+});
+
+test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，并把 stale 路径列出来', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-stale-artifacts');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  // 上一轮遗留的三个产物：先落盘再拍快照，本轮宿主脚本什么都没写出来。
+  fs.writeFileSync(inddPath, 'fake');
+  fs.writeFileSync(pdfPath, 'fake');
+  fs.writeFileSync(idmlPath, 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const snapshotOf = (file) => {
+    const stat = fs.statSync(file);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  };
+
+  const afterExport = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+      preRunDeliverables: {
+        indd: snapshotOf(inddPath),
+        pdf: snapshotOf(pdfPath),
+        idml: snapshotOf(idmlPath),
+      },
+    },
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'BUILD_ARTIFACTS_MISSING');
+  assert.deepEqual(response.error.details.missing, [inddPath, pdfPath, idmlPath]);
+  assert.deepEqual(response.error.details.stale, [inddPath, pdfPath, idmlPath]);
+  assert.match(response.error.message, /stale from a previous build/);
+  assert.equal(response.artifacts, undefined);
+});
+
+test('本轮真的覆盖了三个产物时照常完成：快照比对只认变化，不认工位时钟', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-fresh-artifacts');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  // 上一轮遗留的三个产物：先落盘再拍快照，state 里带的就是这份“开工前”的样子。
+  for (const file of [inddPath, pdfPath, idmlPath]) fs.writeFileSync(file, 'stale');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const snapshotOf = (file) => {
+    const stat = fs.statSync(file);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  };
+  const preRunDeliverables = {
+    indd: snapshotOf(inddPath),
+    pdf: snapshotOf(pdfPath),
+    idml: snapshotOf(idmlPath),
+  };
+
+  // 本轮宿主脚本把三个产物都重写了：内容与大小都变了，mtime 还往前跳了一小时
+  // （NAS 与工位的钟差常有这个量级，判定不能因此翻脸）。
+  const bumped = new Date(Date.now() + 60 * 60 * 1000);
+  for (const file of [inddPath, pdfPath, idmlPath]) {
+    fs.writeFileSync(file, 'freshly-written-by-this-run');
+    fs.utimesSync(file, bumped, bumped);
+  }
+
+  const afterExport = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: true,
+      instructionsPath,
+      summaryPath,
+      preRunDeliverables,
+    },
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.data.ok, true);
+  assert.equal(response.data.inddPath, inddPath);
+  assert.equal(response.data.pdfPath, pdfPath);
+  assert.equal(response.data.idmlPath, idmlPath);
+  assert.equal(response.artifacts.some((item) => item.kind === 'indd' && item.path === inddPath), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'pdf' && item.path === pdfPath), true);
+  assert.equal(response.artifacts.some((item) => item.kind === 'idml' && item.path === idmlPath), true);
+});
+
+test('exportIdml 关闭时不去追究上一轮遗留的旧 IDML，idmlPath 报 null 而不是报缺产物', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-idml-opt-out');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const inddPath = path.join(outDir, 'plugin-smoke.indd');
+  const pdfPath = path.join(outDir, 'plugin-smoke.pdf');
+  const idmlPath = path.join(outDir, 'plugin-smoke.idml');
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  for (const file of [inddPath, pdfPath, idmlPath]) fs.writeFileSync(file, 'stale');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  const snapshotOf = (file) => {
+    const stat = fs.statSync(file);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  };
+  const preRunDeliverables = {
+    indd: snapshotOf(inddPath),
+    pdf: snapshotOf(pdfPath),
+    idml: snapshotOf(idmlPath),
+  };
+
+  // 本轮只写 INDD 与 PDF；那个 .idml 是上一轮遗留的、与开工前快照一字不差的旧文件，
+  // 本轮既没要它也没碰它，不该被算成本轮的缺件。
+  const bumped = new Date(Date.now() + 60 * 60 * 1000);
+  for (const file of [inddPath, pdfPath]) {
+    fs.writeFileSync(file, 'freshly-written-by-this-run');
+    fs.utimesSync(file, bumped, bumped);
+  }
+
+  const afterExport = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.build_indesign',
+      stage: 'export',
+      mode: 'draft',
+      runDir: outDir,
+      outputBaseName: 'plugin-smoke',
+      exportPdf: true,
+      exportIdml: false,
+      instructionsPath,
+      summaryPath,
+      preRunDeliverables,
+    },
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterExport.status, 'requires_host_actions');
+  assert.equal(afterExport.state.stage, 'verify');
+
+  const response = callPlugin('tools/resume', {
+    state: afterExport.state,
+    host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete');
+  assert.equal(response.error, undefined);
+  assert.equal(response.data.idmlPath, null);
+  assert.equal(response.data.pdfPath, pdfPath);
+  assert.equal(response.artifacts.some((item) => item.kind === 'idml'), false);
+  assert.equal(fs.existsSync(idmlPath), true);
+});
+
 test('html.build_indesign final mode requests a current-document snapshot after build', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-final-stage');
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -478,13 +943,23 @@ test('html.build_indesign closes its owned document before returning a fidelity 
       snapshotPath: path.join(outDir, 'missing-snapshot.json'),
       cleanupScriptPath,
     },
-    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+    // 快照脚本自己也会报 warning（预览导出失败之类）。收割 hostWarnings 早先只写在构建/导出两个
+    // 分支里，快照阶段的整批被丢掉；现在四个阶段共用一次收割，这里的条目必须活到下一段 state。
+    host_results: [{
+      id: 'html-fidelity-snapshot',
+      status: 'complete',
+      data: { ok: true, warnings: [{ code: 'PLACED_ASSET_PREVIEW_EXPORT_FAILED', message: 'preview failed' }] },
+    }],
   });
 
   assert.equal(afterSnapshot.status, 'requires_host_actions');
   assert.equal(afterSnapshot.state.stage, 'cleanup');
   assert.equal(afterSnapshot.state.pendingError.code, 'FIDELITY_INPUT_MISSING');
   assert.deepEqual(afterSnapshot.actions.map((action) => action.id), ['html-build-cleanup']);
+  assert.deepEqual(
+    (afterSnapshot.state.hostWarnings || []).map((item) => item.code),
+    ['PLACED_ASSET_PREVIEW_EXPORT_FAILED']
+  );
 
   const response = callPlugin('tools/resume', {
     state: afterSnapshot.state,
@@ -493,6 +968,12 @@ test('html.build_indesign closes its owned document before returning a fidelity 
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'FIDELITY_INPUT_MISSING');
   assert.equal(response.error.retryable, false);
+  // cleanupThenError 现在把 state.hostWarnings 一并塞进 details：快照阶段的这条 warning
+  // 不该在 cleanup 之后的最终错误响应里消失。
+  assert.deepEqual(
+    (response.error.details.hostWarnings || []).map((item) => item.code),
+    ['PLACED_ASSET_PREVIEW_EXPORT_FAILED']
+  );
 });
 
 test('html.build_indesign states that a rejected build exported no deliverable', () => {
@@ -671,6 +1152,64 @@ test('html.build_indesign final mode fidelity-gate failure reports failed stage 
   // the export/verify stages never ran; their timing keys must be absent.
   assert.equal('export_ms' in metrics, false);
   assert.equal('verify_ms' in metrics, false);
+});
+
+test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异，指向文本溢出', () => {
+  const outDir = path.join('test', 'workspace', 'plugin-build-fidelity-hint-uplift');
+  const absoluteOutDir = path.join(repoRoot, outDir);
+  fs.rmSync(absoluteOutDir, { recursive: true, force: true });
+
+  const callResponse = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: 'test/fixtures/e2e/architecture-report/deck.config.json',
+      outDir,
+      outputBaseName: 'fidelity-hint-uplift',
+      mode: 'final',
+    },
+  });
+  assert.equal(callResponse.status, 'requires_host_actions');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'snapshot');
+
+  // 真实 InDesign 没跑过，所以把 instructions / expected model / snapshot 一起换成受控的两项差异：
+  // 页面内第一项是被挪走的矩形（几何差异不带 hint），第二项文本读回是源文本的严格前缀（溢出，带 hint）。
+  const fixture = oversetBehindGeometryFixture();
+  fs.writeFileSync(afterBuild.state.instructionsPath, JSON.stringify(fixture.instructions, null, 2), 'utf8');
+  fs.writeFileSync(afterBuild.state.expectedModelPath, JSON.stringify(fixture.expectedModel, null, 2), 'utf8');
+  fs.writeFileSync(afterBuild.state.snapshotPath, JSON.stringify(fixture.actualSnapshot, null, 2), 'utf8');
+
+  const afterSnapshot = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterSnapshot.status, 'requires_host_actions');
+  assert.equal(afterSnapshot.state.stage, 'cleanup');
+
+  const response = callPlugin('tools/resume', {
+    state: afterSnapshot.state,
+    host_results: [{ id: 'html-build-cleanup', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'error');
+  assert.equal(response.error.code, 'FIDELITY_GATE_FAILED');
+
+  const report = JSON.parse(fs.readFileSync(afterBuild.state.fidelityReportPath, 'utf8'));
+  assert.equal(report.errors[0].code, 'FORWARD_ITEM_GEOMETRY_CHANGED');
+  assert.equal(report.errors[0].hint, undefined);
+  assert.equal(report.errors.some((entry) => entry.reason === 'overset'), true);
+
+  assert.match(response.error.hint, /文本框/);
+  assert.match(response.error.hint, /Full list: forward-fidelity-report\.json\.$/);
+  // hint 越过第一条差异指向第二条（body 项），前缀得带上那条自己的定位，不能顶着第一条的名字。
+  assert.match(response.error.hint, /^page-1 \/ body: /);
+  // 首条消息仍然报第一条差异，所以那里不该出现溢出口径。
+  assert.equal(response.error.message.includes('text overset'), false);
 });
 
 test('html.reverse_export returns script.run host action for an INDD file', () => {
@@ -960,6 +1499,56 @@ module.exports = {
   workspaceRoot,
 };
 
+// 三处 host warning 用例的驱动步骤此前逐字抄了三份：备好 outDir 与三个产物，再走
+// build → export → verify 的 draft 全程。抄三份的代价是口径各自漂移（改一处忘两处），
+// 收成一个助手：入参只有工作目录名，返回的就是那三个用例原来各自定义的 driveDraftBuild。
+function draftBuildDriver(workspaceName) {
+  const outDir = path.join(repoRoot, 'test', 'workspace', workspaceName);
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const instructionsPath = path.join(outDir, 'instructions.json');
+  const summaryPath = path.join(outDir, 'compile-summary.json');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.indd'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.pdf'), 'fake');
+  fs.writeFileSync(path.join(outDir, 'plugin-smoke.idml'), 'fake');
+  fs.writeFileSync(instructionsPath, '{}');
+  fs.writeFileSync(summaryPath, '{}');
+
+  return function driveDraftBuild(buildHostResult, exportHostResult) {
+    const afterBuild = callPlugin('tools/resume', {
+      state: {
+        tool_id: 'html.build_indesign',
+        stage: 'build',
+        mode: 'draft',
+        runDir: outDir,
+        outputBaseName: 'plugin-smoke',
+        exportPdf: true,
+        exportIdml: true,
+        instructionsPath,
+        summaryPath,
+      },
+      host_results: [buildHostResult],
+    });
+    assert.equal(afterBuild.status, 'requires_host_actions');
+    assert.equal(afterBuild.state.stage, 'export');
+
+    const afterExport = callPlugin('tools/resume', {
+      state: afterBuild.state,
+      host_results: [exportHostResult || { id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(afterExport.status, 'requires_host_actions');
+    assert.equal(afterExport.state.stage, 'verify');
+
+    const complete = callPlugin('tools/resume', {
+      state: afterExport.state,
+      host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
+    });
+    assert.equal(complete.status, 'complete');
+    return complete;
+  };
+}
+
 function writeAuthorPackage(root, pageHtml) {
   fs.mkdirSync(path.join(root, 'pages'), { recursive: true });
   fs.writeFileSync(path.join(root, 'deck.config.json'), JSON.stringify({
@@ -973,4 +1562,145 @@ function writeAuthorPackage(root, pageHtml) {
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 单页两项的最小保真夹具：页面事实全对得上，只留两处受控差异，
+// 且顺序固定为「几何差异（无 hint）在前、文本溢出（有 hint）在后」。
+function oversetBehindGeometryFixture() {
+  const sourceText = '项目策划与执行/Project planning and delivery';
+  const readBackText = '项目策划与执行/Project ';
+  const pageFacts = {
+    width: 100,
+    height: 80,
+    margins: { top: 5, right: 5, bottom: 5, left: 5 },
+    guides: [{ orientation: 'vertical', position: 50 }],
+  };
+  const pageLabel = {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'page',
+    id: 'page-1',
+    source: 'html-to-indesign',
+    semantic: 'cover',
+    layout: 'cover-grid',
+  };
+  const shapeLabel = fidelityItemLabel('panel', 'shape', 0, '');
+  const textLabel = fidelityItemLabel('body', 'text', 1, sourceText);
+
+  const expectedModel = {
+    kind: 'DocumentModel',
+    id: 'deck',
+    unitMode: 'presentation',
+    coordinateUnit: 'pt',
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      semantic: 'cover',
+      layout: 'cover-grid',
+      ...pageFacts,
+      // expected model 只提供页面级事实；两项条目差异都从 instructions 与 snapshot 的逐项比对里产生。
+      items: [],
+    }],
+  };
+  const instructions = {
+    document: { id: 'deck', parentPages: [] },
+    assets: [],
+    pages: [{
+      id: 'page-1',
+      ...pageFacts,
+      labels: [pageLabel],
+      items: [{
+        id: 'panel',
+        role: 'shape',
+        type: 'SHAPE',
+        shapeKind: 'rectangle',
+        bounds: { x: 10, y: 10, width: 80, height: 20 },
+        layer: '图形',
+        text: '',
+        runs: [],
+        labels: [shapeLabel],
+      }, {
+        id: 'body',
+        role: 'text',
+        type: 'TEXT',
+        bounds: { x: 10, y: 35, width: 80, height: 12 },
+        layer: '文字',
+        text: sourceText,
+        runs: [{ text: sourceText, characterStyle: null }],
+        labels: [textLabel],
+      }],
+    }],
+  };
+  const actualSnapshot = {
+    document: { labels: [] },
+    report: { ok: true, errors: [], oversetTextFrames: [] },
+    parentPages: [],
+    assets: [],
+    layers: [],
+    styles: {},
+    pages: [{
+      id: '1',
+      index: 0,
+      bounds: { x: 0, y: 0, width: pageFacts.width, height: pageFacts.height },
+      margins: pageFacts.margins,
+      guides: pageFacts.guides,
+      labels: [pageLabel],
+      items: [{
+        id: '201',
+        type: 'Rectangle',
+        // 差异一：矩形横向被挪了 12pt，远超容差；几何差异不带 hint。
+        bounds: { x: 22, y: 10, width: 80, height: 20 },
+        layerName: '图形',
+        paragraphStyleName: '',
+        objectStyleName: '',
+        text: '',
+        textRuns: [],
+        table: null,
+        placedAsset: null,
+        labels: [shapeLabel],
+      }, {
+        id: '202',
+        type: 'TextFrame',
+        bounds: { x: 10, y: 35, width: 80, height: 12 },
+        layerName: '文字',
+        paragraphStyleName: '',
+        objectStyleName: '',
+        // 差异二：读回文本是源文本的严格前缀 —— 溢出签名，带 hint。
+        text: readBackText,
+        textRuns: [{ text: readBackText, characterStyle: null }],
+        table: null,
+        placedAsset: null,
+        labels: [textLabel],
+      }],
+    }],
+  };
+  return { expectedModel, instructions, actualSnapshot };
+}
+
+function fidelityItemLabel(id, role, order, sourceText) {
+  const tagName = role === 'text' ? 'p' : 'div';
+  return {
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id,
+    source: 'html-to-indesign',
+    role,
+    semantic: null,
+    htmlTag: tagName,
+    className: role,
+    sourceFile: 'pages/01.html',
+    sourceNode: {
+      tagName,
+      id,
+      classList: [role],
+      attributes: { id },
+    },
+    sourceText,
+    sourceHtml: null,
+    sourceRuns: [],
+    sourceAncestorNodes: [],
+    structure: { parentId: 'page-1', order, containerPolicy: 'group' },
+    layout: null,
+  };
 }

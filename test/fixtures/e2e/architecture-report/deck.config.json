@@ -20,7 +20,8 @@
     { "id": "design-strategy", "file": "pages/03-design-strategy.html" },
     { "id": "drawing-sheet", "file": "pages/04-drawing-sheet.html" },
     { "id": "material-system", "file": "pages/05-material-system.html" },
-    { "id": "metrics-table", "file": "pages/06-metrics-table.html" }
+    { "id": "metrics-table", "file": "pages/06-metrics-table.html" },
+    { "id": "plain-table", "file": "pages/07-plain-table.html" }
   ],
   "assets": {
     "root": "assets"

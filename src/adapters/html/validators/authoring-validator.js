@@ -21,6 +21,25 @@ function validateAuthoringRules(snapshot, options = {}) {
   const errors = [];
   const warnings = [];
   const gridTolerance = Number.isFinite(Number(options.gridTolerance)) ? Number(options.gridTolerance) : 1;
+  // 豁免与偏差都计数：整包豁免不能静默通过，报告和遥测要看得见。
+  let gridIgnoredCount = 0;
+  let gridOffCount = 0;
+  // "0 偏移"有两种来源：真的都压住线了，和一个都没量。只有把量过的、被块挡住的、
+  // 量不出来的分开计数，报告才能把两者区分开。
+  //
+  // 条目侧的四个计数必须凑成一本闭合的账：每个可映射条目恰好落进
+  // ignored / shielded / checked / skipped 之一，四者相加等于跑过网格检查的页面上
+  // 可映射条目的总数。少一类（此前缺 skipped）就等于账不平——条目被 shouldCheckGrid
+  // 的其他规则（annotation、folio、flex 自适应文本、整页、无几何、有可映射祖先）
+  // 悄悄挡掉，报告里看不出来，"覆盖率回落到零"仍然可以装成"都压住线"。
+  let gridCheckedCount = 0;
+  let gridShieldedCount = 0;
+  let gridSkippedCount = 0;
+  let gridBlockCheckedCount = 0;
+  let gridBlockSkippedCount = 0;
+  // gridOffCount 是条目 + 块的总数，单看它分不出块级覆盖有没有在报错，
+  // 所以块级另计一份 gridBlockOffCount。
+  let gridBlockOffCount = 0;
 
   pages.forEach((page, pageIndex) => {
     const pageId = pageIdFor(page, pageIndex);
@@ -55,12 +74,64 @@ function validateAuthoringRules(snapshot, options = {}) {
     }
     if (grid.valid && grid.lines) {
       items.forEach((item, itemIndex) => {
-        if (!shouldCheckGrid(item, page)) return;
+        if (isGridIgnored(item)) {
+          gridIgnoredCount += 1;
+          return;
+        }
+        // 豁免优先：豁免过的条目不再算进"被块挡住"，两个计数不能重叠。
+        if (isMappableItem(item) && isPlacedBlockContent(item)) {
+          gridShieldedCount += 1;
+          return;
+        }
+        if (!shouldCheckGrid(item, page)) {
+          // 只有可映射条目参与这本账：不可映射的节点从来不是网格检查的对象，
+          // 把它们算进 skipped 只会让"跳过"这个数字失去意义。
+          if (isMappableItem(item)) gridSkippedCount += 1;
+          return;
+        }
+        gridCheckedCount += 1;
         const edges = offGridEdges(item.boundsMm, grid.lines, gridTolerance, item);
         if (!edges.length) return;
+        gridOffCount += 1;
+        const itemId = itemIdFor(item, itemIndex);
         warnings.push({
-          ...message('warning', GRID_ALIGNMENT_OFF, pageId, itemIdFor(item, itemIndex), 'Item edges do not align to the declared authoring grid.'),
-          edges,
+          ...message('warning', GRID_ALIGNMENT_OFF, pageId, itemId, gridOffMessage(edges)),
+          edges: edges.map((entry) => entry.edge),
+          edgeOffsets: edges,
+          suggestedFix: gridSuggestedFix(itemId, edges),
+        });
+      });
+      // 母元素规则的另一半：块内内容不量，块本身必须有人量。承担放置的祖先节点
+      // 多半是无边框的定位包裹层，永远不会成为 item，若不在这里收上来当条目报，
+      // 整页网格检查就等于没跑。
+      responsibleBlocksFor(items).forEach(({ node, itemIds }) => {
+        const bounds = node.boundsMm;
+        // 旧快照的祖先节点没有几何：量不出来的块静默跳过，不拿"无法判断"充当错误。
+        // 但跳过要留痕，否则"块级覆盖回落到零"和"块全都压住线"在报告里长得一样。
+        if (!hasFiniteBounds(bounds)) {
+          gridBlockSkippedCount += 1;
+          return;
+        }
+        gridBlockCheckedCount += 1;
+        const edges = offGridBlockEdges(bounds, grid.lines, gridTolerance);
+        if (!edges.length) return;
+        gridOffCount += 1;
+        gridBlockOffCount += 1;
+        const blockLabel = blockLabelFor(node, bounds);
+        warnings.push({
+          ...message(
+            'warning',
+            GRID_ALIGNMENT_OFF,
+            pageId,
+            node.id || node.sourcePath || blockLabel,
+            gridOffMessage(edges),
+          ),
+          block: true,
+          edges: edges.map((entry) => entry.edge),
+          edgeOffsets: edges,
+          blockOf: itemIds.slice(0, 10),
+          blockOfCount: itemIds.length,
+          suggestedFix: gridBlockSuggestedFix(blockLabel, edges),
         });
       });
     }
@@ -134,6 +205,14 @@ function validateAuthoringRules(snapshot, options = {}) {
     errors: resultErrors,
     warnings: resultWarnings,
     messages: resultErrors.concat(resultWarnings),
+    gridIgnoredCount,
+    gridOffCount,
+    gridBlockOffCount,
+    gridCheckedCount,
+    gridShieldedCount,
+    gridSkippedCount,
+    gridBlockCheckedCount,
+    gridBlockSkippedCount,
   };
 }
 
@@ -522,8 +601,8 @@ function pageHeight(page) {
 function shouldCheckGrid(item, page) {
   if (!isMappableItem(item)) return false;
   const attrs = attributesFor(item);
-  if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null) return false;
-  if (hasInheritedGridIgnore(item)) return false;
+  if (isGridIgnored(item)) return false;
+  if (isPlacedBlockContent(item)) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.ROLE) === ITEM_ROLE.ANNOTATION) return false;
   if (Array.isArray(item && item.ancestorCandidateIndexes) && item.ancestorCandidateIndexes.length) return false;
   if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) === 'folio') return false;
@@ -534,12 +613,7 @@ function shouldCheckGrid(item, page) {
     && item.inFlexFlow === true
     && !hasDeclaredWidth(item)) return false;
   const bounds = item && item.boundsMm;
-  return bounds
-    && Number.isFinite(Number(bounds.x))
-    && Number.isFinite(Number(bounds.y))
-    && Number.isFinite(Number(bounds.width))
-    && Number.isFinite(Number(bounds.height))
-    && !coversWholePage(bounds, page);
+  return hasFiniteBounds(bounds) && !coversWholePage(bounds, page);
 }
 
 function hasInheritedGridIgnore(item) {
@@ -549,13 +623,170 @@ function hasInheritedGridIgnore(item) {
     ));
 }
 
+function isGridIgnored(item) {
+  if (!isMappableItem(item)) return false;
+  return attributeValue(attributesFor(item), HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null
+    || hasInheritedGridIgnore(item);
+}
+
+// Grid alignment is the placed block's responsibility: an element inside an
+// ancestor that carries grid placement (a card, a column, a header band) is
+// that block's content, and its own edges sit wherever the block's padding
+// puts them. Mappable ancestors are already excluded via ancestorCandidateIndexes;
+// this covers the borderless wrappers that only exist for positioning.
+function isPlacedBlockContent(item) {
+  return Array.isArray(item && item.sourceAncestorNodes)
+    && item.sourceAncestorNodes.some(isGridPlacedNode);
+}
+
+function isGridPlacedNode(node) {
+  if (!node) return false;
+  if (node.gridPlaced === true) return true;
+  if (Array.isArray(node.classList) && node.classList.includes('grid-item')) return true;
+  const style = String(attributeValue(attributesFor(node), 'style') || '');
+  return /--grid-(?:col|row)\s*:/.test(style);
+}
+
+// 责任块：从最外层祖先往里走。撞上 data-id-grid-ignore 就整棵子树退出（该条目
+// 已由 isGridIgnored 计入豁免）；第一个承担放置的节点就是责任块，放置块里的
+// 放置块只是外层块的内容，跟着外层块走。
+function responsibleBlockFor(item) {
+  const nodes = Array.isArray(item && item.sourceAncestorNodes) ? item.sourceAncestorNodes : [];
+  for (const node of nodes) {
+    if (attributeValue(attributesFor(node), HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE) != null) return null;
+    if (isGridPlacedNode(node)) return node;
+  }
+  return null;
+}
+
+// 同一个块会被它内部每个条目各指认一次，按 sourcePath 去重，并记住块内条目的
+// id：报告要能从块指回作者看得见的内容。
+// 决策：块内只有 data-id-role="annotation" 或 folio 段落时，这个块照样要量。
+// 免检的是"条目自己的边缘"（注解与页码的位置由排版惯例决定，作者不逐条对齐），
+// 而块是作者亲手放上网格的东西，它压不住线仍然是作者能改、也该改的偏差。
+function responsibleBlocksFor(items) {
+  const blocks = new Map();
+  items.forEach((item, itemIndex) => {
+    if (!isMappableItem(item)) return;
+    if (isGridIgnored(item)) return;
+    const node = responsibleBlockFor(item);
+    if (!node) return;
+    const key = blockKeyFor(node);
+    const existing = blocks.get(key);
+    if (existing) {
+      existing.itemIds.push(itemIdFor(item, itemIndex));
+      return;
+    }
+    blocks.set(key, { node, itemIds: [itemIdFor(item, itemIndex)] });
+  });
+  return Array.from(blocks.values());
+}
+
+function blockKeyFor(node) {
+  // 兜底键要带上 tagName：两个都没 id/sourcePath 的包裹层可能占同一块几何
+  // （一个套着另一个），只按 boundsMm 去重会把它们并成一条。
+  return node.sourcePath
+    || node.id
+    || `${node.tagName || ''}|${JSON.stringify(node.boundsMm || null)}`;
+}
+
+// 块的作者可见名字：id 最准，其次是选择器路径，两者都没有就用标签加几何坐标。
+// 直接拼 `#${node.id || node.sourcePath}` 会在两者皆空时给出 "#undefined"。
+function blockLabelFor(node, bounds) {
+  if (node && node.id) return `#${node.id}`;
+  if (node && node.sourcePath) return String(node.sourcePath);
+  const box = bounds || {};
+  return `${(node && node.tagName) || 'block'}@${box.x},${box.y}mm`;
+}
+
 function offGridEdges(bounds, lines, tolerance, item) {
   const vertical = lines && Array.isArray(lines.vertical) ? lines.vertical : [];
   const horizontal = lines && Array.isArray(lines.horizontal) ? lines.horizontal : [];
-  const edges = gridEdgesForItem(bounds, vertical, horizontal, item);
+  return offGridEntries(gridEdgesForItem(bounds, vertical, horizontal, item), tolerance);
+}
+
+// 承担放置的块只查 left/top/right：块的高度随内容长，底边落在哪根线上不由作者
+// 决定，与 data-id-role="container" 免检底边同理。
+function offGridBlockEdges(bounds, lines, tolerance) {
+  const vertical = lines && Array.isArray(lines.vertical) ? lines.vertical : [];
+  const horizontal = lines && Array.isArray(lines.horizontal) ? lines.horizontal : [];
+  return offGridEntries([
+    ['left', Number(bounds.x), vertical],
+    ['top', Number(bounds.y), horizontal],
+    ['right', Number(bounds.x) + Number(bounds.width), vertical],
+  ], tolerance);
+}
+
+function offGridEntries(edges, tolerance) {
   return edges
-    .filter(([, value, candidates]) => !nearAnyLine(value, candidates, tolerance))
-    .map(([name]) => name);
+    .map(([edge, value, candidates]) => {
+      const nearest = nearestLine(value, candidates);
+      return {
+        edge,
+        valueMm: round(Number(value), 2),
+        nearestLineMm: nearest,
+        offsetMm: nearest == null ? null : round(Number(value) - nearest, 2),
+      };
+    })
+    .filter((entry) => entry.nearestLineMm == null || Math.abs(entry.offsetMm) > tolerance);
+}
+
+function hasFiniteBounds(bounds) {
+  return Boolean(bounds)
+    && ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(Number(bounds[key])));
+}
+
+function nearestLine(value, lines) {
+  let best = null;
+  for (const line of lines || []) {
+    const candidate = Number(line);
+    if (!Number.isFinite(candidate)) continue;
+    if (best == null || Math.abs(Number(value) - candidate) < Math.abs(Number(value) - best)) best = candidate;
+  }
+  return best;
+}
+
+function gridOffMessage(edges) {
+  return `Item edges do not align to the declared authoring grid: ${edges.map(describeEdgeOffset).join('; ')}.`;
+}
+
+function describeEdgeOffset(entry) {
+  if (entry.nearestLineMm == null) return `${entry.edge} at ${entry.valueMm}mm has no grid line to align to`;
+  const axis = entry.edge === 'left' || entry.edge === 'right' ? 'column' : 'row';
+  const direction = entry.offsetMm > 0
+    ? (axis === 'column' ? 'right of' : 'below')
+    : (axis === 'column' ? 'left of' : 'above');
+  return `${entry.edge} at ${entry.valueMm}mm is ${Math.abs(entry.offsetMm)}mm ${direction} the ${axis} line at ${entry.nearestLineMm}mm`;
+}
+
+function gridSuggestedFix(itemId, edges) {
+  const moves = edgeMoves(edges);
+  if (!moves.length) {
+    return `Give #${itemId} a grid placement (--grid-col/--grid-row) or mark it ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
+  }
+  return `Move #${itemId} ${moves.join(', ')}, or place it with --grid-col/--grid-row so the block itself sits on the grid; `
+    + 'content inside a placed block is not checked.';
+}
+
+// 块级修法不能照抄条目版：块被报出来正是因为它已经带着网格放置，"再放一次"是
+// 自相矛盾的建议。成因清单也要说准：padding 推不动一个 border-box 的左/上边缘，
+// 写进去只是让作者去改一个不可能是成因的属性。真正只有两类——块自己的 margin /
+// transform，或者声明的网格（data-id-grid / 间距）与它实际被放置的那套 CSS grid
+// 不一致（这一类才是整块整块偏的成因，改单个块反而是白改）。
+function gridBlockSuggestedFix(blockLabel, edges) {
+  const moves = edgeMoves(edges);
+  const cause = 'this block already carries a grid placement, so the offset comes from its own '
+    + `margin or transform, or from the declared grid (${HTML_DATA_ID_ATTRIBUTES.GRID} / gutters) `
+    + 'not matching the CSS grid it is placed on; fix that, or mark the block '
+    + `${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} if it is meant to leave the grid.`;
+  if (!moves.length) return `Realign ${blockLabel}; ${cause}`;
+  return `Move ${blockLabel} ${moves.join(', ')}; ${cause}`;
+}
+
+function edgeMoves(edges) {
+  return edges
+    .filter((entry) => entry.nearestLineMm != null)
+    .map((entry) => `${entry.edge} edge to ${entry.nearestLineMm}mm (${entry.offsetMm > 0 ? '-' : '+'}${Math.abs(entry.offsetMm)}mm)`);
 }
 
 function gridEdgesForItem(bounds, vertical, horizontal, item) {
@@ -592,10 +823,6 @@ function coversWholePage(bounds, page) {
     && Math.abs(Number(bounds.y || 0)) < 0.01
     && Math.abs(Number(bounds.width || 0) - pageWidth(page)) < 0.01
     && Math.abs(Number(bounds.height || 0) - pageHeight(page)) < 0.01;
-}
-
-function nearAnyLine(value, lines, tolerance) {
-  return (lines || []).some((line) => Math.abs(Number(value) - Number(line)) <= tolerance);
 }
 
 function isMappableItem(item) {

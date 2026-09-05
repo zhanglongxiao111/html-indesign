@@ -29,6 +29,10 @@ const {
   auditSecondPassAuthorStability,
 } = require('../src/writers/html/audit/reverse-roundtrip');
 
+// 构建预检要覆盖的 INDD、导出的产物、联系表 PNG 都用这一个 basename，
+// 它同时是 host-jsx buildExportJsx 的 outputBaseName（下面显式传入，不再依赖其默认值）。
+const E2E_OUTPUT_BASE_NAME = 'architecture-report-indesign';
+
 function createRunContext(options = {}) {
   const repoRoot = path.resolve(options.repoRoot || path.join(__dirname, '..'));
   const workspaceDir = path.resolve(options.workspaceDir || path.join(repoRoot, 'test/workspace'));
@@ -193,6 +197,7 @@ async function runIndesignE2E(options = {}) {
   fs.writeFileSync(context.buildScriptPath, buildBuildJsx({
     repoRoot: context.repoRoot,
     instructionsPath: context.runInstructionsPath,
+    targetInddPath: path.join(context.runDir, `${E2E_OUTPUT_BASE_NAME}.indd`),
   }), 'utf8');
 
   const buildCli = runCli(['--json', '--pretty', 'script', 'run', context.buildScriptPath], context.repoRoot);
@@ -216,6 +221,7 @@ async function runIndesignE2E(options = {}) {
 
   fs.writeFileSync(context.exportScriptPath, buildExportJsx({
     runDir: context.runDir,
+    outputBaseName: E2E_OUTPUT_BASE_NAME,
     closeDocument: true,
     expectedMarker: 'html-indesign-indesign-e2e',
   }), 'utf8');
@@ -543,8 +549,8 @@ function assertCliResultOk(result, message) {
   }
 }
 
-function buildBuildJsx({ repoRoot, instructionsPath }) {
-  return hostJsx.buildBuildJsx({ repoRoot, instructionsPath });
+function buildBuildJsx({ repoRoot, instructionsPath, targetInddPath = null }) {
+  return hostJsx.buildBuildJsx({ repoRoot, instructionsPath, targetInddPath });
 }
 
 function buildExportJsx(options) {
@@ -694,7 +700,7 @@ async function renderPdfPreview(context, pdfPath) {
     .filter((name) => /^page-\d+\.png$/i.test(name))
     .sort((a, b) => pageNumber(a) - pageNumber(b));
   const htmlPath = path.join(context.previewDir, 'contact-sheet.html');
-  const pngPath = path.join(context.runDir, 'architecture-report-indesign-contact-sheet.png');
+  const pngPath = path.join(context.runDir, `${E2E_OUTPUT_BASE_NAME}-contact-sheet.png`);
   fs.writeFileSync(htmlPath, contactSheetHtml(pages), 'utf8');
 
   try {

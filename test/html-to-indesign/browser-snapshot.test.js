@@ -875,3 +875,108 @@ test('renderSnapshot leaves dynamic pseudo content unsupported', async () => {
   assert.ok(host);
   assert.notEqual(host.unsupported.beforeContent, '');
 });
+
+test('renderSnapshot marks grid-placed blocks and their ancestors with gridPlaced', async () => {
+  const outDir = path.resolve(__dirname, '../workspace/browser-snapshot-grid-placed');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; box-sizing: border-box; padding: 40px;
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); gap: 16px; }
+  .grid-item { grid-column: var(--grid-col) / span var(--grid-span); grid-row: var(--grid-row) / span var(--grid-row-span); }
+  .card { padding: 24px; }
+  .loose { position: absolute; left: 520px; top: 300px; }
+  .loose-host { position: absolute; left: 520px; top: 180px; width: 220px; }
+</style>
+<section class="page" id="page-1">
+  <div class="grid-item card" id="card" style="--grid-col:1;--grid-span:6;--grid-row:1;--grid-row-span:3">
+    <p id="card-copy">卡片正文</p>
+  </div>
+  <p class="pure-css" id="pure-css-copy" style="grid-column: 3 / span 4; grid-row: 5 / span 2">纯 CSS 放置</p>
+  <div class="loose-host" id="loose-host">
+    <div class="strayed" id="strayed" style="grid-column: 2 / span 3">
+      <p id="strayed-copy">游离正文</p>
+    </div>
+    <p id="strayed-direct" style="grid-column: 5 / span 2">游离直排</p>
+  </div>
+  <p class="loose" id="loose-copy">自由文本</p>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+
+  const copy = page.items.find((item) => item.id === 'card-copy');
+  assert.ok(copy, 'card paragraph should be captured');
+  assert.equal(copy.gridPlaced, false);
+  const cardAncestor = copy.sourceAncestorNodes.find((node) => node.id === 'card');
+  assert.ok(cardAncestor, 'the card must be recorded as a source ancestor');
+  assert.equal(cardAncestor.gridPlaced, true);
+
+  // 只写 grid-column、没有 --grid-col 也没有 grid-item 类：父容器确实是网格时仍是放置。
+  const pureCss = page.items.find((item) => item.id === 'pure-css-copy');
+  assert.ok(pureCss, 'a css-only grid placement should still be captured');
+  assert.equal(pureCss.gridPlaced, true, 'grid-column against the page grid is a real placement');
+
+  // 同样的 grid-column 落在绝对定位的非网格宿主里，什么都没放置，不能豁免整棵子树。
+  const strayedDirect = page.items.find((item) => item.id === 'strayed-direct');
+  assert.ok(strayedDirect, 'the strayed paragraph should be captured');
+  assert.equal(strayedDirect.gridPlaced, false, 'grid-column resolved against a non-grid host places nothing');
+  const strayedCopy = page.items.find((item) => item.id === 'strayed-copy');
+  assert.ok(strayedCopy, 'the paragraph under the strayed wrapper should be captured');
+  assert.equal(strayedCopy.gridPlaced, false);
+  assert.equal(
+    strayedCopy.sourceAncestorNodes.some((node) => node.gridPlaced === true),
+    false,
+    'a stray grid-column must not shield the subtree below it',
+  );
+
+  const loose = page.items.find((item) => item.id === 'loose-copy');
+  assert.ok(loose, 'loose paragraph should be captured');
+  assert.equal(loose.gridPlaced, false);
+  assert.equal(loose.sourceAncestorNodes.some((node) => node.gridPlaced === true), false);
+});
+
+test('renderSnapshot gives the grid-placed ancestor its own rectPx and boundsMm', async () => {
+  const outDir = path.resolve(__dirname, '../workspace/browser-snapshot-grid-block-bounds');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { width: 800px; height: 450px; position: relative; box-sizing: border-box; padding: 40px;
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); gap: 16px; }
+  .grid-item { grid-column: var(--grid-col) / span var(--grid-span); grid-row: var(--grid-row) / span var(--grid-row-span); }
+  .card { padding: 24px; }
+</style>
+<section class="page" id="page-1">
+  <div class="grid-item card" id="card" style="--grid-col:1;--grid-span:6;--grid-row:1;--grid-row-span:3">
+    <div class="card-body" id="card-body">
+      <p id="card-copy">卡片正文</p>
+    </div>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const page = snapshot.pages[0];
+  const copy = page.items.find((item) => item.id === 'card-copy');
+  assert.ok(copy, 'card paragraph should be captured');
+
+  // 承担放置的块要自己被量：对齐校验找的是这个块的边，不是块内文本的边。
+  const card = copy.sourceAncestorNodes.find((node) => node.id === 'card');
+  assert.ok(card, 'the card must be recorded as a source ancestor');
+  assert.equal(card.gridPlaced, true);
+  for (const key of ['x', 'y', 'width', 'height']) {
+    assert.equal(Number.isFinite(card.rectPx[key]), true, `rectPx.${key} must be a finite number`);
+    assert.equal(Number.isFinite(card.boundsMm[key]), true, `boundsMm.${key} must be a finite number`);
+  }
+  assert.ok(card.boundsMm.width > 0 && card.boundsMm.height > 0, JSON.stringify(card.boundsMm));
+
+  // 只做包裹的中间层什么都没放置，不带几何，也就不会被当成责任块。
+  const body = copy.sourceAncestorNodes.find((node) => node.id === 'card-body');
+  assert.ok(body, 'the plain wrapper must still be recorded as an ancestor');
+  assert.equal(body.gridPlaced, false);
+  assert.equal(body.rectPx, undefined);
+  assert.equal(body.boundsMm, undefined);
+});

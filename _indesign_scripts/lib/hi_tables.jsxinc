@@ -63,6 +63,58 @@ HI.cleanTableCellText = function (value) {
     return String(value || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ");
 };
 
+// Leading rows whose author flagged them as header rows, or whose every cell
+// came from <th>, become InDesign header rows. Only leading rows count:
+// InDesign has no notion of a header row in the middle of a table, and the
+// forward fidelity audit normalizes header facts with the same rule so the
+// two sides agree by construction.
+HI.leadingHeaderRowCount = function (rows) {
+    var count = 0;
+    for (var r = 0; r < (rows || []).length; r++) {
+        var row = rows[r] || {};
+        var cells = row.cells || [];
+        var allHeader = cells.length > 0;
+        for (var c = 0; c < cells.length; c++) {
+            if (!cells[c] || !cells[c].header) { allHeader = false; break; }
+        }
+        if (!(row.header === true || allHeader)) break;
+        count += 1;
+    }
+    return count;
+};
+
+HI.applyTableHeaderRows = function (table, rows, report) {
+    var count = HI.leadingHeaderRowCount(rows);
+    if (!count) return 0;
+    // InDesign refuses a cell merge that crosses the header/body boundary, and
+    // header conversion runs before HI.applyTableSpans merges cells. A header
+    // cell whose rowSpan reaches past the last header row would later fail
+    // TABLE_CELL_MERGE_FAILED, so skip the conversion entirely when detected.
+    for (var r = 0; r < count; r++) {
+        var cells = (rows[r] && rows[r].cells) || [];
+        for (var c = 0; c < cells.length; c++) {
+            var rowSpan = Number(cells[c] && cells[c].rowSpan || 1);
+            if (rowSpan > 1 && r + rowSpan > count) {
+                HI.addMessage(report, "warning", "TABLE_HEADER_SPAN_CROSSES_BODY", "Header rows are not converted because a header cell spans into body rows.", { row: r, rowSpan: rowSpan, headerRowCount: count });
+                return 0;
+            }
+        }
+    }
+    // Assigning table.headerRowCount APPENDS empty header rows (rowCount = header + body + footer);
+    // converting the existing leading body rows keeps content and indices intact.
+    var converted = 0;
+    for (var r = 0; r < count; r++) {
+        try {
+            table.rows[r].rowType = RowTypes.HEADER_ROW;
+            converted += 1;
+        } catch (error) {
+            HI.addMessage(report, "warning", "TABLE_HEADER_APPLY_FAILED", String(error), { row: r, headerRowCount: count });
+            break;
+        }
+    }
+    return converted;
+};
+
 HI.applyTableStyle = function (doc, table, styleName, report) {
     if (!styleName) return;
     try {
