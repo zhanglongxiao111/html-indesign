@@ -146,17 +146,25 @@ function lintFailureHint(lint, options = {}) {
 //   1. 写盘失败绝不能盖掉真正的 lint 失败——所以这里吞掉自己的异常，不外抛；
 //   2. 但"吞掉"不等于"不留痕"。返回 { path, error }，让调用方把失败原因放进
 //      details.reportWriteError，否则就是本轮在修的那个毛病自己再犯一遍。
-function writeLintFailureReport(lint, options = {}) {
+// failed=true 的调用额外留一份带时间戳的失败快照（见 report-archive.js）；
+// 通过态只覆盖主文件，不归档——通过的检查没有需要事后复盘的现场。
+function writeLintReport(lint, options = {}) {
   try {
     const dir = resolveReportDir(options);
     if (!dir) return { path: null, error: null };
     fs.mkdirSync(dir, { recursive: true });
     const reportPath = path.join(dir, REPORT_FILE_NAME);
-    const { archivedPath } = writeReportFile(reportPath, withoutLintSnapshot(lint), { failed: true });
+    const { archivedPath } = writeReportFile(reportPath, withoutLintSnapshot(lint), {
+      failed: Boolean(options.failed),
+    });
     return { path: reportPath, archivedPath, error: null };
   } catch (error) {
     return { path: null, error: describeReportWriteError(error) };
   }
+}
+
+function writeLintFailureReport(lint, options = {}) {
+  return writeLintReport(lint, { ...options, failed: true });
 }
 
 function describeReportWriteError(error) {
@@ -322,4 +330,5 @@ module.exports = {
   underlyingHostFailure,
   withoutLintSnapshot,
   writeLintFailureReport,
+  writeLintReport,
 };

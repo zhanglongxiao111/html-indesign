@@ -15,7 +15,7 @@ const tools = [
     schema_size: 'small',
     callable: true,
     requires: [],
-    // 失败时写出 authoring-lint-report.json（成功路径不产出）。
+    // 写出 authoring-lint-report.json：失败时必写，通过时只在显式传了 outDir 才写。
     side_effects: ['filesystem_write'],
     artifact_kinds: ['json'],
     destructive: false,
@@ -33,7 +33,12 @@ const tools = [
         + '所以通常是块本身没坐在网格上或网格声明与 CSS 不符。gridTolerance 只用于确认版式正确后的取整误差。',
       '通过后再调用 html.build_indesign；本工具默认 strict:false，而 build 内部固定 strict:true。',
     ],
-    return_example: { status: 'complete', data: { ok: true, issueCount: 0 }, artifacts: [] },
+    // 传了 outDir 的形态；不传时 reportPath 为 null 且 artifacts 为空。
+    return_example: {
+      status: 'complete',
+      data: { ok: true, issueCount: 0, reportPath: '<outDir>\\authoring-lint-report.json' },
+      artifacts: [{ kind: 'json', path: '<outDir>\\authoring-lint-report.json' }],
+    },
     failure_example: {
       code: 'AUTHORING_LINT_FAILED',
       message: 'Strict authoring checks found 12 errors (GRID_ALIGNMENT_OFF: 12). '
@@ -182,8 +187,10 @@ const schemas = {
       },
       outDir: {
         type: 'string',
-        description: '检查失败时 authoring-lint-report.json 的写入目录，相对 CLI 调用时的工作目录解析，'
-          + '且必须落在该工作目录内（否则报 OUTPUT_OUTSIDE_PROJECT）。省略时写入作者包根目录下的 .indesign-cli/。',
+        description: 'authoring-lint-report.json 的写入目录，相对 CLI 调用时的工作目录解析，'
+          + '且必须落在该工作目录内（否则报 OUTPUT_OUTSIDE_PROJECT）。显式传入时，检查通过与失败都会写报告，'
+          + '路径同时回在 data.reportPath / error.details.reportPath 与 artifacts 上；'
+          + '省略时只有失败才写，落到作者包根目录下的 .indesign-cli/。',
       },
     },
   },

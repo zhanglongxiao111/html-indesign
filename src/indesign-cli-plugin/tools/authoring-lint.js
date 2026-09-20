@@ -1,7 +1,9 @@
 const { lintAuthoringPackage } = require('../../authoring');
 const { resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
-const { lintFailureHint, lintFailureMessage, writeLintFailureReport } = require('../lint-feedback');
+const {
+  lintFailureHint, lintFailureMessage, writeLintFailureReport, writeLintReport,
+} = require('../lint-feedback');
 
 async function call(args, context) {
   const packagePath = resolveProjectPath(context, args.package, 'package');
@@ -63,11 +65,27 @@ async function call(args, context) {
     };
   }
 
+  // 通过时也按 outDir 落一份报告。只在失败路径写，会让显式指定了输出目录的调用方
+  // 对着一个空目录猜参数是不是没生效——0.5.12 上「带 outDir 且通过」的调用有 51 次，
+  // 目标目录全是空的。不传 outDir 时维持原状：不给没要产物的调用凭空写文件。
+  const report = args.outDir
+    ? writeLintReport(result, {
+      outDir: args.outDir,
+      cwd: context && context.cwd,
+      packagePath,
+    })
+    : { path: null, error: null };
+
   return {
     status: 'complete',
-    data: result,
-    metrics: buildMetrics({ ...metrics, artifacts: 0 }),
-    artifacts: [],
+    data: {
+      ...result,
+      reportPath: report.path,
+      // 写不成时留痕，不静默：这正是本轮在修的毛病。
+      ...(report.error ? { reportWriteError: report.error } : {}),
+    },
+    metrics: buildMetrics({ ...metrics, artifacts: report.path ? 1 : 0 }),
+    artifacts: report.path ? [artifact('json', report.path, 'Authoring lint report')] : [],
   };
 }
 
