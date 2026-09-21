@@ -308,6 +308,9 @@ function resumeAfterSnapshot(state) {
     fidelityCounts: {
       errorCount: report.summary && report.summary.errors,
       warningCount: report.summary && report.summary.warnings,
+      // 扩框量级进遥测：只有计数时，"verified 但有警告"这类问题在聚合里看不出严重程度。
+      textFitCount: countWarningCode(report.warnings, 'FORWARD_TEXT_FIT_APPLIED'),
+      maxGrow: maxWarningGrow(report.warnings),
     },
   };
   writeReportFile(state.fidelityReportPath, report, {
@@ -338,10 +341,15 @@ function resumeAfterSnapshot(state) {
     });
   }
 
+  const warningDigest = fidelityWarningDigest(report.warnings);
   return hostActionResponse(startStage({
     ...stateWithGateTiming,
     verified: true,
-    fidelitySummary: report.summary,
+    fidelitySummary: {
+      ...report.summary,
+      // 通过的构建也可能改了几何；digest 让"warnings: 2"变成可读的两条具体记录。
+      ...(warningDigest ? { warningDigest } : {}),
+    },
   }, 'export'), exportAction(state));
 }
 
@@ -742,6 +750,57 @@ function createRunMarker() {
   return `html-indesign-build-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// verified 的构建同样可能带保真警告：作者声明的 expand-frame-to-content 扩框就是一例——
+// 长大幅度在 maxGrowX/maxGrowY 之内所以不算错误，但文字框确实变了几何。
+// 返回体过去只给 summary.warnings 一个计数，调用方看到 "verified:true, warnings:2"
+// 无从知道是哪两个框、各长了多少，必须自己去翻 forward-fidelity-report.json
+// （2026-09-08 起遥测 35 次）。这里把量级直接带回返回体：不改门禁判定，只让它可见。
+const FIDELITY_WARNING_DIGEST_LIMIT = 5;
+
+function fidelityWarningDigest(warnings) {
+  const list = Array.isArray(warnings) ? warnings : [];
+  if (!list.length) return null;
+
+  const byCode = {};
+  for (const warning of list) {
+    const code = String((warning && warning.code) || 'UNKNOWN');
+    byCode[code] = (byCode[code] || 0) + 1;
+  }
+
+  // 按几何变化量排序：最大的那个才是作者需要先看一眼的，条数多时尤其如此。
+  const ranked = [...list].sort((a, b) => warningMagnitude(b) - warningMagnitude(a));
+  const top = ranked.slice(0, FIDELITY_WARNING_DIGEST_LIMIT).map((warning) => ({
+    code: warning.code,
+    ...(warning.pageId ? { pageId: warning.pageId } : {}),
+    ...(warning.itemId ? { itemId: warning.itemId } : {}),
+    ...(warning.field ? { field: warning.field } : {}),
+    ...(Number.isFinite(Number(warning.growX)) ? { growX: Number(warning.growX) } : {}),
+    ...(Number.isFinite(Number(warning.growY)) ? { growY: Number(warning.growY) } : {}),
+  }));
+
+  return {
+    total: list.length,
+    byCode,
+    top,
+    ...(list.length > top.length ? { omitted: list.length - top.length } : {}),
+  };
+}
+
+function countWarningCode(warnings, code) {
+  return (Array.isArray(warnings) ? warnings : []).filter((warning) => warning && warning.code === code).length;
+}
+
+function warningMagnitude(warning) {
+  const growX = Math.abs(Number(warning && warning.growX));
+  const growY = Math.abs(Number(warning && warning.growY));
+  return Math.max(Number.isFinite(growX) ? growX : 0, Number.isFinite(growY) ? growY : 0);
+}
+
+function maxWarningGrow(warnings) {
+  const list = Array.isArray(warnings) ? warnings : [];
+  return list.reduce((max, warning) => Math.max(max, warningMagnitude(warning)), 0);
+}
+
 function fidelityFailureMessage(first, count) {
   const location = [
     first.pageId ? `page ${first.pageId}` : null,
@@ -805,6 +864,8 @@ function collectMetrics(state, extra) {
     grid_block_skipped_count: lintCounts.gridBlockSkippedCount,
     fidelity_error_count: fidelityCounts.errorCount,
     fidelity_warning_count: fidelityCounts.warningCount,
+    fidelity_text_fit_count: fidelityCounts.textFitCount,
+    fidelity_max_grow: fidelityCounts.maxGrow,
     compatibility_normalized: compatibility.normalized,
     compatibility_blocked: compatibility.blocked,
     ...(extra || {}),
@@ -823,6 +884,7 @@ function buildMetrics(values) {
 module.exports = {
   call,
   resume,
-  // 仅供测试断言文案；宿主只走 call/resume。
+  // 仅供测试断言文案/形状；宿主只走 call/resume。
   fidelityFailureMessage,
+  fidelityWarningDigest,
 };

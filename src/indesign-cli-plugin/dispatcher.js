@@ -1,4 +1,5 @@
 const { listTools, getTool, getSchema } = require('./tool-catalog');
+const { validateArgs, argsErrorMessage } = require('./validate-args');
 const authoringLint = require('./tools/authoring-lint');
 const compileInstructionsTool = require('./tools/compile-instructions');
 const buildIndesign = require('./tools/build-indesign');
@@ -109,8 +110,20 @@ async function callTool(params, context) {
     return error('TOOL_NOT_IMPLEMENTED', `Tool call is not implemented yet: ${id}`);
   }
 
+  // handler 之前先按公开 schema 校验：未知字段必须报错退回，不得静默吞掉。
+  // 调用方据此拿到的"成功"是假的——它会按自己以为生效的参数去找产物。
+  const args = params.args || {};
+  const issues = validateArgs(getSchema(id), args);
+  if (issues.length > 0) {
+    return error('TOOL_ARGS_INVALID', argsErrorMessage(id, issues), {
+      tool: id,
+      issues,
+      allowedArgs: Object.keys((getSchema(id) || {}).properties || {}),
+    });
+  }
+
   try {
-    return await caller.call(params.args || {}, context || {});
+    return await caller.call(args, context || {});
   } catch (err) {
     return error(err.code || 'TOOL_CALL_FAILED', err.message, errorDetails(err, id));
   }
