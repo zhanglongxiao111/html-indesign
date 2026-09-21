@@ -1,0 +1,680 @@
+{
+  "source": "InDesign SpecialCharacters 枚举探针（scripts/probe-indesign-special-characters.jsx）",
+  "indesignVersion": "20.0.1.32",
+  "probedAt": "2026-09-21",
+  "enumCount": 64,
+  "members": [
+    {
+      "name": "AUTO_PAGE_NUMBER",
+      "codes": [
+        "U+0018"
+      ],
+      "singleCharacterReadback": "AUTO_PAGE_NUMBER"
+    },
+    {
+      "name": "NEXT_PAGE_NUMBER",
+      "codes": [
+        "U+0018"
+      ],
+      "singleCharacterReadback": "NEXT_PAGE_NUMBER"
+    },
+    {
+      "name": "PREVIOUS_PAGE_NUMBER",
+      "codes": [
+        "U+0018"
+      ],
+      "singleCharacterReadback": "PREVIOUS_PAGE_NUMBER"
+    },
+    {
+      "name": "SECTION_MARKER",
+      "codes": [
+        "U+0019"
+      ],
+      "singleCharacterReadback": "SECTION_MARKER"
+    },
+    {
+      "name": "BULLET_CHARACTER",
+      "codes": [
+        "U+2022"
+      ],
+      "singleCharacterReadback": "BULLET_CHARACTER"
+    },
+    {
+      "name": "COPYRIGHT_SYMBOL",
+      "codes": [
+        "U+00A9"
+      ],
+      "singleCharacterReadback": "COPYRIGHT_SYMBOL"
+    },
+    {
+      "name": "DEGREE_SYMBOL",
+      "codes": [
+        "U+00B0"
+      ],
+      "singleCharacterReadback": "DEGREE_SYMBOL"
+    },
+    {
+      "name": "ELLIPSIS_CHARACTER",
+      "codes": [
+        "U+2026"
+      ],
+      "singleCharacterReadback": "ELLIPSIS_CHARACTER"
+    },
+    {
+      "name": "FORCED_LINE_BREAK",
+      "codes": [
+        "U+000A"
+      ],
+      "singleCharacterReadback": "FORCED_LINE_BREAK"
+    },
+    {
+      "name": "PARAGRAPH_SYMBOL",
+      "codes": [
+        "U+00B6"
+      ],
+      "singleCharacterReadback": "PARAGRAPH_SYMBOL"
+    },
+    {
+      "name": "REGISTERED_TRADEMARK",
+      "codes": [
+        "U+00AE"
+      ],
+      "singleCharacterReadback": "REGISTERED_TRADEMARK"
+    },
+    {
+      "name": "SECTION_SYMBOL",
+      "codes": [
+        "U+00A7"
+      ],
+      "singleCharacterReadback": "SECTION_SYMBOL"
+    },
+    {
+      "name": "TRADEMARK_SYMBOL",
+      "codes": [
+        "U+2122"
+      ],
+      "singleCharacterReadback": "TRADEMARK_SYMBOL"
+    },
+    {
+      "name": "RIGHT_INDENT_TAB",
+      "codes": [
+        "U+0008"
+      ],
+      "singleCharacterReadback": "RIGHT_INDENT_TAB"
+    },
+    {
+      "name": "INDENT_HERE_TAB",
+      "codes": [
+        "U+0007"
+      ],
+      "singleCharacterReadback": "INDENT_HERE_TAB"
+    },
+    {
+      "name": "EM_DASH",
+      "codes": [
+        "U+2014"
+      ],
+      "singleCharacterReadback": "EM_DASH"
+    },
+    {
+      "name": "EN_DASH",
+      "codes": [
+        "U+2013"
+      ],
+      "singleCharacterReadback": "EN_DASH"
+    },
+    {
+      "name": "DISCRETIONARY_HYPHEN",
+      "codes": [
+        "U+00AD"
+      ],
+      "singleCharacterReadback": "DISCRETIONARY_HYPHEN"
+    },
+    {
+      "name": "NONBREAKING_HYPHEN",
+      "codes": [
+        "U+2011"
+      ],
+      "singleCharacterReadback": "NONBREAKING_HYPHEN"
+    },
+    {
+      "name": "END_NESTED_STYLE",
+      "codes": [
+        "U+0003"
+      ],
+      "singleCharacterReadback": "END_NESTED_STYLE"
+    },
+    {
+      "name": "DOUBLE_LEFT_QUOTE",
+      "codes": [
+        "U+201C"
+      ],
+      "singleCharacterReadback": "DOUBLE_LEFT_QUOTE"
+    },
+    {
+      "name": "DOUBLE_RIGHT_QUOTE",
+      "codes": [
+        "U+201D"
+      ],
+      "singleCharacterReadback": "DOUBLE_RIGHT_QUOTE"
+    },
+    {
+      "name": "SINGLE_LEFT_QUOTE",
+      "codes": [
+        "U+2018"
+      ],
+      "singleCharacterReadback": "SINGLE_LEFT_QUOTE"
+    },
+    {
+      "name": "SINGLE_RIGHT_QUOTE",
+      "codes": [
+        "U+2019"
+      ],
+      "singleCharacterReadback": "SINGLE_RIGHT_QUOTE"
+    },
+    {
+      "name": "EM_SPACE",
+      "codes": [
+        "U+2003"
+      ],
+      "singleCharacterReadback": "EM_SPACE"
+    },
+    {
+      "name": "EN_SPACE",
+      "codes": [
+        "U+2002"
+      ],
+      "singleCharacterReadback": "EN_SPACE"
+    },
+    {
+      "name": "FLUSH_SPACE",
+      "codes": [
+        "U+2001"
+      ],
+      "singleCharacterReadback": "FLUSH_SPACE"
+    },
+    {
+      "name": "HAIR_SPACE",
+      "codes": [
+        "U+200A"
+      ],
+      "singleCharacterReadback": "HAIR_SPACE"
+    },
+    {
+      "name": "NONBREAKING_SPACE",
+      "codes": [
+        "U+00A0"
+      ],
+      "singleCharacterReadback": "NONBREAKING_SPACE"
+    },
+    {
+      "name": "THIN_SPACE",
+      "codes": [
+        "U+2009"
+      ],
+      "singleCharacterReadback": "THIN_SPACE"
+    },
+    {
+      "name": "FIGURE_SPACE",
+      "codes": [
+        "U+2007"
+      ],
+      "singleCharacterReadback": "FIGURE_SPACE"
+    },
+    {
+      "name": "PUNCTUATION_SPACE",
+      "codes": [
+        "U+2008"
+      ],
+      "singleCharacterReadback": "PUNCTUATION_SPACE"
+    },
+    {
+      "name": "COLUMN_BREAK",
+      "codes": [
+        "U+000D"
+      ],
+      "singleCharacterReadback": "COLUMN_BREAK"
+    },
+    {
+      "name": "FRAME_BREAK",
+      "codes": [
+        "U+000D"
+      ],
+      "singleCharacterReadback": "FRAME_BREAK"
+    },
+    {
+      "name": "PAGE_BREAK",
+      "codes": [
+        "U+000D"
+      ],
+      "singleCharacterReadback": "PAGE_BREAK"
+    },
+    {
+      "name": "ODD_PAGE_BREAK",
+      "codes": [
+        "U+000D"
+      ],
+      "singleCharacterReadback": "ODD_PAGE_BREAK"
+    },
+    {
+      "name": "EVEN_PAGE_BREAK",
+      "codes": [
+        "U+000D"
+      ],
+      "singleCharacterReadback": "EVEN_PAGE_BREAK"
+    },
+    {
+      "name": "FOOTNOTE_SYMBOL",
+      "codes": [],
+      "singleCharacterReadback": null
+    },
+    {
+      "name": "LEFT_TO_RIGHT_EMBEDDING",
+      "codes": [
+        "U+202A"
+      ],
+      "singleCharacterReadback": "LEFT_TO_RIGHT_EMBEDDING"
+    },
+    {
+      "name": "RIGHT_TO_LEFT_EMBEDDING",
+      "codes": [
+        "U+202B"
+      ],
+      "singleCharacterReadback": "RIGHT_TO_LEFT_EMBEDDING"
+    },
+    {
+      "name": "POP_DIRECTIONAL_FORMATTING",
+      "codes": [
+        "U+202C"
+      ],
+      "singleCharacterReadback": "POP_DIRECTIONAL_FORMATTING"
+    },
+    {
+      "name": "LEFT_TO_RIGHT_OVERRIDE",
+      "codes": [
+        "U+202D"
+      ],
+      "singleCharacterReadback": "LEFT_TO_RIGHT_OVERRIDE"
+    },
+    {
+      "name": "RIGHT_TO_LEFT_OVERRIDE",
+      "codes": [
+        "U+202E"
+      ],
+      "singleCharacterReadback": "RIGHT_TO_LEFT_OVERRIDE"
+    },
+    {
+      "name": "DOTTED_CIRCLE",
+      "codes": [
+        "U+25CC"
+      ],
+      "singleCharacterReadback": "DOTTED_CIRCLE"
+    },
+    {
+      "name": "ZERO_WIDTH_JOINER",
+      "codes": [
+        "U+200D"
+      ],
+      "singleCharacterReadback": "ZERO_WIDTH_JOINER"
+    },
+    {
+      "name": "TEXT_VARIABLE",
+      "codes": [
+        "U+0018"
+      ],
+      "singleCharacterReadback": "TEXT_VARIABLE"
+    },
+    {
+      "name": "SINGLE_STRAIGHT_QUOTE",
+      "codes": [
+        "U+0027"
+      ],
+      "singleCharacterReadback": "SINGLE_STRAIGHT_QUOTE"
+    },
+    {
+      "name": "DOUBLE_STRAIGHT_QUOTE",
+      "codes": [
+        "U+0022"
+      ],
+      "singleCharacterReadback": "DOUBLE_STRAIGHT_QUOTE"
+    },
+    {
+      "name": "DISCRETIONARY_LINE_BREAK",
+      "codes": [
+        "U+200B"
+      ],
+      "singleCharacterReadback": "DISCRETIONARY_LINE_BREAK"
+    },
+    {
+      "name": "ZERO_WIDTH_NONJOINER",
+      "codes": [
+        "U+200C"
+      ],
+      "singleCharacterReadback": "ZERO_WIDTH_NONJOINER"
+    },
+    {
+      "name": "THIRD_SPACE",
+      "codes": [
+        "U+2004"
+      ],
+      "singleCharacterReadback": "THIRD_SPACE"
+    },
+    {
+      "name": "QUARTER_SPACE",
+      "codes": [
+        "U+2005"
+      ],
+      "singleCharacterReadback": "QUARTER_SPACE"
+    },
+    {
+      "name": "SIXTH_SPACE",
+      "codes": [
+        "U+2006"
+      ],
+      "singleCharacterReadback": "SIXTH_SPACE"
+    },
+    {
+      "name": "FIXED_WIDTH_NONBREAKING_SPACE",
+      "codes": [
+        "U+202F"
+      ],
+      "singleCharacterReadback": "FIXED_WIDTH_NONBREAKING_SPACE"
+    },
+    {
+      "name": "HEBREW_MAQAF",
+      "codes": [
+        "U+05BE"
+      ],
+      "singleCharacterReadback": "HEBREW_MAQAF"
+    },
+    {
+      "name": "HEBREW_GERESH",
+      "codes": [
+        "U+05F3"
+      ],
+      "singleCharacterReadback": "HEBREW_GERESH"
+    },
+    {
+      "name": "HEBREW_GERSHAYIM",
+      "codes": [
+        "U+05F4"
+      ],
+      "singleCharacterReadback": "HEBREW_GERSHAYIM"
+    },
+    {
+      "name": "ARABIC_KASHIDA",
+      "codes": [
+        "U+0640"
+      ],
+      "singleCharacterReadback": "ARABIC_KASHIDA"
+    },
+    {
+      "name": "ARABIC_COMMA",
+      "codes": [
+        "U+060C"
+      ],
+      "singleCharacterReadback": "ARABIC_COMMA"
+    },
+    {
+      "name": "ARABIC_SEMICOLON",
+      "codes": [
+        "U+061B"
+      ],
+      "singleCharacterReadback": "ARABIC_SEMICOLON"
+    },
+    {
+      "name": "ARABIC_QUESTION_MARK",
+      "codes": [
+        "U+061F"
+      ],
+      "singleCharacterReadback": "ARABIC_QUESTION_MARK"
+    },
+    {
+      "name": "LEFT_TO_RIGHT_MARK",
+      "codes": [
+        "U+200E"
+      ],
+      "singleCharacterReadback": "LEFT_TO_RIGHT_MARK"
+    },
+    {
+      "name": "RIGHT_TO_LEFT_MARK",
+      "codes": [
+        "U+200F"
+      ],
+      "singleCharacterReadback": "RIGHT_TO_LEFT_MARK"
+    },
+    {
+      "name": "HEBREW_SOF_PASUK",
+      "codes": [
+        "U+05C3"
+      ],
+      "singleCharacterReadback": "HEBREW_SOF_PASUK"
+    }
+  ],
+  "asText": [
+    {
+      "code": "U+0018",
+      "singleCharacterReadback": "AUTO_PAGE_NUMBER"
+    },
+    {
+      "code": "U+0019",
+      "singleCharacterReadback": "SECTION_MARKER"
+    },
+    {
+      "code": "U+2022",
+      "singleCharacterReadback": "BULLET_CHARACTER"
+    },
+    {
+      "code": "U+00A9",
+      "singleCharacterReadback": "COPYRIGHT_SYMBOL"
+    },
+    {
+      "code": "U+00B0",
+      "singleCharacterReadback": "DEGREE_SYMBOL"
+    },
+    {
+      "code": "U+2026",
+      "singleCharacterReadback": "ELLIPSIS_CHARACTER"
+    },
+    {
+      "code": "U+000A",
+      "singleCharacterReadback": "FORCED_LINE_BREAK"
+    },
+    {
+      "code": "U+00B6",
+      "singleCharacterReadback": "PARAGRAPH_SYMBOL"
+    },
+    {
+      "code": "U+00AE",
+      "singleCharacterReadback": "REGISTERED_TRADEMARK"
+    },
+    {
+      "code": "U+00A7",
+      "singleCharacterReadback": "SECTION_SYMBOL"
+    },
+    {
+      "code": "U+2122",
+      "singleCharacterReadback": "TRADEMARK_SYMBOL"
+    },
+    {
+      "code": "U+0008",
+      "singleCharacterReadback": "RIGHT_INDENT_TAB"
+    },
+    {
+      "code": "U+0007",
+      "singleCharacterReadback": "INDENT_HERE_TAB"
+    },
+    {
+      "code": "U+2014",
+      "singleCharacterReadback": "EM_DASH"
+    },
+    {
+      "code": "U+2013",
+      "singleCharacterReadback": "EN_DASH"
+    },
+    {
+      "code": "U+00AD",
+      "singleCharacterReadback": "DISCRETIONARY_HYPHEN"
+    },
+    {
+      "code": "U+2011",
+      "singleCharacterReadback": "NONBREAKING_HYPHEN"
+    },
+    {
+      "code": "U+0003",
+      "singleCharacterReadback": "END_NESTED_STYLE"
+    },
+    {
+      "code": "U+201C",
+      "singleCharacterReadback": "DOUBLE_LEFT_QUOTE"
+    },
+    {
+      "code": "U+201D",
+      "singleCharacterReadback": "DOUBLE_RIGHT_QUOTE"
+    },
+    {
+      "code": "U+2018",
+      "singleCharacterReadback": "SINGLE_LEFT_QUOTE"
+    },
+    {
+      "code": "U+2019",
+      "singleCharacterReadback": "SINGLE_RIGHT_QUOTE"
+    },
+    {
+      "code": "U+2003",
+      "singleCharacterReadback": "EM_SPACE"
+    },
+    {
+      "code": "U+2002",
+      "singleCharacterReadback": "EN_SPACE"
+    },
+    {
+      "code": "U+2001",
+      "singleCharacterReadback": "FLUSH_SPACE"
+    },
+    {
+      "code": "U+200A",
+      "singleCharacterReadback": "HAIR_SPACE"
+    },
+    {
+      "code": "U+00A0",
+      "singleCharacterReadback": "NONBREAKING_SPACE"
+    },
+    {
+      "code": "U+2009",
+      "singleCharacterReadback": "THIN_SPACE"
+    },
+    {
+      "code": "U+2007",
+      "singleCharacterReadback": "FIGURE_SPACE"
+    },
+    {
+      "code": "U+2008",
+      "singleCharacterReadback": "PUNCTUATION_SPACE"
+    },
+    {
+      "code": "U+000D",
+      "singleCharacterReadback": "\r"
+    },
+    {
+      "code": "U+202A",
+      "singleCharacterReadback": "LEFT_TO_RIGHT_EMBEDDING"
+    },
+    {
+      "code": "U+202B",
+      "singleCharacterReadback": "RIGHT_TO_LEFT_EMBEDDING"
+    },
+    {
+      "code": "U+202C",
+      "singleCharacterReadback": "POP_DIRECTIONAL_FORMATTING"
+    },
+    {
+      "code": "U+202D",
+      "singleCharacterReadback": "LEFT_TO_RIGHT_OVERRIDE"
+    },
+    {
+      "code": "U+202E",
+      "singleCharacterReadback": "RIGHT_TO_LEFT_OVERRIDE"
+    },
+    {
+      "code": "U+25CC",
+      "singleCharacterReadback": "DOTTED_CIRCLE"
+    },
+    {
+      "code": "U+200D",
+      "singleCharacterReadback": "ZERO_WIDTH_JOINER"
+    },
+    {
+      "code": "U+0027",
+      "singleCharacterReadback": "SINGLE_STRAIGHT_QUOTE"
+    },
+    {
+      "code": "U+0022",
+      "singleCharacterReadback": "DOUBLE_STRAIGHT_QUOTE"
+    },
+    {
+      "code": "U+200B",
+      "singleCharacterReadback": "DISCRETIONARY_LINE_BREAK"
+    },
+    {
+      "code": "U+200C",
+      "singleCharacterReadback": "ZERO_WIDTH_NONJOINER"
+    },
+    {
+      "code": "U+2004",
+      "singleCharacterReadback": "THIRD_SPACE"
+    },
+    {
+      "code": "U+2005",
+      "singleCharacterReadback": "QUARTER_SPACE"
+    },
+    {
+      "code": "U+2006",
+      "singleCharacterReadback": "SIXTH_SPACE"
+    },
+    {
+      "code": "U+202F",
+      "singleCharacterReadback": "FIXED_WIDTH_NONBREAKING_SPACE"
+    },
+    {
+      "code": "U+05BE",
+      "singleCharacterReadback": "HEBREW_MAQAF"
+    },
+    {
+      "code": "U+05F3",
+      "singleCharacterReadback": "HEBREW_GERESH"
+    },
+    {
+      "code": "U+05F4",
+      "singleCharacterReadback": "HEBREW_GERSHAYIM"
+    },
+    {
+      "code": "U+0640",
+      "singleCharacterReadback": "ARABIC_KASHIDA"
+    },
+    {
+      "code": "U+060C",
+      "singleCharacterReadback": "ARABIC_COMMA"
+    },
+    {
+      "code": "U+061B",
+      "singleCharacterReadback": "ARABIC_SEMICOLON"
+    },
+    {
+      "code": "U+061F",
+      "singleCharacterReadback": "ARABIC_QUESTION_MARK"
+    },
+    {
+      "code": "U+200E",
+      "singleCharacterReadback": "LEFT_TO_RIGHT_MARK"
+    },
+    {
+      "code": "U+200F",
+      "singleCharacterReadback": "RIGHT_TO_LEFT_MARK"
+    },
+    {
+      "code": "U+05C3",
+      "singleCharacterReadback": "HEBREW_SOF_PASUK"
+    }
+  ]
+}
