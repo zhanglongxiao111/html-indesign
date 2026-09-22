@@ -11,6 +11,7 @@ const { isIndesignBuiltinStyleName } = require('../../../shared/style-utils');
 const { normalizeLineEndings } = require('../../../shared/text');
 const { validateReverseLabel } = require('./label-whitelist');
 const { tableSourceHtmlMatchesTable } = require('./table-source-html');
+const { decodeSpecialCharacterNames } = require('../special-characters');
 
 const STYLE_REF_ALLOWED_KEYS = styleRefAllowedKeysFromRegistry();
 const SOURCE_FILE_ATTR = htmlReadAttrFromRegistry('items[].sourceFile');
@@ -677,13 +678,11 @@ function reverseTable(table, styleMaps) {
   };
 }
 
+// 快照里的特殊字符代号，JSX 端（HI.reverseTextValue）已经翻译过一遍。这里用同一张表再过一遍，
+// 用来处理修复之前产出的旧快照，也兜住 JSX 端漏掉的读取路径。
+// 过去这里单独维护一张只有 4 个引号的短表，和 JSX 端早就不一致了。
 function normalizeReverseText(value) {
-  return String(value || '')
-    .replace(/DOUBLE_LEFT_QUOTE/g, '“')
-    .replace(/DOUBLE_RIGHT_QUOTE/g, '”')
-    .replace(/SINGLE_LEFT_QUOTE/g, '‘')
-    .replace(/SINGLE_RIGHT_QUOTE/g, '’')
-    .replace(/FORCED_LINE_BREAK|PARAGRAPH_BREAK/g, '\n');
+  return decodeSpecialCharacterNames(value || '');
 }
 
 function reverseStyleCollection(items) {

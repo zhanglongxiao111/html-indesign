@@ -29,20 +29,93 @@ HI.reverseCharacterContents = function (character) {
     return "";
 };
 
+// 逐字读取（character.contents）时，特殊字符拿到的是 SpecialCharacters 枚举名，
+// 例如 "COPYRIGHT_SYMBOL"，而不是字符本身；整段读取才是真实字符。本表把枚举名翻译回字符。
+// 表的出处（InDesign 20.0.1.32 实测）以及取舍（只收 50 个文字，页码、分页等 13 个
+// 排版标记保留原名）见 src/adapters/indesign/special-characters.js。
+// 表内写码位数字，不写字符本身，零宽字符和方向控制符肉眼看不见。
+// 两边必须一致，由 test/indesign-executor/special-characters.test.js 检查。
+HI.SPECIAL_CHARACTER_CODES = {
+    BULLET_CHARACTER: 0x2022,
+    COPYRIGHT_SYMBOL: 0x00A9,
+    DEGREE_SYMBOL: 0x00B0,
+    ELLIPSIS_CHARACTER: 0x2026,
+    FORCED_LINE_BREAK: 0x000A,
+    PARAGRAPH_SYMBOL: 0x00B6,
+    REGISTERED_TRADEMARK: 0x00AE,
+    SECTION_SYMBOL: 0x00A7,
+    TRADEMARK_SYMBOL: 0x2122,
+    EM_DASH: 0x2014,
+    EN_DASH: 0x2013,
+    DISCRETIONARY_HYPHEN: 0x00AD,
+    NONBREAKING_HYPHEN: 0x2011,
+    DOUBLE_LEFT_QUOTE: 0x201C,
+    DOUBLE_RIGHT_QUOTE: 0x201D,
+    SINGLE_LEFT_QUOTE: 0x2018,
+    SINGLE_RIGHT_QUOTE: 0x2019,
+    EM_SPACE: 0x2003,
+    EN_SPACE: 0x2002,
+    FLUSH_SPACE: 0x2001,
+    HAIR_SPACE: 0x200A,
+    NONBREAKING_SPACE: 0x00A0,
+    THIN_SPACE: 0x2009,
+    FIGURE_SPACE: 0x2007,
+    PUNCTUATION_SPACE: 0x2008,
+    LEFT_TO_RIGHT_EMBEDDING: 0x202A,
+    RIGHT_TO_LEFT_EMBEDDING: 0x202B,
+    POP_DIRECTIONAL_FORMATTING: 0x202C,
+    LEFT_TO_RIGHT_OVERRIDE: 0x202D,
+    RIGHT_TO_LEFT_OVERRIDE: 0x202E,
+    DOTTED_CIRCLE: 0x25CC,
+    ZERO_WIDTH_JOINER: 0x200D,
+    SINGLE_STRAIGHT_QUOTE: 0x0027,
+    DOUBLE_STRAIGHT_QUOTE: 0x0022,
+    DISCRETIONARY_LINE_BREAK: 0x200B,
+    ZERO_WIDTH_NONJOINER: 0x200C,
+    THIRD_SPACE: 0x2004,
+    QUARTER_SPACE: 0x2005,
+    SIXTH_SPACE: 0x2006,
+    FIXED_WIDTH_NONBREAKING_SPACE: 0x202F,
+    HEBREW_MAQAF: 0x05BE,
+    HEBREW_GERESH: 0x05F3,
+    HEBREW_GERSHAYIM: 0x05F4,
+    ARABIC_KASHIDA: 0x0640,
+    ARABIC_COMMA: 0x060C,
+    ARABIC_SEMICOLON: 0x061B,
+    ARABIC_QUESTION_MARK: 0x061F,
+    LEFT_TO_RIGHT_MARK: 0x200E,
+    RIGHT_TO_LEFT_MARK: 0x200F,
+    HEBREW_SOF_PASUK: 0x05C3
+};
+
+// PARAGRAPH_BREAK 不在枚举里，但一直按换行处理，保留原有行为。
+HI.specialCharacterFor = function (name) {
+    if (name === "PARAGRAPH_BREAK") return String.fromCharCode(0x000A);
+    if (HI.SPECIAL_CHARACTER_CODES.hasOwnProperty(name)) return String.fromCharCode(HI.SPECIAL_CHARACTER_CODES[name]);
+    return null;
+};
+
+// 长名优先：FIXED_WIDTH_NONBREAKING_SPACE 里包含 NONBREAKING_SPACE。
+// 不加词边界：整段文字里枚举名会和前后字粘在一起，比如 "EM_DASHEM_DASH"。
+HI.specialCharacterPattern = function () {
+    if (HI._specialCharacterPattern) return HI._specialCharacterPattern;
+    var names = ["PARAGRAPH_BREAK"];
+    for (var name in HI.SPECIAL_CHARACTER_CODES) {
+        if (HI.SPECIAL_CHARACTER_CODES.hasOwnProperty(name)) names.push(name);
+    }
+    names.sort(function (a, b) { return b.length - a.length; });
+    HI._specialCharacterPattern = new RegExp(names.join("|"), "g");
+    return HI._specialCharacterPattern;
+};
+
 HI.reverseTextValue = function (value) {
     var text = String(value || "");
-    if (text === "FORCED_LINE_BREAK" || text === "PARAGRAPH_BREAK") return "\n";
-    return text
-        .replace(/EM_DASH/g, "\u2014")
-        .replace(/EN_DASH/g, "\u2013")
-        .replace(/DOUBLE_STRAIGHT_QUOTE/g, "\u0022")
-        .replace(/SINGLE_STRAIGHT_QUOTE/g, "\u0027")
-        .replace(/DOUBLE_LEFT_QUOTE/g, "\u201c")
-        .replace(/DOUBLE_RIGHT_QUOTE/g, "\u201d")
-        .replace(/SINGLE_LEFT_QUOTE/g, "\u2018")
-        .replace(/SINGLE_RIGHT_QUOTE/g, "\u2019")
-        .replace(/DEGREE_SYMBOL/g, "\u00b0")
-        .replace(/FORCED_LINE_BREAK|PARAGRAPH_BREAK/g, "\n");
+    // 逐字读回时，整个值就是一个枚举名，先整体查表：最快，也不会误伤正常文字。
+    var single = HI.specialCharacterFor(text);
+    if (single !== null) return single;
+    return text.replace(HI.specialCharacterPattern(), function (name) {
+        return HI.specialCharacterFor(name);
+    });
 };
 
 HI.reverseCharacterRun = function (character) {
