@@ -67,3 +67,53 @@ HI.reverseGradientStopAt = function (settings, index) {
     try { return settings.opacityGradientStops[index]; } catch (_) {}
     return null;
 };
+
+// Gradient swatches (#9): color fields keep the first stop #hex; gradient facts go to fillGradient / strokeGradient plus a warning.
+HI.reverseDomKind = function (value) { try { return String(value.constructor.name || ""); } catch (_) {} return ""; };
+HI.reverseIsGradient = function (color) { return HI.reverseDomKind(color) === "Gradient"; };
+HI.reverseResolveSwatch = function (color) {
+    if (HI.reverseDomKind(color) !== "Swatch") return color;
+    try { var resolved = color.getElements()[0]; if (resolved) return resolved; } catch (_) {}
+    return color;
+};
+HI.reverseGradientVisualStyle = function (item) {
+    var out = {}, fill = HI.reverseGradientFact(HI.reverseSafeProperty(item, "fillColor"), HI.reverseSafeProperty(item, "gradientFillAngle"));
+    var stroke = HI.reverseGradientFact(HI.reverseSafeProperty(item, "strokeColor"), HI.reverseSafeProperty(item, "gradientStrokeAngle"));
+    if (fill) out.fillGradient = fill;
+    if (stroke) out.strokeGradient = stroke;
+    return out;
+};
+HI.reverseGradientFact = function (color, angle) {
+    var gradient = HI.reverseResolveSwatch(color);
+    if (!HI.reverseIsGradient(gradient)) return null;
+    var type = Number(HI.reverseSafeProperty(gradient, "type"));
+    return { type: type === 1918985319 /* GradientType.RADIAL */ ? "radial" : "linear", angle: HI.numberOrNull(angle) || 0, stops: HI.reverseGradientColorStops(gradient) };
+};
+HI.reverseGradientColorStops = function (gradient) {
+    var out = [], stops = HI.reverseSafeProperty(gradient, "gradientStops"), count = 0;
+    try { count = Number(stops.length || 0); } catch (_) {}
+    for (var i = 0; i < count; i++) {
+        var stop = HI.reverseSafeProperty(stops, i);
+        if (stop) out.push({ color: HI.reverseColor(HI.reverseSafeProperty(stop, "stopColor")), location: HI.numberOrNull(HI.reverseSafeProperty(stop, "location")) });
+    }
+    return out;
+};
+HI.reverseGradientFallbackColor = function (gradient) {
+    var stops = HI.reverseGradientColorStops(gradient), color = stops.length ? stops[0].color : null;
+    HI.reverseNoteGradient(gradient, color);
+    return color;
+};
+// Switched on/off by HI.exportReverseSnapshot; page item / style walks set the owner; one warning per owner and gradient.
+HI.reverseGradientTracking = null;
+HI.reverseBeginGradientTracking = function (report) { HI.reverseGradientTracking = { report: report, owner: {}, seen: {} }; };
+HI.reverseEndGradientTracking = function () { HI.reverseGradientTracking = null; };
+HI.reverseSetGradientOwner = function (owner) { if (HI.reverseGradientTracking) HI.reverseGradientTracking.owner = owner || {}; };
+HI.reverseNoteGradient = function (gradient, color) {
+    var state = HI.reverseGradientTracking;
+    if (!state) return;
+    var name = String(HI.reverseSafeProperty(gradient, "name") || ""), owner = state.owner, details = { gradient: name, approximatedColor: color };
+    var key = [owner.itemId, owner.styleKind, owner.styleName, name].join("|");
+    if (state.seen[key]) return; state.seen[key] = true;
+    HI.copyObject(details, owner);
+    HI.addMessage(state.report, "warning", "REVERSE_GRADIENT_APPROXIMATED", "Gradient swatch \"" + name + "\" is approximated by its first stop color; HTML keeps a solid color.", details);
+};

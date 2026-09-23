@@ -11,15 +11,19 @@ HI.reverseVisualStyle = function (item) {
         cornerRadius: HI.reverseCornerRadius(item)
     };
     out.strokeWeight = out.strokeColor ? HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight")) : null;
+    if (HI.reverseGradientVisualStyle) HI.copyObject(out, HI.reverseGradientVisualStyle(item));
     if (HI.reverseExtendedVisualStyle) HI.copyObject(out, HI.reverseExtendedVisualStyle(item));
     return out;
 };
+// ExtendScript bug (#9): if (!o.p) / return !o.p on a missing DOM property escapes the surrounding try/catch.
+// Read DOM properties into a variable first (reverseSafeProperty or plain assignment), then negate the variable.
 HI.reverseSafeProperty = function (target, propertyName) { try { return target[propertyName]; } catch (_) {} return null; };
 HI.reverseTextStyle = function (item) {
     try {
         if (!HI.isTextFrame(item)) return null;
-        if (!item.paragraphs || item.paragraphs.length < 1) return null;
-        var p = item.paragraphs[0], font = HI.reverseFontInfo(p.appliedFont);
+        var paragraphs = HI.reverseSafeProperty(item, "paragraphs");
+        if (!paragraphs || paragraphs.length < 1) return null;
+        var p = paragraphs[0], font = HI.reverseFontInfo(p.appliedFont);
         var style = {
             appliedFont: font ? font.appliedFont : null,
             fontFamily: font ? font.fontFamily : null,
@@ -41,8 +45,9 @@ HI.reverseTextStyle = function (item) {
 HI.reverseTextFrameStyle = function (item) {
     try {
         if (!HI.isTextFrame(item) && !HI.hasTextFrameGeneralOptions(item)) return null;
-        if (!item.textFramePreferences) return null;
-        var prefs = item.textFramePreferences, inset = HI.insetArray(prefs.insetSpacing);
+        var prefs = HI.reverseSafeProperty(item, "textFramePreferences");
+        if (!prefs) return null;
+        var inset = HI.insetArray(prefs.insetSpacing);
         var style = {
             inset: { top: inset[0], right: inset[1], bottom: inset[2], left: inset[3] },
             columnCount: HI.numberOrNull(prefs.textColumnCount),
@@ -57,9 +62,10 @@ HI.reverseTextFrameStyle = function (item) {
 HI.reverseFirstLineFont = function (item) {
     try {
         if (!HI.isTextFrame(item)) return null;
-        if (!item.paragraphs || item.paragraphs.length < 1) return null;
-        var p = item.paragraphs[0], ps = p.appliedParagraphStyle;
-        if (!ps || !ps.isValid) return null;
+        var paragraphs = HI.reverseSafeProperty(item, "paragraphs");
+        if (!paragraphs || paragraphs.length < 1) return null;
+        var p = paragraphs[0], ps = p.appliedParagraphStyle, psValid = ps ? HI.reverseSafeProperty(ps, "isValid") : false;
+        if (!psValid) return null;
         var hasRules = (ps.nestedStyles && ps.nestedStyles.length > 0) || (ps.nestedGrepStyles && ps.nestedGrepStyles.length > 0);
         if (!hasRules) return null;
         var pFont = HI.reverseFontInfo(p.appliedFont), sFont = HI.reverseFontInfo(ps.appliedFont);
@@ -257,7 +263,8 @@ HI.textFrameStyleCss = function (style) {
 
 HI.reverseFontInfo = function (font) {
     try {
-        if (!font || !font.isValid) return null;
+        var fontValid = font ? HI.reverseSafeProperty(font, "isValid") : false;
+        if (!fontValid) return null;
         var full = String(font.name || ""), parts = full.split("\t"), style = parts[1] || "Regular";
         return { appliedFont: full, fontFamily: parts[0], fontStyleName: style, fontWeight: HI.fontWeightFor(style), fontStyle: HI.fontStyleFor(style), isComposite: font.constructor && String(font.constructor.name) === "CompositeFont", compositeName: parts[0] };
     } catch (_) {}
@@ -266,14 +273,18 @@ HI.reverseFontInfo = function (font) {
 
 HI.reverseColor = function (color) {
     try {
-        if (!color || !color.isValid) return null;
-        var name = String(color.name || "");
+        var valid = color ? HI.reverseSafeProperty(color, "isValid") : false;
+        if (!valid) return null;
+        var name = String(HI.reverseSafeProperty(color, "name") || "");
         if (name === "None" || name === "[None]" || name === "Text Color") return null;
         if (name === "Paper" || name === "[Paper]") return "#ffffff";
-        if (!color.colorValue) return null;
-        var v = color.colorValue;
-        if (color.space === ColorSpace.RGB) return HI.rgbHex(v[0], v[1], v[2]);
-        if (color.space === ColorSpace.CMYK || color.space === 1129142603) {
+        color = HI.reverseResolveSwatch ? HI.reverseResolveSwatch(color) : color;
+        if (HI.reverseIsGradient && HI.reverseIsGradient(color)) return HI.reverseGradientFallbackColor(color);
+        // Tint.colorValue reports the base color; objects without colorValue (MixedInk) fall through to null here.
+        var v = HI.reverseSafeProperty(color, "colorValue"), space = HI.reverseSafeProperty(color, "space");
+        if (!v || !(v.length > 0)) return null;
+        if (space === ColorSpace.RGB) return HI.rgbHex(v[0], v[1], v[2]);
+        if (space === ColorSpace.CMYK || space === 1129142603) {
             var k = Number(v[3] || 0) / 100;
             return HI.rgbHex(255 * (1 - Number(v[0] || 0) / 100) * (1 - k), 255 * (1 - Number(v[1] || 0) / 100) * (1 - k), 255 * (1 - Number(v[2] || 0) / 100) * (1 - k));
         }

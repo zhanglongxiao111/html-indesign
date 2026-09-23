@@ -146,7 +146,8 @@ HI.reverseCharacterTextStyle = function (character) {
 HI.reverseCharacterStyleName = function (character) {
     try {
         var style = character.appliedCharacterStyle;
-        if (!style || !style.isValid) return null;
+        var styleValid = style ? HI.reverseSafeProperty(style, "isValid") : false;
+        if (!styleValid) return null;
         var name = String(style.name || "");
         if (name.indexOf("[") === 0 || name.indexOf("\uff3b") === 0) return null;
         return name;
