@@ -18,6 +18,7 @@ const {
   lintFailureMessage,
   lintResponseBody,
   resolveLintFormat,
+  observedGridDowngradeSentence,
   underlyingHostFailure,
   withoutLintSnapshot,
   writeLintFailureReport,
@@ -69,6 +70,7 @@ async function call(args, context) {
     packagePath,
     strict: true,
     gridTolerance: args.gridTolerance,
+    lintProfile: args.lintProfile,
     includeSnapshot: true,
   });
   const lintMs = Date.now() - lintStartedAt;
@@ -77,6 +79,7 @@ async function call(args, context) {
     warningCount: lint.warningCount,
     normalizedCount: lint.normalizedCount || 0,
     gridIgnoredCount: lint.gridIgnoredCount || 0,
+    gridObservedDowngradedCount: lint.gridObservedDowngradedCount || 0,
     gridOffCount: lint.gridOffCount || 0,
     gridBlockOffCount: lint.gridBlockOffCount || 0,
     gridCheckedCount: lint.gridCheckedCount || 0,
@@ -114,6 +117,7 @@ async function call(args, context) {
         warning_count: lintCounts.warningCount,
         normalized_count: lintCounts.normalizedCount ?? 0,
         grid_ignored_count: lintCounts.gridIgnoredCount,
+        grid_observed_downgraded_count: lintCounts.gridObservedDowngradedCount,
         grid_off_count: lintCounts.gridOffCount,
         grid_block_off_count: lintCounts.gridBlockOffCount,
         grid_checked_count: lintCounts.gridCheckedCount,
@@ -170,6 +174,7 @@ async function call(args, context) {
         warning_count: lintCounts.warningCount,
         normalized_count: lintCounts.normalizedCount ?? 0,
         grid_ignored_count: lintCounts.gridIgnoredCount,
+        grid_observed_downgraded_count: lintCounts.gridObservedDowngradedCount,
         grid_off_count: lintCounts.gridOffCount,
         grid_block_off_count: lintCounts.gridBlockOffCount,
         grid_checked_count: lintCounts.gridCheckedCount,
@@ -254,6 +259,7 @@ async function call(args, context) {
     timings: { lintMs, compileMs },
     sizeMetrics,
     lintCounts,
+    lintProfile: lint.lintProfile,
     compatibility: compile.compatibility || lint.compatibility,
     preRunDeliverables,
     stageStartedAt: Date.now(),
@@ -501,6 +507,7 @@ function completeResult(state) {
           code: 'DRAFT_NOT_VERIFIED',
           message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
         }]),
+        ...observedGridDowngradeWarnings(state),
       ],
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
@@ -909,6 +916,7 @@ function collectMetrics(state, extra) {
     warning_count: lintCounts.warningCount,
     normalized_count: lintCounts.normalizedCount ?? 0,
     grid_ignored_count: lintCounts.gridIgnoredCount,
+    grid_observed_downgraded_count: lintCounts.gridObservedDowngradedCount,
     grid_off_count: lintCounts.gridOffCount,
     grid_block_off_count: lintCounts.gridBlockOffCount,
     grid_checked_count: lintCounts.gridCheckedCount,
@@ -924,6 +932,16 @@ function collectMetrics(state, extra) {
     compatibility_blocked: compatibility.blocked,
     ...(extra || {}),
   });
+}
+
+// lintProfile: reverse-export 的网格降级在构建通过时也要看得见，不能只藏在 metrics 里。
+function observedGridDowngradeWarnings(state) {
+  const lintCounts = state.lintCounts || {};
+  const message = observedGridDowngradeSentence({
+    gridObservedDowngradedCount: lintCounts.gridObservedDowngradedCount,
+    lintProfile: state.lintProfile,
+  });
+  return message ? [{ code: 'GRID_OBSERVED_DOWNGRADED', message }] : [];
 }
 
 function buildMetrics(values) {

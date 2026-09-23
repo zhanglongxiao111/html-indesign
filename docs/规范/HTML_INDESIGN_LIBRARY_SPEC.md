@@ -320,6 +320,8 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 
 普通模式下，网格偏移和语义 token 缺失先作为 warning；`strict` 模式会把 warning 提升为 error。每条 `GRID_ALIGNMENT_OFF` 携带 `edges`、`edgeOffsets`、`suggestedFix`；块级条目另带 `block: true`、`blockOf`、`blockOfCount`。结果里的 `gridIgnoredCount`/`gridOffCount`/`gridBlockOffCount`/`gridCheckedCount`/`gridShieldedCount`/`gridBlockCheckedCount`/`gridBlockSkippedCount`/`gridSkippedCount` 记录豁免数、报错数与各类元素的核查覆盖情况。
 
+lint 还接受 `lintProfile`（与 `deck.config.json` 的语义 `profile` 无关），取值 `default`（默认）或 `reverse-export`。`reverse-export` 只改变一件事：带观察态标记的对象，其 `GRID_ALIGNMENT_OFF` 降为 `notices[]` 里的提示，strict 也不提升。降级数由 `gridObservedDowngradedCount` 与一条 `GRID_OBSERVED_DOWNGRADED` 汇总警告（`strictBlocking: false`）显式报告。非观察态对象和其他规则不变。判定口径见 `AGENT_HTML_AUTHORING_GUIDE.md` 网格一节。
+
 ### 6.2 可映射元素
 
 不是所有 DOM 节点都生成 InDesign 对象。默认采集以下元素：

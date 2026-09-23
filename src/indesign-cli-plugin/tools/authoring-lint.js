@@ -19,6 +19,7 @@ async function call(args, context) {
     packagePath,
     strict,
     gridTolerance: args.gridTolerance,
+    lintProfile: args.lintProfile,
   });
   const lintMs = Date.now() - lintStartedAt;
 
@@ -28,6 +29,7 @@ async function call(args, context) {
     warning_count: result && result.warningCount,
     normalized_count: (result && result.normalizedCount) || 0,
     grid_ignored_count: (result && result.gridIgnoredCount) || 0,
+    grid_observed_downgraded_count: (result && result.gridObservedDowngradedCount) || 0,
     grid_off_count: (result && result.gridOffCount) || 0,
     grid_block_off_count: (result && result.gridBlockOffCount) || 0,
     grid_checked_count: (result && result.gridCheckedCount) || 0,

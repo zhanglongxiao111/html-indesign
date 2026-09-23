@@ -113,7 +113,7 @@ test('dispatcher 在未知参数时不调用 handler，并返回 TOOL_ARGS_INVAL
     assert.equal(response.error.details.issues[0].arg, 'reportPath');
     assert.deepEqual(
       response.error.details.allowedArgs.sort(),
-      ['format', 'gridTolerance', 'outDir', 'package', 'strict'],
+      ['format', 'gridTolerance', 'lintProfile', 'outDir', 'package', 'strict'],
     );
   } finally {
     authoringLint.call = original;
