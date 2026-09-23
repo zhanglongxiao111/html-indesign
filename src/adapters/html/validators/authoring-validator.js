@@ -15,11 +15,34 @@ const GRAPHIC_ASSET_REFERENCE_MISSING = 'GRAPHIC_ASSET_REFERENCE_MISSING';
 const TEXT_CONTAINER_HAS_CHILD_OBJECTS = 'TEXT_CONTAINER_HAS_CHILD_OBJECTS';
 const HTML_TEXT_NOT_CONVERTIBLE = 'HTML_TEXT_NOT_CONVERTIBLE';
 const TEXT_FIRST_LINE_CANNOT_FIT = 'TEXT_FIRST_LINE_CANNOT_FIT';
+const GRID_OBSERVED_DOWNGRADED = 'GRID_OBSERVED_DOWNGRADED';
+
+// lintProfile：default 是作者包的完整规则；reverse-export 面向从人做的 INDD 反向导出的包，
+// 只把「带观察态标记的对象」的 GRID_ALIGNMENT_OFF 降为提示（notices[]），其余规则不变。
+const AUTHORING_LINT_PROFILE = Object.freeze({
+  DEFAULT: 'default',
+  REVERSE_EXPORT: 'reverse-export',
+});
+const AUTHORING_LINT_PROFILE_NAMES = Object.freeze(Object.values(AUTHORING_LINT_PROFILE));
+const DEFAULT_AUTHORING_LINT_PROFILE = AUTHORING_LINT_PROFILE.DEFAULT;
+
+function resolveAuthoringLintProfile(value) {
+  if (value === undefined || value === null || value === '') return DEFAULT_AUTHORING_LINT_PROFILE;
+  if (AUTHORING_LINT_PROFILE_NAMES.includes(value)) return value;
+  const error = new Error(`INVALID_ARGS: lintProfile must be one of ${AUTHORING_LINT_PROFILE_NAMES.join(', ')}, received: ${value}`);
+  error.code = 'INVALID_ARGS';
+  throw error;
+}
 
 function validateAuthoringRules(snapshot, options = {}) {
   const pages = Array.isArray(snapshot && snapshot.pages) ? snapshot.pages : [];
   const errors = [];
   const warnings = [];
+  // 提示级条目：不进 errors/warnings，strict 不提升；靠计数 + 汇总警告保证不隐身。
+  const notices = [];
+  const lintProfile = resolveAuthoringLintProfile(options.lintProfile);
+  const downgradeObservedGrid = lintProfile === AUTHORING_LINT_PROFILE.REVERSE_EXPORT;
+  let gridObservedDowngradedCount = 0;
   const gridTolerance = Number.isFinite(Number(options.gridTolerance)) ? Number(options.gridTolerance) : 1;
   // 豁免与偏差都计数：整包豁免不能静默通过，报告和遥测要看得见。
   let gridIgnoredCount = 0;
@@ -92,14 +115,22 @@ function validateAuthoringRules(snapshot, options = {}) {
         gridCheckedCount += 1;
         const edges = offGridEdges(item.boundsMm, grid.lines, gridTolerance, item);
         if (!edges.length) return;
-        gridOffCount += 1;
         const itemId = itemIdFor(item, itemIndex);
-        warnings.push({
+        const entry = {
           ...message('warning', GRID_ALIGNMENT_OFF, pageId, itemId, gridOffMessage(edges)),
-          edges: edges.map((entry) => entry.edge),
+          edges: edges.map((edge) => edge.edge),
           edgeOffsets: edges,
           suggestedFix: gridSuggestedFix(itemId, edges),
-        });
+        };
+        // 观察态对象的坐标来自人做的 INDD，不是 Agent 排的版：降为提示，
+        // 仍算"量过"（gridCheckedCount），但不进 gridOffCount，另计 gridObservedDowngradedCount。
+        if (downgradeObservedGrid && isObservedReverseObject(item, page)) {
+          gridObservedDowngradedCount += 1;
+          notices.push({ ...entry, level: 'info', observed: true, downgradedBy: lintProfile });
+          return;
+        }
+        gridOffCount += 1;
+        warnings.push(entry);
       });
       // 母元素规则的另一半：块内内容不量，块本身必须有人量。承担放置的祖先节点
       // 多半是无边框的定位包裹层，永远不会成为 item，若不在这里收上来当条目报，
@@ -191,6 +222,22 @@ function validateAuthoringRules(snapshot, options = {}) {
     });
   });
 
+  // 降级不能不声不响：只要降过一条，就留一条汇总警告（strictBlocking:false，strict 不提升）。
+  if (gridObservedDowngradedCount > 0) {
+    warnings.push({
+      ...message(
+        'warning',
+        GRID_OBSERVED_DOWNGRADED,
+        null,
+        null,
+        observedGridDowngradeMessage(gridObservedDowngradedCount, lintProfile),
+      ),
+      strictBlocking: false,
+      lintProfile,
+      count: gridObservedDowngradedCount,
+    });
+  }
+
   const promotedWarnings = options.strict
     ? warnings.filter((entry) => entry.strictBlocking !== false)
     : [];
@@ -205,6 +252,9 @@ function validateAuthoringRules(snapshot, options = {}) {
     errors: resultErrors,
     warnings: resultWarnings,
     messages: resultErrors.concat(resultWarnings),
+    notices,
+    lintProfile,
+    gridObservedDowngradedCount,
     gridIgnoredCount,
     gridOffCount,
     gridBlockOffCount,
@@ -452,6 +502,31 @@ function isObservedReverseTextItem(item) {
   const attrs = attributesFor(item);
   return attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.OBSERVED) === 'true'
     || attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE) === 'observation';
+}
+
+// lintProfile reverse-export 的观察态判定只认对象自身的证据，不因页面带观察标记就整页放行：
+// Agent 在观察页上新增或改写的对象照常量网格。
+//   1. 对象自身：observed-text 类、data-id-observed="true"、data-id-reverse-mode="observation"；
+//   2. 对象带 data-id-observed-label-status（标签复核未通过、降级为观察标签）；
+//   3. 页面是 observation 模式导出的，且对象带反向写出器给每个观察对象加的 id-object 类。
+function isObservedReverseObject(item, page) {
+  if (isObservedReverseTextItem(item)) return true;
+  const attrs = attributesFor(item);
+  if (attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.OBSERVED_LABEL_STATUS) != null) return true;
+  const classList = Array.isArray(item && item.classList) ? item.classList : [];
+  return classList.includes('id-object') && isObservationPage(page);
+}
+
+function isObservationPage(page) {
+  const attrs = attributesFor(page);
+  return attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.OBSERVED) === 'true'
+    || attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE) === 'observation';
+}
+
+function observedGridDowngradeMessage(count, lintProfile) {
+  return `lintProfile ${lintProfile}: grid checks for ${count} observed object(s) were downgraded — their GRID_ALIGNMENT_OFF `
+    + 'is reported as info in notices[], not counted as warnings or errors, and not promoted by strict. '
+    + 'Objects without observed markers (added or rewritten by the author) are still checked.';
 }
 
 function isGraphicWithoutOwnResource(item) {
@@ -870,5 +945,10 @@ function hasStableSemanticToken(item) {
 
 module.exports = {
   validateAuthoringRules,
+  resolveAuthoringLintProfile,
+  AUTHORING_LINT_PROFILE,
+  AUTHORING_LINT_PROFILE_NAMES,
   AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
+  DEFAULT_AUTHORING_LINT_PROFILE,
+  GRID_OBSERVED_DOWNGRADED,
 };

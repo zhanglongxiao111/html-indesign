@@ -113,7 +113,7 @@ test('dispatcher 在未知参数时不调用 handler，并返回 TOOL_ARGS_INVAL
     assert.equal(response.error.details.issues[0].arg, 'reportPath');
     assert.deepEqual(
       response.error.details.allowedArgs.sort(),
-      ['gridTolerance', 'outDir', 'package', 'strict'],
+      ['format', 'gridTolerance', 'lintProfile', 'outDir', 'package', 'strict'],
     );
   } finally {
     authoringLint.call = original;
@@ -179,12 +179,13 @@ test('lint 通过且传了 outDir 时写报告、回 reportPath 与 artifact', (
   assert.deepEqual(archived, []);
 });
 
-test('lint 通过但没传 outDir 时维持原状：不写文件、不回 artifact', () => {
+test('format:full 下 lint 通过但没传 outDir 时维持原状：不写文件、不回 artifact', () => {
   const response = callPlugin('tools/call', {
     id: 'html.authoring_lint',
     args: {
       package: 'test/fixtures/e2e/architecture-report/deck.config.json',
       strict: true,
+      format: 'full',
     },
   });
 

@@ -1,0 +1,280 @@
+{
+  "source": "InDesign 渐变色板探针（scripts/probe-indesign-gradient-swatches.jsx）",
+  "indesignVersion": "20.0.1.32",
+  "probedAt": "2026-09-24",
+  "steps": [
+    {
+      "name": "colors",
+      "ok": true
+    },
+    {
+      "name": "gradients",
+      "ok": true
+    },
+    {
+      "name": "tint",
+      "ok": true
+    },
+    {
+      "name": "rect fill",
+      "ok": true
+    },
+    {
+      "name": "rect stroke",
+      "ok": true
+    },
+    {
+      "name": "oval tint",
+      "ok": true
+    },
+    {
+      "name": "paragraph style",
+      "ok": true
+    },
+    {
+      "name": "character style",
+      "ok": true
+    },
+    {
+      "name": "object style",
+      "ok": true
+    },
+    {
+      "name": "text frame",
+      "ok": true
+    },
+    {
+      "name": "object styled rect",
+      "ok": true
+    },
+    {
+      "name": "table",
+      "ok": true
+    }
+  ],
+  "gradientType": {
+    "LINEAR": 1635282023,
+    "RADIAL": 1918985319
+  },
+  "gradients": [
+    {
+      "kind": "Gradient",
+      "name": "Grad-Used",
+      "type": 1635282023,
+      "colorValueReadable": false,
+      "colorValueError": "Error: Object does not support the property or method 'colorValue'",
+      "stops": [
+        {
+          "location": 0,
+          "midpoint": null,
+          "midpointError": "Error: 此属性在当前状态下不可用。",
+          "stopColor": {
+            "kind": "Color",
+            "name": "G-Red",
+            "space": 1129142603,
+            "colorValue": [
+              0,
+              100,
+              100,
+              0
+            ],
+            "colorValueError": null
+          }
+        },
+        {
+          "location": 100,
+          "midpoint": 50,
+          "midpointError": null,
+          "stopColor": {
+            "kind": "Color",
+            "name": "G-Blue",
+            "space": 1666336578,
+            "colorValue": [
+              0,
+              0,
+              255
+            ],
+            "colorValueError": null
+          }
+        }
+      ]
+    },
+    {
+      "kind": "Gradient",
+      "name": "Grad-Unused",
+      "type": 1918985319,
+      "colorValueReadable": false,
+      "colorValueError": "Error: Object does not support the property or method 'colorValue'",
+      "stops": [
+        {
+          "location": 0,
+          "midpoint": null,
+          "midpointError": "Error: 此属性在当前状态下不可用。",
+          "stopColor": {
+            "kind": "Color",
+            "name": "",
+            "space": 1129142603,
+            "colorValue": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "colorValueError": null
+          }
+        },
+        {
+          "location": 100,
+          "midpoint": 50,
+          "midpointError": null,
+          "stopColor": {
+            "kind": "Color",
+            "name": "Black",
+            "space": 1129142603,
+            "colorValue": [
+              0,
+              0,
+              0,
+              100
+            ],
+            "colorValueError": null
+          }
+        }
+      ]
+    }
+  ],
+  "swatchWrapper": {
+    "kind": "Swatch",
+    "resolvedKind": "Gradient"
+  },
+  "tint": {
+    "kind": "Tint",
+    "tintValue": 40,
+    "baseColor": "G-Red",
+    "color": {
+      "kind": "Tint",
+      "name": "G-Red 40%",
+      "space": 1129142603,
+      "colorValue": [
+        0,
+        100,
+        100,
+        0
+      ],
+      "colorValueError": null
+    }
+  },
+  "styles": {
+    "paragraphFill": "Gradient",
+    "characterFill": "Gradient",
+    "objectFill": "Gradient",
+    "objectStroke": "Gradient",
+    "paragraphGradientFillAngle": 0
+  },
+  "pageItems": [
+    {
+      "kind": "TextFrame",
+      "fillKind": "Swatch",
+      "fillName": "None",
+      "strokeKind": "Swatch",
+      "gradientFillAngle": 0
+    },
+    {
+      "kind": "Rectangle",
+      "fillKind": "Gradient",
+      "fillName": "Grad-Used",
+      "strokeKind": "Gradient",
+      "gradientFillAngle": 0
+    },
+    {
+      "kind": "TextFrame",
+      "fillKind": "Swatch",
+      "fillName": "None",
+      "strokeKind": "Swatch",
+      "gradientFillAngle": 0
+    },
+    {
+      "kind": "Oval",
+      "fillKind": "Tint",
+      "fillName": "G-Red 40%",
+      "strokeKind": "Color",
+      "gradientFillAngle": 0
+    },
+    {
+      "kind": "Rectangle",
+      "fillKind": "Swatch",
+      "fillName": "None",
+      "strokeKind": "Gradient",
+      "gradientFillAngle": 0
+    },
+    {
+      "kind": "Rectangle",
+      "fillKind": "Gradient",
+      "fillName": "Grad-Used",
+      "strokeKind": "Swatch",
+      "gradientFillAngle": 0
+    }
+  ],
+  "tryCatchBypass": [
+    {
+      "form": "if (!o.p) return",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "if (!(o.p)) return",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "if (!o.p) { block }",
+      "outcome": "caught",
+      "escaped": false
+    },
+    {
+      "form": "return !o.p",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "!o.p ? a : b",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "while (!o.p)",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "if (a || !o.p)",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "if (a && !o.p)",
+      "outcome": "Error: Object does not support the property or method 'colorValue'",
+      "escaped": true
+    },
+    {
+      "form": "var v = o.p; if (!v)",
+      "outcome": "caught",
+      "escaped": false
+    },
+    {
+      "form": "var b = !o.p",
+      "outcome": "caught",
+      "escaped": false
+    },
+    {
+      "form": "if (o.p == null)",
+      "outcome": "caught",
+      "escaped": false
+    },
+    {
+      "form": "if (o.p)",
+      "outcome": "caught",
+      "escaped": false
+    }
+  ]
+}

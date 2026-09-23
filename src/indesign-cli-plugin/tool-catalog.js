@@ -3,6 +3,8 @@ const {
   DEFAULT_RECONSTRUCTION_PROFILE,
   RECONSTRUCTION_PROFILE_NAMES,
 } = require('../semantic-reconstruction');
+const { AUTHORING_LINT_PROFILE_NAMES, DEFAULT_AUTHORING_LINT_PROFILE } = require('../authoring');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 
 const tools = [
   {
@@ -10,12 +12,13 @@ const tools = [
     domain: 'html',
     name: '作者包规则检查',
     one_line_purpose: '检查固定分页 HTML 作者源码包是否满足项目作者规范。',
-    arg_names: ['package', 'strict', 'gridTolerance', 'outDir'],
+    arg_names: ['package', 'strict', 'gridTolerance', 'outDir', 'lintProfile', 'format'],
     rank: 10,
     schema_size: 'small',
     callable: true,
     requires: [],
-    // 写出 authoring-lint-report.json：失败时必写，通过时只在显式传了 outDir 才写。
+    // 写出 authoring-lint-report.json：format:"summary"（默认）时总是写；format:"full" 时失败必写，
+    // 通过时只在显式传了 outDir 或该位置已有旧报告时才写。
     side_effects: ['filesystem_write'],
     artifact_kinds: ['json'],
     destructive: false,
@@ -26,17 +29,27 @@ const tools = [
     // 不声明的话，宿主会按 side_effects 含 filesystem_write 自动追加
     // "Run indesign-cli export verify"——本工具产出的是 JSON 报告，不是可校验的成品。
     common_next_steps: [
-      '失败时先读 error.details.errors，按 code 分类看分布，不要逐条改。',
+      '默认返回摘要（format:"summary"）：先看首条消息、topCodes 与 firstErrors，按 code 分类看分布，不要逐条改；'
+        + '完整清单在 reportPath 指向的报告里，读之前核对报告顶层 runId 与返回体一致。',
       '同一 code 高度集中时是单一系统性成因：先看首条消息里的 Fix examples 与每条的 edgeOffsets/suggestedFix；'
         + 'GRID_ALIGNMENT_OFF 量的是承担网格放置的块（grid-item / --grid-col 的元素），'
         + '块内内容不查，改由承担放置的块负责；没有放置祖先的条目仍逐条量，'
         + '所以通常是块本身没坐在网格上或网格声明与 CSS 不符。gridTolerance 只用于确认版式正确后的取整误差。',
       '通过后再调用 html.build_indesign；本工具默认 strict:false，而 build 内部固定 strict:true。',
     ],
-    // 传了 outDir 的形态；不传时 reportPath 为 null 且 artifacts 为空。
+    // 默认 summary 形态；不传 outDir 时报告落在作者包根目录下的 .indesign-cli/。
     return_example: {
       status: 'complete',
-      data: { ok: true, issueCount: 0, reportPath: '<outDir>\\authoring-lint-report.json' },
+      data: {
+        ok: true,
+        format: 'summary',
+        errorCount: 0,
+        warningCount: 2,
+        topCodes: [{ code: 'SEMANTIC_TOKEN_MISSING', level: 'warning', count: 2 }],
+        firstErrors: [],
+        reportPath: '<outDir>\\authoring-lint-report.json',
+        runId: 'lint-20260924T081500-3fa9c1',
+      },
       artifacts: [{ kind: 'json', path: '<outDir>\\authoring-lint-report.json' }],
     },
     failure_example: {
@@ -50,7 +63,7 @@ const tools = [
         + 'Fix examples: page-2 / p2-el1: Move #p2-el1 left edge to 10mm (-3mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked. '
         + '| page-2 / p2-el4: Move #p2-el4 top edge to 41mm (+2mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked. '
         + '| page-3 / p3-el1: Move #p3-el1 left edge to 10mm (-1.5mm), or place it with --grid-col/--grid-row so the block itself sits on the grid; content inside a placed block is not checked. '
-        + '(+9 more in error.details.errors[].suggestedFix) '
+        + '(+9 more: errors[].suggestedFix in the full report) '
         + 'Full report: <outDir>\\authoring-lint-report.json',
     },
   },
@@ -94,7 +107,7 @@ const tools = [
     one_line_purpose: '严格检查作者包，构建 INDD/PDF/IDML，并核对真实 InDesign 内容是否忠于 HTML。',
     arg_names: [
       'package', 'outDir', 'targetSize', 'unitMode', 'outputBaseName', 'mode',
-      'exportPdf', 'exportIdml', 'timeout', 'gridTolerance',
+      'exportPdf', 'exportIdml', 'timeout', 'gridTolerance', 'lintProfile', 'format',
     ],
     rank: 30,
     schema_size: 'medium',
@@ -110,6 +123,9 @@ const tools = [
     // mode:'final' 时内部已经调过 export.verify，宿主自动追加的"再跑一次"是误导。
     common_next_steps: [
       '失败时先看 error.details.stage 决定重跑范围：lint/compile 阶段改作者源码即可，无需重开 InDesign。',
+      'lint 阶段失败默认只回摘要（topCodes、firstErrors），完整清单读 error.details.reportPath；'
+        + '读 outDir 里的任何报告前先核对报告顶层 runId 与 error.details.runId / data.runId 一致，'
+        + 'status 为 not-produced 表示本次没走到那一步。',
       'stage 为 fidelity 时读 forward-fidelity-report.json，按报告命名的页/对象/字段改源码，不要用相同输入重试。',
       '导出阶段失败时看 details.partialArtifacts：INDD 可能已经落盘，不必重走整条链路。',
       'mode 为 final 时本工具内部已执行 export.verify，无需再手动运行一次。',
@@ -162,6 +178,32 @@ const tools = [
   },
 ];
 
+// html.authoring_lint 与 html.build_indesign 共用：build 内部也跑同一套 strict lint，
+// 两个入口的 lintProfile 口径必须一致，否则 lint 过了 build 仍会被同一批观察态对象拦下。
+// 命名与 reconstructionProfile 一致；刻意不叫 profile，避免与 deck.config.json 的语义 profile 混淆。
+const LINT_PROFILE_SCHEMA = {
+  type: 'string',
+  enum: [...AUTHORING_LINT_PROFILE_NAMES],
+  default: DEFAULT_AUTHORING_LINT_PROFILE,
+  description: 'lint 规则档位（不是 deck.config.json 的语义 profile）。default 为完整作者规则。'
+    + 'reverse-export 用于从人做的 INDD 反向导出的作者包：带观察态标记的对象（observed-text 类、'
+    + `${HTML_DATA_ID_ATTRIBUTES.OBSERVED} / ${HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE}="observation"、`
+    + `${HTML_DATA_ID_ATTRIBUTES.OBSERVED_LABEL_STATUS}，`
+    + '或 observation 页上的 id-object 对象）的 GRID_ALIGNMENT_OFF 降为提示，列在 notices[]，'
+    + '不计 error、strict 也不提升，并由 gridObservedDowngradedCount 与一条 GRID_OBSERVED_DOWNGRADED 警告显式报告；'
+    + 'Agent 新增或改写、不带观察态标记的对象照常检查，其余规则不变。不会根据包内容自动启用。',
+};
+
+// html.authoring_lint 与 html.build_indesign 共用（#13 P1-1）。
+const LINT_FORMAT_ARG = Object.freeze({
+  type: 'string',
+  enum: ['summary', 'full'],
+  default: 'summary',
+  description: 'lint 结果的返回形态。summary（默认）只回 ok、errorCount、warningCount、topCodes、firstErrors（前 3 条）、'
+    + 'reportPath 与 runId，完整的 errors/warnings/normalized/messages 只写进 authoring-lint-report.json；'
+    + 'full 在返回体里带完整数组（体积可达数十 KB）。',
+});
+
 const schemas = {
   'html.authoring_lint': {
     type: 'object',
@@ -190,8 +232,13 @@ const schemas = {
         description: 'authoring-lint-report.json 的写入目录，相对 CLI 调用时的工作目录解析，'
           + '且必须落在该工作目录内（否则报 OUTPUT_OUTSIDE_PROJECT）。显式传入时，检查通过与失败都会写报告，'
           + '路径同时回在 data.reportPath / error.details.reportPath 与 artifacts 上；'
-          + '省略时只有失败才写，落到作者包根目录下的 .indesign-cli/。',
+          + '省略时落到作者包根目录下的 .indesign-cli/（format:"full" 且检查通过时不新建该文件）。',
       },
+      format: {
+        ...LINT_FORMAT_ARG,
+        description: `${LINT_FORMAT_ARG.description}报告一定会写：省略 outDir 时写到作者包根目录下的 .indesign-cli/。`,
+      },
+      lintProfile: LINT_PROFILE_SCHEMA,
     },
   },
   'html.compile_instructions': {
@@ -246,6 +293,12 @@ const schemas = {
         description: '网格对齐容差，单位 mm，默认 1mm。GRID_ALIGNMENT_OFF 量的是承担网格放置的块（grid-item / --grid-col 元素），'
           + '块内内容不查，改由承担放置的块负责；没有放置祖先的条目仍逐条量。'
           + '条目自带 edgeOffsets 与 suggestedFix。放宽容差只用于确认版式正确后的取整误差，不要用它盖住真实偏差。',
+      },
+      lintProfile: LINT_PROFILE_SCHEMA,
+      format: {
+        ...LINT_FORMAT_ARG,
+        description: `只影响 lint 阶段失败时的返回体。${LINT_FORMAT_ARG.description}`
+          + '报告写在 outDir（省略 outDir 时写到作者包根目录下的 .indesign-cli/）。',
       },
     },
   },

@@ -117,6 +117,9 @@ async function resume(params) {
     assetPolicy: state.assetPolicy || 'reference',
     nasPublicRoot: state.nasPublicRoot || '/nas',
     reconstructionProfile: state.reconstructionProfile,
+    // 首次调用时 dispatcher 把 runId 盖进了 state；report.json 与返回体用同一个。
+    ...(state.runId ? { runId: state.runId } : {}),
+    reportTool: 'html.reverse_export',
   });
   const exportMs = Date.now() - exportStartedAt;
   const sizeMetrics = result && result.report ? {
@@ -201,10 +204,38 @@ async function resume(params) {
       authorDeckPath,
       visualDeckPath: visualDeckPath && fs.existsSync(visualDeckPath) ? visualDeckPath : null,
       reportPath: reportPath && fs.existsSync(reportPath) ? reportPath : null,
+      ...reverseWarningPreview(result && result.report && result.report.warnings, reportPath),
     },
     metrics,
     artifacts,
   };
+}
+
+// 回读 warning 的全文在 report.json；返回体只带总数、按 code 计数和前几条，
+// 超出部分用一条 REVERSE_WARNINGS_TRUNCATED 说明去哪里看，不把全文塞进上下文。
+const REVERSE_WARNING_PREVIEW_LIMIT = 5;
+
+function reverseWarningPreview(warnings, reportPath) {
+  const list = Array.isArray(warnings) ? warnings : [];
+  const byCode = {};
+  for (const warning of list) {
+    const code = String((warning && warning.code) || 'UNKNOWN');
+    byCode[code] = (byCode[code] || 0) + 1;
+  }
+  const preview = list.slice(0, REVERSE_WARNING_PREVIEW_LIMIT).map((warning) => ({
+    code: warning.code,
+    message: warning.message,
+    ...(warning.details ? { details: warning.details } : {}),
+  }));
+  const omitted = list.length - preview.length;
+  if (omitted > 0) {
+    preview.push({
+      code: 'REVERSE_WARNINGS_TRUNCATED',
+      message: `${omitted} more reverse warnings omitted; read warnings in ${reportPath || 'report.json'}.`,
+      details: { omitted, ...(reportPath ? { reportPath } : {}) },
+    });
+  }
+  return { warningCount: list.length, warningsByCode: byCode, warnings: preview };
 }
 
 function firstFailedHostResult(hostResults) {

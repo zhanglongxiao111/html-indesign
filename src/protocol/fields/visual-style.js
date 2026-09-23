@@ -4,6 +4,22 @@ const VISUAL_STYLE_CAPABILITIES = Object.freeze({
   pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
 });
 
+// InDesign 渐变色板只能反向观察：HTML 写出侧不输出多色 linear-gradient（正向兼容审计会拦下），
+// 颜色字段退化为第一个色标的纯色，渐变事实保留在这里供审核和后续能力扩展使用。
+const GRADIENT_CAPABILITIES = Object.freeze({
+  html: { read: 'unsupported', write: 'fallback', persist: 'unsupported', fallbackKind: 'first-stop-color' },
+  indesign: { read: 'native', write: 'unsupported', persist: 'unsupported' },
+  pptx: { read: 'unsupported', write: 'unsupported', persist: 'unsupported' },
+});
+
+function gradientField(fieldName, colorField) {
+  return visualStyleField(`items[].visualStyle.${fieldName}`, 'object', {
+    capabilities: GRADIENT_CAPABILITIES,
+    description: `InDesign gradient swatch observed on ${colorField}: { type: "linear" | "radial", angle, stops: [{ color, location }] }. `
+      + `${colorField} keeps the first stop color; reverse export records REVERSE_GRADIENT_APPROXIMATED.`,
+  });
+}
+
 function visualStyleField(canonicalPath, type, extra = {}) {
   const fieldName = canonicalPath.slice('items[].visualStyle.'.length);
   return {
@@ -43,6 +59,8 @@ module.exports = [
       snapshotPaths: ['visualStyle.fillColor'],
     },
   },
+  gradientField('fillGradient', 'fillColor'),
+  gradientField('strokeGradient', 'strokeColor'),
   visualStyleField('items[].visualStyle.fillOpacity', 'number', {
     html: {
       styleProps: ['fill-opacity'],

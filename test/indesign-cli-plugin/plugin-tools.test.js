@@ -12,6 +12,7 @@ test('html.authoring_lint validates the architecture report author package', () 
     args: {
       package: 'test/fixtures/e2e/architecture-report/deck.config.json',
       strict: true,
+      format: 'full',
     },
   });
 
@@ -34,6 +35,7 @@ test('html.authoring_lint reports lint_ms and issue counts in metrics on success
     args: {
       package: 'test/fixtures/e2e/architecture-report/deck.config.json',
       strict: true,
+      format: 'full',
     },
   });
 
@@ -314,6 +316,7 @@ test('html.build_indesign runs strict authoring checks internally before creatin
     args: {
       package: path.join(root, 'deck.config.json'),
       outDir: path.join(root, 'output'),
+      format: 'full',
     },
   });
 
@@ -1200,6 +1203,11 @@ test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异
   assert.equal(response.error.code, 'FIDELITY_GATE_FAILED');
 
   const report = JSON.parse(fs.readFileSync(afterBuild.state.fidelityReportPath, 'utf8'));
+  // 保真报告与首次调用、resume 返回体是同一个 runId（#13 P1-2）。
+  assert.match(callResponse.state.runId, /^build-\d{8}T\d{6}-[0-9a-f]{6}$/);
+  assert.equal(report.runId, callResponse.state.runId);
+  assert.equal(report.tool, 'html.build_indesign');
+  assert.equal(response.error.details.runId, callResponse.state.runId);
   assert.equal(report.errors[0].code, 'FORWARD_ITEM_GEOMETRY_CHANGED');
   assert.equal(report.errors[0].hint, undefined);
   assert.equal(report.errors.some((entry) => entry.reason === 'overset'), true);

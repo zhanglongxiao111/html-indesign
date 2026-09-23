@@ -13,6 +13,11 @@ const { semanticModelToHtml } = require('../writers/html/visual-html-writer');
 const { writeReverseAuthorPackage } = require('../writers/html/author-package-writer');
 const { auditReverseAuthorPackage } = require('../writers/html/audit/reverse-roundtrip');
 const { resolveSemanticPreset } = require('../semantic-preset');
+const { createRunId, writeReportFile } = require('../shared/report-file');
+
+// 不经插件调用（scripts/indesign-reverse-export.js、e2e）时没有外部 runId，这里自己生成，
+// 保证 report.json 顶层永远带着可核对的运行标识。
+const DEFAULT_REPORT_TOOL = 'reverse-pipeline';
 
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
@@ -23,9 +28,10 @@ function compileReverseSnapshotToHtml(options) {
   const adapterOptions = semanticPreset
     ? { mode: options.mode, semanticPreset }
     : { mode: options.mode };
+  const snapshot = options.blueprintPath ? null : readReverseSnapshot(options.snapshotPath);
   const observedModel = options.blueprintPath
     ? blueprintMigrationToSemanticModel(readJson(options.blueprintPath), adapterOptions)
-    : reverseSnapshotToSemanticModel(readReverseSnapshot(options.snapshotPath), adapterOptions);
+    : reverseSnapshotToSemanticModel(snapshot, adapterOptions);
   const reconstruction = reconstructSemanticModel(observedModel, {
     mode: options.mode,
     inputFormat,
@@ -35,7 +41,12 @@ function compileReverseSnapshotToHtml(options) {
   const model = reconstruction.model;
   const outDir = path.resolve(options.outDir);
   const visualHtml = semanticModelToHtml(model, { outputDir: outDir });
-  const report = createReport(model, { ...options, inputFormat, reconstruction: reconstruction.report });
+  const report = createReport(model, {
+    ...options,
+    inputFormat,
+    reconstruction: reconstruction.report,
+    warnings: snapshotReportWarnings(snapshot),
+  });
   const modeHtmlName = `deck.${options.mode}.html`;
   const modeReportName = `${options.mode}-report.json`;
   const reconstructionReportName = 'reconstruction-report.json';
@@ -69,8 +80,13 @@ function compileReverseSnapshotToHtml(options) {
       && reconstructionPassedTrustedSourceGate(reconstruction.report),
     authorAudit,
   };
-  fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(finalReport, null, 2), 'utf8');
-  fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(finalReport, null, 2), 'utf8');
+  // report.json 与 <mode>-report.json 是同一份内容，都走统一的报告入口（顶层 runId/generatedAt/tool）。
+  const reportRun = {
+    runId: options.runId || createRunId('reverse'),
+    tool: options.reportTool || DEFAULT_REPORT_TOOL,
+  };
+  writeReportFile(path.join(outDir, 'report.json'), finalReport, reportRun);
+  writeReportFile(path.join(outDir, modeReportName), finalReport, reportRun);
 
   return {
     ok: finalReport.ok,
@@ -93,6 +109,7 @@ function compileReverseSnapshotToHtml(options) {
       },
     },
     report: finalReport,
+    runId: reportRun.runId,
   };
 }
 
@@ -108,7 +125,27 @@ function createReport(model, options) {
     assets: (model.assets || []).length,
     inference: model.report && model.report.inference ? model.report.inference : null,
     unresolved: [],
+    warnings: options.warnings || [],
   };
+}
+
+// InDesign 端（HI.exportReverseSnapshot）把回读时的 warning 记在快照的 report 里，
+// 例如 REVERSE_GRADIENT_APPROXIMATED。这里原样转进 report.json，不按 code 挑选；
+// 快照只落在中间文件里的话，Agent 读 report.json 和工具返回体都看不到。
+function snapshotReportWarnings(snapshot) {
+  const report = snapshot && snapshot.report;
+  if (!report || typeof report !== 'object') return [];
+  const list = Array.isArray(report.warnings)
+    ? report.warnings
+    : (Array.isArray(report.messages) ? report.messages.filter((entry) => entry && entry.level === 'warning') : []);
+  return list
+    .filter((entry) => entry && typeof entry === 'object' && entry.code)
+    .map((entry) => ({
+      code: String(entry.code),
+      message: entry.message == null ? '' : String(entry.message),
+      source: 'reverse-snapshot',
+      ...(entry.details && typeof entry.details === 'object' ? { details: entry.details } : {}),
+    }));
 }
 
 function assertCompileOptions(options) {
