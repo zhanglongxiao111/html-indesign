@@ -67,6 +67,8 @@ function lintFailureMessage(lint, options = {}) {
   if (fixes) lines.push(fixes);
   const exemptions = gridExemptionSentence(lint);
   if (exemptions) lines.push(exemptions);
+  const downgraded = observedGridDowngradeSentence(lint);
+  if (downgraded) lines.push(downgraded);
   if (options.reportPath) lines.push(`Full report: ${options.reportPath}`);
 
   return lines.join('\n');
@@ -115,6 +117,17 @@ function gridExemptionSentence(lint) {
   if (!count) return '';
   return `Grid exemptions already in this package: ${count} item(s) are exempt from grid checks`
     + ` via ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} (own or inherited).`;
+}
+
+// profile: reverse-export 把观察态对象的网格偏移降为提示，这种豁免同样不能隐身：
+// 首条消息里点明本次降级了多少个对象，以及非观察态对象照常检查。
+function observedGridDowngradeSentence(lint) {
+  const count = Number(lint && lint.gridObservedDowngradedCount) || 0;
+  if (!count) return '';
+  const profile = (lint && lint.profile) || 'reverse-export';
+  return `Grid checks downgraded by profile ${profile}: ${count} observed object(s) are off-grid;`
+    + ' their GRID_ALIGNMENT_OFF is listed in notices[] and not counted as errors.'
+    + ' Objects without observed markers are still checked.';
 }
 
 // 顶层 hint 恒为 null 视为缺陷：完整清单在别处时必须写明去哪里看。
@@ -327,6 +340,7 @@ module.exports = {
   isLintShortCircuit,
   lintFailureHint,
   lintFailureMessage,
+  observedGridDowngradeSentence,
   underlyingHostFailure,
   withoutLintSnapshot,
   writeLintFailureReport,
