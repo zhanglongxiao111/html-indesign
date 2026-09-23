@@ -105,7 +105,7 @@ test('插件入口拒绝非法 lintProfile，不带着无效参数跑出结果',
 test('真实反向导出包：default strict 报观察态对象，reverse-export 降级并计数', () => {
   const packageDir = observedPackage('lint-profile-observed');
 
-  const strictDefault = callLint(packageDir);
+  const strictDefault = callLint(packageDir, { format: 'full' });
   assert.equal(strictDefault.status, 'error');
   const defaultGrid = strictDefault.error.details.errors
     .filter((entry) => entry.code === 'GRID_ALIGNMENT_OFF')
@@ -115,7 +115,7 @@ test('真实反向导出包：default strict 报观察态对象，reverse-export
   assert.equal(strictDefault.error.details.lintProfile, 'default');
   assert.equal(strictDefault.error.details.metrics.grid_observed_downgraded_count, 0);
 
-  const reverse = callLint(packageDir, { lintProfile: 'reverse-export' });
+  const reverse = callLint(packageDir, { lintProfile: 'reverse-export', format: 'full' });
   assert.equal(reverse.status, 'complete', JSON.stringify(reverse.error || null));
   assert.equal(reverse.data.lintProfile, 'reverse-export');
   assert.equal(reverse.data.errorCount, 0);
@@ -126,12 +126,23 @@ test('真实反向导出包：default strict 报观察态对象，reverse-export
   assert.ok(summary, JSON.stringify(reverse.data.warnings));
   assert.equal(summary.count, 2);
   assert.equal(reverse.metrics.grid_observed_downgraded_count, 2);
+
+  // 默认 summary 下降级同样看得见：计数、档位与汇总警告都在摘要里（#13 P1-1）。
+  const brief = callLint(packageDir, { lintProfile: 'reverse-export' });
+  assert.equal(brief.status, 'complete');
+  assert.equal(brief.data.format, 'summary');
+  assert.equal('notices' in brief.data, false);
+  assert.equal(brief.data.lintProfile, 'reverse-export');
+  assert.equal(brief.data.gridObservedDowngradedCount, 2);
+  assert.equal(brief.data.gridObservedDowngraded.code, 'GRID_OBSERVED_DOWNGRADED');
+  assert.equal(brief.data.gridObservedDowngraded.count, 2);
+  assert.match(brief.data.gridObservedDowngraded.message, /2/);
 });
 
 test('真实反向导出包：Agent 新增的对象照常检查，首条消息点明降级数量', () => {
   const packageDir = observedPackage('lint-profile-agent-card', { withAgentCard: true });
 
-  const response = callLint(packageDir, { lintProfile: 'reverse-export' });
+  const response = callLint(packageDir, { lintProfile: 'reverse-export', format: 'full' });
 
   assert.equal(response.status, 'error');
   const gridErrors = response.error.details.errors.filter((entry) => entry.code === 'GRID_ALIGNMENT_OFF');

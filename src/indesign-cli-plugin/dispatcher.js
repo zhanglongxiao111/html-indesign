@@ -1,5 +1,6 @@
 const { listTools, getTool, getSchema } = require('./tool-catalog');
 const { validateArgs, argsErrorMessage } = require('./validate-args');
+const { createRunId, withRunId } = require('./run-context');
 const authoringLint = require('./tools/authoring-lint');
 const compileInstructionsTool = require('./tools/compile-instructions');
 const buildIndesign = require('./tools/build-indesign');
@@ -91,10 +92,12 @@ async function resumeTool(params, context) {
     return error('RESUME_TOOL_NOT_FOUND', `No resume handler for tool: ${id}`);
   }
 
+  // resume 沿用首次调用时写进 state 的 runId：一次构建跨多轮 resume，仍是同一次运行。
+  const runId = state.runId || null;
   try {
-    return await caller.resume(params, context || {});
+    return withRunId(await caller.resume(params, context || {}), runId);
   } catch (err) {
-    return error(err.code || 'TOOL_RESUME_FAILED', err.message, errorDetails(err, id));
+    return withRunId(error(err.code || 'TOOL_RESUME_FAILED', err.message, errorDetails(err, id)), runId);
   }
 }
 
@@ -113,19 +116,20 @@ async function callTool(params, context) {
   // handler 之前先按公开 schema 校验：未知字段必须报错退回，不得静默吞掉。
   // 调用方据此拿到的"成功"是假的——它会按自己以为生效的参数去找产物。
   const args = params.args || {};
+  const runId = createRunId(id);
   const issues = validateArgs(getSchema(id), args);
   if (issues.length > 0) {
-    return error('TOOL_ARGS_INVALID', argsErrorMessage(id, issues), {
+    return withRunId(error('TOOL_ARGS_INVALID', argsErrorMessage(id, issues), {
       tool: id,
       issues,
       allowedArgs: Object.keys((getSchema(id) || {}).properties || {}),
-    });
+    }), runId);
   }
 
   try {
-    return await caller.call(args, context || {});
+    return withRunId(await caller.call(args, { ...(context || {}), runId, toolId: id }), runId);
   } catch (err) {
-    return error(err.code || 'TOOL_CALL_FAILED', err.message, errorDetails(err, id));
+    return withRunId(error(err.code || 'TOOL_CALL_FAILED', err.message, errorDetails(err, id)), runId);
   }
 }
 

@@ -117,6 +117,9 @@ async function resume(params) {
     assetPolicy: state.assetPolicy || 'reference',
     nasPublicRoot: state.nasPublicRoot || '/nas',
     reconstructionProfile: state.reconstructionProfile,
+    // 首次调用时 dispatcher 把 runId 盖进了 state；report.json 与返回体用同一个。
+    ...(state.runId ? { runId: state.runId } : {}),
+    reportTool: 'html.reverse_export',
   });
   const exportMs = Date.now() - exportStartedAt;
   const sizeMetrics = result && result.report ? {

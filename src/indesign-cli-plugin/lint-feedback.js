@@ -4,9 +4,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { isPathInside } = require('../shared');
+const { isPathInside, writeReportFile } = require('../shared');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
-const { writeReportFile } = require('./report-archive');
 
 const MAX_LISTED_CODES = 3;
 const CONCENTRATION_RATIO = 0.8;
@@ -63,7 +62,7 @@ function lintFailureMessage(lint, options = {}) {
 
   const firstIssue = firstIssueSentence(lint);
   if (firstIssue) lines.push(firstIssue);
-  const fixes = fixExamplesSentence(lint);
+  const fixes = fixExamplesSentence(lint, options);
   if (fixes) lines.push(fixes);
   const exemptions = gridExemptionSentence(lint);
   if (exemptions) lines.push(exemptions);
@@ -79,7 +78,7 @@ const FIX_EXAMPLE_LENGTH_LIMIT = 220;
 
 // "系统性成因"只回答"是不是一处改法"，不回答"怎么改"。带 suggestedFix 的条目
 // 直接给前三条，Agent 不用先去翻完整报告才能动手。
-function fixExamplesSentence(lint) {
+function fixExamplesSentence(lint, options = {}) {
   const carriers = lintErrors(lint).filter((entry) => typeof entry.suggestedFix === 'string' && entry.suggestedFix.trim());
   if (!carriers.length) return '';
   const ordered = fixCarriersByRelevance(carriers, classifyLintErrors(lint).concentration);
@@ -88,7 +87,11 @@ function fixExamplesSentence(lint) {
     return `${location ? `${location}: ` : ''}${clampFixExample(entry.suggestedFix.trim())}`;
   });
   const rest = carriers.length - MAX_FIX_EXAMPLES;
-  const more = rest > 0 ? ` (+${rest} more in error.details.errors[].suggestedFix)` : '';
+  const more = rest > 0
+    ? (isSummaryFormat(options)
+      ? ` (+${rest} more: errors[].suggestedFix in the full report)`
+      : ` (+${rest} more in error.details.errors[].suggestedFix)`)
+    : '';
   return `Fix examples: ${examples.join(' | ')}${more}`;
 }
 
@@ -143,6 +146,11 @@ function lintFailureHint(lint, options = {}) {
     parts.push('本次是前置短路返回，作者规则检查尚未执行，errorCount 不代表真实问题数量；'
       + '按上面的命令重新组装作者包后重跑才能拿到完整清单。');
     if (reportPath) parts.push(`本次短路结果已写入 ${reportPath}。`);
+  } else if (isSummaryFormat(options) && reportPath) {
+    const count = classifyLintErrors(lint).total;
+    parts.push(`返回体只含摘要（topCodes、firstErrors 前 ${MAX_FIRST_ERRORS} 条）；`
+      + `完整错误清单（${count} 条）见报告文件 ${reportPath} 的 errors 数组，`
+      + '先核对报告顶层 runId 与本次返回一致；确需在返回体里拿完整数组时传 format:"full"。');
   } else {
     const count = classifyLintErrors(lint).total;
     parts.push(reportPath
@@ -159,18 +167,29 @@ function lintFailureHint(lint, options = {}) {
 //   1. 写盘失败绝不能盖掉真正的 lint 失败——所以这里吞掉自己的异常，不外抛；
 //   2. 但"吞掉"不等于"不留痕"。返回 { path, error }，让调用方把失败原因放进
 //      details.reportWriteError，否则就是本轮在修的那个毛病自己再犯一遍。
-// failed=true 的调用额外留一份带时间戳的失败快照（见 report-archive.js）；
+// failed=true 的调用额外留一份带时间戳的失败快照（见 src/shared/report-file.js）；
 // 通过态只覆盖主文件，不归档——通过的检查没有需要事后复盘的现场。
+//
+// options.onlyIfExists：目标位置已有旧报告时才写（用来盖掉上一轮留下的旧结论），
+// 没有就不凭空造文件——full 格式通过且未传 outDir 时沿用「不给没要产物的调用写文件」。
 function writeLintReport(lint, options = {}) {
   try {
     const dir = resolveReportDir(options);
     if (!dir) return { path: null, error: null };
-    fs.mkdirSync(dir, { recursive: true });
     const reportPath = path.join(dir, REPORT_FILE_NAME);
-    const { archivedPath } = writeReportFile(reportPath, withoutLintSnapshot(lint), {
-      failed: Boolean(options.failed),
-    });
-    return { path: reportPath, archivedPath, error: null };
+    if (options.onlyIfExists && !fs.existsSync(reportPath)) return { path: null, error: null };
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const { archivedPath } = writeReportFile(reportPath, withoutLintSnapshot(lint), {
+        failed: Boolean(options.failed),
+        runId: options.runId,
+        tool: options.tool,
+      });
+      return { path: reportPath, archivedPath, error: null };
+    } catch (error) {
+      // 目标路径已经算出来了：带回去，调用方的警告要能说清是哪个文件没写成。
+      return { path: null, attemptedPath: reportPath, error: describeReportWriteError(error) };
+    }
   } catch (error) {
     return { path: null, error: describeReportWriteError(error) };
   }
@@ -190,6 +209,110 @@ function describeReportWriteError(error) {
 function withoutLintSnapshot(lint) {
   const { snapshot: _snapshot, ...rest } = lint || {};
   return rest;
+}
+
+// ---- 返回体格式（#13 P1-1）----
+// summary（默认）：返回体只带计数、按 code 聚合的分布和前三条错误，完整数组只在报告文件里。
+// 一次 lint 的完整返回有 76–85KB，Agent 整块读进上下文或被截断落盘，为读自己的输出
+// 额外写解析脚本十几次（8/6 事故）。full：保持原来的完整返回。
+const LINT_FORMATS = Object.freeze(['summary', 'full']);
+const DEFAULT_LINT_FORMAT = 'summary';
+const MAX_FIRST_ERRORS = 3;
+const MAX_TOP_CODES = 5;
+// 与 authoring-validator 的汇总警告 code 同名（build-indesign 构建通过时也用这个 code）。
+const GRID_OBSERVED_DOWNGRADED_CODE = 'GRID_OBSERVED_DOWNGRADED';
+const SUMMARY_TEXT_LIMIT = 500;
+
+function resolveLintFormat(value) {
+  return LINT_FORMATS.includes(value) ? value : DEFAULT_LINT_FORMAT;
+}
+
+// 模块内的文案函数默认按 full 口径（指向 error.details.errors）；工具层显式传 format。
+function isSummaryFormat(options) {
+  return Boolean(options) && options.format === 'summary';
+}
+
+function lintSummary(lint, extra = {}) {
+  const errors = lintErrors(lint);
+  const warnings = Array.isArray(lint && lint.warnings) ? lint.warnings.filter(Boolean) : [];
+  return {
+    ok: Boolean(lint && lint.ok),
+    format: 'summary',
+    errorCount: countOf(lint && lint.errorCount, errors.length),
+    warningCount: countOf(lint && lint.warningCount, warnings.length),
+    topCodes: topCodes(errors, warnings),
+    firstErrors: errors.slice(0, MAX_FIRST_ERRORS).map(compactIssue),
+    // 豁免、降级、归一化在摘要里同样要看得见：只给计数，明细在报告里。
+    normalizedCount: countOf(lint && lint.normalizedCount, 0),
+    gridIgnoredCount: countOf(lint && lint.gridIgnoredCount, 0),
+    gridObservedDowngradedCount: countOf(lint && lint.gridObservedDowngradedCount, 0),
+    ...(lint && lint.lintProfile ? { lintProfile: lint.lintProfile } : {}),
+    // topCodes 封顶 5 类，降级汇总警告可能被挤掉，单列一个字段保证它不会在摘要里隐身。
+    gridObservedDowngraded: observedDowngradeNotice(warnings),
+    compatibility: { summary: compatibilitySummary(lint) },
+    reportPath: extra.reportPath || null,
+    runId: extra.runId || null,
+  };
+}
+
+function observedDowngradeNotice(warnings) {
+  const entry = warnings.find((warning) => warning.code === GRID_OBSERVED_DOWNGRADED_CODE);
+  if (!entry) return null;
+  return {
+    code: entry.code,
+    count: countOf(entry.count, 0),
+    ...(entry.lintProfile ? { lintProfile: entry.lintProfile } : {}),
+    ...(typeof entry.message === 'string' ? { message: clampSummaryText(entry.message) } : {}),
+  };
+}
+
+// 只放计数，不放 messages：messages 是兼容审计的逐条明细，留在报告里。
+function compatibilitySummary(lint) {
+  const summary = lint && lint.compatibility && lint.compatibility.summary;
+  return summary && typeof summary === 'object' ? { ...summary } : null;
+}
+
+function countOf(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+// 错误在前、警告在后，各自按条数降序；总数封顶，剩下的看 errorCount/warningCount 与报告。
+function topCodes(errors, warnings) {
+  const ranked = (entries, level) => [...countBy(entries, (entry) => entry.code || OTHER_CODE).entries()]
+    .sort((left, right) => right[1] - left[1])
+    .map(([code, count]) => ({ code, level, count }));
+  return [...ranked(errors, 'error'), ...ranked(warnings, 'warning')].slice(0, MAX_TOP_CODES);
+}
+
+// 只留能直接动手的定位与修法；逐边偏移、块归属等明细在报告里。
+function compactIssue(entry) {
+  const picked = {};
+  for (const key of ['code', 'pageId', 'itemId', 'message', 'suggestedFix', 'hint']) {
+    const value = entry && entry[key];
+    if (typeof value === 'string' && value) picked[key] = clampSummaryText(value);
+  }
+  return picked;
+}
+
+function clampSummaryText(text) {
+  return text.length > SUMMARY_TEXT_LIMIT ? `${text.slice(0, SUMMARY_TEXT_LIMIT)}…` : text;
+}
+
+// summary 的前提是完整清单已经落进报告。报告写不成（越界 outDir、磁盘错误）时
+// 退回完整返回，并显式标出退回原因——不能让清单两头都拿不到。
+function effectiveLintFormat(requested, reportPath) {
+  return requested === 'summary' && !reportPath ? 'full' : requested;
+}
+
+function lintResponseBody(result, { format, requestedFormat, reportPath, runId }) {
+  if (format === 'summary') return lintSummary(result, { reportPath, runId });
+  return {
+    ...result,
+    ...(requestedFormat === 'summary'
+      ? { format: 'full', formatFallback: 'summary requested but the report file was not written; returning the full lint payload.' }
+      : {}),
+  };
 }
 
 // 宿主动作失败时，下层已经算好的 code 与真实文本必须保留，不得只报动作 ID。
@@ -336,10 +459,17 @@ function collapseTail(ranked, limit) {
 }
 
 module.exports = {
+  DEFAULT_LINT_FORMAT,
+  LINT_FORMATS,
+  MAX_FIRST_ERRORS,
   classifyLintErrors,
+  effectiveLintFormat,
   isLintShortCircuit,
   lintFailureHint,
   lintFailureMessage,
+  lintResponseBody,
+  lintSummary,
+  resolveLintFormat,
   observedGridDowngradeSentence,
   underlyingHostFailure,
   withoutLintSnapshot,

@@ -13,6 +13,11 @@ const { semanticModelToHtml } = require('../writers/html/visual-html-writer');
 const { writeReverseAuthorPackage } = require('../writers/html/author-package-writer');
 const { auditReverseAuthorPackage } = require('../writers/html/audit/reverse-roundtrip');
 const { resolveSemanticPreset } = require('../semantic-preset');
+const { createRunId, writeReportFile } = require('../shared/report-file');
+
+// 不经插件调用（scripts/indesign-reverse-export.js、e2e）时没有外部 runId，这里自己生成，
+// 保证 report.json 顶层永远带着可核对的运行标识。
+const DEFAULT_REPORT_TOOL = 'reverse-pipeline';
 
 function compileReverseSnapshotToHtml(options) {
   assertCompileOptions(options);
@@ -69,8 +74,13 @@ function compileReverseSnapshotToHtml(options) {
       && reconstructionPassedTrustedSourceGate(reconstruction.report),
     authorAudit,
   };
-  fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(finalReport, null, 2), 'utf8');
-  fs.writeFileSync(path.join(outDir, modeReportName), JSON.stringify(finalReport, null, 2), 'utf8');
+  // report.json 与 <mode>-report.json 是同一份内容，都走统一的报告入口（顶层 runId/generatedAt/tool）。
+  const reportRun = {
+    runId: options.runId || createRunId('reverse'),
+    tool: options.reportTool || DEFAULT_REPORT_TOOL,
+  };
+  writeReportFile(path.join(outDir, 'report.json'), finalReport, reportRun);
+  writeReportFile(path.join(outDir, modeReportName), finalReport, reportRun);
 
   return {
     ok: finalReport.ok,
@@ -93,6 +103,7 @@ function compileReverseSnapshotToHtml(options) {
       },
     },
     report: finalReport,
+    runId: reportRun.runId,
   };
 }
 
