@@ -119,13 +119,13 @@ function gridExemptionSentence(lint) {
     + ` via ${HTML_DATA_ID_ATTRIBUTES.GRID_IGNORE} (own or inherited).`;
 }
 
-// profile: reverse-export 把观察态对象的网格偏移降为提示，这种豁免同样不能隐身：
+// lintProfile: reverse-export 把观察态对象的网格偏移降为提示，这种豁免同样不能隐身：
 // 首条消息里点明本次降级了多少个对象，以及非观察态对象照常检查。
 function observedGridDowngradeSentence(lint) {
   const count = Number(lint && lint.gridObservedDowngradedCount) || 0;
   if (!count) return '';
-  const profile = (lint && lint.profile) || 'reverse-export';
-  return `Grid checks downgraded by profile ${profile}: ${count} observed object(s) are off-grid;`
+  const lintProfile = (lint && lint.lintProfile) || 'reverse-export';
+  return `Grid checks downgraded by lintProfile ${lintProfile}: ${count} observed object(s) are off-grid;`
     + ' their GRID_ALIGNMENT_OFF is listed in notices[] and not counted as errors.'
     + ' Objects without observed markers are still checked.';
 }

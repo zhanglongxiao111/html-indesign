@@ -1,6 +1,6 @@
 // #13 P2：从人做的 INDD 反向导出的包里，观察态对象大面积压不住网格（北小河一次 120 条
 // GRID_ALIGNMENT_OFF），Agent 只能批量贴 data-id-grid-ignore 把 lint 压绿。
-// profile: reverse-export 让观察态对象的网格偏移降为提示，但必须计数、必须留汇总警告，
+// lintProfile: reverse-export 让观察态对象的网格偏移降为提示，但必须计数、必须留汇总警告，
 // 且 Agent 新增或改写的对象照常检查。
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,14 +76,14 @@ function gridCodes(entries) {
   return entries.filter((entry) => entry.code === 'GRID_ALIGNMENT_OFF').map((entry) => entry.itemId);
 }
 
-test('profile 取值：默认 default，只接受登记的档位', () => {
+test('lintProfile 取值：默认 default，只接受登记的档位', () => {
   assert.deepEqual([...AUTHORING_LINT_PROFILE_NAMES], ['default', 'reverse-export']);
   assert.equal(DEFAULT_AUTHORING_LINT_PROFILE, 'default');
   assert.equal(resolveAuthoringLintProfile(undefined), 'default');
   assert.equal(resolveAuthoringLintProfile('reverse-export'), 'reverse-export');
   assert.throws(() => resolveAuthoringLintProfile('reverse'), (error) => error.code === 'INVALID_ARGS');
   assert.throws(
-    () => validateAuthoringRules(snapshotWithPage(), { profile: 'observation' }),
+    () => validateAuthoringRules(snapshotWithPage(), { lintProfile: 'observation' }),
     (error) => error.code === 'INVALID_ARGS',
   );
 });
@@ -94,9 +94,9 @@ test('reverse-export 下观察态对象的网格偏移降为提示，计数正�
     items: [observedText('obs-text'), observedShape('obs-shape')],
   });
 
-  const result = validateAuthoringRules(snapshot, { profile: 'reverse-export', gridTolerance: 0.5 });
+  const result = validateAuthoringRules(snapshot, { lintProfile: 'reverse-export', gridTolerance: 0.5 });
 
-  assert.equal(result.profile, 'reverse-export');
+  assert.equal(result.lintProfile, 'reverse-export');
   assert.equal(result.valid, true);
   assert.deepEqual(gridCodes(result.errors), []);
   assert.deepEqual(gridCodes(result.warnings), []);
@@ -119,6 +119,7 @@ test('reverse-export 下观察态对象的网格偏移降为提示，计数正�
   assert.equal(summary.length, 1);
   assert.equal(summary[0].count, 2);
   assert.equal(summary[0].strictBlocking, false);
+  assert.equal(summary[0].lintProfile, 'reverse-export');
   assert.match(summary[0].message, /grid checks for 2 observed object\(s\) were downgraded/);
 });
 
@@ -128,7 +129,7 @@ test('reverse-export + strict：观察态对象不被提升为 error，汇总警
     items: [observedText('obs-text'), observedShape('obs-shape')],
   });
 
-  const result = validateAuthoringRules(snapshot, { profile: 'reverse-export', strict: true, gridTolerance: 0.5 });
+  const result = validateAuthoringRules(snapshot, { lintProfile: 'reverse-export', strict: true, gridTolerance: 0.5 });
 
   assert.equal(result.valid, true);
   assert.deepEqual(result.errors, []);
@@ -143,12 +144,12 @@ test('reverse-export 下非观察态对象照常检查，strict 下照常提升�
     items: [observedShape('obs-shape'), agentShape('agent-card')],
   });
 
-  const loose = validateAuthoringRules(snapshot, { profile: 'reverse-export', gridTolerance: 0.5 });
+  const loose = validateAuthoringRules(snapshot, { lintProfile: 'reverse-export', gridTolerance: 0.5 });
   assert.deepEqual(gridCodes(loose.warnings), ['agent-card']);
   assert.equal(loose.gridOffCount, 1);
   assert.equal(loose.gridObservedDowngradedCount, 1);
 
-  const strict = validateAuthoringRules(snapshot, { profile: 'reverse-export', strict: true, gridTolerance: 0.5 });
+  const strict = validateAuthoringRules(snapshot, { lintProfile: 'reverse-export', strict: true, gridTolerance: 0.5 });
   assert.equal(strict.valid, false);
   assert.deepEqual(gridCodes(strict.errors), ['agent-card']);
   assert.equal(strict.errors.find((entry) => entry.itemId === 'agent-card').level, 'error');
@@ -160,14 +161,14 @@ test('观察态只认对象自身证据：观察页上不带 id-object 的对象
   const observedPage = validateAuthoringRules(snapshotWithPage({
     attributes: OBSERVATION_PAGE_ATTRS,
     items: [plainOnObservedPage],
-  }), { profile: 'reverse-export', gridTolerance: 0.5 });
+  }), { lintProfile: 'reverse-export', gridTolerance: 0.5 });
   assert.deepEqual(gridCodes(observedPage.warnings), ['plain']);
   assert.equal(observedPage.gridObservedDowngradedCount, 0);
 
   const structuredPage = validateAuthoringRules(snapshotWithPage({
     attributes: { 'data-id-margin': '10mm', 'data-id-grid': '4x2' },
     items: [observedShape('id-object-only')],
-  }), { profile: 'reverse-export', gridTolerance: 0.5 });
+  }), { lintProfile: 'reverse-export', gridTolerance: 0.5 });
   assert.deepEqual(gridCodes(structuredPage.warnings), ['id-object-only']);
   assert.equal(structuredPage.gridObservedDowngradedCount, 0);
 });
@@ -182,7 +183,7 @@ test('对象自身的观察标记与降级观察标签在任何页面上都算�
   ];
 
   const result = validateAuthoringRules(snapshotWithPage({ attributes: pageAttrs, items }), {
-    profile: 'reverse-export',
+    lintProfile: 'reverse-export',
     gridTolerance: 0.5,
   });
 
@@ -190,16 +191,16 @@ test('对象自身的观察标记与降级观察标签在任何页面上都算�
   assert.equal(result.gridObservedDowngradedCount, 4);
 });
 
-test('default profile 行为不变：观察态对象照常报 GRID_ALIGNMENT_OFF，strict 下提升为 error', () => {
+test('default lintProfile 行为不变：观察态对象照常报 GRID_ALIGNMENT_OFF，strict 下提升为 error', () => {
   const snapshot = snapshotWithPage({
     attributes: OBSERVATION_PAGE_ATTRS,
     items: [observedText('obs-text'), observedShape('obs-shape')],
   });
 
   const implicit = validateAuthoringRules(snapshot, { gridTolerance: 0.5 });
-  const explicit = validateAuthoringRules(snapshot, { profile: 'default', gridTolerance: 0.5 });
+  const explicit = validateAuthoringRules(snapshot, { lintProfile: 'default', gridTolerance: 0.5 });
   for (const result of [implicit, explicit]) {
-    assert.equal(result.profile, 'default');
+    assert.equal(result.lintProfile, 'default');
     assert.deepEqual(gridCodes(result.warnings), ['obs-text', 'obs-shape']);
     assert.equal(result.gridOffCount, 2);
     assert.equal(result.gridObservedDowngradedCount, 0);
@@ -222,7 +223,7 @@ test('reverse-export 不影响其他规则：观察页上的其他错误照常�
     }],
   });
 
-  const result = validateAuthoringRules(snapshot, { profile: 'reverse-export', strict: true });
+  const result = validateAuthoringRules(snapshot, { lintProfile: 'reverse-export', strict: true });
 
   const codes = result.errors.map((entry) => entry.code).sort();
   assert.deepEqual(codes, ['GRAPHIC_ASSET_REFERENCE_MISSING', 'PAGE_GRID_RULE_MISSING']);

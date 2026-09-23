@@ -17,7 +17,7 @@ const HTML_TEXT_NOT_CONVERTIBLE = 'HTML_TEXT_NOT_CONVERTIBLE';
 const TEXT_FIRST_LINE_CANNOT_FIT = 'TEXT_FIRST_LINE_CANNOT_FIT';
 const GRID_OBSERVED_DOWNGRADED = 'GRID_OBSERVED_DOWNGRADED';
 
-// lint profile：default 是作者包的完整规则；reverse-export 面向从人做的 INDD 反向导出的包，
+// lintProfile：default 是作者包的完整规则；reverse-export 面向从人做的 INDD 反向导出的包，
 // 只把「带观察态标记的对象」的 GRID_ALIGNMENT_OFF 降为提示（notices[]），其余规则不变。
 const AUTHORING_LINT_PROFILE = Object.freeze({
   DEFAULT: 'default',
@@ -29,7 +29,7 @@ const DEFAULT_AUTHORING_LINT_PROFILE = AUTHORING_LINT_PROFILE.DEFAULT;
 function resolveAuthoringLintProfile(value) {
   if (value === undefined || value === null || value === '') return DEFAULT_AUTHORING_LINT_PROFILE;
   if (AUTHORING_LINT_PROFILE_NAMES.includes(value)) return value;
-  const error = new Error(`INVALID_ARGS: lint profile must be one of ${AUTHORING_LINT_PROFILE_NAMES.join(', ')}, received: ${value}`);
+  const error = new Error(`INVALID_ARGS: lintProfile must be one of ${AUTHORING_LINT_PROFILE_NAMES.join(', ')}, received: ${value}`);
   error.code = 'INVALID_ARGS';
   throw error;
 }
@@ -40,8 +40,8 @@ function validateAuthoringRules(snapshot, options = {}) {
   const warnings = [];
   // 提示级条目：不进 errors/warnings，strict 不提升；靠计数 + 汇总警告保证不隐身。
   const notices = [];
-  const profile = resolveAuthoringLintProfile(options.profile);
-  const downgradeObservedGrid = profile === AUTHORING_LINT_PROFILE.REVERSE_EXPORT;
+  const lintProfile = resolveAuthoringLintProfile(options.lintProfile);
+  const downgradeObservedGrid = lintProfile === AUTHORING_LINT_PROFILE.REVERSE_EXPORT;
   let gridObservedDowngradedCount = 0;
   const gridTolerance = Number.isFinite(Number(options.gridTolerance)) ? Number(options.gridTolerance) : 1;
   // 豁免与偏差都计数：整包豁免不能静默通过，报告和遥测要看得见。
@@ -126,7 +126,7 @@ function validateAuthoringRules(snapshot, options = {}) {
         // 仍算"量过"（gridCheckedCount），但不进 gridOffCount，另计 gridObservedDowngradedCount。
         if (downgradeObservedGrid && isObservedReverseObject(item, page)) {
           gridObservedDowngradedCount += 1;
-          notices.push({ ...entry, level: 'info', observed: true, downgradedBy: profile });
+          notices.push({ ...entry, level: 'info', observed: true, downgradedBy: lintProfile });
           return;
         }
         gridOffCount += 1;
@@ -230,10 +230,10 @@ function validateAuthoringRules(snapshot, options = {}) {
         GRID_OBSERVED_DOWNGRADED,
         null,
         null,
-        observedGridDowngradeMessage(gridObservedDowngradedCount, profile),
+        observedGridDowngradeMessage(gridObservedDowngradedCount, lintProfile),
       ),
       strictBlocking: false,
-      profile,
+      lintProfile,
       count: gridObservedDowngradedCount,
     });
   }
@@ -253,7 +253,7 @@ function validateAuthoringRules(snapshot, options = {}) {
     warnings: resultWarnings,
     messages: resultErrors.concat(resultWarnings),
     notices,
-    profile,
+    lintProfile,
     gridObservedDowngradedCount,
     gridIgnoredCount,
     gridOffCount,
@@ -504,7 +504,7 @@ function isObservedReverseTextItem(item) {
     || attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE) === 'observation';
 }
 
-// reverse-export profile 的观察态判定只认对象自身的证据，不因页面带观察标记就整页放行：
+// lintProfile reverse-export 的观察态判定只认对象自身的证据，不因页面带观察标记就整页放行：
 // Agent 在观察页上新增或改写的对象照常量网格。
 //   1. 对象自身：observed-text 类、data-id-observed="true"、data-id-reverse-mode="observation"；
 //   2. 对象带 data-id-observed-label-status（标签复核未通过、降级为观察标签）；
@@ -523,8 +523,8 @@ function isObservationPage(page) {
     || attributeValue(attrs, HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE) === 'observation';
 }
 
-function observedGridDowngradeMessage(count, profile) {
-  return `Profile ${profile}: grid checks for ${count} observed object(s) were downgraded — their GRID_ALIGNMENT_OFF `
+function observedGridDowngradeMessage(count, lintProfile) {
+  return `lintProfile ${lintProfile}: grid checks for ${count} observed object(s) were downgraded — their GRID_ALIGNMENT_OFF `
     + 'is reported as info in notices[], not counted as warnings or errors, and not promoted by strict. '
     + 'Objects without observed markers (added or rewritten by the author) are still checked.';
 }

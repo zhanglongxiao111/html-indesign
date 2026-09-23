@@ -13,7 +13,7 @@ async function call(args, context) {
     packagePath,
     strict,
     gridTolerance: args.gridTolerance,
-    profile: args.profile,
+    lintProfile: args.lintProfile,
   });
   const lintMs = Date.now() - lintStartedAt;
 

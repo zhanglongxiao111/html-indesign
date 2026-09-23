@@ -19,13 +19,13 @@ async function main() {
       packagePath: options.packagePath,
       strict: options.strict,
       gridTolerance: options.gridTolerance,
-      profile: options.profile,
+      lintProfile: options.lintProfile,
     })
     : await lintAuthoringHtml({
       htmlPath: options.html,
       strict: options.strict,
       gridTolerance: options.gridTolerance,
-      profile: options.profile,
+      lintProfile: options.lintProfile,
     });
 
   if (options.json) {
@@ -45,7 +45,7 @@ function parseArgs(args) {
     json: false,
     help: false,
     gridTolerance: undefined,
-    profile: undefined,
+    lintProfile: undefined,
   };
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -59,8 +59,8 @@ function parseArgs(args) {
     else if (arg.startsWith('--html=')) out.html = arg.slice('--html='.length);
     else if (arg === '--grid-tolerance') out.gridTolerance = Number(args[index += 1]);
     else if (arg.startsWith('--grid-tolerance=')) out.gridTolerance = Number(arg.slice('--grid-tolerance='.length));
-    else if (arg === '--profile') out.profile = args[index += 1];
-    else if (arg.startsWith('--profile=')) out.profile = arg.slice('--profile='.length);
+    else if (arg === '--lint-profile') out.lintProfile = args[index += 1];
+    else if (arg.startsWith('--lint-profile=')) out.lintProfile = arg.slice('--lint-profile='.length);
     else if (!out.html) out.html = arg;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -79,7 +79,7 @@ function printUsage(exitCode) {
     '  --strict                 Treat authoring warnings as errors.',
     '  --json                   Print machine-readable validation output.',
     '  --grid-tolerance <mm>    Edge alignment tolerance in millimeters. Defaults to 1.',
-    '  --profile <name>         Lint profile: default | reverse-export. reverse-export downgrades',
+    '  --lint-profile <name>    Lint profile: default | reverse-export. reverse-export downgrades',
     '                           GRID_ALIGNMENT_OFF on observed reverse-export objects to notices.',
   ].join('\n');
   const writer = exitCode ? console.error : console.log;
@@ -98,7 +98,7 @@ function printHumanReport(result) {
   console.log(`Warnings: ${result.warningCount}`);
   console.log(`Normalized: ${result.normalizedCount || 0}`);
   if (result.gridObservedDowngradedCount) {
-    console.log(`Profile ${result.profile}: ${result.gridObservedDowngradedCount} observed object(s) grid-downgraded to notices`);
+    console.log(`lintProfile ${result.lintProfile}: ${result.gridObservedDowngradedCount} observed object(s) grid-downgraded to notices`);
   }
   for (const entry of result.messages || []) {
     const item = entry.itemId ? ` item=${entry.itemId}` : '';

@@ -55,7 +55,7 @@ async function call(args, context) {
     packagePath,
     strict: true,
     gridTolerance: args.gridTolerance,
-    profile: args.profile,
+    lintProfile: args.lintProfile,
     includeSnapshot: true,
   });
   const lintMs = Date.now() - lintStartedAt;
@@ -221,7 +221,7 @@ async function call(args, context) {
     timings: { lintMs, compileMs },
     sizeMetrics,
     lintCounts,
-    lintProfile: lint.profile,
+    lintProfile: lint.lintProfile,
     compatibility: compile.compatibility || lint.compatibility,
     preRunDeliverables,
     stageStartedAt: Date.now(),
@@ -880,12 +880,12 @@ function collectMetrics(state, extra) {
   });
 }
 
-// profile: reverse-export 的网格降级在构建通过时也要看得见，不能只藏在 metrics 里。
+// lintProfile: reverse-export 的网格降级在构建通过时也要看得见，不能只藏在 metrics 里。
 function observedGridDowngradeWarnings(state) {
   const lintCounts = state.lintCounts || {};
   const message = observedGridDowngradeSentence({
     gridObservedDowngradedCount: lintCounts.gridObservedDowngradedCount,
-    profile: state.lintProfile,
+    lintProfile: state.lintProfile,
   });
   return message ? [{ code: 'GRID_OBSERVED_DOWNGRADED', message }] : [];
 }
