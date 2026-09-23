@@ -3,6 +3,8 @@ const {
   DEFAULT_RECONSTRUCTION_PROFILE,
   RECONSTRUCTION_PROFILE_NAMES,
 } = require('../semantic-reconstruction');
+const { AUTHORING_LINT_PROFILE_NAMES, DEFAULT_AUTHORING_LINT_PROFILE } = require('../authoring');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 
 const tools = [
   {
@@ -10,7 +12,7 @@ const tools = [
     domain: 'html',
     name: '作者包规则检查',
     one_line_purpose: '检查固定分页 HTML 作者源码包是否满足项目作者规范。',
-    arg_names: ['package', 'strict', 'gridTolerance', 'outDir'],
+    arg_names: ['package', 'strict', 'gridTolerance', 'outDir', 'lintProfile'],
     rank: 10,
     schema_size: 'small',
     callable: true,
@@ -94,7 +96,7 @@ const tools = [
     one_line_purpose: '严格检查作者包，构建 INDD/PDF/IDML，并核对真实 InDesign 内容是否忠于 HTML。',
     arg_names: [
       'package', 'outDir', 'targetSize', 'unitMode', 'outputBaseName', 'mode',
-      'exportPdf', 'exportIdml', 'timeout', 'gridTolerance',
+      'exportPdf', 'exportIdml', 'timeout', 'gridTolerance', 'lintProfile',
     ],
     rank: 30,
     schema_size: 'medium',
@@ -162,6 +164,22 @@ const tools = [
   },
 ];
 
+// html.authoring_lint 与 html.build_indesign 共用：build 内部也跑同一套 strict lint，
+// 两个入口的 lintProfile 口径必须一致，否则 lint 过了 build 仍会被同一批观察态对象拦下。
+// 命名与 reconstructionProfile 一致；刻意不叫 profile，避免与 deck.config.json 的语义 profile 混淆。
+const LINT_PROFILE_SCHEMA = {
+  type: 'string',
+  enum: [...AUTHORING_LINT_PROFILE_NAMES],
+  default: DEFAULT_AUTHORING_LINT_PROFILE,
+  description: 'lint 规则档位（不是 deck.config.json 的语义 profile）。default 为完整作者规则。'
+    + 'reverse-export 用于从人做的 INDD 反向导出的作者包：带观察态标记的对象（observed-text 类、'
+    + `${HTML_DATA_ID_ATTRIBUTES.OBSERVED} / ${HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE}="observation"、`
+    + `${HTML_DATA_ID_ATTRIBUTES.OBSERVED_LABEL_STATUS}，`
+    + '或 observation 页上的 id-object 对象）的 GRID_ALIGNMENT_OFF 降为提示，列在 notices[]，'
+    + '不计 error、strict 也不提升，并由 gridObservedDowngradedCount 与一条 GRID_OBSERVED_DOWNGRADED 警告显式报告；'
+    + 'Agent 新增或改写、不带观察态标记的对象照常检查，其余规则不变。不会根据包内容自动启用。',
+};
+
 const schemas = {
   'html.authoring_lint': {
     type: 'object',
@@ -192,6 +210,7 @@ const schemas = {
           + '路径同时回在 data.reportPath / error.details.reportPath 与 artifacts 上；'
           + '省略时只有失败才写，落到作者包根目录下的 .indesign-cli/。',
       },
+      lintProfile: LINT_PROFILE_SCHEMA,
     },
   },
   'html.compile_instructions': {
@@ -247,6 +266,7 @@ const schemas = {
           + '块内内容不查，改由承担放置的块负责；没有放置祖先的条目仍逐条量。'
           + '条目自带 edgeOffsets 与 suggestedFix。放宽容差只用于确认版式正确后的取整误差，不要用它盖住真实偏差。',
       },
+      lintProfile: LINT_PROFILE_SCHEMA,
     },
   },
   'html.reverse_export': {

@@ -1,6 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const { auditHtmlCompatibility, renderSnapshot, validateAuthoringRules } = require('../adapters/html');
+const {
+  AUTHORING_LINT_PROFILE_NAMES,
+  DEFAULT_AUTHORING_LINT_PROFILE,
+  auditHtmlCompatibility,
+  renderSnapshot,
+  resolveAuthoringLintProfile,
+  validateAuthoringRules,
+} = require('../adapters/html');
 const {
   auditAuthorPackageSourceFormat,
   authorPackageReassemblyHint,
@@ -17,6 +24,8 @@ const { auditStaticAuthoringRuntime } = require('./static-runtime-audit');
 
 async function lintAuthoringPackage(options = {}) {
   const packagePath = path.resolve(requiredPath(options.packagePath, 'packagePath'));
+  // 非法 lintProfile 在读包之前就拒绝：不能带着没生效的参数跑出一份看似正常的结果。
+  const lintProfile = resolveAuthoringLintProfile(options.lintProfile);
   let sourcePackage;
   try {
     sourcePackage = readAuthorPackage(packagePath);
@@ -35,6 +44,7 @@ async function lintAuthoringPackage(options = {}) {
     return normalizeLintPayload(packageFailure(sourceFormat, null, null, semanticPreset), {
       packagePath,
       htmlPath: null,
+      lintProfile,
     });
   }
 
@@ -49,6 +59,7 @@ async function lintAuthoringPackage(options = {}) {
     }, null, semanticPreset), {
       packagePath,
       htmlPath: packageCheck.entryPath,
+      lintProfile,
     });
   }
 
@@ -61,6 +72,7 @@ async function lintAuthoringPackage(options = {}) {
     return normalizeLintPayload(packageFailure(sourceFormat, null, semanticAudit, semanticPreset), {
       packagePath,
       htmlPath: packageCheck.entryPath,
+      lintProfile,
     });
   }
 
@@ -68,6 +80,7 @@ async function lintAuthoringPackage(options = {}) {
     htmlPath: packageCheck.entryPath,
     strict: options.strict,
     gridTolerance: options.gridTolerance,
+    lintProfile,
     includeSnapshot: options.includeSnapshot,
   });
 
@@ -88,6 +101,9 @@ async function lintAuthoringPackage(options = {}) {
     semanticPreset,
     semanticAudit,
     compatibility: htmlResult.compatibility,
+    lintProfile,
+    notices: htmlResult.notices || [],
+    gridObservedDowngradedCount: htmlResult.gridObservedDowngradedCount || 0,
     gridIgnoredCount: htmlResult.gridIgnoredCount || 0,
     gridOffCount: htmlResult.gridOffCount || 0,
     gridBlockOffCount: htmlResult.gridBlockOffCount || 0,
@@ -108,6 +124,7 @@ async function lintAuthoringPackage(options = {}) {
 
 async function lintAuthoringHtml(options = {}) {
   const htmlPath = path.resolve(requiredPath(options.htmlPath, 'htmlPath'));
+  const lintProfile = resolveAuthoringLintProfile(options.lintProfile);
   if (!fs.existsSync(htmlPath)) {
     const error = new Error(`HTML_NOT_FOUND: ${htmlPath}`);
     error.code = 'HTML_NOT_FOUND';
@@ -127,13 +144,14 @@ async function lintAuthoringHtml(options = {}) {
       runtimeAudit,
       errors: dataIdAudit.errors.concat(runtimeAudit.errors),
       warnings: dataIdAudit.warnings.concat(runtimeAudit.warnings),
-    }, { htmlPath });
+    }, { htmlPath, lintProfile });
   }
   const snapshot = options.snapshot || await renderSnapshot({ htmlPath });
   const compatibility = auditHtmlCompatibility(snapshot);
   const result = withCompatibility(withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
+    lintProfile,
   }), dataIdAudit), compatibility);
 
   return normalizeLintPayload({
@@ -199,6 +217,9 @@ function normalizeLintPayload(payload, paths = {}) {
     errorCount: errors.length,
     warningCount: warnings.length,
     normalizedCount: normalized.length,
+    lintProfile: payload.lintProfile || paths.lintProfile || DEFAULT_AUTHORING_LINT_PROFILE,
+    notices: Array.isArray(payload.notices) ? payload.notices : [],
+    gridObservedDowngradedCount: Number(payload.gridObservedDowngradedCount) || 0,
     gridIgnoredCount: Number(payload.gridIgnoredCount) || 0,
     gridOffCount: Number(payload.gridOffCount) || 0,
     gridBlockOffCount: Number(payload.gridBlockOffCount) || 0,
@@ -312,6 +333,8 @@ function publicSemanticPresetMetadata(resolvedPreset) {
 }
 
 module.exports = {
+  AUTHORING_LINT_PROFILE_NAMES,
+  DEFAULT_AUTHORING_LINT_PROFILE,
   lintAuthoringHtml,
   lintAuthoringPackage,
   normalizeLintPayload,
