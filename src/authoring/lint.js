@@ -3,6 +3,7 @@ const path = require('path');
 const {
   AUTHORING_LINT_PROFILE_NAMES,
   DEFAULT_AUTHORING_LINT_PROFILE,
+  GRID_OBSERVED_DOWNGRADED,
   auditHtmlCompatibility,
   renderSnapshot,
   resolveAuthoringLintProfile,
@@ -335,6 +336,7 @@ function publicSemanticPresetMetadata(resolvedPreset) {
 module.exports = {
   AUTHORING_LINT_PROFILE_NAMES,
   DEFAULT_AUTHORING_LINT_PROFILE,
+  GRID_OBSERVED_DOWNGRADED,
   lintAuthoringHtml,
   lintAuthoringPackage,
   normalizeLintPayload,

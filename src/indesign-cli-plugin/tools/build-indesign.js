@@ -3,7 +3,7 @@ const path = require('node:path');
 
 const { reverseSnapshotToSemanticModel } = require('../../adapters/indesign');
 const { auditHtmlCompatibility } = require('../../adapters/html');
-const { lintAuthoringPackage, readAuthorPackage } = require('../../authoring');
+const { GRID_OBSERVED_DOWNGRADED, lintAuthoringPackage, readAuthorPackage } = require('../../authoring');
 const { auditForwardFidelity } = require('../../semantic-model');
 const { resolveSemanticPreset } = require('../../semantic-preset');
 const { compileAuthoringPackage } = require('./compile-instructions');
@@ -955,7 +955,7 @@ function observedGridDowngradeWarnings(state) {
     gridObservedDowngradedCount: lintCounts.gridObservedDowngradedCount,
     lintProfile: state.lintProfile,
   });
-  return message ? [{ code: 'GRID_OBSERVED_DOWNGRADED', message }] : [];
+  return message ? [{ code: GRID_OBSERVED_DOWNGRADED, message }] : [];
 }
 
 function buildMetrics(values) {

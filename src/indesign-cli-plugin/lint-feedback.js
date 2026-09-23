@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const { isPathInside, writeReportFile } = require('../shared');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
+const { GRID_OBSERVED_DOWNGRADED } = require('../authoring');
 
 const MAX_LISTED_CODES = 3;
 const CONCENTRATION_RATIO = 0.8;
@@ -219,8 +220,6 @@ const LINT_FORMATS = Object.freeze(['summary', 'full']);
 const DEFAULT_LINT_FORMAT = 'summary';
 const MAX_FIRST_ERRORS = 3;
 const MAX_TOP_CODES = 5;
-// 与 authoring-validator 的汇总警告 code 同名（build-indesign 构建通过时也用这个 code）。
-const GRID_OBSERVED_DOWNGRADED_CODE = 'GRID_OBSERVED_DOWNGRADED';
 const SUMMARY_TEXT_LIMIT = 500;
 
 function resolveLintFormat(value) {
@@ -256,7 +255,7 @@ function lintSummary(lint, extra = {}) {
 }
 
 function observedDowngradeNotice(warnings) {
-  const entry = warnings.find((warning) => warning.code === GRID_OBSERVED_DOWNGRADED_CODE);
+  const entry = warnings.find((warning) => warning.code === GRID_OBSERVED_DOWNGRADED);
   if (!entry) return null;
   return {
     code: entry.code,
