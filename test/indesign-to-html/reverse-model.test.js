@@ -676,6 +676,50 @@ test('reverseSnapshotToSemanticModel throws when normalized output contains an u
   assert.match(error.message, /items\[\]\.visualStyle\.adapterGhostVisualFact/);
 });
 
+test('reverseSnapshotToSemanticModel keeps registered gradient facts beside first-stop colors (#9)', () => {
+  const fillGradient = {
+    type: 'linear',
+    angle: 0,
+    stops: [{ color: '#ff0000', location: 0 }, { color: '#0000ff', location: 100 }],
+  };
+  const strokeGradient = { ...fillGradient, type: 'radial' };
+  const model = reverseSnapshotToSemanticModel({
+    metadata: { sourceDocument: 'gradient.indd', mode: 'observation' },
+    document: {
+      name: 'gradient.indd',
+      labels: [{ protocol: 'html-indesign', version: 1, kind: 'document', id: 'gradient-doc' }],
+    },
+    pages: [
+      {
+        id: '1',
+        index: 0,
+        labels: [{ protocol: 'html-indesign', version: 1, kind: 'page', id: 'page-1' }],
+        bounds: { x: 0, y: 0, width: 800, height: 450 },
+        items: [
+          {
+            id: 'shape-1',
+            type: 'Rectangle',
+            bounds: { x: 40, y: 50, width: 120, height: 80 },
+            visualStyle: {
+              fillColor: '#ff0000',
+              strokeColor: '#ff0000',
+              strokeWeight: 2,
+              fillGradient,
+              strokeGradient,
+            },
+            labels: [{ protocol: 'html-indesign', version: 1, kind: 'item', id: 'shape-1', role: 'shape' }],
+          },
+        ],
+      },
+    ],
+  }, { mode: 'observation' });
+
+  const item = model.pages[0].items[0];
+  assert.equal(item.visualStyle.fillColor, '#ff0000');
+  assert.deepEqual(item.visualStyle.fillGradient, fillGradient);
+  assert.deepEqual(item.visualStyle.strokeGradient, strokeGradient);
+});
+
 test('reverseSnapshotToSemanticModel exit rejects root, page, and item ghost fields with full strict validation', () => {
   const error = captureThrow(() => withIndesignExitValidatorProbe((adapter) => adapter.reverseSnapshotToSemanticModel({
     metadata: { sourceDocument: 'ghost-fields.indd', mode: 'observation' },

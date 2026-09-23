@@ -872,3 +872,144 @@ test('core JSON reader opens instruction files as UTF-8', () => {
   assert.match(source, /MeasurementUnits\.MILLIMETERS/);
   assert.match(source, /MeasurementUnits\.POINTS/);
 });
+
+// ExtendScript 解释器缺陷（issue #9）：对 InDesign DOM 对象上不存在的属性写
+// if (!o.p) / return !o.p / !o.p ? a : b / while (!o.p)（含 a || !o.p 这类链式条件），
+// 报错会绕过同一函数里的 try/catch；var v = o.p; if (!v) 能被正常接住。
+// 因此 JSX 里对「标识符.属性」取反后直接用于判断、return 或三元时，一律先落到变量再取反。
+// 例外只允许普通 JS 值（instruction JSON、JS 数组、HI 命名空间）和 ExtendScript File，按文件逐个登记接收者。
+const NEGATED_MEMBER_GLOBAL_RECEIVERS = Object.freeze({
+  HI: 'HI 命名空间是普通 JS 对象，不是 InDesign DOM',
+});
+const NEGATED_MEMBER_ALLOWED_RECEIVERS = Object.freeze({
+  'build_from_instructions.jsx': { lib: 'ExtendScript File，exists 在所有 File 上都存在' },
+  'export_to_html_snapshot.jsx': { lib: 'ExtendScript File，exists 在所有 File 上都存在' },
+  'hi_assets.jsxinc': { file: 'ExtendScript File', items: '图层名 JS 数组，已先做 typeof length 检查' },
+  'hi_composite_fonts.jsxinc': { def: 'instruction 里的复合字体定义 JSON', familyFaces: 'JS 数组' },
+  'hi_core.jsxinc': { file: 'ExtendScript File' },
+  'hi_document.jsxinc': { ordered: 'JS 数组' },
+  'hi_fonts.jsxinc': { index: '字体索引普通对象' },
+  'hi_items.jsxinc': {
+    runs: 'instruction 文本 run 数组',
+    textFrameStyle: 'instruction textFrameStyle JSON',
+    vector: 'instruction vectorGeometry JSON',
+    context: '构建上下文普通对象',
+  },
+  'hi_parent_pages.jsxinc': {
+    nestedSpec: 'instruction 母版定义 JSON',
+    spec: 'instruction 母版定义 JSON',
+    context: '构建上下文普通对象',
+  },
+  'hi_reverse.jsxinc': {
+    items: 'HI.collectionElements 返回的 JS 数组',
+    raw: 'HI.collectionElements 返回的 JS 数组',
+    paths: '反向矢量路径 JS 数组',
+    context: '预览导出上下文普通对象',
+  },
+  'hi_reverse_effects.jsxinc': { stops: '不透明度色标 JS 数组' },
+  'hi_tables.jsxinc': {
+    rows: 'instruction 表格行 JSON',
+    cells: 'instruction 单元格 JSON',
+    rowDef: 'instruction 单元格 JSON',
+  },
+  'hi_text_fit.jsxinc': { item: 'instruction item JSON（textFit 配置）' },
+});
+// extract_blueprint.jsx 是冻结的历史 blueprint 抽取脚本，不在当前构建 / 反向导出路径；_debug/ 不随包发布。
+const NEGATED_MEMBER_EXCLUDED_SCRIPTS = Object.freeze(['extract_blueprint.jsx']);
+
+function negatedDomMemberUsages(source) {
+  const findings = [];
+  const identifier = '[A-Za-z_$][\\w$]*';
+  const chain = `${identifier}(?:\\s*\\.\\s*${identifier}|\\s*\\[[^\\]\\n]*\\])+`;
+  const patterns = [
+    new RegExp(`!\\s*(${chain})(?!\\s*[\\w$.\\[(])`, 'g'),
+    new RegExp(`!\\s*\\(\\s*(${chain})\\s*\\)`, 'g'),
+  ];
+  source.split(/\r?\n/).forEach((rawLine, index) => {
+    const line = rawLine.replace(/\/\/.*$/, '').replace(/"(?:[^"\\]|\\.)*"/g, '""');
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(line))) {
+        const expression = match[1].replace(/\s+/g, '');
+        // 只管「标识符.属性」；纯下标访问（visited[key]、out[a.b]）是普通 JS 查表。
+        if (!expression.replace(/\[[^\]]*\]/g, '[]').includes('.')) continue;
+        if (!isConditionalUse(line, match.index, match.index + match[0].length)) continue;
+        findings.push({ line: index + 1, receiver: expression.split(/[.[]/)[0], expression, text: rawLine.trim() });
+      }
+    }
+  });
+  return findings;
+}
+
+function isConditionalUse(line, start, end) {
+  const statementStart = Math.max(line.lastIndexOf(';', start), line.lastIndexOf('{', start), line.lastIndexOf('}', start)) + 1;
+  const before = line.slice(statementStart, start);
+  if (/\breturn\b/.test(before)) return true;
+  const keyword = /\b(?:if|while)\s*\(/g;
+  let last = null;
+  let found;
+  while ((found = keyword.exec(before))) last = found;
+  if (last) {
+    const inside = before.slice(last.index + last[0].length);
+    const depth = (inside.match(/\(/g) || []).length - (inside.match(/\)/g) || []).length;
+    if (depth >= 0) return true;
+  }
+  const rest = line.slice(end);
+  const statementEnd = rest.indexOf(';');
+  return /\?/.test(statementEnd >= 0 ? rest.slice(0, statementEnd) : rest);
+}
+
+test('negated DOM member guard recognises the ExtendScript try/catch bypass forms', () => {
+  for (const bad of [
+    'if (!color.colorValue) return null;',
+    'if (!(color.colorValue)) return null;',
+    'if (!color || !color.isValid) return null;',
+    'if (a && !graphic.graphicLayerOptions) return out;',
+    'return !frame.overflows;',
+    'var kind = !color.colorValue ? "a" : "b";',
+    'while (!item.parent.isValid) { break; }',
+  ]) {
+    assert.equal(negatedDomMemberUsages(bad).length, 1, bad);
+  }
+  for (const ok of [
+    'var v = HI.reverseSafeProperty(color, "colorValue"); if (!v || !(v.length > 0)) return null;',
+    'var missing = !color.colorValue;',
+    'if (!HI.isTextFrame(item)) return null;',
+    'if (!graphic.getElements()) return null;',
+    'if (!visited[name]) visited[name] = true;',
+    '// if (!o.p) 只在注释里',
+    'if (x) y = !o.p;',
+  ]) {
+    assert.deepEqual(negatedDomMemberUsages(ok), [], ok);
+  }
+});
+
+test('JSX libs never negate DOM member expressions directly in conditions, returns or ternaries', () => {
+  const scripts = fs.readdirSync(path.join(root, '_indesign_scripts'))
+    .filter((name) => name.endsWith('.jsx') && !NEGATED_MEMBER_EXCLUDED_SCRIPTS.includes(name))
+    .map((name) => path.join(root, '_indesign_scripts', name));
+  const libs = fs.readdirSync(libDir)
+    .filter((name) => name.endsWith('.jsxinc'))
+    .map((name) => path.join(libDir, name));
+  const violations = [];
+  const usedAllowances = new Set();
+  for (const filePath of [...scripts, ...libs]) {
+    const fileName = path.basename(filePath);
+    const allowed = NEGATED_MEMBER_ALLOWED_RECEIVERS[fileName] || {};
+    for (const finding of negatedDomMemberUsages(fs.readFileSync(filePath, 'utf8'))) {
+      if (Object.prototype.hasOwnProperty.call(NEGATED_MEMBER_GLOBAL_RECEIVERS, finding.receiver)) continue;
+      if (Object.prototype.hasOwnProperty.call(allowed, finding.receiver)) {
+        usedAllowances.add(`${fileName}:${finding.receiver}`);
+        continue;
+      }
+      violations.push(`${fileName}:${finding.line} ${finding.expression} -> ${finding.text}`);
+    }
+  }
+  assert.deepEqual(violations, [], 'assign DOM properties to a variable (or use HI.reverseSafeProperty) before negating them');
+
+  const staleAllowances = Object.entries(NEGATED_MEMBER_ALLOWED_RECEIVERS)
+    .flatMap(([fileName, receivers]) => Object.keys(receivers).map((receiver) => `${fileName}:${receiver}`))
+    .filter((key) => !usedAllowances.has(key));
+  assert.deepEqual(staleAllowances, [], 'remove allowlist entries that no longer match any usage');
+});

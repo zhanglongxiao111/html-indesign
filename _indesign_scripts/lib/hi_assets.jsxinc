@@ -81,8 +81,10 @@ HI.applyPlacedGraphicLayerOptions = function (frame, placed, report, asset) {
     if (!visible && !hidden) return;
     try {
         var graphic = frame.allGraphics && frame.allGraphics.length ? frame.allGraphics[0] : null;
-        if (!graphic || !graphic.graphicLayerOptions) return;
-        var layers = graphic.graphicLayerOptions.graphicLayers;
+        if (!graphic) return;
+        var layerOptions = graphic.graphicLayerOptions;
+        if (!layerOptions) return;
+        var layers = layerOptions.graphicLayers;
         for (var i = 0; i < layers.length; i++) {
             var layer = layers[i];
             var name = String(layer.name || "");

@@ -1,7 +1,7 @@
 if (typeof HI === "undefined") HI = {};
 
 HI.resolveTextFrameOverflow = function (report, frame, item) {
-    if (!frame || !frame.overflows || !item || !item.textFit) return false;
+    if (!frame || !item || !item.textFit || !HI.textFrameOverflows(frame)) return false;
     if (item.textFit.mode !== "expand-frame-to-content") return false;
 
     var original = null;
@@ -35,7 +35,7 @@ HI.resolveTextFrameOverflow = function (report, frame, item) {
 
     var growX = Math.max(0, HI.boundsWidth(fitted) - HI.boundsWidth(original));
     var growY = Math.max(0, HI.boundsHeight(fitted) - HI.boundsHeight(original));
-    if (growX <= maxGrowX + tolerance && growY <= maxGrowY + tolerance && !frame.overflows) {
+    if (growX <= maxGrowX + tolerance && growY <= maxGrowY + tolerance && !HI.textFrameOverflows(frame)) {
         HI.addMessage(report, "info", "TEXT_FIT_APPLIED", "Text frame expanded to avoid overset", {
             itemId: item.id || null,
             originalBounds: HI.boundsArray(original),
@@ -71,7 +71,7 @@ HI.applyTextFitWidthFirst = function (report, frame, item, original, maxGrowX, t
     for (var growX = step; growX <= limitX + tolerance; growX += step) {
         var bounds = HI.textFitWidthBounds(original, growX, anchor);
         try { frame.geometricBounds = bounds; } catch (_) {}
-        if (!frame.overflows) {
+        if (!HI.textFrameOverflows(frame)) {
             HI.addMessage(report, "info", "TEXT_FIT_WIDTH_APPLIED", "Single-line text frame width expanded to avoid overset", {
                 itemId: item.id || null,
                 originalBounds: HI.boundsArray(original),
@@ -117,7 +117,7 @@ HI.applyTextFitNudge = function (report, frame, item, original, maxGrowX, maxGro
             ];
             lastBounds = bounds;
             try { frame.geometricBounds = bounds; } catch (_) {}
-            if (!frame.overflows) {
+            if (!HI.textFrameOverflows(frame)) {
                 HI.addMessage(report, "info", "TEXT_FIT_NUDGE_APPLIED", "Text frame expanded by a small bounded nudge to avoid overset", {
                     itemId: item.id || null,
                     originalBounds: HI.boundsArray(original),
@@ -165,3 +165,6 @@ HI.boundsHeight = function (bounds) {
 HI.boundsArray = function (bounds) {
     return [Number(bounds[0]), Number(bounds[1]), Number(bounds[2]), Number(bounds[3])];
 };
+
+// Read into a variable before negating: ExtendScript lets if (!domObject.prop) errors escape try/catch (#9).
+HI.textFrameOverflows = function (frame) { var overflows = frame.overflows; return overflows === true; };
