@@ -7,10 +7,9 @@ const { lintAuthoringPackage, readAuthorPackage } = require('../../authoring');
 const { auditForwardFidelity } = require('../../semantic-model');
 const { resolveSemanticPreset } = require('../../semantic-preset');
 const { compileAuthoringPackage } = require('./compile-instructions');
-const { isPathInside } = require('../../shared');
+const { isPathInside, supersedeReports, writeReportFile } = require('../../shared');
 const { ensureOutputDir, getCwd, getPluginRoot, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
-const { supersedeReports, writeReportFile } = require('../report-archive');
 const { runIdOf } = require('../run-context');
 const {
   effectiveLintFormat,
@@ -131,8 +130,9 @@ async function call(args, context) {
   }
 
   // 作者包下 .indesign-cli/ 里若躺着上一次 lint 失败留下的报告，本次严格检查已通过，
-  // 用本次结果盖掉；那里本来没有就不写。
-  writeLintReport(withoutLintSnapshot(lint), {
+  // 用本次结果盖掉；那里本来没有就不写。盖不掉不中断构建（成品不受影响），
+  // 但旧的失败报告还留在原位，必须以警告带回，不能静默。
+  const fallbackLintReport = writeLintReport(withoutLintSnapshot(lint), {
     cwd: context && context.cwd,
     packagePath,
     runId,
@@ -260,6 +260,7 @@ async function call(args, context) {
     sizeMetrics,
     lintCounts,
     lintProfile: lint.lintProfile,
+    reportWarnings: staleLintReportWarnings(fallbackLintReport),
     compatibility: compile.compatibility || lint.compatibility,
     preRunDeliverables,
     stageStartedAt: Date.now(),
@@ -412,6 +413,7 @@ function cleanupThenError(state, error) {
         + '可离线复查的中间产物（instructions、读回快照、保真报告）保留在 intermediateDir。',
       intermediateDir: state.runDir || null,
       ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
+      ...(state.reportWarnings && state.reportWarnings.length ? { reportWarnings: state.reportWarnings } : {}),
       metrics: collectMetrics(state),
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
@@ -508,6 +510,7 @@ function completeResult(state) {
           message: 'Draft mode skipped the built-document fidelity check and is not a verified delivery.',
         }]),
         ...observedGridDowngradeWarnings(state),
+        ...(state.reportWarnings || []),
       ],
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
@@ -932,6 +935,17 @@ function collectMetrics(state, extra) {
     compatibility_blocked: compatibility.blocked,
     ...(extra || {}),
   });
+}
+
+function staleLintReportWarnings(result) {
+  if (!result || !result.error) return [];
+  const reportPath = result.attemptedPath || null;
+  return [{
+    code: 'STALE_LINT_REPORT_NOT_REPLACED',
+    message: `本次严格检查已通过，但未能用本次结果覆盖作者包下的旧 lint 报告${reportPath ? ` ${reportPath}` : ''}：`
+      + `${result.error}。该文件仍是上一轮的内容，不要据此判断本次结果。`,
+    details: { reportPath, error: result.error },
+  }];
 }
 
 // lintProfile: reverse-export 的网格降级在构建通过时也要看得见，不能只藏在 metrics 里。

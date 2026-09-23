@@ -7,7 +7,7 @@ const { authorPackageReassemblyHint, checkAuthorPackageEntry, readAuthorPackage 
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../../semantic-preset');
 const { resolveProjectPath, ensureOutputDir } = require('../path-policy');
 const { artifact } = require('../artifacts');
-const { writeReportFile } = require('../report-archive');
+const { writeReportFile } = require('../../shared');
 const { runIdOf } = require('../run-context');
 
 const TOOL_ID = 'html.compile_instructions';

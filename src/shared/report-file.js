@@ -1,4 +1,6 @@
-// 插件报告的唯一写入口：lint 报告、保真报告、编译摘要都从这里落盘。
+// 运行报告的唯一写入口：插件的 lint 报告、保真报告、编译摘要，以及反向导出流水线的
+// report.json 都从这里落盘。放在 shared 是因为反向导出流水线（src/reverse-pipeline）
+// 不能反向依赖插件层。
 //
 // 1. 顶层统一写 runId / generatedAt / tool（#13 P1-2）。Agent 读报告前拿工具返回体里的
 //    runId 核对，对不上就是别的运行留下的，不能据此下结论。
@@ -6,10 +8,18 @@
 //    supersedeReports 写一份「本次未产出」占位盖掉上一轮的旧文件。
 // 3. 失败态另存 <name>.failed-<ts>.json，只保留最近 MAX_FAILED_ARCHIVES 份。
 //    背景：2026-08-19 p6-el19 保真失败现场被后续成功构建覆盖，离线复盘断链。
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const MAX_FAILED_ARCHIVES = 3;
+
+// 运行标识：<前缀>-<UTC 秒级时间>-<6 位随机十六进制>，例如 lint-20260924T081500-3fa9c1。
+// 前缀由调用方给（插件按工具名、反向导出流水线用 reverse），只用来让人一眼看出是哪类运行。
+function createRunId(prefix = 'run') {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, '');
+  return `${prefix}-${stamp}-${crypto.randomBytes(3).toString('hex')}`;
+}
 
 function reportHeader(options) {
   const runId = options && options.runId;
@@ -76,4 +86,4 @@ function pruneFailedArchives(dir, base, ext) {
   for (const name of stale) fs.rmSync(path.join(dir, name), { force: true });
 }
 
-module.exports = { supersedeReports, writeReportFile };
+module.exports = { createRunId, supersedeReports, writeReportFile };

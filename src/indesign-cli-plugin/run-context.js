@@ -4,7 +4,7 @@
 // （mcp-indesign router.py 的 _plugin_context 只给 cwd/session_path/host_tools），
 // 所以由插件在 dispatcher 入口自己生成，经 context 传给工具，工具写报告时写进顶层，
 // dispatcher 再把同一个值盖到返回体上，Agent 拿它和报告逐字核对。
-const crypto = require('node:crypto');
+const { createRunId: createPrefixedRunId } = require('../shared');
 
 const TOOL_PREFIXES = Object.freeze({
   'html.authoring_lint': 'lint',
@@ -14,9 +14,7 @@ const TOOL_PREFIXES = Object.freeze({
 });
 
 function createRunId(toolId) {
-  const prefix = TOOL_PREFIXES[toolId] || 'run';
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, '');
-  return `${prefix}-${stamp}-${crypto.randomBytes(3).toString('hex')}`;
+  return createPrefixedRunId(TOOL_PREFIXES[toolId] || 'run');
 }
 
 // dispatcher 之外直接调用工具（单测）时 context 里没有 runId，这里补一个，

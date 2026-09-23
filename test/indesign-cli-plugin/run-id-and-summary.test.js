@@ -16,7 +16,10 @@ const ARCH_FIXTURE = path.join(repoRoot, 'test', 'fixtures', 'e2e', 'architectur
 const OFF_GRID_BLOCK = '  <p class="grid-item stray-note" style="--grid-col:2;--grid-span:2;'
   + '--grid-row:2;--grid-row-span:1;margin-left:3mm;margin-top:4mm">stray note</p>\n';
 const RUN_ID = /^(lint|build)-\d{8}T\d{6}-[0-9a-f]{6}$/;
-const SUMMARY_KEYS = ['errorCount', 'firstErrors', 'format', 'ok', 'reportPath', 'runId', 'topCodes', 'warningCount'];
+const SUMMARY_KEYS = [
+  'compatibility', 'errorCount', 'firstErrors', 'format', 'gridIgnoredCount', 'gridObservedDowngraded',
+  'gridObservedDowngradedCount', 'lintProfile', 'normalizedCount', 'ok', 'reportPath', 'runId', 'topCodes', 'warningCount',
+];
 const FULL_ARRAYS = ['errors', 'warnings', 'normalized', 'messages'];
 
 function copyPackage(source, name) {
@@ -80,6 +83,15 @@ test('默认 summary：失败返回体只含摘要字段，完整清单只在报
   assert.equal(details.firstErrors[0].pageId, 'page-2');
   assert.match(details.firstErrors[0].suggestedFix, /^Move #p2-el28 left edge/);
   assert.equal('edgeOffsets' in details.firstErrors[0], false, '逐边偏移明细留在报告里');
+  // 归一化、豁免、降级与兼容审计只给计数，明细在报告里。
+  assert.equal(details.normalizedCount, 23);
+  assert.equal(details.gridIgnoredCount, 19);
+  assert.equal(details.gridObservedDowngradedCount, 0);
+  assert.equal(details.gridObservedDowngraded, null);
+  assert.equal(details.lintProfile, 'default');
+  assert.deepEqual(Object.keys(details.compatibility), ['summary']);
+  assert.equal(typeof details.compatibility.summary.normalized, 'number');
+  assert.equal('messages' in details.compatibility, false);
 
   // 原有 Agent 依赖的字段不能丢。
   assert.equal(details.stage, 'lint');
@@ -286,4 +298,106 @@ test('resume 返回体沿用 state 里的 runId', async () => {
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'BUILD_STATE_INVALID');
   assert.equal(response.error.details.runId, 'build-20260924T000000-abcdef');
+});
+
+test('build 通过后盖不掉 .indesign-cli/ 旧 lint 报告时，在成功结果的 warnings 里带路径报出来', () => {
+  // 这个夹具的素材以 ../smoke-assets、../reference-pdfs 引用包外目录：连同素材目录一起拷，保持相对位置，不动原夹具。
+  const root = path.join(repoRoot, 'test', 'workspace', 'run-id-build-stale-fallback');
+  fs.rmSync(root, { recursive: true, force: true });
+  for (const shared of ['smoke-assets', 'reference-pdfs']) {
+    fs.cpSync(path.join(ARCH_FIXTURE, '..', shared), path.join(root, shared), { recursive: true });
+  }
+  const packageDir = path.join(root, 'architecture-report');
+  fs.cpSync(ARCH_FIXTURE, packageDir, { recursive: true });
+  // 让覆盖必然失败：同名路径是个目录，写文件会报 EISDIR。
+  const blocked = path.join(packageDir, '.indesign-cli', 'authoring-lint-report.json');
+  fs.mkdirSync(blocked, { recursive: true });
+  buildWithStaleFallback(packageDir, blocked);
+});
+
+function buildWithStaleFallback(packageDir, blocked) {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'run-id-build-stale-fallback-out');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  const started = callPlugin('tools/call', {
+    id: 'html.build_indesign',
+    args: {
+      package: path.join(packageDir, 'deck.config.json'),
+      outDir,
+      mode: 'draft',
+      exportPdf: false,
+      exportIdml: false,
+      outputBaseName: 'stale-fallback',
+    },
+  });
+  assert.equal(started.status, 'requires_host_actions');
+
+  const afterBuild = callPlugin('tools/resume', {
+    state: started.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
+  });
+  assert.equal(afterBuild.state.stage, 'export');
+  fs.writeFileSync(path.join(outDir, 'stale-fallback.indd'), 'fake');
+  const complete = callPlugin('tools/resume', {
+    state: afterBuild.state,
+    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(complete.status, 'complete', JSON.stringify(complete.error || null));
+  assert.equal(complete.data.runId, started.state.runId);
+  const warning = complete.data.warnings.find((entry) => entry.code === 'STALE_LINT_REPORT_NOT_REPLACED');
+  assert.ok(warning, JSON.stringify(complete.data.warnings));
+  assert.equal(warning.details.reportPath, blocked);
+  assert.equal(warning.message.includes(blocked), true, warning.message);
+  assert.match(warning.details.error, /EISDIR|EPERM|EACCES/);
+}
+
+test('反向导出的 report.json 顶层带 runId/generatedAt/tool，与返回体 runId 一致', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'run-id-reverse-report');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  fs.copyFileSync(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'), snapshotPath);
+  const runId = 'reverse-20260924T000000-abc123';
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      runId,
+      outDir,
+      snapshotPath,
+      mode: 'structured',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
+    },
+    host_results: [{ id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete', JSON.stringify(response.error || null));
+  assert.equal(response.data.runId, runId);
+  for (const name of ['report.json', 'structured-report.json']) {
+    const report = readJson(path.join(outDir, name));
+    assert.deepEqual(Object.keys(report).slice(0, 3), ['runId', 'generatedAt', 'tool']);
+    assert.equal(report.runId, runId);
+    assert.equal(report.tool, 'html.reverse_export');
+    assert.equal(report.ok, true);
+  }
+});
+
+test('不经插件直接调用反向导出流水线时自己生成 runId', () => {
+  const { compileReverseSnapshotToHtml } = require('../../src/reverse-pipeline');
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'run-id-reverse-library');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  const result = compileReverseSnapshotToHtml({
+    snapshotPath: path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'),
+    outDir,
+    mode: 'structured',
+    reconstructionProfile: { name: 'none', algorithms: [] },
+  });
+  assert.match(result.runId, /^reverse-\d{8}T\d{6}-[0-9a-f]{6}$/);
+  const report = readJson(result.files.report);
+  assert.equal(report.runId, result.runId);
+  assert.equal(report.tool, 'reverse-pipeline');
 });

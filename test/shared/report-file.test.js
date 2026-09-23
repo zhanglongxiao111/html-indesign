@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { writeReportFile } = require('../../src/indesign-cli-plugin/report-archive');
+const { writeReportFile } = require('../../src/shared/report-file');
 
 test('failed reports get a timestamped archive pruned to the last three', () => {
   const dir = path.resolve('test/workspace/report-archive');
