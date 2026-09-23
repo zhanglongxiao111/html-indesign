@@ -129,7 +129,7 @@ test('默认 summary：通过且没传 outDir 时报告写到作者包根目录�
   assert.deepEqual(response.artifacts.map((item) => item.path), [expected]);
 });
 
-test('format:full 与改前一致：返回体就是完整 lint 结果', async () => {
+test('format:full 返回体是完整 lint 结果，并标明 format:full', async () => {
   const packageDir = copyOffGridPackage('run-id-full-failure');
   const packagePath = path.join(packageDir, 'deck.config.json');
   const expected = await lintAuthoringPackage({ packagePath, strict: true });
@@ -138,7 +138,7 @@ test('format:full 与改前一致：返回体就是完整 lint 结果', async ()
   assert.equal(failed.status, 'error');
   assert.deepEqual(
     omit(failed.error.details, ['stage', 'hint', 'retryable', 'reportPath', 'metrics', 'runId']),
-    JSON.parse(JSON.stringify(expected)),
+    { ...JSON.parse(JSON.stringify(expected)), format: 'full' },
   );
   assert.match(failed.error.hint, /完整错误清单见 error\.details\.errors（3 条）/);
 
@@ -148,7 +148,7 @@ test('format:full 与改前一致：返回体就是完整 lint 结果', async ()
   const passed = lint(cleanDir, { format: 'full' });
   assert.equal(passed.status, 'complete');
   assert.equal(passed.data.reportPath, null);
-  assert.deepEqual(omit(passed.data, ['reportPath', 'runId']), JSON.parse(JSON.stringify(cleanExpected)));
+  assert.deepEqual(omit(passed.data, ['reportPath', 'runId']), { ...JSON.parse(JSON.stringify(cleanExpected)), format: 'full' });
   assert.equal(fs.existsSync(path.join(cleanDir, '.indesign-cli')), false, 'full 通过且无旧报告时不凭空写文件');
 });
 
@@ -400,4 +400,96 @@ test('不经插件直接调用反向导出流水线时自己生成 runId', () =>
   const report = readJson(result.files.report);
   assert.equal(report.runId, result.runId);
   assert.equal(report.tool, 'reverse-pipeline');
+});
+
+test('反向导出把快照里的 warning（含 REVERSE_GRADIENT_APPROXIMATED）带进 report.json 和返回体', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'reverse-snapshot-warnings');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  const snapshot = readJson(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'));
+  const gradientWarnings = [
+    ...['310', '290', '286', '256', '255'].map((itemId) => ({ itemId })),
+    { styleKind: 'paragraph', styleName: '渐变段落' },
+    { styleKind: 'character', styleName: '渐变字符' },
+    { styleKind: 'object', styleName: '渐变对象' },
+  ].map((owner) => ({
+    level: 'warning',
+    code: 'REVERSE_GRADIENT_APPROXIMATED',
+    message: 'Gradient swatch "Grad-Used" is approximated by its first stop color; HTML keeps a solid color.',
+    details: { gradient: 'Grad-Used', approximatedColor: '#ff0000', ...owner },
+  }));
+  const previewWarning = {
+    level: 'warning',
+    code: 'PLACED_ASSET_PREVIEW_EXPORT_FAILED',
+    message: 'preview failed',
+    details: { itemId: '999', path: 'C:/missing.png' },
+  };
+  const snapshotWarnings = [...gradientWarnings, previewWarning];
+  snapshot.report = { ok: true, messages: snapshotWarnings, errors: [], warnings: snapshotWarnings };
+  fs.writeFileSync(snapshotPath, JSON.stringify(snapshot), 'utf8');
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      runId: 'reverse-20260924T000000-def456',
+      outDir,
+      snapshotPath,
+      mode: 'observation',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
+    },
+    host_results: [{ id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete', JSON.stringify(response.error || null));
+  const report = readJson(path.join(outDir, 'report.json'));
+  assert.equal(report.warnings.length, 9);
+  assert.deepEqual(report.warnings.map((entry) => entry.code), snapshotWarnings.map((entry) => entry.code));
+  assert.deepEqual(report.warnings[0], {
+    code: 'REVERSE_GRADIENT_APPROXIMATED',
+    message: gradientWarnings[0].message,
+    source: 'reverse-snapshot',
+    details: gradientWarnings[0].details,
+  });
+  assert.equal(report.warnings[8].details.itemId, '999', '不按 code 挑选，所有快照 warning 都进 report.json');
+
+  assert.equal(response.data.warningCount, 9);
+  assert.deepEqual(response.data.warningsByCode, { REVERSE_GRADIENT_APPROXIMATED: 8, PLACED_ASSET_PREVIEW_EXPORT_FAILED: 1 });
+  assert.equal(response.data.warnings.length, 6, '返回体只带前 5 条加一条截断说明');
+  assert.deepEqual(response.data.warnings.slice(0, 5).map((entry) => entry.details.itemId), ['310', '290', '286', '256', '255']);
+  const truncated = response.data.warnings[5];
+  assert.equal(truncated.code, 'REVERSE_WARNINGS_TRUNCATED');
+  assert.equal(truncated.details.omitted, 4);
+  assert.equal(truncated.details.reportPath, response.data.reportPath);
+});
+
+test('快照没有 warning 时反向导出返回体给出 0 计数与空列表', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'reverse-snapshot-no-warnings');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  fs.copyFileSync(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'), snapshotPath);
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      outDir,
+      snapshotPath,
+      mode: 'structured',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
+    },
+    host_results: [{ id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete', JSON.stringify(response.error || null));
+  assert.equal(response.data.warningCount, 0);
+  assert.deepEqual(response.data.warningsByCode, {});
+  assert.deepEqual(response.data.warnings, []);
+  assert.deepEqual(readJson(path.join(outDir, 'report.json')).warnings, []);
 });

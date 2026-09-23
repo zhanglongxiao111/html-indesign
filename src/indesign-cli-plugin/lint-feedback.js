@@ -306,10 +306,12 @@ function effectiveLintFormat(requested, reportPath) {
 
 function lintResponseBody(result, { format, requestedFormat, reportPath, runId }) {
   if (format === 'summary') return lintSummary(result, { reportPath, runId });
+  // full 与 summary 一样在返回体里标明 format，调用方不用靠字段有无去猜是哪种形状。
   return {
     ...result,
+    format: 'full',
     ...(requestedFormat === 'summary'
-      ? { format: 'full', formatFallback: 'summary requested but the report file was not written; returning the full lint payload.' }
+      ? { formatFallback: 'summary requested but the report file was not written; returning the full lint payload.' }
       : {}),
   };
 }
