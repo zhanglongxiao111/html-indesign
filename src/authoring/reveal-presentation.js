@@ -1,8 +1,16 @@
-const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const fs = require('fs');
 const path = require('path');
-const { readAuthorPackage } = require('../../authoring');
+const { writeFileAtomicSync } = require('../shared/atomic-write');
+const { authorEntryWriteOptions, readAuthorPackage } = require('./source-package');
 
+// presentation.html 是作者包的 reveal.js 演示预览，与 deck.html 同源（pages/*.html + styles/*.css）。
+// 它不是转换入口，但必须随组装同步，否则会成为包内第二份陈旧的页面真相。
+const PRESENTATION_FILE = 'presentation.html';
+const DEFAULT_PRESENTATION_SIZE = Object.freeze({ width: 1600, height: 900 });
+
+// options.width/height：显式页面尺寸（优先）；否则取 deck.config.json 的 presentation.width/height；
+// 再否则用 DEFAULT_PRESENTATION_SIZE。options.writeOptions 透传给原子写（测试注入 fs/sleep）。
 function writeRevealPresentation(configPath, options = {}) {
   const sourcePackage = readAuthorPackage(configPath);
   copyRevealAssets(sourcePackage.rootDir);
@@ -17,9 +25,9 @@ function writeRevealPresentation(configPath, options = {}) {
     .map((file) => addSourceFileAttribute(fs.readFileSync(file.filePath, 'utf8'), file.relativePath))
     .join('\n\n');
   const title = sourcePackage.config.title || sourcePackage.config.id;
-  const width = positiveNumber(options.width) || positiveNumber(sourcePackage.config.presentation && sourcePackage.config.presentation.width) || 1600;
-  const height = positiveNumber(options.height) || positiveNumber(sourcePackage.config.presentation && sourcePackage.config.presentation.height) || 900;
-  const presentationPath = path.join(sourcePackage.rootDir, 'presentation.html');
+  const size = resolveWriterSize(sourcePackage.config, options);
+  const { width, height } = size;
+  const presentationPath = presentationPathFor(sourcePackage.rootDir);
 
   const html = [
     '<!doctype html>',
@@ -59,8 +67,44 @@ function writeRevealPresentation(configPath, options = {}) {
     '',
   ].join('\n');
 
-  fs.writeFileSync(presentationPath, html, 'utf8');
-  return { path: presentationPath };
+  writeFileAtomicSync(presentationPath, html, authorEntryWriteOptions(options.writeOptions));
+  return { path: presentationPath, width, height, sizeSource: size.source };
+}
+
+function presentationPathFor(rootDir) {
+  return path.join(rootDir, PRESENTATION_FILE);
+}
+
+function resolveWriterSize(config, options) {
+  const explicit = sizeFrom(options);
+  if (explicit) return { ...explicit, source: 'options' };
+  const configured = configPresentationSize(config);
+  if (configured) return configured;
+  return { ...DEFAULT_PRESENTATION_SIZE, source: 'default' };
+}
+
+// deck.config.json 的 presentation.width/height，两项都是正数才算声明了。
+function configPresentationSize(config) {
+  const size = sizeFrom(config && config.presentation);
+  return size ? { ...size, source: 'config' } : null;
+}
+
+// 读回既有 presentation.html 里 Reveal.initialize 声明的页面尺寸。
+// 反向导出按首页尺寸写这两个值，而 deck.config.json 通常不带 presentation 字段。
+function readPresentationSize(html) {
+  const text = String(html || '');
+  const init = text.match(/Reveal\.initialize\(\{([\s\S]*?)\}\)/);
+  if (!init) return null;
+  const width = init[1].match(/\bwidth\s*:\s*([0-9.]+)/);
+  const height = init[1].match(/\bheight\s*:\s*([0-9.]+)/);
+  return sizeFrom({ width: width && width[1], height: height && height[1] });
+}
+
+function sizeFrom(value) {
+  if (!value) return null;
+  const width = positiveNumber(value.width);
+  const height = positiveNumber(value.height);
+  return width && height ? { width, height } : null;
 }
 
 function copyRevealAssets(rootDir) {
@@ -119,5 +163,10 @@ function escapeText(value) {
 }
 
 module.exports = {
+  DEFAULT_PRESENTATION_SIZE,
+  PRESENTATION_FILE,
+  configPresentationSize,
+  presentationPathFor,
+  readPresentationSize,
   writeRevealPresentation,
 };

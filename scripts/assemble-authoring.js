@@ -26,10 +26,24 @@ function main() {
 
     const result = writeAuthorPackageEntry(configPath);
     console.log(`Wrote ${result.entryPath}`);
+    const presentationLine = describePresentation(result.presentation);
+    if (presentationLine) console.log(presentationLine);
   } catch (error) {
     console.error(error && error.stack ? error.stack : String(error));
+    if (error && error.hint) console.error(`hint: ${error.hint}`);
     process.exit(1);
   }
+}
+
+function describePresentation(presentation) {
+  if (!presentation) return null;
+  if (presentation.status === 'rewritten') {
+    return `Rewrote ${presentation.path} (${presentation.width}x${presentation.height}, size from ${presentation.sizeSource})`;
+  }
+  if (presentation.status === 'removed') {
+    return `Removed stale ${presentation.path}: ${presentation.reason}`;
+  }
+  return null;
 }
 
 function parseArgs(args) {
