@@ -7,17 +7,29 @@ const { lintAuthoringPackage, readAuthorPackage } = require('../../authoring');
 const { auditForwardFidelity } = require('../../semantic-model');
 const { resolveSemanticPreset } = require('../../semantic-preset');
 const { compileAuthoringPackage } = require('./compile-instructions');
-const { getPluginRoot } = require('../path-policy');
-const { resolveProjectPath } = require('../path-policy');
+const { isPathInside } = require('../../shared');
+const { ensureOutputDir, getCwd, getPluginRoot, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
-const { writeReportFile } = require('../report-archive');
+const { supersedeReports, writeReportFile } = require('../report-archive');
+const { runIdOf } = require('../run-context');
 const {
+  effectiveLintFormat,
   lintFailureHint,
   lintFailureMessage,
+  lintResponseBody,
+  resolveLintFormat,
   underlyingHostFailure,
   withoutLintSnapshot,
   writeLintFailureReport,
+  writeLintReport,
 } = require('../lint-feedback');
+
+const TOOL_ID = 'html.build_indesign';
+const LINT_REPORT_NAME = 'authoring-lint-report.json';
+const FIDELITY_REPORT_NAME = 'forward-fidelity-report.json';
+const COMPILE_SUMMARY_NAME = 'compile-summary.json';
+// 这一次构建会写的主报告。显式 outDir 反复复用时，开工前先把这些旧文件换成本次占位。
+const RUN_REPORT_NAMES = Object.freeze([LINT_REPORT_NAME, COMPILE_SUMMARY_NAME, FIDELITY_REPORT_NAME]);
 const {
   buildBuildJsx,
   buildCloseJsx,
@@ -43,7 +55,10 @@ async function call(args, context) {
   }
   const outputBaseName = args.outputBaseName || 'html-indesign-output';
   const timeout = args.timeout || 300;
+  const runId = runIdOf(context, TOOL_ID);
+  const requestedFormat = resolveLintFormat(args.format);
   const packagePath = resolveProjectPath(context, args.package, 'package');
+  supersedePreviousRunReports(context, args.outDir, runId);
   const sourcePackage = readAuthorPackage(packagePath);
   const resolvedPreset = resolveSemanticPreset({
     rootDir: sourcePackage.rootDir,
@@ -75,16 +90,19 @@ async function call(args, context) {
       outDir: args.outDir,
       cwd: context && context.cwd,
       packagePath,
+      runId,
+      tool: TOOL_ID,
     });
     const reportPath = report.path;
-    const hint = lintFailureHint(lint, { reportPath });
-    const error = new Error(lintFailureMessage(lint, { strict: true, reportPath }));
+    const format = effectiveLintFormat(requestedFormat, reportPath);
+    const hint = lintFailureHint(lint, { reportPath, format });
+    const error = new Error(lintFailureMessage(lint, { strict: true, reportPath, format }));
     error.code = 'AUTHORING_LINT_FAILED';
     error.hint = hint;
     error.retryable = false;
     // dispatcher 抛出路径只搬运 details，hint/retryable/stage 必须同时冗余进 details。
     error.details = {
-      ...withoutLintSnapshot(lint),
+      ...lintResponseBody(withoutLintSnapshot(lint), { format, requestedFormat, reportPath, runId }),
       stage: 'lint',
       hint,
       retryable: false,
@@ -108,16 +126,35 @@ async function call(args, context) {
     throw error;
   }
 
+  // 作者包下 .indesign-cli/ 里若躺着上一次 lint 失败留下的报告，本次严格检查已通过，
+  // 用本次结果盖掉；那里本来没有就不写。
+  writeLintReport(withoutLintSnapshot(lint), {
+    cwd: context && context.cwd,
+    packagePath,
+    runId,
+    tool: TOOL_ID,
+    onlyIfExists: true,
+  });
+
   const compileStartedAt = Date.now();
   let compile;
+  let lintReportPath = null;
   try {
+    // 输出目录先于编译确定：lint 已通过，报告要在编译之前落盘，
+    // 编译失败时目录里的 lint 报告也是本次的，而不是上一轮的。
+    const outDir = ensureOutputDir(context, args.outDir, 'html-plugin-build');
+    lintReportPath = path.join(outDir, LINT_REPORT_NAME);
+    writeReportFile(lintReportPath, withoutLintSnapshot(lint), { failed: false, runId, tool: TOOL_ID });
     compile = await compileAuthoringPackage({
       ...args,
+      outDir,
       outputName: 'instructions.json',
     }, context, 'html-plugin-build', {
       snapshot: lint.snapshot,
       compatibility: lint.compatibility,
       expectedModelName: 'expected-semantic-model.json',
+      runId,
+      tool: TOOL_ID,
     });
   } catch (error) {
     const compileMsAtFailure = Date.now() - compileStartedAt;
@@ -126,6 +163,7 @@ async function call(args, context) {
     error.details = {
       ...existingDetails,
       stage: existingDetails.stage || 'compile',
+      ...(lintReportPath ? { lintReportPath } : {}),
       metrics: buildMetrics({
         lint_ms: lintMs,
         compile_ms: compileMsAtFailure,
@@ -153,20 +191,19 @@ async function call(args, context) {
   };
 
   const pluginRoot = getPluginRoot();
-  const runMarker = createRunMarker();
+  // 写进 INDD 标签的归属标记就是本次 runId：文档、报告、返回体三处可以对上。
+  const runMarker = runId;
   const buildScriptPath = path.join(compile.outDir, 'build.jsx');
   const snapshotScriptPath = path.join(compile.outDir, 'fidelity-snapshot.jsx');
   const snapshotPath = path.join(compile.outDir, 'fidelity-snapshot.json');
   const exportScriptPath = path.join(compile.outDir, 'export.jsx');
   const cleanupScriptPath = path.join(compile.outDir, 'cleanup.jsx');
-  const fidelityReportPath = path.join(compile.outDir, 'forward-fidelity-report.json');
+  const fidelityReportPath = path.join(compile.outDir, FIDELITY_REPORT_NAME);
   const semanticPresetPath = path.join(compile.outDir, 'expected-semantic-preset.json');
-  const lintReportPath = path.join(compile.outDir, 'authoring-lint-report.json');
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
   const preRunDeliverables = snapshotDeliverables(compile.outDir, outputBaseName);
 
-  writeReportFile(lintReportPath, withoutLintSnapshot(lint), { failed: false });
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
   fs.writeFileSync(buildScriptPath, buildBuildJsx({
     repoRoot: pluginRoot,
@@ -193,7 +230,8 @@ async function call(args, context) {
   fs.writeFileSync(cleanupScriptPath, buildCloseJsx({ expectedMarker: runMarker }), 'utf8');
 
   const state = {
-    tool_id: 'html.build_indesign',
+    tool_id: TOOL_ID,
+    runId,
     stage: 'build',
     mode,
     runDir: compile.outDir,
@@ -315,6 +353,8 @@ function resumeAfterSnapshot(state) {
   };
   writeReportFile(state.fidelityReportPath, report, {
     failed: Array.isArray(report.errors) && report.errors.length > 0,
+    runId: state.runId || runIdOf(null, TOOL_ID),
+    tool: TOOL_ID,
   });
   if (!report.ok) {
     const first = report.errors[0] || {};
@@ -746,8 +786,22 @@ function readJsonRequired(file, label) {
   }
 }
 
-function createRunMarker() {
-  return `html-indesign-build-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+// 显式 outDir 常被反复复用（例如作者包下的 build/）。上一轮的 lint/保真报告若原样留着，
+// 本次在 lint 阶段就失败时，读 build/ 的人会拿到上一轮的 valid:true（8/6 事故 seq 467）。
+// 开工前把已有的主报告换成本次占位，之后哪个阶段跑到就由哪个阶段用真实内容覆盖。
+// outDir 越界时不在这里报错：越界由后面的 lint 报告/ensureOutputDir 按原有口径报。
+function supersedePreviousRunReports(context, outDir, runId) {
+  if (!outDir) return;
+  const cwd = getCwd(context);
+  const dir = path.resolve(cwd, outDir);
+  if (!isPathInside(cwd, dir) || !fs.existsSync(dir)) return;
+  try {
+    supersedeReports(dir, RUN_REPORT_NAMES, { runId, tool: TOOL_ID });
+  } catch (error) {
+    // 盖不掉旧报告就不能开工：否则本次失败后留在原位的仍是上一轮的结论。
+    error.details = { ...(error.details || {}), stage: 'prepare', outDir: dir };
+    throw error;
+  }
 }
 
 // verified 的构建同样可能带保真警告：作者声明的 expand-frame-to-content 扩框就是一例——

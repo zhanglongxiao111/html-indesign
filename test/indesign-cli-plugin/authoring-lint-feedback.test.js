@@ -120,7 +120,7 @@ test('html.authoring_lint 首条消息承载真实作者包的规模、分类与
 // 母元素规则的另一半：块自己压不住线时，修法必须落在这个块上，而且要点明块内内容不被检查。
 test('html.authoring_lint 的失败条目带着逐边偏移与可执行修法', () => {
   const packageDir = copyOffGridFixture('lint-feedback-grid-offsets');
-  const response = callLint(packageDir);
+  const response = callLint(packageDir, { format: 'full' });
 
   const entry = response.error.details.errors.find((issue) => issue.itemId === 'p2-el28');
   assert.ok(entry, JSON.stringify(response.error.details.errors));
@@ -137,7 +137,7 @@ test('html.authoring_lint 的失败条目带着逐边偏移与可执行修法', 
 // isPlacedBlockContent，别改这里的数字。
 test('2026-08-12 事故包在母元素规则下整体通过 strict 检查', () => {
   const packageDir = copyGridFixture('lint-feedback-grid-clean');
-  const response = callLint(packageDir);
+  const response = callLint(packageDir, { format: 'full' });
 
   assert.equal(response.status, 'complete', JSON.stringify(response.error || null));
   assert.equal(response.data.errorCount, 0);
@@ -174,7 +174,7 @@ test('2026-08-12 事故包在母元素规则下整体通过 strict 检查', () =
 // 的 responsibleBlocksFor / offGridBlockEdges 与 capture 侧祖先节点的 boundsMm。
 test('承担放置的包裹层自己压不住线时由块级校验兜住', () => {
   const packageDir = copyOffGridWrapperFixture('lint-feedback-grid-wrapper');
-  const response = callLint(packageDir);
+  const response = callLint(packageDir, { format: 'full' });
 
   assert.equal(response.status, 'error');
   const { errors } = response.error.details;
@@ -198,9 +198,9 @@ test('承担放置的包裹层自己压不住线时由块级校验兜住', () =>
   assert.match(entry.suggestedFix, /data-id-grid-ignore/);
 });
 
-test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报告文件', () => {
+test('html.authoring_lint 失败时 hint 非空并指向 details.errors 与报告文件（format:full）', () => {
   const packageDir = copyOffGridFixture('lint-feedback-grid-hint');
-  const response = callLint(packageDir);
+  const response = callLint(packageDir, { format: 'full' });
 
   assert.equal(response.status, 'error');
   assert.notEqual(response.error.hint, null);
@@ -286,7 +286,9 @@ test('html.authoring_lint 与 html.build_indesign 对同一作者包给出同口
   assert.equal(withoutReportLine(lintResponse.error.message), withoutReportLine(buildResponse.error.message));
   assert.match(buildResponse.error.message, /Full report: .*authoring-lint-report\.json/);
   // 抛出路径上 dispatcher 只搬运 details，hint 必须同时冗余进 details。
-  assert.match(buildResponse.error.details.hint, /error\.details\.errors/);
+  // 默认 summary：完整清单不在返回体里，hint 必须指向报告文件而不是 error.details.errors。
+  assert.match(buildResponse.error.details.hint, /authoring-lint-report\.json 的 errors 数组/);
+  assert.doesNotMatch(buildResponse.error.details.hint, /error\.details\.errors/);
 });
 
 test('入口文件过期时首条消息说明检查未执行，并上浮下层的重组装命令', () => {

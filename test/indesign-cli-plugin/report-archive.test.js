@@ -10,11 +10,11 @@ test('failed reports get a timestamped archive pruned to the last three', () => 
   fs.mkdirSync(dir, { recursive: true });
   const reportPath = path.join(dir, 'authoring-lint-report.json');
 
-  writeReportFile(reportPath, { ok: true }, { failed: false });
+  writeReportFile(reportPath, { ok: true }, { failed: false, runId: 'lint-test', tool: 'html.authoring_lint' });
   assert.deepEqual(fs.readdirSync(dir), ['authoring-lint-report.json']);
 
   for (const stamp of ['20260819-120001', '20260819-120002', '20260819-120003', '20260819-120004']) {
-    writeReportFile(reportPath, { ok: false, stamp }, { failed: true, stamp });
+    writeReportFile(reportPath, { ok: false, stamp }, { failed: true, stamp, runId: `lint-${stamp}`, tool: 'html.authoring_lint' });
   }
   assert.deepEqual(fs.readdirSync(dir).sort(), [
     'authoring-lint-report.failed-20260819-120002.json',
@@ -34,7 +34,11 @@ test('default stamp is derived from the clock and archive write returns its path
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   const reportPath = path.join(dir, 'forward-fidelity-report.json');
-  const { archivedPath } = writeReportFile(reportPath, { errors: [{ code: 'X' }] }, { failed: true });
+  const { archivedPath } = writeReportFile(reportPath, { errors: [{ code: 'X' }] }, {
+    failed: true,
+    runId: 'build-test',
+    tool: 'html.build_indesign',
+  });
   assert.ok(archivedPath);
   assert.match(path.basename(archivedPath), /^forward-fidelity-report\.failed-\d{8}-\d{6}\.json$/);
   assert.equal(fs.existsSync(archivedPath), true);

@@ -7,6 +7,10 @@ const { authorPackageReassemblyHint, checkAuthorPackageEntry, readAuthorPackage 
 const { resolveSemanticPreset, presetToStyleNameMap } = require('../../semantic-preset');
 const { resolveProjectPath, ensureOutputDir } = require('../path-policy');
 const { artifact } = require('../artifacts');
+const { writeReportFile } = require('../report-archive');
+const { runIdOf } = require('../run-context');
+
+const TOOL_ID = 'html.compile_instructions';
 
 async function compileAuthoringPackage(args, context, prefix = 'html-plugin-compile', internal = {}) {
   const packagePath = resolveProjectPath(context, args.package, 'package');
@@ -81,7 +85,12 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
     validation,
     compatibility,
   });
-  fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2), 'utf8');
+  // 编译摘要也是报告：同样顶层带 runId/generatedAt/tool。build 内部调用时由 internal 带入构建的标识。
+  const reportTool = internal.tool || TOOL_ID;
+  writeReportFile(summaryPath, summary, {
+    runId: internal.runId || runIdOf(context, reportTool),
+    tool: reportTool,
+  });
 
   const metrics = buildMetrics({
     snapshot_ms: snapshotMs,
