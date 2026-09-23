@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { writeAuthorPackageEntry } = require('../../authoring');
+const { writeAuthorPackageEntry, writeRevealPresentation } = require('../../authoring');
 const {
   fieldRegistry,
   HTML_DATA_ID_ATTRIBUTES,
@@ -15,7 +15,6 @@ const {
   loadProjectSemanticPreset,
   loadStandardSemanticPreset,
 } = require('../../semantic-preset');
-const { writeRevealPresentation } = require('./reveal-presentation-writer');
 const { isUsefulSemantic } = require('./author-render-utils');
 const {
   PARENT_PAGE_PASTEBOARD_PLACEMENT,
@@ -103,7 +102,8 @@ function writeReverseAuthorPackage(model, options = {}) {
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/inference-report.json'), JSON.stringify(report.inference, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, 'reports/semantic-candidates.json'), JSON.stringify(semanticCandidates, null, 2), 'utf8');
-  writeAuthorPackageEntry(path.join(outDir, 'deck.config.json'));
+  // presentation.html 紧接着按首页尺寸整份重写，这里不必先同步一遍旧预览。
+  writeAuthorPackageEntry(path.join(outDir, 'deck.config.json'), { syncPresentation: false });
   const presentation = writeRevealPresentation(path.join(outDir, 'deck.config.json'), firstPageSize(pages));
 
   return {
