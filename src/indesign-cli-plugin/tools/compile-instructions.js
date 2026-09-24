@@ -3,8 +3,12 @@ const path = require('node:path');
 const { auditHtmlCompatibility, renderSnapshot } = require('../../adapters/html');
 const { compileDocument } = require('../../indesign-pipeline');
 const { validateInstructions } = require('../../writers/indesign');
-const { authorPackageReassemblyHint, checkAuthorPackageEntry, readAuthorPackage } = require('../../authoring');
-const { resolveSemanticPreset, presetToStyleNameMap } = require('../../semantic-preset');
+const {
+  authorPackageCompileOptions,
+  authorPackageReassemblyHint,
+  checkAuthorPackageEntry,
+  readAuthorPackage,
+} = require('../../authoring');
 const { resolveProjectPath, ensureOutputDir } = require('../path-policy');
 const { artifact } = require('../artifacts');
 const { writeReportFile } = require('../../shared');
@@ -37,20 +41,11 @@ async function compileAuthoringPackage(args, context, prefix = 'html-plugin-comp
   assertCompatibilityReady(compatibility, snapshotMs);
 
   const compileStartedAt = Date.now();
-  const styleNameMap = loadStyleNameMap(sourcePackage);
-  const compiled = compileDocument(snapshot, {
-    mode: 'editable-first',
-    unitMode: args.unitMode || 'presentation',
-    targetSize: args.targetSize || 'same',
-    styleNameMap,
-    preserveObservedLayerNames: false,
-  });
+  const compileOptions = authorPackageCompileOptions(sourcePackage, args);
+  const compiled = compileDocument(snapshot, compileOptions.document);
   const { model, instructions } = compiled;
 
-  const validation = validateInstructions(instructions, {
-    checkAssetFiles: true,
-    baseDir: path.dirname(sourcePackage.entryPath),
-  });
+  const validation = validateInstructions(instructions, compileOptions.instructionValidation);
   const compileMs = Date.now() - compileStartedAt;
 
   if (!validation.valid) {
@@ -168,14 +163,6 @@ function buildMetrics(values) {
     else if (typeof value === 'boolean') metrics[key] = value;
   }
   return metrics;
-}
-
-function loadStyleNameMap(sourcePackage) {
-  const resolved = resolveSemanticPreset({
-    rootDir: sourcePackage.rootDir,
-    config: sourcePackage.config,
-  });
-  return presetToStyleNameMap(resolved.preset);
 }
 
 function compileSummary({ sourcePackage, instructions, instructionsPath, summaryPath, validation, compatibility }) {

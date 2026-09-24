@@ -22,9 +22,16 @@ const SUMMARY_KEYS = [
 ];
 const FULL_ARRAYS = ['errors', 'warnings', 'normalized', 'messages'];
 
+// 夹具素材以 ../smoke-assets、../reference-pdfs 引用包外目录：连同存在的素材目录一起拷，保持相对位置。
+// lint 会跑 compile 同一条路径（含资源文件存在性检查），只拷包本身会报 ASSET_FILE_NOT_FOUND。
 function copyPackage(source, name) {
-  const target = path.join(repoRoot, 'test', 'workspace', name);
-  fs.rmSync(target, { recursive: true, force: true });
+  const root = path.join(repoRoot, 'test', 'workspace', name);
+  fs.rmSync(root, { recursive: true, force: true });
+  for (const shared of ['smoke-assets', 'reference-pdfs']) {
+    const sharedSource = path.join(source, '..', shared);
+    if (fs.existsSync(sharedSource)) fs.cpSync(sharedSource, path.join(root, shared), { recursive: true });
+  }
+  const target = path.join(root, path.basename(source));
   fs.cpSync(source, target, { recursive: true });
   return target;
 }
@@ -301,14 +308,7 @@ test('resume 返回体沿用 state 里的 runId', async () => {
 });
 
 test('build 通过后盖不掉 .indesign-cli/ 旧 lint 报告时，在成功结果的 warnings 里带路径报出来', () => {
-  // 这个夹具的素材以 ../smoke-assets、../reference-pdfs 引用包外目录：连同素材目录一起拷，保持相对位置，不动原夹具。
-  const root = path.join(repoRoot, 'test', 'workspace', 'run-id-build-stale-fallback');
-  fs.rmSync(root, { recursive: true, force: true });
-  for (const shared of ['smoke-assets', 'reference-pdfs']) {
-    fs.cpSync(path.join(ARCH_FIXTURE, '..', shared), path.join(root, shared), { recursive: true });
-  }
-  const packageDir = path.join(root, 'architecture-report');
-  fs.cpSync(ARCH_FIXTURE, packageDir, { recursive: true });
+  const packageDir = copyPackage(ARCH_FIXTURE, 'run-id-build-stale-fallback');
   // 让覆盖必然失败：同名路径是个目录，写文件会报 EISDIR。
   const blocked = path.join(packageDir, '.indesign-cli', 'authoring-lint-report.json');
   fs.mkdirSync(blocked, { recursive: true });

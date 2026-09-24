@@ -22,7 +22,8 @@ const {
 } = require('../protocol');
 const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../semantic-preset');
 const { auditStaticAuthoringRuntime } = require('./static-runtime-audit');
-const { auditSemanticModelPrecheck } = require('./semantic-model-precheck');
+const { auditCompilePrecheck } = require('./compile-precheck');
+const { authorPackageCompileOptions } = require('./compile-options');
 
 async function lintAuthoringPackage(options = {}) {
   const packagePath = path.resolve(requiredPath(options.packagePath, 'packagePath'));
@@ -84,6 +85,9 @@ async function lintAuthoringPackage(options = {}) {
     gridTolerance: options.gridTolerance,
     lintProfile,
     includeSnapshot: options.includeSnapshot,
+    // lint 用 compile 的默认 unitMode/targetSize 与同一份语义库 styleNameMap，
+    // 让编译预检与 html.compile_instructions / html.build_indesign 走同一套选项。
+    compileOptions: authorPackageCompileOptions(sourcePackage, {}, resolvedPreset),
   });
 
   const errors = (sourceFormat.errors || [])
@@ -154,7 +158,9 @@ async function lintAuthoringHtml(options = {}) {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
     lintProfile,
-  }), dataIdAudit), compatibility), auditSemanticModelPrecheck(snapshot, {
+  }), dataIdAudit), compatibility), auditCompilePrecheck(snapshot, {
+    // 只有 htmlPath（没有作者包）时不传：拿不到语义库，编译预检只做语义模型一步。
+    compileOptions: options.compileOptions || null,
     compatibilityBlocked: compatibilityBlocked(compatibility),
   }));
 
@@ -261,7 +267,7 @@ function withCompatibility(result, compatibility) {
   };
 }
 
-// compile 阶段语义模型校验会拒绝的输入（如同页重复 id）按 error 并入，strict 与否都一样。
+// compile 阶段会拒绝的输入（同页重复 id、资源文件缺失等）按 error 并入，strict 与否都一样。
 function withModelPrecheck(result, precheck) {
   if (!precheck || !precheck.errors.length) return result;
   const errors = result.errors.concat(precheck.errors);

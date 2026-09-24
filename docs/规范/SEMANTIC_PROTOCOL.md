@@ -285,7 +285,7 @@ HTML 示例：
 | `GRID_ALIGNMENT_OFF` | warning | 承担网格放置的块（含非 InDesign 对象的包裹元素）或没有放置祖先的可映射元素，关键边缘没有贴合声明主网格或 baseline |
 | `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定 class 或 `data-id-*` 语义 token |
 
-`validateAuthoringRules` 之外，lint 还会对同一份快照跑一遍 compile 阶段的 `snapshotToSemanticModel`（含 `validateSemanticModel`），把 compile 会拒绝的输入提前报成 error（条目带 `stage: "semantic-model"`，与 strict 无关）。判定逻辑只有语义模型校验这一份，lint 不另写规则。其中 `ITEM_ID_DUPLICATED` 表示同一页里两个及以上对象的 id 相同（判重范围与 compile 一致：同页 `page.items`，跨页同名不报、母版家具不计）；条目带 `pageId`、`itemId`（即重复的 id）、`occurrences[]`（每处的 `tagName`、`sourceFile` 页面文件、`sourcePath` 页内路径）和改名建议 `suggestedFix`。其他语义模型错误沿用 compile 端的原错误码；兼容性已 blocked 时，这类条目带 `hint` 说明可能只是 blocked 内容的连带后果。
+`validateAuthoringRules` 之外，lint 还会对同一份快照走 compile 同一条路径、用同一份编译选项：`snapshotToSemanticModel`（含 `validateSemanticModel`）报 `stage: "semantic-model"`，作者包 lint 再跑 `validateInstructions`（含资源文件存在性检查）报 `stage: "instructions"`，都与 strict 无关。判定逻辑只有 compile 这一份，lint 不另写规则；只传 `htmlPath` 时只做语义模型阶段。其中 `ITEM_ID_DUPLICATED` 表示同一页里两个及以上对象的 id 相同（判重范围与 compile 一致：同页 `page.items`，跨页同名不报、母版家具不计）；条目带 `pageId`、`itemId`（即重复的 id）、`occurrences[]`（每处的 `tagName`、`sourceFile` 页面文件、`sourcePath` 页内路径）和改名建议 `suggestedFix`。其他语义模型错误沿用 compile 端的原错误码；兼容性已 blocked 时，这类条目带 `hint` 说明可能只是 blocked 内容的连带后果。
 
 `strict` 模式会把 warning 提升为 error，适合交付前或 CI 使用。普通开发阶段可以先保留 warning，让 Agent 逐步修正 HTML。每条 `GRID_ALIGNMENT_OFF` 携带 `edges`（核对了哪几条边）、`edgeOffsets`（每条边偏移量与最近格线）和 `suggestedFix`；块级条目额外带 `block: true`、`blockOf`、`blockOfCount`。结果里的 `gridIgnoredCount`/`gridOffCount`/`gridBlockOffCount`/`gridCheckedCount`/`gridShieldedCount`/`gridBlockCheckedCount`/`gridBlockSkippedCount`/`gridSkippedCount` 分别记录豁免、报错、逐条量过、被块遮蔽、量过的块、缺几何未量的块和其他跳过的数量。
 
