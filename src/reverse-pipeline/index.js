@@ -60,6 +60,8 @@ function compileReverseSnapshotToHtml(options) {
     assetPolicy: options.assetPolicy || 'reference',
     nasPublicRoot: options.nasPublicRoot || '/nas',
   });
+  // 作者 HTML 写出 warning 与快照 warning 一起进 report.json 和工具返回体的 warningsByCode。
+  for (const warning of authorResult.warnings || []) report.warnings.push(warning);
   const authorAudit = auditReverseAuthorPackage({
     config: authorResult.configPath,
     entry: authorResult.entryPath,

@@ -167,4 +167,5 @@ module.exports = {
   mergeCss,
   textStyleCss,
   textFrameStyleCss,
+  visualStyleCss,
 };

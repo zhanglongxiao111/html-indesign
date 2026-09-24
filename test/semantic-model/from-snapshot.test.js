@@ -1192,6 +1192,52 @@ test('snapshotToSemanticModel restores page bounds from nested observed author c
   assert.deepEqual(caption.bounds, { x: 130, y: 210, width: 180, height: 24 });
 });
 
+test('snapshotToSemanticModel counts bordered observed ancestors like the browser containing block', () => {
+  // 反向导出的矢量容器把描边写成 CSS border：绝对定位子对象以容器内边距盒为参照，
+  // 正向构建累加祖先偏移时也要算上 border，否则子对象整体偏一个描边宽。
+  const model = snapshotToSemanticModel({
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      rectPx: { x: 0, y: 0, width: 1000, height: 600 },
+      widthMm: 264,
+      heightMm: 158,
+      attributes: { 'data-page': 'page-1', 'data-id-observed': 'true' },
+      computedStyle: {},
+      items: [
+        {
+          id: 'card',
+          role: 'shape',
+          tagName: 'div',
+          classList: ['id-object'],
+          attributes: { 'data-id-object': '' },
+          documentOrder: 1,
+          rectPx: { x: 100, y: 80, width: 240, height: 160 },
+          authoredStyle: { position: 'absolute', left: '100px', top: '80px', width: '240px', height: '160px' },
+          computedStyle: { borderLeftWidth: '2px', borderTopWidth: '2px' },
+        },
+        {
+          id: 'card-value',
+          role: 'text',
+          tagName: 'p',
+          classList: ['observed-text'],
+          attributes: {},
+          ancestorCandidateIds: ['card'],
+          documentOrder: 2,
+          text: '243.75m',
+          rectPx: { x: 124, y: 104, width: 180, height: 24 },
+          authoredStyle: { position: 'absolute', left: '22px', top: '22px', width: '180px', height: '24px' },
+        },
+      ],
+    }],
+    assets: [],
+  }, { unitMode: 'presentation' });
+
+  const value = model.pages[0].items.find((item) => item.id === 'card-value');
+  assert.deepEqual(value.bounds, { x: 124, y: 104, width: 180, height: 24 });
+});
+
 test('snapshot keeps zero-dimension declared vector objects instead of dropping them', async () => {
   const snapshot = await renderSnapshot({
     htmlPath: path.resolve(__dirname, '../fixtures/fixed-html/zero-dimension-vector.html'),

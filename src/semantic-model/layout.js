@@ -324,10 +324,19 @@ function observedAncestorOffset(item, page, layout) {
     const style = ancestor && ancestor.authoredStyle || {};
     if (String(style.position || '').toLowerCase() !== 'absolute') continue;
     if (!String(style.left || '').trim() || !String(style.top || '').trim()) continue;
-    x += cssLengthToTarget(style.left, layout);
-    y += cssLengthToTarget(style.top, layout);
+    // 绝对定位子对象以祖先的内边距盒为参照：祖先的 CSS border 也要计入偏移，
+    // 否则带描边的观察容器（反向导出的矢量容器）里的子对象会整体偏一个描边宽。
+    const computed = ancestor && ancestor.computedStyle || {};
+    x += cssLengthToTarget(style.left, layout) + borderOffset(computed.borderLeftWidth, layout);
+    y += cssLengthToTarget(style.top, layout) + borderOffset(computed.borderTopWidth, layout);
   }
   return { x, y };
+}
+
+function borderOffset(value, layout) {
+  if (!String(value || '').trim()) return 0;
+  const offset = cssLengthToTarget(value, layout);
+  return Number.isFinite(offset) && offset > 0 ? offset : 0;
 }
 
 function isObservedReverseItem(item, page) {

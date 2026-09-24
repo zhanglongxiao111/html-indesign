@@ -99,7 +99,10 @@ function compareVisualGeometryElements({ reference, candidate, tolerance, errors
       continue;
     }
     stats.compared += 1;
-    const textComparison = comparableText(refElement, candidateElement);
+    const textComparison = withFoldedCompanionText(comparableText(refElement, candidateElement), refElement, {
+      candidateElements,
+      referenceElements,
+    });
     if (textComparison) {
       stats.textCompared += 1;
       if (textComparison.referenceText !== textComparison.candidateText) {
@@ -403,6 +406,24 @@ function comparableText(reference, candidate) {
   return {
     referenceText: normalizedReference,
     candidateText: normalizedCandidate,
+  };
+}
+
+// 伴生文字 <id>-text 在作者 HTML 里折回基对象自身文字（见 isGeneratedTextFragment），
+// 基对象的参照文字要把折进来的伴生文字算上，否则折回本身会被当成文字差异。
+function withFoldedCompanionText(textComparison, refElement, context) {
+  const companionId = `${refElement.id || ''}-text`;
+  const companion = samePageElement(context.referenceElements, refElement, companionId);
+  if (!companion || samePageElement(context.candidateElements, refElement, companionId)) return textComparison;
+  if (!isGeneratedTextFragment(companion, context)) return textComparison;
+  const companionText = textForComparison(companion) || '';
+  if (!companionText) return textComparison;
+  const referenceText = normalizeTextValue([textComparison && textComparison.referenceText, companionText]
+    .filter(Boolean)
+    .join(' ')) || '';
+  return {
+    referenceText,
+    candidateText: textComparison ? textComparison.candidateText : '',
   };
 }
 

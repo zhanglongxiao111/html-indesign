@@ -13,6 +13,9 @@ const {
   tagForRole,
 } = require('./author-render-utils');
 
+// 外框由 reverse-overrides.css 按读回 bounds 写的对象，源码 style 里的定位、尺寸、外边距会压过兜底几何。
+const SOURCE_BOX_PROPERTY_RE = /^(?:position|left|top|right|bottom|inset(?:-[a-z-]+)?|(?:min-|max-)?(?:width|height|inline-size|block-size)|margin(?:-[a-z-]+)?)$/;
+
 function attrsForItem(item, sourceNode, options) {
   const tag = safeTag(sourceNode.tagName || tagForAsset(item) || item.tagName || tagForRole(item.role));
   const preserveTrustedSource = shouldPreserveTrustedSource(item, sourceNode, options);
@@ -38,7 +41,9 @@ function attrsForItem(item, sourceNode, options) {
     addParentPageAttrs(attrs, item);
   }
   if (!classes.size && !hasSourceNode(sourceNode)) classes.add(classForRole(item.role));
-  const sourceStyle = sourceStyleForItem(item, sourceNode, classes);
+  const sourceStyle = isVectorContainerChildWithReverseBox(item, options)
+    ? stripSourceBoxStyle(sourceStyleForItem(item, sourceNode, classes))
+    : sourceStyleForItem(item, sourceNode, classes);
   const preserveAcceptedSourceStyle = item && item.labelStatus === 'accepted' && hasSourceNode(sourceNode);
   const mergedStyle = preserveTrustedSource || preserveAcceptedSourceStyle ? sourceStyle : authorInlineStyleForItem(item, sourceStyle, {
     synthesizedStyles: options.synthesizedStyles,
@@ -52,6 +57,27 @@ function attrsForItem(item, sourceNode, options) {
   if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   if (!preserveTrustedSource) addObservedLabelAttrs(attrs, item);
   return attrsToHtml(orderAttrs(attrs));
+}
+
+// 矢量容器（author-vector-renderer）的直接子对象按读回 bounds 绝对定位，
+// 条件与 author-css-writer 写兜底几何一致：有 bounds、不走作者网格。
+function isVectorContainerChildWithReverseBox(item, options = {}) {
+  const containers = options.vectorContainerIds;
+  const parentId = item && item.structure && item.structure.parentId;
+  if (!containers || !parentId || !containers.has(parentId)) return false;
+  return Boolean(item.bounds) && !(item.layout && item.layout.grid);
+}
+
+function stripSourceBoxStyle(sourceStyle) {
+  return String(sourceStyle || '')
+    .split(';')
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => {
+      const index = declaration.indexOf(':');
+      if (index <= 0) return false;
+      return !SOURCE_BOX_PROPERTY_RE.test(declaration.slice(0, index).trim().toLowerCase());
+    })
+    .join(';');
 }
 
 function sourceNodeForItem(item) {
@@ -165,6 +191,7 @@ function formatAttrValue(value) {
 }
 
 module.exports = {
+  SOURCE_BOX_PROPERTY_RE,
   attrsForItem,
   sourceNodeForItem,
   shouldPreserveTrustedSource,

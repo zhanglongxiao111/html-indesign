@@ -1,5 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
+const { vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 const {
   requiredNumber,
   formatPx,
@@ -29,6 +30,8 @@ function baseCss(model) {
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] th, .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] td { overflow: hidden; vertical-align: top; }`,
     '    .id-object > img, .id-object > object { display: block; width: 100%; height: 100%; }',
     `    .id-object > img[${HTML_DATA_ID_ATTRIBUTES.PREVIEW_KIND}="pdf"] { border: 0; outline: 0; }`,
+    // 对象样式 class 的边框/底色不得画在矢量 svg 盒子上，描边和填充已在 path 上。
+    `    ${vectorSvgBoxPaintResetRule()}`,
     '    .list-item { display: block; padding: 0; }',
     '    .list-item.has-bullet::before { content: "•"; margin-right: 0.5em; }',
     '    .list-item.has-number::before { content: attr(data-circle); margin-right: 0.5em; }',
