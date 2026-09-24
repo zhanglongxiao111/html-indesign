@@ -693,7 +693,7 @@ test('宿主失败结果被 CLI 序列化成 JSON 文本时，warning 也要从�
   assert.equal(codes.filter((code) => code === 'PDF_PAGE_APPLY_FAILED').length, 1);
 });
 
-test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，并把 stale 路径列出来', () => {
+test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，旧产物移进 previous-output/ 并在 reportWarnings 里列出', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'plugin-build-stale-artifacts');
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
@@ -726,10 +726,10 @@ test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，�
       exportIdml: true,
       instructionsPath,
       summaryPath,
-      preRunDeliverables: {
-        indd: snapshotOf(inddPath),
-        pdf: snapshotOf(pdfPath),
-        idml: snapshotOf(idmlPath),
+      preRunOutputs: {
+        'plugin-smoke.indd': snapshotOf(inddPath),
+        'plugin-smoke.pdf': snapshotOf(pdfPath),
+        'plugin-smoke.idml': snapshotOf(idmlPath),
       },
     },
     host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
@@ -745,9 +745,14 @@ test('三个产物都与开工前快照一致时报 BUILD_ARTIFACTS_MISSING，�
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'BUILD_ARTIFACTS_MISSING');
   assert.deepEqual(response.error.details.missing, [inddPath, pdfPath, idmlPath]);
-  assert.deepEqual(response.error.details.stale, [inddPath, pdfPath, idmlPath]);
-  assert.match(response.error.message, /stale from a previous build/);
+  assert.match(response.error.message, /not written by this run/);
   assert.equal(response.artifacts, undefined);
+  const moved = response.error.details.reportWarnings.find((item) => item.code === 'PREVIOUS_OUTPUT_MOVED');
+  assert.deepEqual(moved.details.files, ['plugin-smoke.indd', 'plugin-smoke.pdf', 'plugin-smoke.idml']);
+  for (const file of [inddPath, pdfPath, idmlPath]) {
+    assert.equal(fs.existsSync(file), false, `${file} 不得留在 outDir 冒充本次成品`);
+    assert.equal(fs.existsSync(path.join(outDir, 'previous-output', path.basename(file))), true);
+  }
 });
 
 test('本轮真的覆盖了三个产物时照常完成：快照比对只认变化，不认工位时钟', () => {
@@ -769,10 +774,10 @@ test('本轮真的覆盖了三个产物时照常完成：快照比对只认变�
     const stat = fs.statSync(file);
     return { mtimeMs: stat.mtimeMs, size: stat.size };
   };
-  const preRunDeliverables = {
-    indd: snapshotOf(inddPath),
-    pdf: snapshotOf(pdfPath),
-    idml: snapshotOf(idmlPath),
+  const preRunOutputs = {
+    'plugin-smoke.indd': snapshotOf(inddPath),
+    'plugin-smoke.pdf': snapshotOf(pdfPath),
+    'plugin-smoke.idml': snapshotOf(idmlPath),
   };
 
   // 本轮宿主脚本把三个产物都重写了：内容与大小都变了，mtime 还往前跳了一小时
@@ -794,7 +799,7 @@ test('本轮真的覆盖了三个产物时照常完成：快照比对只认变�
       exportIdml: true,
       instructionsPath,
       summaryPath,
-      preRunDeliverables,
+      preRunOutputs,
     },
     host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
   });
@@ -834,10 +839,10 @@ test('exportIdml 关闭时不去追究上一轮遗留的旧 IDML，idmlPath 报 
     const stat = fs.statSync(file);
     return { mtimeMs: stat.mtimeMs, size: stat.size };
   };
-  const preRunDeliverables = {
-    indd: snapshotOf(inddPath),
-    pdf: snapshotOf(pdfPath),
-    idml: snapshotOf(idmlPath),
+  const preRunOutputs = {
+    'plugin-smoke.indd': snapshotOf(inddPath),
+    'plugin-smoke.pdf': snapshotOf(pdfPath),
+    'plugin-smoke.idml': snapshotOf(idmlPath),
   };
 
   // 本轮只写 INDD 与 PDF；那个 .idml 是上一轮遗留的、与开工前快照一字不差的旧文件，
@@ -859,7 +864,7 @@ test('exportIdml 关闭时不去追究上一轮遗留的旧 IDML，idmlPath 报 
       exportIdml: false,
       instructionsPath,
       summaryPath,
-      preRunDeliverables,
+      preRunOutputs,
     },
     host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
   });

@@ -44,6 +44,18 @@ function removeFileWithRetrySync(filePath, options = {}) {
   });
 }
 
+// 同目录（同卷）内移动文件或目录。目标已存在的文件由 rename 直接替换；目标是目录时
+// rename 替换不了，由调用方先清掉。占用重试口径与写入/删除一致。
+function renameWithRetrySync(fromPath, toPath, options = {}) {
+  const fs = options.fs || nodeFs;
+  const source = path.resolve(fromPath);
+  const target = path.resolve(toPath);
+  return withBusyRetry(source, 'rename', options, () => {
+    fs.renameSync(source, target);
+    return target;
+  });
+}
+
 function withBusyRetry(target, operation, options, attempt) {
   const retries = nonNegativeInteger(options.retries, DEFAULT_RETRIES);
   const initialDelayMs = nonNegativeInteger(options.initialDelayMs, DEFAULT_INITIAL_DELAY_MS);
@@ -65,7 +77,7 @@ function withBusyRetry(target, operation, options, attempt) {
 function busyError(target, operation, attempts, lastError, options) {
   const code = options.busyCode || DEFAULT_BUSY_CODE;
   const hint = options.busyHint || '文件被占用，关闭占用该文件的程序后重试。';
-  const verb = operation === 'remove' ? 'remove' : 'write';
+  const verb = { remove: 'remove', rename: 'move' }[operation] || 'write';
   const error = new Error(
     `${code}: failed to ${verb} ${target} after ${attempts.length} attempt(s); last error ${lastError.code}. ${hint}`
   );
@@ -115,5 +127,6 @@ module.exports = {
   RETRYABLE_CODES,
   isRetryableBusyError,
   removeFileWithRetrySync,
+  renameWithRetrySync,
   writeFileAtomicSync,
 };

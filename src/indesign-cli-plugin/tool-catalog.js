@@ -128,6 +128,10 @@ const tools = [
         + 'status 为 not-produced 表示本次没走到那一步。',
       'stage 为 fidelity 时读 forward-fidelity-report.json，按报告命名的页/对象/字段改源码，不要用相同输入重试。',
       '导出阶段失败时看 details.partialArtifacts：INDD 可能已经落盘，不必重走整条链路。',
+      '任一阶段失败后，outDir 里上一轮留下、本次没重写的 INDD/PDF/IDML 与中间产物会移进 outDir/previous-output/'
+        + '（同名只留最近一份），并写 BUILD_FAILED.json；结果在 error.details.reportWarnings 的 PREVIOUS_OUTPUT_MOVED。'
+        + '出现 PREVIOUS_OUTPUT_NOT_MOVED 时，列出的文件没能移走、仍在原位，它们不是本次成品，不要取用或发出。'
+        + 'outDir 里有 BUILD_FAILED.json 就表示最近一次构建失败；下一次构建成功时它会被删除。',
       'mode 为 final 时本工具内部已执行 export.verify，无需再手动运行一次。',
     ],
     return_example: {
