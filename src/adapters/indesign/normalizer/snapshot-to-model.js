@@ -341,12 +341,10 @@ function isAiPlacedAsset(asset) {
 }
 
 function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {
-  if (isIndesignBuiltinStyleName(rawName)) {
-    return { [refKey]: null, [`${refKey}DisplayName`]: null };
-  }
+  const ref = mapStyleName(styleMaps, kind, rawName);
   return {
-    [refKey]: mapStyleName(styleMaps, kind, rawName),
-    [`${refKey}DisplayName`]: rawName || null,
+    [refKey]: ref,
+    [`${refKey}DisplayName`]: ref ? rawName : null,
   };
 }
 
@@ -591,8 +589,11 @@ function styleItems(items) {
   return [];
 }
 
+// 快照里所有样式引用（页面对象、文本 run、表格、单元格）都经这里转成模型引用。
+// InDesign 内置样式名（[基本段落]、[无] ...）表示“沿用默认”，不作为样式引用写进模型，
+// 否则会被写进作者 HTML，正向构建时再被当成用户样式新建（#21）。
 function mapStyleName(styleMaps, kind, value) {
-  if (!value) return null;
+  if (!value || isIndesignBuiltinStyleName(value)) return null;
   const map = styleMaps && styleMaps[kind];
   return map && map.get(String(value)) || value;
 }

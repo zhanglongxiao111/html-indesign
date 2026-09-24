@@ -3,11 +3,12 @@ const { createProtocolLabel } = require('../shared/labels');
 const {
   explicitName,
   sanitizeStyleName,
+  isIndesignBuiltinStyleName,
 } = require('../shared/style-utils');
 
 function explicitFrameStyleName(item, options) {
   const attributes = item.attributes || {};
-  const explicitDisplay = explicitName(attributes, styleDisplayAttributes('frameStyles'));
+  const explicitDisplay = explicitDisplayName(attributes, 'frameStyles');
   if (explicitDisplay) return explicitDisplay;
   const token = styleTokenForKind(attributes, 'frameStyles');
   return mappedStyleName(token, 'frameStyles', options) || token || null;
@@ -15,7 +16,7 @@ function explicitFrameStyleName(item, options) {
 
 function styleNameForKind(item, kind, signature, options) {
   const attributes = item.attributes || {};
-  const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
+  const explicitDisplay = explicitDisplayName(attributes, kind);
   if (explicitDisplay) return explicitDisplay;
   const token = styleTokenForKind(attributes, kind);
   const mapped = mappedStyleName(token, kind, options);
@@ -41,7 +42,7 @@ function styleTokenForKind(attributes, kind) {
 
 function styleIdentityForKind(item, kind, name, options) {
   const attributes = item && item.attributes || {};
-  const explicitDisplay = explicitName(attributes, styleDisplayAttributes(kind));
+  const explicitDisplay = explicitDisplayName(attributes, kind);
   const explicitToken = styleTokenForKind(attributes, kind);
   const synthesizedToken = explicitName(attributes, [HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN]);
   const className = styleClassNameForKind(item, kind);
@@ -51,6 +52,18 @@ function styleIdentityForKind(item, kind, name, options) {
     token: token || name,
     displayName: displayName || name,
   };
+}
+
+// 显示名属性（data-id-*-style-name）只是同一样式在面板里的名字。该种类的样式名声明是
+// InDesign 内置名（[基本文本框架] 等）时，显示名也属于内置样式（旧版反向包会写成去掉方括号的
+// “基本文本框架”），一并按“没声明”处理，否则仍会被当成用户样式新建（#21）。
+function explicitDisplayName(attributes, kind) {
+  if (declaresBuiltinStyle(attributes, kind)) return null;
+  return explicitName(attributes, styleDisplayAttributes(kind));
+}
+
+function declaresBuiltinStyle(attributes, kind) {
+  return styleTokenAttributes(kind).some((attr) => isIndesignBuiltinStyleName(attributes && attributes[attr]));
 }
 
 function styleProtocolLabel(kind, identity) {
@@ -134,7 +147,7 @@ function hasDeclaredStyleIdentity(item, kind) {
   const attributes = item && item.attributes || {};
   const dedicatedDisplayAttr = styleDisplayAttributes(kind)[0];
   const dedicatedTokenAttr = styleTokenAttributes(kind)[0];
-  if (dedicatedDisplayAttr && explicitName(attributes, [dedicatedDisplayAttr])) return true;
+  if (dedicatedDisplayAttr && !declaresBuiltinStyle(attributes, kind) && explicitName(attributes, [dedicatedDisplayAttr])) return true;
   if (dedicatedTokenAttr && explicitName(attributes, [dedicatedTokenAttr])) return true;
   return Boolean(declaredStyleClassName(item, kind));
 }

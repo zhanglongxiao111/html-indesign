@@ -247,9 +247,12 @@ function firstClassName(item) {
   return first ? sanitizeStyleName(first) : null;
 }
 
+// 作者声明的样式名在这里统一读取。InDesign 内置样式名（[基本段落]、[无] ...）表示“沿用默认”，
+// 按“没声明”处理：若先清洗（方括号被洗掉）再按名新建，就会凭空多出同名用户样式（#21）。
 function explicitName(attributes, names) {
   for (const name of names) {
     const value = attributes && attributes[name];
+    if (isIndesignBuiltinStyleName(value)) continue;
     const safe = sanitizeStyleName(value);
     if (safe) return safe;
   }

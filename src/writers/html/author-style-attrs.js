@@ -2,7 +2,7 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 'use strict';
 
 const { blendModeCss } = require('./css-blend-mode');
-const { safeAuthorClassToken } = require('../../shared/style-utils');
+const { safeAuthorClassToken, isIndesignBuiltinStyleName } = require('../../shared/style-utils');
 const { inlineResidualForSynth } = require('./author-style-residual');
 
 function authorInlineStyleForItem(item, sourceStyle, options = {}) {
@@ -50,12 +50,17 @@ function authorClassesForItem(item, sourceClasses, sourceAttrs = {}) {
   const tableStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.TABLE_STYLE] || refs.tableStyle;
   const cellStyle = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.CELL_STYLE] || refs.cellStyle;
   const synthesizedToken = sourceAttrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] || refs.synthesizedToken;
-  if (paragraphStyle) classes.add(`pstyle-${safeAuthorClassToken(paragraphStyle)}`);
-  if (characterStyle) classes.add(`cstyle-${safeAuthorClassToken(characterStyle)}`);
-  if (objectStyle) classes.add(`ostyle-${safeAuthorClassToken(objectStyle)}`);
-  if (frameStyle) classes.add(`fstyle-${safeAuthorClassToken(frameStyle)}`);
-  if (tableStyle) classes.add(`tstyle-${safeAuthorClassToken(tableStyle)}`);
-  if (cellStyle) classes.add(`cellstyle-${safeAuthorClassToken(cellStyle)}`);
+  // 内置样式名（手写源码里的 data-id-*-style="[基本段落]" 会随来源属性回读）不生成样式类：
+  // 类名会洗掉方括号，再次正向时无法认出是内置名，会被当成用户样式新建（#21）。
+  const addStyleClass = (prefix, name) => {
+    if (name && !isIndesignBuiltinStyleName(name)) classes.add(`${prefix}${safeAuthorClassToken(name)}`);
+  };
+  addStyleClass('pstyle-', paragraphStyle);
+  addStyleClass('cstyle-', characterStyle);
+  addStyleClass('ostyle-', objectStyle);
+  addStyleClass('fstyle-', frameStyle);
+  addStyleClass('tstyle-', tableStyle);
+  addStyleClass('cellstyle-', cellStyle);
   if (synthesizedToken) classes.add(`synth-${safeAuthorClassToken(synthesizedToken)}`);
   return Array.from(classes).filter(Boolean);
 }

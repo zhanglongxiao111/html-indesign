@@ -55,8 +55,8 @@ test('compileStyles keeps explicit object style names stable when only overflow 
           tagName: 'svg',
           classList: ['id-object'],
           attributes: {
-            'data-id-object-style': '[无]',
-            'data-id-object-style-name': '无-59786243',
+            'data-id-object-style': '卡片框',
+            'data-id-object-style-name': '卡片框-59786243',
           },
           computedStyle: { overflow: 'hidden' },
           text: '',
@@ -67,8 +67,8 @@ test('compileStyles keeps explicit object style names stable when only overflow 
           tagName: 'svg',
           classList: ['id-object'],
           attributes: {
-            'data-id-object-style': '[无]',
-            'data-id-object-style-name': '无-59786243',
+            'data-id-object-style': '卡片框',
+            'data-id-object-style-name': '卡片框-59786243',
           },
           computedStyle: { overflow: 'visible' },
           text: '',
@@ -80,9 +80,9 @@ test('compileStyles keeps explicit object style names stable when only overflow 
   const styled = compileStyles(snapshot);
   const items = styled.pages[0].items;
 
-  assert.equal(items[0].styleRefs.objectStyle, '无-59786243');
-  assert.equal(items[1].styleRefs.objectStyle, '无-59786243');
-  assert.equal(Boolean(styled.styles.objectStyles['无-59786243-38812455']), false);
+  assert.equal(items[0].styleRefs.objectStyle, '卡片框-59786243');
+  assert.equal(items[1].styleRefs.objectStyle, '卡片框-59786243');
+  assert.equal(Object.keys(styled.styles.objectStyles).filter((name) => name.startsWith('卡片框-59786243-')).length, 0);
   assert.equal(styled.report.messages.some((message) => message.code === 'STYLE_NAME_CONFLICT'), false);
 });
 

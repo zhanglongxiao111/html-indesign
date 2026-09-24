@@ -797,7 +797,10 @@ test('snapshotToSemanticModel uses observed panel style names as executable styl
   }, { unitMode: 'presentation', targetSize: 'same' });
 
   assert.equal(model.pages[0].items[0].styleRefs.paragraphStyle, '标准正文-18点左对齐-57801789');
-  assert.equal(model.pages[0].items[0].styleRefs.objectStyle, '基本文本框架');
+  // 对象样式声明的是内置 [基本文本框架]，旧版反向包配的显示名“基本文本框架”只是它去掉方括号的写法；
+  // 沿用 InDesign 默认，不新建同名用户样式（#21）。
+  assert.equal(model.pages[0].items[0].styleRefs.objectStyle, null);
+  assert.equal(Boolean(model.styles.objectStyles['基本文本框架']), false);
 });
 
 test('snapshotToSemanticModel emits canonical role without retired item type', () => {

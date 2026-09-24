@@ -565,6 +565,85 @@ test('compileInstructions falls back to a Chinese default table style when unsty
   assert.notEqual(table.tableStyle, 'default-table');
 });
 
+// #21：内置样式名（[基本段落] / [Basic Paragraph] / [无] / [基本表] ...）表示“沿用 InDesign 默认”，
+// 不能被洗掉方括号后新建成同名用户样式。声明了内置名等同于没声明。
+test('compileInstructions treats built-in InDesign style names as undeclared instead of cloning user styles', () => {
+  const cellBounds = (index) => ({ x: 10 + index * 20, y: 10, width: 20, height: 10 });
+  const cell = (index, text, attributes = {}, runs = []) => ({
+    index, text, header: false, rowSpan: 1, colSpan: 1, boundsMm: cellBounds(index),
+    computedStyle: { fontFamily: 'Arial', fontSize: '12px' }, attributes, runs,
+  });
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 200,
+      heightMm: 100,
+      items: [
+        {
+          id: 'builtin-table',
+          role: 'table',
+          tagName: 'table',
+          classList: [],
+          attributes: { 'data-id-table-style': '[基本表]' },
+          text: '',
+          boundsMm: { x: 10, y: 10, width: 100, height: 10 },
+          zIndex: 1,
+          computedStyle: {},
+          table: [{
+            index: 0,
+            header: false,
+            cells: [
+              cell(0, 'A', { 'data-id-paragraph-style': '[基本段落]' }),
+              cell(1, 'B', { 'data-id-paragraph-style': '[Basic Paragraph]' }),
+              cell(2, 'C', { 'data-id-paragraph-style': ' [No Paragraph Style] ' }),
+              cell(3, 'D', { 'data-id-paragraph-style': '表格正文' }),
+              cell(4, 'E', {}, [{
+                text: 'E', tagName: 'span', classList: [],
+                attributes: { 'data-id-character-style': '[无]' },
+                computedStyle: { fontFamily: 'Arial', fontSize: '12px' },
+              }]),
+            ],
+          }],
+        },
+        {
+          id: 'builtin-text',
+          role: 'text',
+          tagName: 'p',
+          classList: [],
+          attributes: { 'data-id-paragraph-style': '[基本段落]', 'data-id-object-style': '[无]' },
+          text: 'Body',
+          boundsMm: { x: 10, y: 40, width: 100, height: 10 },
+          zIndex: 2,
+          computedStyle: { fontFamily: 'Arial', fontSize: '12px' },
+          runs: [],
+        },
+      ],
+    }],
+    assets: [],
+  };
+
+  const instructions = compileInstructions(snapshot);
+  const items = instructions.pages[0].items;
+  const table = items.find((item) => item.id === 'builtin-table');
+  const text = items.find((item) => item.id === 'builtin-text');
+  const styleNames = Object.fromEntries(Object.entries(instructions.styles)
+    .filter(([, collection]) => collection && typeof collection === 'object' && !Array.isArray(collection))
+    .map(([kind, collection]) => [kind, Object.keys(collection)]));
+  const builtinLike = /^(无|None|基本段落|Basic-Paragraph|No-Paragraph-Style|无段落样式|基本表|Basic-Table)$/;
+
+  for (const [kind, names] of Object.entries(styleNames)) {
+    assert.deepEqual(names.filter((name) => builtinLike.test(name)), [], `${kind} must not clone built-in styles`);
+  }
+  assert.deepEqual(table.rows[0].cells.map((c) => c.paragraphStyle), [null, null, null, '表格正文', null]);
+  assert.equal(table.rows[0].cells[4].runs[0].characterStyle !== '无', true);
+  assert.match(table.tableStyle, /^[^A-Za-z]+$/, 'built-in table style falls back like an undeclared one');
+  assert.notEqual(table.tableStyle, '基本表');
+  assert.notEqual(text.paragraphStyle, '基本段落');
+  assert.ok(instructions.styles.paragraphStyles['表格正文'], 'real cell paragraph styles are still created');
+});
+
 test('compileInstructions creates paragraph styles referenced by table cells', async () => {
   const htmlPath = path.resolve(__dirname, '../fixtures/e2e/architecture-report/deck.html');
   const snapshot = await renderSnapshot({ htmlPath });

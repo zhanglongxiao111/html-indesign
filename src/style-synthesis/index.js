@@ -6,6 +6,7 @@ const {
   normalizeCssColorFromBackgroundImage,
   parseCssLinearGradient,
   stableAutoName,
+  explicitName,
 } = require('../shared/style-utils');
 const { normalizeBlendMode } = require('../shared/blend-mode');
 const { isPathPaintedVectorSvg } = require('../shared/vector-svg-box-paint');
@@ -233,7 +234,7 @@ function isWholeItemTextRun(item) {
   const runs = item.runs || [];
   if (runs.length !== 1) return false;
   const run = runs[0];
-  if (run.attributes && run.attributes[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE]) return false;
+  if (explicitName(run.attributes, [HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE])) return false;
   return String(run.text || '').trim() === String(item.text || '').trim()
     && String(run.tagName || '') === String(item.tagName || '');
 }
@@ -447,7 +448,7 @@ function ensureObjectStyle(styles, item, report, options) {
 
 function shouldCompileTextFrameObjectStyle(item) {
   const attributes = item.attributes || {};
-  if (attributes[HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE] || attributes[HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE]) return true;
+  if (explicitName(attributes, [HTML_DATA_ID_ATTRIBUTES.OBJECT_STYLE, HTML_DATA_ID_ATTRIBUTES.FRAME_STYLE])) return true;
   const style = item.computedStyle || {};
   return Boolean(
     ensureFillPreview(style)

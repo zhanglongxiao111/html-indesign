@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const cheerio = require('cheerio');
 const { collapseWhitespace } = require('../../../shared/text');
 const { resourceReferenceIdentity } = require('../../../shared/assets');
+const { isIndesignBuiltinStyleName } = require('../../../shared/style-utils');
 
 const EMPTY_PROJECT_BOOLEAN_ATTRIBUTES = Object.freeze([
   HTML_DATA_ID_ATTRIBUTES.OBJECT,
@@ -361,12 +362,15 @@ function criticalInlineStyles($) {
   }).get().filter(Boolean);
 }
 
+// 内置段落样式名（[基本段落] 等）就是“沿用 InDesign 默认”，与不写等价：正向不会为它建样式，
+// 反向也不再写出它。旧版反向包或手写源码里残留的内置名不能因此被判成样式变化（#21）。
 function tableCellStyleEntries($) {
   return $('th,td').map((_, element) => {
     const node = $(element);
+    const paragraphStyle = node.attr(HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) || '';
     return {
       tag: element.name.toLowerCase(),
-      paragraphStyle: node.attr(HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE) || '',
+      paragraphStyle: isIndesignBuiltinStyleName(paragraphStyle) ? '' : paragraphStyle,
       text: collapseWhitespace(node.text()),
     };
   }).get();
