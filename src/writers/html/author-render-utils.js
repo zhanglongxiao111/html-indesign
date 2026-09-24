@@ -3,6 +3,7 @@ const {
   safeAuthorHtmlTag,
   safeAuthorInlineHtmlTag,
 } = require('./safe-tags');
+const { isIndesignBuiltinStyleName } = require('../../shared/style-utils');
 
 function normalizeCropToken(value) {
   const text = String(value || '').trim();
@@ -34,7 +35,7 @@ function hasSourceNode(sourceNode) {
 
 function isUsefulCharacterStyle(value) {
   const name = String(value || '').trim();
-  return Boolean(name && name !== '[无]' && !/^自动字符-/i.test(name));
+  return Boolean(name && !isIndesignBuiltinStyleName(name) && !/^自动字符-/i.test(name));
 }
 
 function isUsefulSemantic(value) {

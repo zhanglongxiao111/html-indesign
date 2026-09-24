@@ -210,6 +210,12 @@ html_indesign
 - 从 token 恢复 HTML class 和 `data-id-*`。
 - 避免每个 Agent 自行维护语义映射表。
 
+InDesign 内置样式（`[基本段落]`/`[Basic Paragraph]`、`[无段落样式]`、`[无]`/`[None]`、`[基本表]`、`[基本文本框架]` 等，中英文界面名单见 `src/shared/style-utils.js` 的 `isIndesignBuiltinStyleName`）表示“沿用默认”，不是样式引用：
+
+- 反向导出不把内置名写进语义模型和作者 HTML（页面对象、文本 run、表格、单元格、单元格段落样式一律如此），也不生成对应的样式类。
+- 正向构建把 `data-id-*-style` 声明的内置名（连同同一种类的显示名属性）当作“没声明”：单元格沿用 InDesign 默认段落样式，文字和对象按计算样式合成，不会洗掉方括号新建同名用户样式。
+- 源码回环审计比较单元格段落样式时，内置名与不写等价。
+
 ## 8. 图层标签
 
 目标对象：`Layer`。

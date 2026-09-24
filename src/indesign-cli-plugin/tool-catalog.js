@@ -168,6 +168,8 @@ const tools = [
     common_next_steps: [
       'structured 模式要求语义 profile：源 INDD 若非由带 profile 的正向构建产生，必须传 sourceRoot 指向配置了 semanticPreset 的作者包目录，否则报 SEMANTIC_PRESET_LOAD_FAILED。',
       '失败时读 details.reportPath 指向的 report.json，按其中命名的页/对象定位。',
+      '要从 INDD 取内容重做时，先读 data.contentManifestPath 指向的 content-manifest.json：每页文字块（按阅读顺序编号、表格为行列二维数组）、'
+        + '图片原始链接与作者包内拷贝、栅格图像素尺寸与有效 PPI，坐标单位 mm；不要逐页读 deck.visual.html 或作者页 HTML 取内容。',
       '产出的是 HTML 作者包，不要对它运行 export verify；要回到 InDesign 请接 html.build_indesign。',
     ],
     return_example: {
