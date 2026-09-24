@@ -3,7 +3,7 @@ const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const { authorClassesForItem, blendModeCss, mergeCss } = require('./author-style-attrs');
 const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-svg');
 const { rewriteResourceAttrs } = require('./author-resource-paths');
-const { isVectorSvgBoxPaintProperty } = require('./author-style-residual');
+const { isVectorSvgBoxPaintProperty } = require('../../shared/vector-svg-box-paint');
 const {
   addObservedLabelAttrs,
   addParentPageAttrs,

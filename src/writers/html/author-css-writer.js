@@ -1,8 +1,8 @@
 const { isDegenerateInvisibleVector } = require('./vector-svg');
 const { rendersBakedVectorSvg } = require('./author-vector-renderer');
 const { safeAuthorClassToken } = require('../../shared/style-utils');
-const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
-const { synthesizedStyleDeclarations, VECTOR_SVG_BOX_PAINT_RESET } = require('./author-style-residual');
+const { synthesizedStyleDeclarations } = require('./author-style-residual');
+const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 
 function writeAuthorCssFiles(model, options = {}) {
   return {
@@ -73,7 +73,7 @@ function reverseOverridesCss(model, options = {}) {
   const lines = [
     '/* Generated fallback geometry for reverse-exported objects. */',
     '/* Vector svg paints only through its paths; class styles must not add a box frame, fill or inset. */',
-    `svg.id-object[${HTML_DATA_ID_ATTRIBUTES.VECTOR}] { ${VECTOR_SVG_BOX_PAINT_RESET.join('; ')}; }`,
+    vectorSvgBoxPaintResetRule(),
   ];
   const itemIds = new Set();
   for (const page of model.pages || []) {

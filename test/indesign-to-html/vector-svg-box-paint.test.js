@@ -11,7 +11,7 @@ const { pageItemsToAuthorHtml } = require('../../src/writers/html/author-html-tr
 const {
   VECTOR_SVG_BOX_PAINT_RESET,
   isVectorSvgBoxPaintProperty,
-} = require('../../src/writers/html/author-style-residual');
+} = require('../../src/shared/vector-svg-box-paint');
 const { renderSnapshot } = require('../../src/adapters/html');
 const { compileDocument } = require('../../src/indesign-pipeline');
 const { authorPackageCompileOptions, readAuthorPackage } = require('../../src/authoring');
@@ -39,6 +39,17 @@ test('reverse overrides reset box paint on every generated vector svg and on sou
   const css = writeAuthorCssFiles({ pages: [page] }, { mode: 'observation' })['styles/reverse-overrides.css'];
   assert.match(css, /svg\.id-object\[data-id-vector\] \{ border:0; background:none; padding:0; box-shadow:none; \}/);
   assert.match(css, /\[id="site-entry-line"\] \{[^}]*scale:none; border:0; background:none; padding:0; box-shadow:none; \}/);
+});
+
+test('visual reference page resets object style box paint on vector svg with the same rule', () => {
+  const { semanticModelToHtml } = require('../../src/writers/html');
+  const model = boxPaintModel();
+  model.styles.objectStyles = {
+    'annotation-label': { name: 'annotation-label', css: `background-color:${WHITE}; border:1px solid ${RED}` },
+  };
+  const html = semanticModelToHtml(model);
+  assert.match(html, /svg\.id-object\[data-id-vector\] \{ border:0; background:none; padding:0; box-shadow:none; \}/);
+  assert.match(html, /<svg id="label-box" class="[^"]*id-object[^"]*"[^>]*data-id-vector="rectangle"/);
 });
 
 test('observation vector svg drops source box paint from its inline style and keeps paint on the path', () => {
