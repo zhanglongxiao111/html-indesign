@@ -86,6 +86,43 @@ test('compileStyles keeps explicit object style names stable when only overflow 
   assert.equal(styled.report.messages.some((message) => message.code === 'STYLE_NAME_CONFLICT'), false);
 });
 
+test('compileStyles reads vector svg object fill from its paths when the svg box has no background', () => {
+  const vectorItem = (id, fills, computedStyle = {}) => ({
+    id,
+    role: 'shape',
+    tagName: 'svg',
+    classList: ['id-object'],
+    attributes: { 'data-id-object-style': id, 'data-id-vector': 'rectangle' },
+    computedStyle: { backgroundColor: 'rgba(0, 0, 0, 0)', ...computedStyle },
+    vectorElements: fills.map((fill) => ({ tagName: 'path', attributes: {}, computedStyle: { fill, stroke: 'none' } })),
+    text: '',
+  });
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [
+        vectorItem('single-fill', ['rgb(255, 255, 255)']),
+        vectorItem('shared-fill', ['rgb(200, 16, 46)', 'rgb(200, 16, 46)']),
+        vectorItem('mixed-fill', ['rgb(200, 16, 46)', 'rgb(255, 255, 255)']),
+        vectorItem('no-fill', ['none']),
+        vectorItem('box-fill', ['rgb(255, 255, 255)'], { backgroundColor: 'rgb(18, 52, 86)' }),
+      ],
+    }],
+  };
+
+  const { objectStyles } = compileStyles(snapshot).styles;
+
+  assert.equal(objectStyles['single-fill'].fillColor, '颜色-255-255-255');
+  assert.equal(objectStyles['shared-fill'].fillColor, '颜色-200-16-46');
+  assert.equal(objectStyles['mixed-fill'].fillColor, null);
+  assert.equal(objectStyles['no-fill'].fillColor, null);
+  assert.equal(objectStyles['box-fill'].fillColor, '颜色-18-52-86');
+});
+
 test('compileStyles maps CSS character typography into InDesign character style fields', () => {
   const snapshot = {
     metadata: { source: 'inline.html' },

@@ -285,7 +285,7 @@ test('observation vector svg drops baked source transform and box geometry in fa
   assert.match(style, /opacity:0\.8/);
 
   const css = writeAuthorCssFiles({ pages: [page] }, { mode: 'observation' })['styles/reverse-overrides.css'];
-  assert.match(css, /\[id="site-entry-line"\] \{ position:absolute; left:300px; top:100px; width:161\.2px; height:65\.129px; margin:0; transform:none; rotate:none; translate:none; scale:none; \}/);
+  assert.match(css, /\[id="site-entry-line"\] \{ position:absolute; left:300px; top:100px; width:161\.2px; height:65\.129px; margin:0; transform:none; rotate:none; translate:none; scale:none; border:0; background:none; padding:0; box-shadow:none; \}/);
 });
 
 test('structured reverse export keeps sourced vectors on their source geometry', () => {

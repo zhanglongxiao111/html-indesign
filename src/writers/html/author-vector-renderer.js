@@ -3,6 +3,7 @@ const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const { authorClassesForItem, blendModeCss, mergeCss } = require('./author-style-attrs');
 const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-svg');
 const { rewriteResourceAttrs } = require('./author-resource-paths');
+const { isVectorSvgBoxPaintProperty } = require('./author-style-residual');
 const {
   addObservedLabelAttrs,
   addParentPageAttrs,
@@ -101,6 +102,7 @@ function bakedVectorSourceStyle(sourceStyle, item) {
       if (index <= 0) return false;
       const property = declaration.slice(0, index).trim().toLowerCase();
       if (BAKED_VECTOR_TRANSFORM_PROPERTIES.has(property)) return false;
+      if (isVectorSvgBoxPaintProperty(property)) return false;
       return !(dropBox && BAKED_VECTOR_BOX_PROPERTY_RE.test(property));
     })
     .join(';');

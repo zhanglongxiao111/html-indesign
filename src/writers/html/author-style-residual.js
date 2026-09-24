@@ -25,6 +25,23 @@ function inlineResidualForSynth({ inlineCss, token, synthesizedStyles }) {
   };
 }
 
+// 已烘焙的矢量 svg 只由 path 的 fill/stroke 表达填充和描边。合成样式、对象样式和源码样式里
+// 的盒模型装饰（border、background、padding、box-shadow）落在 svg 元素上会在外围多画一个
+// 矩形框或底色，border/padding 还会把 viewBox 内容区往里缩，端点和角度随之偏移。
+// border-radius 不画东西，保留它让正向回编仍能读到对象样式圆角。
+const VECTOR_SVG_BOX_PAINT_RESET = Object.freeze([
+  'border:0',
+  'background:none',
+  'padding:0',
+  'box-shadow:none',
+]);
+
+function isVectorSvgBoxPaintProperty(property) {
+  const name = String(property || '').trim().toLowerCase();
+  if (/^border(?:-|$)/.test(name)) return !/radius$/.test(name);
+  return /^(?:background|padding)(?:-|$)/.test(name) || name === 'box-shadow';
+}
+
 function synthesizedStyleDeclarations(style) {
   if (style && style.kind === 'line') return '';
   const properties = style && style.properties || {};
@@ -116,4 +133,6 @@ module.exports = {
   parseCssDeclarations,
   serializeCssDeclarations,
   equivalentCssValue,
+  VECTOR_SVG_BOX_PAINT_RESET,
+  isVectorSvgBoxPaintProperty,
 };
