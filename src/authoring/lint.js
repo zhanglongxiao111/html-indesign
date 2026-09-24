@@ -22,6 +22,8 @@ const {
 } = require('../protocol');
 const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../semantic-preset');
 const { auditStaticAuthoringRuntime } = require('./static-runtime-audit');
+const { auditCompilePrecheck } = require('./compile-precheck');
+const { authorPackageCompileOptions } = require('./compile-options');
 
 async function lintAuthoringPackage(options = {}) {
   const packagePath = path.resolve(requiredPath(options.packagePath, 'packagePath'));
@@ -83,6 +85,9 @@ async function lintAuthoringPackage(options = {}) {
     gridTolerance: options.gridTolerance,
     lintProfile,
     includeSnapshot: options.includeSnapshot,
+    // lint 用 compile 的默认 unitMode/targetSize 与同一份语义库 styleNameMap，
+    // 让编译预检与 html.compile_instructions / html.build_indesign 走同一套选项。
+    compileOptions: authorPackageCompileOptions(sourcePackage, {}, resolvedPreset),
   });
 
   const errors = (sourceFormat.errors || [])
@@ -149,11 +154,15 @@ async function lintAuthoringHtml(options = {}) {
   }
   const snapshot = options.snapshot || await renderSnapshot({ htmlPath });
   const compatibility = auditHtmlCompatibility(snapshot);
-  const result = withCompatibility(withDataIdAudit(validateAuthoringRules(snapshot, {
+  const result = withModelPrecheck(withCompatibility(withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
     lintProfile,
-  }), dataIdAudit), compatibility);
+  }), dataIdAudit), compatibility), auditCompilePrecheck(snapshot, {
+    // 只有 htmlPath（没有作者包）时不传：拿不到语义库，编译预检只做语义模型一步。
+    compileOptions: options.compileOptions || null,
+    compatibilityBlocked: compatibilityBlocked(compatibility),
+  }));
 
   return normalizeLintPayload({
     ok: result.valid,
@@ -256,6 +265,25 @@ function withCompatibility(result, compatibility) {
     messages: errors.concat(warnings),
     compatibility: compatibility || emptyCompatibility(),
   };
+}
+
+// compile 阶段会拒绝的输入（同页重复 id、资源文件缺失等）按 error 并入，strict 与否都一样。
+function withModelPrecheck(result, precheck) {
+  if (!precheck || !precheck.errors.length) return result;
+  const errors = result.errors.concat(precheck.errors);
+  return {
+    ...result,
+    valid: errors.length === 0,
+    errors,
+    messages: errors.concat(result.warnings),
+  };
+}
+
+// 与 compile 的 assertCompatibilityReady 同一口径：error 级或 blocked 动作，或 summary.blocked > 0。
+function compatibilityBlocked(compatibility) {
+  const messages = compatibility && Array.isArray(compatibility.messages) ? compatibility.messages : [];
+  if (messages.some((entry) => entry && (entry.level === 'error' || entry.action === 'blocked'))) return true;
+  return Number(compatibility && compatibility.summary && compatibility.summary.blocked) > 0;
 }
 
 function emptyCompatibility() {

@@ -89,6 +89,8 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 
 `html.compile_instructions` 会再次检查同一份 compatibility report；`blocked > 0` 时返回 `HTML_COMPATIBILITY_BLOCKED`，不会写出看似成功但已经丢图的 instructions。`html.build_indesign` 的严格 lint 使用同一组消息。
 
+同一页里的元素 id 必须唯一（跨页同名不拦）。lint 会对同一份快照跑 compile 阶段的语义模型转换，同页重复 id 报 `ITEM_ID_DUPLICATED` error，条目列出每处出现的 `sourceFile`（页面文件）、`sourcePath` 和改名建议；按建议改 `pages/*.html` 里的 id（连同指向它的 CSS `#id` 选择器），重新组装后再 lint。作者包 lint 还会跑 compile 的构建指令校验：引用的资源文件不存在时报 `ASSET_FILE_NOT_FOUND`（`stage: "instructions"`），条目带页面、元素、`sourceFile`、原始引用 `src` 和解析后的 `path`，先确认文件存在、UNC 共享可达，或改正页面里的路径。
+
 ## 2. 最小合格标准
 
 Agent 编写的 HTML 作者包必须满足以下条件：
