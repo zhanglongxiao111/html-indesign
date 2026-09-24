@@ -317,6 +317,9 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定语义 token |
 | `GRAPHIC_ASSET_REFERENCE_MISSING` | error | 图形角色没有写在持有资源路径的元素上 |
 | `TEXT_CONTAINER_HAS_CHILD_OBJECTS` | error | 复合布局容器被错误声明为文本对象，会与子文字重复 |
+| `ITEM_ID_DUPLICATED` | error | 同一页两个及以上对象 id 相同；由 lint 对同一快照跑 compile 的 `snapshotToSemanticModel` 得出，判重范围与 compile 一致（同页，跨页不报） |
+
+lint 对同一份快照跑一遍 compile 阶段的语义模型转换与校验（`src/authoring/semantic-model-precheck.js`），compile 会拒绝的输入在 lint 就报 error（`stage: "semantic-model"`），不再等到 `html.build_indesign` 的 compile 阶段。
 
 普通模式下，网格偏移和语义 token 缺失先作为 warning；`strict` 模式会把 warning 提升为 error。每条 `GRID_ALIGNMENT_OFF` 携带 `edges`、`edgeOffsets`、`suggestedFix`；块级条目另带 `block: true`、`blockOf`、`blockOfCount`。结果里的 `gridIgnoredCount`/`gridOffCount`/`gridBlockOffCount`/`gridCheckedCount`/`gridShieldedCount`/`gridBlockCheckedCount`/`gridBlockSkippedCount`/`gridSkippedCount` 记录豁免数、报错数与各类元素的核查覆盖情况。
 

@@ -22,6 +22,7 @@ const {
 } = require('../protocol');
 const { auditAuthoringSemanticTokens, resolveSemanticPreset } = require('../semantic-preset');
 const { auditStaticAuthoringRuntime } = require('./static-runtime-audit');
+const { auditSemanticModelPrecheck } = require('./semantic-model-precheck');
 
 async function lintAuthoringPackage(options = {}) {
   const packagePath = path.resolve(requiredPath(options.packagePath, 'packagePath'));
@@ -149,11 +150,13 @@ async function lintAuthoringHtml(options = {}) {
   }
   const snapshot = options.snapshot || await renderSnapshot({ htmlPath });
   const compatibility = auditHtmlCompatibility(snapshot);
-  const result = withCompatibility(withDataIdAudit(validateAuthoringRules(snapshot, {
+  const result = withModelPrecheck(withCompatibility(withDataIdAudit(validateAuthoringRules(snapshot, {
     strict: options.strict,
     gridTolerance: options.gridTolerance,
     lintProfile,
-  }), dataIdAudit), compatibility);
+  }), dataIdAudit), compatibility), auditSemanticModelPrecheck(snapshot, {
+    compatibilityBlocked: compatibilityBlocked(compatibility),
+  }));
 
   return normalizeLintPayload({
     ok: result.valid,
@@ -256,6 +259,25 @@ function withCompatibility(result, compatibility) {
     messages: errors.concat(warnings),
     compatibility: compatibility || emptyCompatibility(),
   };
+}
+
+// compile 阶段语义模型校验会拒绝的输入（如同页重复 id）按 error 并入，strict 与否都一样。
+function withModelPrecheck(result, precheck) {
+  if (!precheck || !precheck.errors.length) return result;
+  const errors = result.errors.concat(precheck.errors);
+  return {
+    ...result,
+    valid: errors.length === 0,
+    errors,
+    messages: errors.concat(result.warnings),
+  };
+}
+
+// 与 compile 的 assertCompatibilityReady 同一口径：error 级或 blocked 动作，或 summary.blocked > 0。
+function compatibilityBlocked(compatibility) {
+  const messages = compatibility && Array.isArray(compatibility.messages) ? compatibility.messages : [];
+  if (messages.some((entry) => entry && (entry.level === 'error' || entry.action === 'blocked'))) return true;
+  return Number(compatibility && compatibility.summary && compatibility.summary.blocked) > 0;
 }
 
 function emptyCompatibility() {
