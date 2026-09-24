@@ -128,6 +128,7 @@ reverse-export-<timestamp>/
   reconstruction-report.json
   report.json
   <mode>-report.json
+  content-manifest.json      # 每页文字块、表格、图片链接与像素尺寸（4.4.1）
   author/
     deck.config.json
     deck.html                # generated from author source package
@@ -321,6 +322,69 @@ PDF 反向导出必须保留：
 - observation 模式中的 unresolved / 语义缺失对象数量。
 - inferred 模式中的推断来源、置信度和证据。
 - 标签复核摘要：接受、局部接受、降级观察的数量和原因。
+- 内容清单引用：`contentManifest: { path: "content-manifest.json", summary }`，`summary` 与清单顶层同一份计数。
+
+### 4.4.1 `content-manifest.json`
+
+内容清单，给「从 INDD 取内容重做」这类场景直接使用：Agent 只读这一个文件就能拿到每页文字、表格、图片链接和像素尺寸，不必逐页读观察态 HTML（08-06 事故里为取内容读回 21 个观察 HTML，约 423KB，大部分是坐标和 z-index）。
+
+规则：
+
+- 由 `src/reverse-pipeline/content-manifest.js` 从与 `reverse-model.json` 同一份语义模型聚合，纯 Node，不读 HTML；写在反向导出 outDir 根目录，经 `src/shared/atomic-write.js` 原子写入。
+- 只带内容与位置：不带坐标以外的样式细节，不带 z-index、图层、颜色、字体。
+- 顶层 `runId` 与 `report.json` 相同；读之前核对，对不上就是别的运行留下的。
+- 字段登记在 `src/protocol/fields/content-manifest.js`（owner `content-manifest`，observation，不参与结构化编译），生成结果见 `PROTOCOL_FIELD_REGISTRY.md`。
+- `html.reverse_export` 成功返回体带 `data.contentManifestPath`（绝对路径），`artifacts` 里有一条 `Content manifest`；`report.json` 带 `contentManifest` 引用。
+- 读不到图片文件（链接缺失、NAS 不可达、格式不认识、文件损坏）只让该图的像素字段为 null 并写原因，不让导出失败。
+
+顶层字段：
+
+| 字段 | 含义 |
+| ---- | ---- |
+| `schema` / `schemaVersion` | `html-indesign.content-manifest` / `1` |
+| `runId` / `generatedAt` / `tool` | 运行标识，与 `report.json` 一致 |
+| `source` | `{ indd, documentId, title, mode }` |
+| `unit` | 所有 `bounds` / 尺寸的单位，固定 `mm`（InDesign 物理尺寸，pt × 25.4 / 72）。presentation 模式下 1pt 对应作者 HTML 的 1px，需要 px 时按 mm × 72 / 25.4 换回 |
+| `pageCount` / `pageSize` | 页数；首页尺寸 `{ width, height }`，尺寸不同的页自带 `size` |
+| `readingOrder` | 阅读顺序依据，当前为 `xy-cut` |
+| `files` | 相对清单所在目录的路径：`report`、`reverseModel`、`authorEntry`、`authorConfig` |
+| `summary` | `textBlocks`、`tables`、`images`、`rasterImages`、`vectorImages`、`imagesWithPixels`、`imagesWithPixelError` |
+| `parentPages[]` | 带文字或图片的母版：`{ id, name, textBlocks, images }`，页面通过 `parentPageId` 引用；母版内容不重复写进每页 |
+| `pages[]` | `{ id, index, name?, semantic?, parentPageId?, size?, textBlocks, images }`；`name` 是 InDesign 页面名 |
+
+文字块 `textBlocks[]`（跳过空文本框和语义重建生成的虚拟容器）：
+
+| 字段 | 含义 |
+| ---- | ---- |
+| `id` | 反向模型对象 id |
+| `order` | 本页阅读顺序，与 `images[].order` 共用一套编号，从 1 起 |
+| `kind` | `text` 或 `table` |
+| `role` / `semantic` | 对象角色与白名单语义（有才写） |
+| `paragraphStyle` | 段落样式显示名（没有显示名时用 token，有才写） |
+| `tableStyle` / `headerRows` | 表格样式名与表头行数（表格、有才写） |
+| `bounds` | 回读外框 `{ x, y, width, height }`，mm |
+| `text` | 纯文本；段落与强制换行统一为 `\n`，去掉首尾空白 |
+| `rows` | 表格：`rowCount × columnCount` 的文字二维数组，合并单元格只在左上角写文字，被覆盖的位置为 `null` |
+
+图片 `images[]`（带置入资源的对象）：
+
+| 字段 | 含义 |
+| ---- | ---- |
+| `id` / `order` / `role` / `semantic` / `bounds` | 同文字块；`bounds` 是图框 |
+| `name` / `linkPath` | 链接名与 InDesign 报告的原始链接路径（NAS 素材为 UNC） |
+| `packagePath` | 作者包内拷贝的相对路径（`assetPolicy: copy` 时才有） |
+| `format` / `kind` | `jpeg`/`png`/`gif`/`webp`/`bmp`/`tiff`/`psd`/`psb`/`pdf`/`ai`/`eps`/`svg`…；`raster`/`vector`/`unknown`。读到文件头时以文件头为准 |
+| `linkStatus` | `normal`/`missing`/`modified`/`embedded`/`inaccessible`（InDesign 链接状态） |
+| `pdfPage` / `cropped` | 置入的 PDF/AI 页码；图框裁切了图像时为 `true`（有才写） |
+| `pixelWidth` / `pixelHeight` / `aspectRatio` | 栅格图像素尺寸（已按 EXIF 方向摆正）与宽高比；矢量素材和读不到时为 `null` |
+| `exifOrientation` | EXIF 方向不是 1 时写出；5–8 表示宽高已对调 |
+| `effectivePpi` / `ppiBasis` | `{ horizontal, vertical }`；`placed-image-bounds` 表示按图像本身在版面上的外框（含缩放、裁切偏移）计算，与 InDesign 链接面板「有效 PPI」同口径；`frame-bounds` 表示快照没有图像外框，按图框近似 |
+| `pixelSource` | `package-copy` 或 `link-path`：优先读作者包内拷贝，没有再读原始链接 |
+| `pixelError` | 非矢量素材读不到像素时的原因 `{ reason, message }`，`reason` 为 `no-link-path`、`file-not-found`、`file-unreadable`、`share-unreachable`、`unsupported-format`、`truncated`、`invalid-header` |
+
+像素尺寸由 `src/shared/image-header.js` 读取：只读文件头部必要的字节（PNG IHDR、JPEG SOF 段与 APP1 EXIF 方向、GIF、WebP VP8/VP8L/VP8X、BMP、TIFF IFD0、PSD/PSB 文件头），不解码像素、不加依赖。同一 UNC 共享第一次读失败且共享根不可达时，后续同共享的图片直接记 `share-unreachable`，不再逐个等超时。
+
+阅读顺序：递归 XY-cut。覆盖页面 80% 以上面积的块（满版底图、整页文本框）排最前；其余块每层同时看横向与纵向投影空白，只在最宽的空白处一分为二（等宽先横切），递归到切不开时按行带从上到下、行内从左到右排。不使用 z-index 或图层顺序——人做的 INDD 里那是堆叠顺序，与阅读无关。它是几何启发式：文字压在图片上、不规则穿插的版面仍可能与人读的顺序不同。
 
 ### 4.5 structured 标签矩阵
 
@@ -464,7 +528,7 @@ indesign-cli script run _indesign_scripts/export_to_html_snapshot.jsx
 -> read reverse-snapshot.json
 -> reverseSnapshotToSemanticModel
 -> reconstructSemanticModel
--> write deck.html / reverse-model.json / reconstruction-report.json / report.json
+-> write deck.html / reverse-model.json / reconstruction-report.json / report.json / content-manifest.json
 ```
 
 旧 blueprint 输入流程：

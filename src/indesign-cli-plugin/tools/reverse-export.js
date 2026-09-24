@@ -132,6 +132,7 @@ async function resume(params) {
   const visualDeckPath = result.files ? result.files.visualHtml : path.join(state.outDir, 'deck.visual.html');
   const reportPath = result.files ? result.files.report : path.join(state.outDir, 'report.json');
   const reverseModelPath = result.files ? result.files.model : path.join(state.outDir, 'reverse-model.json');
+  const contentManifestPath = result.files ? result.files.contentManifest : path.join(state.outDir, 'content-manifest.json');
   const authorAudit = result.files && result.files.author && result.files.author.audit;
 
   if (!(authorAudit && authorAudit.ok === true)) {
@@ -186,6 +187,7 @@ async function resume(params) {
   if (visualDeckPath && fs.existsSync(visualDeckPath)) artifacts.push(artifact('html', visualDeckPath, 'Visual deck html'));
   if (reportPath && fs.existsSync(reportPath)) artifacts.push(artifact('json', reportPath, 'Reverse report'));
   if (reverseModelPath && fs.existsSync(reverseModelPath)) artifacts.push(artifact('json', reverseModelPath, 'Reverse model'));
+  if (contentManifestPath && fs.existsSync(contentManifestPath)) artifacts.push(artifact('json', contentManifestPath, 'Content manifest'));
 
   const metrics = buildMetrics({
     readback_ms: readbackMs,
@@ -204,6 +206,8 @@ async function resume(params) {
       authorDeckPath,
       visualDeckPath: visualDeckPath && fs.existsSync(visualDeckPath) ? visualDeckPath : null,
       reportPath: reportPath && fs.existsSync(reportPath) ? reportPath : null,
+      // 取内容重做时读这份清单（每页文字块、表格二维文字、图片链接与像素尺寸），不要逐页读观察态 HTML。
+      contentManifestPath: contentManifestPath && fs.existsSync(contentManifestPath) ? contentManifestPath : null,
       ...reverseWarningPreview(result && result.report && result.report.warnings, reportPath),
     },
     metrics,
