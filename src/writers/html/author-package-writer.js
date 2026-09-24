@@ -122,6 +122,9 @@ function writeReverseAuthorPackage(model, options = {}) {
     report,
     semanticCandidates,
     warnings: authorWarnings,
+    // 原始资源路径（normalizePathKey）到作者 HTML 引用的映射；copy 策略下值是包内相对路径。
+    // 反向导出的 content-manifest.json 用它找作者包内的拷贝。
+    assetPathMap: assetCopy.pathMap,
   };
 }
 

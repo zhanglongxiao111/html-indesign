@@ -15,6 +15,7 @@ const rawFieldEntries = [
   ...require('./fields/observation'),
   ...require('./fields/reverse-surfaces'),
   ...require('./fields/reverse-diagnostics'),
+  ...require('./fields/content-manifest'),
   ...require('./fields/retired'),
   ...require('./fields/pptx-extensions'),
 ];

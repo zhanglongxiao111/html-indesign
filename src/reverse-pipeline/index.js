@@ -14,6 +14,11 @@ const { writeReverseAuthorPackage } = require('../writers/html/author-package-wr
 const { auditReverseAuthorPackage } = require('../writers/html/audit/reverse-roundtrip');
 const { resolveSemanticPreset } = require('../semantic-preset');
 const { createRunId, writeReportFile } = require('../shared/report-file');
+const {
+  CONTENT_MANIFEST_FILE,
+  buildContentManifest,
+  writeContentManifest,
+} = require('./content-manifest');
 
 // 不经插件调用（scripts/indesign-reverse-export.js、e2e）时没有外部 runId，这里自己生成，
 // 保证 report.json 顶层永远带着可核对的运行标识。
@@ -75,17 +80,33 @@ function compileReverseSnapshotToHtml(options) {
   fs.writeFileSync(path.join(outDir, 'deck.html'), visualHtml, 'utf8');
   fs.writeFileSync(path.join(outDir, 'reverse-model.json'), JSON.stringify(model, null, 2), 'utf8');
   fs.writeFileSync(path.join(outDir, reconstructionReportName), JSON.stringify(reconstruction.report, null, 2), 'utf8');
+  // report.json、<mode>-report.json 与 content-manifest.json 用同一个运行标识。
+  const reportRun = {
+    runId: options.runId || createRunId('reverse'),
+    tool: options.reportTool || DEFAULT_REPORT_TOOL,
+  };
+  const contentManifestPath = path.join(outDir, CONTENT_MANIFEST_FILE);
+  const contentManifest = buildContentManifest(model, {
+    ...reportRun,
+    outDir,
+    authorDir: authorResult.outDir,
+    assetPathMap: authorResult.assetPathMap,
+    pageNames: snapshot ? (snapshot.pages || []).map((page) => page && page.id) : [],
+    files: {
+      report: path.join(outDir, 'report.json'),
+      reverseModel: path.join(outDir, 'reverse-model.json'),
+      authorEntry: authorResult.entryPath,
+      authorConfig: authorResult.configPath,
+    },
+  });
+  writeContentManifest(contentManifestPath, contentManifest);
   const finalReport = {
     ...report,
     ok: report.ok
       && authorAudit.ok
       && reconstructionPassedTrustedSourceGate(reconstruction.report),
     authorAudit,
-  };
-  // report.json 与 <mode>-report.json 是同一份内容，都走统一的报告入口（顶层 runId/generatedAt/tool）。
-  const reportRun = {
-    runId: options.runId || createRunId('reverse'),
-    tool: options.reportTool || DEFAULT_REPORT_TOOL,
+    contentManifest: { path: CONTENT_MANIFEST_FILE, summary: contentManifest.summary },
   };
   writeReportFile(path.join(outDir, 'report.json'), finalReport, reportRun);
   writeReportFile(path.join(outDir, modeReportName), finalReport, reportRun);
@@ -101,6 +122,7 @@ function compileReverseSnapshotToHtml(options) {
       reconstructionReport: path.join(outDir, reconstructionReportName),
       report: path.join(outDir, 'report.json'),
       modeReport: path.join(outDir, modeReportName),
+      contentManifest: contentManifestPath,
       author: {
         config: authorResult.configPath,
         entry: authorResult.entryPath,
