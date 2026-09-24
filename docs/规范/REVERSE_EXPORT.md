@@ -158,6 +158,10 @@ reverse-export-<timestamp>/
 
 `observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径仍沿用源码几何与变换，不会叠加读回 bounds，不存在二次变换。
 
+`<svg>` 里只能放路径。读回带矢量路径、同时挂着作者内容（子对象、折回的伴生文字 `<id>-text` 或自身文字）的对象不得写成 `<svg>`，改写成普通 HTML 容器（源码标签，`svg`/空元素退回 `div`）：id、class、`data-id-object` 等观察态标记和对象样式属性落在容器上，不带 `data-id-vector`；外框沿用上段已烘焙矢量的剥离与兜底规则；填充、描边、圆角、透明度按读回 `visualStyle` 内联成 CSS 盒子，正向构建读的也是它。容器的直接子对象一律按读回 bounds 写兜底几何并附 `margin:0`，源码 style 里的定位、尺寸和外边距剥掉：非网格容器相对容器内边距盒定位（扣掉描边写成的 border 宽），网格容器不是定位参照，子对象按页面坐标定位。折回的伴生文字相对容器的偏移写成 `padding`，字号、行距等按伴生文字读回写出。路径不是贴合读回 bounds 的直角矩形时（椭圆、多边形、烘焙了旋转的矩形等），CSS 盒子只能近似，记 `REVERSE_VECTOR_CONTAINER_SHAPE_APPROXIMATED`。
+
+作者 HTML 写出时，作者树里的每个对象（含折回的伴生文字）都必须被某条写出路径写出；写出路径接不住的对象（例如父对象是空元素）不得静默丢弃，逐个记 `REVERSE_AUTHOR_ITEM_DROPPED`。这两类写出 warning 带 `source: "author-writer"` 与 `details.pageId`，和快照 warning 一起进入 `report.json` 的 `warnings`、`author/reports/authoring-report.json` 以及 `html.reverse_export` 返回体的 `warningsByCode`。
+
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
 
 需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：

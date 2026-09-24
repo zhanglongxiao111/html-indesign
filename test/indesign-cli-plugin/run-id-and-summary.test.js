@@ -466,6 +466,96 @@ test('反向导出把快照里的 warning（含 REVERSE_GRADIENT_APPROXIMATED）
   assert.equal(truncated.details.reportPath, response.data.reportPath);
 });
 
+test('观察模式把挂着子对象的矢量容器写成 HTML 容器，写出降级 warning 进 report.json 和返回体', () => {
+  const outDir = path.join(repoRoot, 'test', 'workspace', 'reverse-vector-container');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const snapshotPath = path.join(outDir, 'reverse-snapshot.json');
+  const snapshot = readJson(path.join(repoRoot, 'test', 'fixtures', 'indesign-reverse', 'tagged-snapshot.json'));
+  const itemLabel = (id, extra) => ({
+    protocol: 'html-indesign',
+    version: 1,
+    kind: 'item',
+    id,
+    source: 'html-to-indesign',
+    sourceFile: 'pages/01-agenda.html',
+    ...extra,
+  });
+  // 人在 InDesign 里把卡片底框改成了椭圆：路径不是直角矩形，CSS 盒子只能近似。
+  const oval = { x: 600, y: 300, width: 300, height: 200 };
+  const point = (x, y, lx, ly, rx, ry) => ({ anchor: { x, y }, leftDirection: { x: lx, y: ly }, rightDirection: { x: rx, y: ry }, pointType: 'SMOOTH' });
+  snapshot.pages[0].items.push(
+    {
+      id: '901',
+      type: 'Oval',
+      bounds: oval,
+      layerName: '文字',
+      visualStyle: { fillColor: '#fbfaf7', strokeColor: '#cfd6d2', strokeWeight: 1, opacity: 100 },
+      vectorGeometry: {
+        kind: 'oval',
+        paths: [{
+          closed: true,
+          points: [
+            point(750, 300, 670, 300, 830, 300),
+            point(900, 400, 900, 345, 900, 455),
+            point(750, 500, 830, 500, 670, 500),
+            point(600, 400, 600, 455, 600, 345),
+          ],
+        }],
+      },
+      text: '',
+      labels: [itemLabel('metric-card', {
+        role: 'shape',
+        htmlTag: 'div',
+        className: 'metric-card',
+        sourceNode: { tagName: 'div', id: 'metric-card', classList: ['metric-card'], attributes: { 'data-id-object': '' } },
+        structure: { parentId: 'agenda-page', order: 2, containerPolicy: 'group' },
+      })],
+    },
+    {
+      id: '902',
+      type: 'TextFrame',
+      bounds: { x: 640, y: 340, width: 200, height: 40 },
+      text: '243.75m',
+      layerName: '文字',
+      labels: [itemLabel('metric-card-value', {
+        role: 'text',
+        htmlTag: 'p',
+        className: 'metric-value',
+        sourceNode: { tagName: 'p', id: 'metric-card-value', classList: ['metric-value'], attributes: {} },
+        structure: { parentId: 'metric-card', order: 3, containerPolicy: 'child' },
+      })],
+    },
+  );
+  fs.writeFileSync(snapshotPath, JSON.stringify(snapshot), 'utf8');
+
+  const response = callPlugin('tools/resume', {
+    state: {
+      tool_id: 'html.reverse_export',
+      outDir,
+      snapshotPath,
+      mode: 'observation',
+      assetPolicy: 'reference',
+      sourceRoot: null,
+      nasPublicRoot: '/nas',
+      reconstructionProfile: { name: 'none', algorithms: [] },
+    },
+    host_results: [{ id: 'html-reverse-snapshot', status: 'complete', data: { ok: true } }],
+  });
+
+  assert.equal(response.status, 'complete', JSON.stringify(response.error || null));
+  const authorPage = fs.readFileSync(path.join(outDir, 'author', 'pages', '01-agenda.html'), 'utf8');
+  assert.match(authorPage, /<div id="metric-card"[^>]*>\s*<p id="metric-card-value"[^>]*>243\.75m<\/p>\s*<\/div>/);
+  const report = readJson(path.join(outDir, 'report.json'));
+  assert.deepEqual(report.warnings, [{
+    code: 'REVERSE_VECTOR_CONTAINER_SHAPE_APPROXIMATED',
+    message: 'Vector object metric-card holds child content, so author HTML writes it as a CSS box container; its oval path is approximated by the box.',
+    source: 'author-writer',
+    details: { pageId: 'agenda-page', itemId: 'metric-card', vectorKind: 'oval' },
+  }]);
+  assert.deepEqual(response.data.warningsByCode, { REVERSE_VECTOR_CONTAINER_SHAPE_APPROXIMATED: 1 });
+});
+
 test('快照没有 warning 时反向导出返回体给出 0 计数与空列表', () => {
   const outDir = path.join(repoRoot, 'test', 'workspace', 'reverse-snapshot-no-warnings');
   fs.rmSync(outDir, { recursive: true, force: true });

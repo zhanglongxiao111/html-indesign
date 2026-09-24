@@ -74,6 +74,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     missingSynthRules: [],
   };
   const synthesizedStyles = effectiveSynthesizedStyles(model, sourceConfig);
+  const authorWarnings = [];
   const renderOptions = {
     ...options,
     sourceRoot,
@@ -82,6 +83,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     effectiveParentPageKeys,
     synthesizedStyles,
     styleResidualReport,
+    authorWarnings,
   };
   const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
   copySourceSemanticPreset(sourceConfig, sourceRoot, outDir);
@@ -100,6 +102,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     assets: assetCopy.report,
     sourceCss: sourceCss.report,
     styleResidual: styleResidualReport,
+    warnings: authorWarnings,
   });
   const semanticCandidates = collectSemanticCandidates(model, semanticPreset);
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
@@ -118,6 +121,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     pages: pages.map((page) => page.file),
     report,
     semanticCandidates,
+    warnings: authorWarnings,
   };
 }
 
@@ -684,6 +688,8 @@ function authoringReport(model, pages, options, extras = {}) {
     sourceCss: extras.sourceCss || { copied: 0, missing: [] },
     styleResidual: extras.styleResidual || { removedProperties: 0, itemsReduced: 0, missingSynthRules: [] },
     labels: labelReport(model),
+    // 作者 HTML 写出时的降级与兜底记账（如 REVERSE_AUTHOR_ITEM_DROPPED），反向导出汇总进 report.json。
+    warnings: extras.warnings || [],
   };
 }
 

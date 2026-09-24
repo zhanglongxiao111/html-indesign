@@ -174,6 +174,35 @@ test('compareVisualGeometry accepts generated visual fragments only from structu
   assert.equal(report.stats.accepted, 3);
 });
 
+test('compareVisualGeometry expects folded companion text on its annotation base', () => {
+  const compare = (candidateLabelText) => compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, id: 'site', width: 1000, height: 600 }],
+      elements: [
+        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'annotation', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], textContent: '', x: 40, y: 40, width: 120, height: 32 },
+        { key: '0:label-text', id: 'label-text', pageIndex: 0, tagName: 'p', role: 'text', dataIdAttrs: ['data-id-role'], textContent: 'Public entry band', x: 48, y: 48, width: 80, height: 20 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, id: 'site', width: 1000, height: 600 }],
+      elements: [
+        { key: '0:label', id: 'label', pageIndex: 0, tagName: 'div', role: 'annotation', dataIdAttrs: ['data-id-role'], textContent: candidateLabelText, x: 40, y: 40, width: 120, height: 32 },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  const folded = compare('Public entry band');
+  assert.equal(folded.ok, true, JSON.stringify(folded.errors));
+  assert.equal(folded.stats.textMismatches, 0);
+  assert.deepEqual(folded.warnings.map((issue) => issue.code), ['AUTHOR_VISUAL_GENERATED_TEXT_ACCEPTED']);
+
+  // 伴生文字既没作为元素保留、也没折回基对象，就是丢了。
+  const lost = compare('');
+  assert.equal(lost.ok, false);
+  assert.deepEqual(lost.errors.map((issue) => issue.code), ['AUTHOR_VISUAL_TEXT_CONTENT_MISMATCH']);
+});
+
 test('compareVisualGeometry reports ordinary body text missing as an error', () => {
   const report = compareVisualGeometry({
     reference: {

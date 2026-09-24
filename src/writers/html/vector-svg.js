@@ -14,6 +14,38 @@ function isDegenerateInvisibleVector(item) {
   return !hasPaint && Number(bounds.width || 0) === 0 && Number(bounds.height || 0) === 0;
 }
 
+// 单条闭合、四个直角锚点、恰好落在读回 bounds 四角的路径，就是 CSS 盒子本身：
+// 圆角是 InDesign 的角效果，不在路径点里，由 visualStyle.cornerRadius 表达。
+function vectorMatchesBoundsBox(item) {
+  const paths = item && item.vectorGeometry && item.vectorGeometry.paths || [];
+  const bounds = item && item.bounds;
+  if (!bounds || paths.length !== 1) return false;
+  const path = paths[0] || {};
+  const points = Array.isArray(path.points) ? path.points : [];
+  if (path.closed !== true || points.length !== 4) return false;
+  if (!points.every((point) => isCornerPoint(point))) return false;
+  const absolute = pathUsesAbsoluteCoordinates(points, bounds);
+  const originX = absolute ? Number(bounds.x || 0) : 0;
+  const originY = absolute ? Number(bounds.y || 0) : 0;
+  const xs = [originX, originX + Number(bounds.width || 0)];
+  const ys = [originY, originY + Number(bounds.height || 0)];
+  const corners = new Set();
+  for (const point of points) {
+    const anchor = point.anchor || {};
+    const xIndex = xs.findIndex((value) => Math.abs(Number(anchor.x) - value) <= 0.5);
+    const yIndex = ys.findIndex((value) => Math.abs(Number(anchor.y) - value) <= 0.5);
+    if (xIndex < 0 || yIndex < 0) return false;
+    corners.add(`${xIndex}:${yIndex}`);
+  }
+  return corners.size === 4;
+}
+
+function isCornerPoint(point) {
+  if (!point || !point.anchor) return false;
+  const anchor = point.anchor;
+  return samePoint(point.leftDirection || anchor, anchor) && samePoint(point.rightDirection || anchor, anchor);
+}
+
 function vectorViewBox(item) {
   const viewport = vectorViewport(item);
   const width = viewport.width;
@@ -351,6 +383,7 @@ function indent(spaces) {
 module.exports = {
   hasVectorPaths,
   isDegenerateInvisibleVector,
+  vectorMatchesBoundsBox,
   vectorPathElements,
   vectorViewBox,
 };
