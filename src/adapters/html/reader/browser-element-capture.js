@@ -344,6 +344,7 @@
     const findings = [];
     for (const name of ['transform', 'clip-path', 'mask', 'filter']) {
       const value = String(node.getAttribute && node.getAttribute(name) || '').trim();
+      if (name === 'transform' && svgTransformAttributeIsIdentity(node)) continue;
       if (value && value.toLowerCase() !== 'none') {
         findings.push({ tagName, reason: `unsupported-${name}`, detail: value });
       }
@@ -362,8 +363,16 @@
       }
     }
     const style = getComputedStyle(node);
-    if (style && style.transform && style.transform !== 'none') {
+    if (style && !cssTransformIsIdentity(style.transform)) {
       findings.push({ tagName, reason: 'unsupported-transform', detail: style.transform });
+    }
+    // rotate / translate / scale 独立属性不进 computed transform，同样会让浏览器画面与
+    // 编译出的原生矢量不一致。
+    for (const name of ['rotate', 'translate', 'scale']) {
+      const value = String(style && style.getPropertyValue(name) || '').trim();
+      if (!cssIndividualTransformIsIdentity(name, value)) {
+        findings.push({ tagName, reason: 'unsupported-transform', detail: `${name}: ${value}` });
+      }
     }
     for (const name of ['clip-path', 'mask-image', 'filter']) {
       const value = String(style && style.getPropertyValue(name) || '').trim();
@@ -378,6 +387,45 @@
       }
     }
     return findings;
+  }
+
+  // 计算值为单位矩阵的变换（rotate(0deg)、matrix(1, 0, 0, 1, 0, 0) 等）不改变渲染结果，
+  // 正向编译按未变换的 viewport 映射矢量点，结果一致，因此不算不支持的变换。
+  function cssTransformIsIdentity(value) {
+    const text = String(value || '').trim();
+    if (!text || text === 'none') return true;
+    try {
+      return isIdentityMatrix(new DOMMatrixReadOnly(text));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function svgTransformAttributeIsIdentity(node) {
+    const list = node && node.transform && node.transform.baseVal;
+    if (!list || typeof list.numberOfItems !== 'number') return false;
+    let matrix = new DOMMatrix();
+    for (let index = 0; index < list.numberOfItems; index += 1) {
+      matrix = matrix.multiply(DOMMatrix.fromMatrix(list.getItem(index).matrix));
+    }
+    return isIdentityMatrix(matrix);
+  }
+
+  function cssIndividualTransformIsIdentity(name, value) {
+    if (!value || value === 'none') return true;
+    const tokens = value.split(/\s+/);
+    // rotate 的计算值可能带旋转轴（"x 30deg" / "1 1 0 30deg"），只有末尾角度决定是否为单位变换。
+    const numbers = (name === 'rotate' ? tokens.slice(-1) : tokens).map((token) => Number.parseFloat(token));
+    if (!numbers.length || numbers.some((number) => !Number.isFinite(number))) return false;
+    const identityValue = name === 'scale' ? 1 : 0;
+    return numbers.every((number) => Math.abs(number - identityValue) < 1e-9);
+  }
+
+  function isIdentityMatrix(matrix) {
+    const values = Array.from(matrix.toFloat64Array());
+    const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    return values.length === identity.length
+      && identity.every((expected, index) => Math.abs(values[index] - expected) < 1e-9);
   }
 
   function uniqueSvgFindings(findings) {

@@ -25,6 +25,9 @@ function runIdOf(context, toolId) {
 
 // 同一个 runId 盖到三种返回形状上：complete → data，error → error.details（宿主只读
 // details），requires_host_actions → state（resume 时由 state 带回）。
+// 工具抛出未带 code 的异常时，返回体与 BUILD_FAILED.json 共用的兜底错误码。
+const TOOL_CALL_FAILED = 'TOOL_CALL_FAILED';
+
 function withRunId(response, runId) {
   if (!response || !runId) return response;
   if (response.status === 'complete') {
@@ -40,6 +43,7 @@ function withRunId(response, runId) {
 }
 
 module.exports = {
+  TOOL_CALL_FAILED,
   createRunId,
   runIdOf,
   withRunId,

@@ -587,10 +587,10 @@ test('deliverables older than this run are not reported as saved after INDD_SAVE
       exportPdf: true,
       exportIdml: true,
       // 开工前快照就是这两个文件本身：本轮一个字节都没写，不能报成已落盘。
-      preRunDeliverables: {
-        indd: deliverableSnapshot(inddPath),
-        pdf: deliverableSnapshot(pdfPath),
-        idml: null,
+      preRunOutputs: {
+        'deck.indd': deliverableSnapshot(inddPath),
+        'deck.pdf': deliverableSnapshot(pdfPath),
+        'deck.idml': null,
       },
     },
     host_results: [{
@@ -606,6 +606,11 @@ test('deliverables older than this run are not reported as saved after INDD_SAVE
   assert.equal(response.error.details.artifactsExported, false);
   assert.deepEqual(response.error.details.partialArtifacts, []);
   assert.equal(response.artifacts, undefined);
+  // 这两个旧文件本轮没写过：失败收尾把它们移出 outDir，不留在原位冒充本次成品（#23）。
+  const moved = response.error.details.reportWarnings.find((item) => item.code === 'PREVIOUS_OUTPUT_MOVED');
+  assert.deepEqual(moved.details.files, ['deck.indd', 'deck.pdf']);
+  assert.equal(fs.existsSync(inddPath), false);
+  assert.equal(fs.readFileSync(path.join(outDir, 'previous-output', 'deck.indd'), 'utf8'), 'stale');
 });
 
 test('only deliverables that changed since the pre-run snapshot are reported as landed', () => {
@@ -619,10 +624,10 @@ test('only deliverables that changed since the pre-run snapshot are reported as 
   fs.writeFileSync(inddPath, 'stale', 'utf8');
   const anHourAgo = new Date(Date.now() - 60 * 60 * 1000);
   fs.utimesSync(inddPath, anHourAgo, anHourAgo);
-  const preRunDeliverables = {
-    indd: deliverableSnapshot(inddPath),
-    pdf: null,
-    idml: null,
+  const preRunOutputs = {
+    'deck.indd': deliverableSnapshot(inddPath),
+    'deck.pdf': null,
+    'deck.idml': null,
   };
 
   // 快照之后才落盘的 PDF 才是本轮成果。
@@ -637,7 +642,7 @@ test('only deliverables that changed since the pre-run snapshot are reported as 
       outputBaseName: 'deck',
       exportPdf: true,
       exportIdml: true,
-      preRunDeliverables,
+      preRunOutputs,
     },
     host_results: [{
       id: 'html-export-script',

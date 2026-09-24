@@ -1,6 +1,6 @@
 const { listTools, getTool, getSchema } = require('./tool-catalog');
 const { validateArgs, argsErrorMessage } = require('./validate-args');
-const { createRunId, withRunId } = require('./run-context');
+const { TOOL_CALL_FAILED, createRunId, withRunId } = require('./run-context');
 const authoringLint = require('./tools/authoring-lint');
 const compileInstructionsTool = require('./tools/compile-instructions');
 const buildIndesign = require('./tools/build-indesign');
@@ -129,7 +129,7 @@ async function callTool(params, context) {
   try {
     return withRunId(await caller.call(args, { ...(context || {}), runId, toolId: id }), runId);
   } catch (err) {
-    return withRunId(error(err.code || 'TOOL_CALL_FAILED', err.message, errorDetails(err, id)), runId);
+    return withRunId(error(err.code || TOOL_CALL_FAILED, err.message, errorDetails(err, id)), runId);
   }
 }
 

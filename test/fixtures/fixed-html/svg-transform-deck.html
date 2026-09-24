@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; }
+    .page { position: relative; width: 800px; height: 450px; background: #fff; }
+    .vector { position: absolute; top: 40px; width: 120px; height: 60px; overflow: visible; }
+    #plain-line { left: 20px; }
+    #identity-rotate-line { left: 20px; top: 140px; transform: rotate(0deg); }
+    #identity-matrix-line { left: 20px; top: 240px; transform: matrix(1, 0, 0, 1, 0, 0); }
+    #identity-attr-line { left: 20px; top: 340px; }
+    #identity-individual-line { left: 180px; top: 340px; rotate: 0deg; translate: 0px; scale: 1; }
+    #rotated-line { left: 200px; transform: rotate(30deg); }
+    #rotate-property-line { left: 380px; rotate: 15deg; }
+    #rotated-attr-line { left: 560px; }
+  </style>
+</head>
+<body>
+  <section class="page" id="svg-transform-page">
+    <svg id="plain-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="identity-rotate-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="identity-matrix-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="identity-attr-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" transform="translate(0 0) rotate(0)" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="identity-individual-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="rotated-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="rotate-property-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+    <svg id="rotated-attr-line" class="vector" viewBox="0 0 120 60" preserveAspectRatio="none">
+      <path d="M0 60 L120 0" transform="rotate(10)" fill="none" stroke="#c8102e" stroke-width="1"></path>
+    </svg>
+  </section>
+</body>
+</html>

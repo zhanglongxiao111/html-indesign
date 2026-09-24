@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { removeFileWithRetrySync, writeFileAtomicSync } = require('../../src/shared/atomic-write');
+const { removeFileWithRetrySync, renameWithRetrySync, writeFileAtomicSync } = require('../../src/shared/atomic-write');
 
 function tempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'hi-atomic-write-'));
@@ -152,4 +152,29 @@ test('removeFileWithRetrySync retries busy unlink and reports missing files as n
   assert.equal(unlinkCalls, 2);
   assert.equal(fs.existsSync(target), false);
   assert.equal(removeFileWithRetrySync(target, { sleep: () => {} }), false);
+});
+
+test('renameWithRetrySync retries a busy rename, then gives up with a move error that names the source', () => {
+  const dir = tempDir();
+  const source = path.join(dir, 'deck.indd');
+  const target = path.join(dir, 'previous-output-deck.indd');
+  fs.writeFileSync(source, 'old', 'utf8');
+
+  const flaky = flakyRenameFs(1);
+  assert.equal(renameWithRetrySync(source, target, { fs: flaky.fs, sleep: () => {} }), target);
+  assert.equal(flaky.calls.rename, 2);
+  assert.equal(fs.readFileSync(target, 'utf8'), 'old');
+
+  fs.writeFileSync(source, 'locked', 'utf8');
+  const locked = flakyRenameFs(Infinity, 'EPERM');
+  assert.throws(
+    () => renameWithRetrySync(source, target, { fs: locked.fs, retries: 2, sleep: () => {}, busyCode: 'MOVE_BUSY' }),
+    (error) => error.code === 'MOVE_BUSY'
+      && error.details.operation === 'rename'
+      && error.details.path === source
+      && error.details.lastErrorCode === 'EPERM'
+      && /failed to move/.test(error.message)
+  );
+  assert.equal(locked.calls.rename, 3);
+  assert.equal(fs.readFileSync(source, 'utf8'), 'locked');
 });

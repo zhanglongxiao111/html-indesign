@@ -4,6 +4,7 @@
 // shared 内部工具仍按文件粒度被上游模块直接引用，不在此全量转出口。
 const { canonicalizePath, tryCanonicalizePath, isPathInside } = require('./path-containment');
 const { createRunId, supersedeReports, writeReportFile } = require('./report-file');
+const { removeFileWithRetrySync, renameWithRetrySync } = require('./atomic-write');
 
 module.exports = {
   canonicalizePath,
@@ -12,4 +13,6 @@ module.exports = {
   createRunId,
   supersedeReports,
   writeReportFile,
+  removeFileWithRetrySync,
+  renameWithRetrySync,
 };

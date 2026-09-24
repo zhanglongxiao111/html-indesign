@@ -33,7 +33,7 @@ React、Vue 和图表库可以用于创作阶段，但在转换前必须生成�
 
 - Canvas 必须转换为 SVG 或原生可回读结构。
 - 简单内联 SVG 可以直接使用 `path`、`circle`、`ellipse`、`rect`、`line`、`polyline` 和 `polygon`；它们会转换为可编辑的 InDesign 原生矢量对象，不需要先改写为协议专用 `div`。
-- 内联 SVG 的 `path` 当前只可使用 `M/L/C/Z` 命令。`use`、SVG text/image、几何变换、裁切、mask、filter、paint server 和其他 path 命令必须改为外部 SVG 资源，或拆成已支持的基础图元；CLI 会明确阻断，不能静默丢线。
+- 内联 SVG 的 `path` 当前只可使用 `M/L/C/Z` 命令。`use`、SVG text/image、几何变换、裁切、mask、filter、paint server 和其他 path 命令必须改为外部 SVG 资源，或拆成已支持的基础图元；CLI 会明确阻断，不能静默丢线。几何变换按浏览器计算值判断：`transform`、SVG `transform` 属性以及 `rotate` / `translate` / `scale` 独立属性只要不是单位变换就会阻断；`rotate(0deg)`、`matrix(1, 0, 0, 1, 0, 0)`、`translate(0 0)` 这类计算结果为单位矩阵的写法视同没有变换。斜线请直接写成斜向的 `path` / `line` 端点。
 - 动画必须固定到明确帧或最终状态。
 - 异步数据必须固定到作者包，转换时不得依赖接口请求。
 - 最终作者包不得依赖可执行脚本、远程运行时脚本或远程 stylesheet；`application/json` 协议载荷允许保留。
@@ -80,7 +80,7 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 
 | code | 表示什么 | 作者源码应如何改 |
 | ---- | -------- | ---------------- |
-| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含无效几何、复杂元素、变换、裁切、paint server 或不支持的 path 命令 | 修正基础图元的尺寸/坐标，拆成支持图元，或保存为外部 `.svg` 资源 |
+| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含无效几何、复杂元素、非单位变换、裁切、paint server 或不支持的 path 命令 | 修正基础图元的尺寸/坐标，拆成支持图元，或保存为外部 `.svg` 资源 |
 | `HTML_PSEUDO_ELEMENT_UNSUPPORTED` | `::before` / `::after` 使用动态 content（`counter()`、`attr()`、`url()`），或是纯装饰 paint 伪元素 | 动态 content 改成真实 HTML 元素写出静态文字，装饰几何可改为基础 SVG 图元 |
 | `HTML_CLIP_PATH_UNSUPPORTED` | 使用 `clip-path` 绘制或裁切可见对象 | 改为 SVG `polygon/path`，或使用外部 SVG |
 | `HTML_GRADIENT_UNSUPPORTED` | 使用多色或无法映射的渐变 | 单色透明度渐变可保留；其他渐变改为外部资源 |
@@ -88,6 +88,8 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 | `HTML_CSS_EFFECT_UNSUPPORTED` | 使用尚不能原生映射的 shadow、filter 或 mask | 改为已有原生样式，或把完整视觉保存为外部资源 |
 
 `html.compile_instructions` 会再次检查同一份 compatibility report；`blocked > 0` 时返回 `HTML_COMPATIBILITY_BLOCKED`，不会写出看似成功但已经丢图的 instructions。`html.build_indesign` 的严格 lint 使用同一组消息。
+
+同一页里的元素 id 必须唯一（跨页同名不拦）。lint 会对同一份快照跑 compile 阶段的语义模型转换，同页重复 id 报 `ITEM_ID_DUPLICATED` error，条目列出每处出现的 `sourceFile`（页面文件）、`sourcePath` 和改名建议；按建议改 `pages/*.html` 里的 id（连同指向它的 CSS `#id` 选择器），重新组装后再 lint。作者包 lint 还会跑 compile 的构建指令校验：引用的资源文件不存在时报 `ASSET_FILE_NOT_FOUND`（`stage: "instructions"`），条目带页面、元素、`sourceFile`、原始引用 `src` 和解析后的 `path`，先确认文件存在、UNC 共享可达，或改正页面里的路径。
 
 ## 2. 最小合格标准
 

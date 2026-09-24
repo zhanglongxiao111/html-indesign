@@ -10,7 +10,16 @@ const { compileAuthoringPackage } = require('./compile-instructions');
 const { isPathInside, supersedeReports, writeReportFile } = require('../../shared');
 const { ensureOutputDir, getCwd, getPluginRoot, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
-const { runIdOf } = require('../run-context');
+const { TOOL_CALL_FAILED, runIdOf } = require('../run-context');
+const {
+  DELIVERABLE_KINDS,
+  clearBuildFailedMarker,
+  deliverableName,
+  landedDeliverables,
+  settleFailedRun,
+  snapshotRunOutputs,
+  writtenThisRun,
+} = require('../run-outputs');
 const {
   effectiveLintFormat,
   lintFailureHint,
@@ -54,11 +63,28 @@ async function call(args, context) {
     throw error;
   }
   const outputBaseName = args.outputBaseName || 'html-indesign-output';
+  // 开工前给 outDir 里本工具会写的每个交付物/中间产物拍快照（#23）：之后任一阶段失败，
+  // 与快照一致的旧文件都不是本次写出的，由 settleFailedRun 移走；同一份快照随 state 带进 resume。
+  // 没显式传 outDir 时输出目录是新建的时间戳目录，没有旧文件可比；编译前确定后回填 run.dir。
+  const run = {
+    runId: runIdOf(context, TOOL_ID),
+    outputBaseName,
+    dir: explicitOutDir(context, args.outDir),
+  };
+  run.preRunOutputs = snapshotRunOutputs(run.dir, outputBaseName);
+  try {
+    return await startBuild(args, context, mode, run);
+  } catch (error) {
+    throw withFailedRunSettled(error, run);
+  }
+}
+
+async function startBuild(args, context, mode, run) {
+  const { runId, outputBaseName } = run;
   const timeout = args.timeout || 300;
-  const runId = runIdOf(context, TOOL_ID);
   const requestedFormat = resolveLintFormat(args.format);
   const packagePath = resolveProjectPath(context, args.package, 'package');
-  supersedePreviousRunReports(context, args.outDir, runId);
+  supersedePreviousRunReports(run.dir, runId);
   const sourcePackage = readAuthorPackage(packagePath);
   const resolvedPreset = resolveSemanticPreset({
     rootDir: sourcePackage.rootDir,
@@ -147,6 +173,7 @@ async function call(args, context) {
     // 输出目录先于编译确定：lint 已通过，报告要在编译之前落盘，
     // 编译失败时目录里的 lint 报告也是本次的，而不是上一轮的。
     const outDir = ensureOutputDir(context, args.outDir, 'html-plugin-build');
+    run.dir = outDir;
     lintReportPath = path.join(outDir, LINT_REPORT_NAME);
     writeReportFile(lintReportPath, withoutLintSnapshot(lint), { failed: false, runId, tool: TOOL_ID });
     compile = await compileAuthoringPackage({
@@ -207,7 +234,6 @@ async function call(args, context) {
   const semanticPresetPath = path.join(compile.outDir, 'expected-semantic-preset.json');
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
-  const preRunDeliverables = snapshotDeliverables(compile.outDir, outputBaseName);
 
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
   fs.writeFileSync(buildScriptPath, buildBuildJsx({
@@ -262,7 +288,7 @@ async function call(args, context) {
     lintProfile: lint.lintProfile,
     reportWarnings: staleLintReportWarnings(fallbackLintReport),
     compatibility: compile.compatibility || lint.compatibility,
-    preRunDeliverables,
+    preRunOutputs: run.preRunOutputs,
     stageStartedAt: Date.now(),
   };
 
@@ -271,8 +297,14 @@ async function call(args, context) {
 
 async function resume(params) {
   const state = params.state || {};
-  const hostResults = params.host_results || [];
+  try {
+    return settleRunOutputs(state, resumeStage(state, params.host_results || []));
+  } catch (error) {
+    throw withFailedRunSettled(error, runOfState(state));
+  }
+}
 
+function resumeStage(state, hostResults) {
   if (state.stage === 'cleanup') {
     return pendingErrorAfterCleanup(state, hostResults);
   }
@@ -413,7 +445,6 @@ function cleanupThenError(state, error) {
         + '可离线复查的中间产物（instructions、读回快照、保真报告）保留在 intermediateDir。',
       intermediateDir: state.runDir || null,
       ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
-      ...(state.reportWarnings && state.reportWarnings.length ? { reportWarnings: state.reportWarnings } : {}),
       metrics: collectMetrics(state),
       compatibility: state.compatibility || auditHtmlCompatibility(null),
     },
@@ -449,32 +480,27 @@ function completeResult(state) {
   const pdfPath = path.join(runDir, `${outputBaseName}.pdf`);
   const idmlPath = path.join(runDir, `${outputBaseName}.idml`);
   // IDML_EXPORT_FAILED 只是 warning，光看 existsSync 会把上一轮遗留的旧文件当成本轮成果报出去。
-  // 与开工前的 {mtimeMs, size} 快照比对：存在但没变的算 stale，同样不能当交付。
-  const before = state.preRunDeliverables || {};
+  // 与开工快照比对（run-outputs）：存在但没变的不是本轮写出的，同样不能当交付；
+  // 这类同名旧文件随失败收尾移进 previous-output/，去向见 details.reportWarnings。
+  const before = state.preRunOutputs || {};
   const expected = [
-    { kind: 'indd', file: inddPath },
-    ...(state.exportPdf ? [{ kind: 'pdf', file: pdfPath }] : []),
-    ...(state.exportIdml ? [{ kind: 'idml', file: idmlPath }] : []),
+    inddPath,
+    ...(state.exportPdf ? [pdfPath] : []),
+    ...(state.exportIdml ? [idmlPath] : []),
   ];
-  const missing = [];
-  const stale = [];
-  for (const item of expected) {
-    if (deliverableIsFresh(item.file, before[item.kind])) continue;
-    missing.push(item.file);
-    if (fs.existsSync(item.file)) stale.push(item.file);
-  }
+  const missing = expected.filter((file) => !writtenThisRun(file, before[path.basename(file)]));
   if (missing.length) {
-    const absent = missing.filter((file) => !stale.includes(file));
-    const parts = [];
-    if (absent.length) parts.push(`missing: ${absent.join(', ')}`);
-    if (stale.length) parts.push(`unchanged since the run started (stale from a previous build): ${stale.join(', ')}`);
-    return errorResponse('BUILD_ARTIFACTS_MISSING', `Expected build artifacts are ${parts.join('; ')}`, {
-      stage: 'artifacts',
-      missing,
-      stale,
-      ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
-      metrics: collectMetrics(state),
-    });
+    return errorResponse(
+      'BUILD_ARTIFACTS_MISSING',
+      `Expected build artifacts were not written by this run: ${missing.join(', ')}. `
+        + "A same-named file left by an earlier build is not this run's output (see details.reportWarnings).",
+      {
+        stage: 'artifacts',
+        missing,
+        ...(state.hostWarnings && state.hostWarnings.length ? { hostWarnings: state.hostWarnings } : {}),
+        metrics: collectMetrics(state),
+      },
+    );
   }
 
   const verified = state.mode !== 'draft' && state.verified === true;
@@ -539,7 +565,9 @@ function hostFailureResponse(state, failed) {
     ...(detail.hostResult && typeof detail.hostResult === 'object' ? [{ data: detail.hostResult }] : []),
   ]);
   const targetOpen = stage === 'build' && detail.code === 'OUTPUT_TARGET_OPEN';
-  const partialArtifacts = targetOpen ? [] : landedDeliverables(state);
+  const partialArtifacts = targetOpen
+    ? []
+    : landedDeliverables(state.runDir, state.outputBaseName || 'html-indesign-output', state.preRunOutputs);
   const baseMessage = detail.message || `Host action failed during ${stage}.`;
   const prefix = landedArtifactPrefix(partialArtifacts);
   const hint = targetOpen
@@ -570,53 +598,6 @@ function hostFailureResponse(state, failed) {
     },
     ...(partialArtifacts.length ? { artifacts: partialArtifacts } : {}),
   };
-}
-
-const DELIVERABLE_KINDS = Object.freeze([
-  { kind: 'indd', extension: '.indd', label: 'InDesign document', prefixLabel: 'INDD' },
-  { kind: 'pdf', extension: '.pdf', label: 'PDF export', prefixLabel: 'PDF' },
-  { kind: 'idml', extension: '.idml', label: 'IDML export', prefixLabel: 'IDML' },
-]);
-
-// 产物新鲜度不能靠工位时钟和 NAS 文件时间戳互比（两台机器的钟可以差几分钟）。
-// 开工前给三个产物拍 {mtimeMs, size} 快照，收尾时同一台文件服务器的数据自己和自己比。
-function snapshotDeliverables(runDir, baseName) {
-  const snapshot = {};
-  for (const deliverable of DELIVERABLE_KINDS) {
-    snapshot[deliverable.kind] = statDeliverable(path.join(runDir, `${baseName}${deliverable.extension}`));
-  }
-  return snapshot;
-}
-
-function statDeliverable(file) {
-  try {
-    const stat = fs.statSync(file, { throwIfNoEntry: false });
-    return stat ? { mtimeMs: stat.mtimeMs, size: stat.size } : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-// 存在且不同于开工前快照才算本轮写出的；没有快照（旧 state）时退回“存在即算”。
-function deliverableIsFresh(file, before) {
-  const now = statDeliverable(file);
-  if (!now) return false;
-  if (before === undefined) return true;
-  if (before === null) return true;
-  return now.mtimeMs !== before.mtimeMs || now.size !== before.size;
-}
-
-function landedDeliverables(state) {
-  if (!state || !state.runDir) return [];
-  const baseName = state.outputBaseName || 'html-indesign-output';
-  const before = state.preRunDeliverables || {};
-  const landed = [];
-  for (const deliverable of DELIVERABLE_KINDS) {
-    const file = path.join(state.runDir, `${baseName}${deliverable.extension}`);
-    if (!deliverableIsFresh(file, before[deliverable.kind])) continue;
-    landed.push(artifact(deliverable.kind, file, deliverable.label));
-  }
-  return landed;
 }
 
 function landedArtifactPrefix(partialArtifacts) {
@@ -796,15 +777,86 @@ function readJsonRequired(file, label) {
   }
 }
 
+// 显式传入、且落在工作目录内的 outDir；否则 null。越界不在这里报错：
+// 越界由后面的 lint 报告/ensureOutputDir 按原有口径报。
+function explicitOutDir(context, outDir) {
+  if (!outDir) return null;
+  const cwd = getCwd(context);
+  const dir = path.resolve(cwd, outDir);
+  return isPathInside(cwd, dir) ? dir : null;
+}
+
+function runOfState(state) {
+  return {
+    runId: state.runId || null,
+    outputBaseName: state.outputBaseName || 'html-indesign-output',
+    dir: state.runDir || null,
+    preRunOutputs: state.preRunOutputs,
+  };
+}
+
+// 构建失败的统一收尾（#23）：call() 抛出的失败与 resume() 返回/抛出的失败都经过这里。
+// 上一轮留下、本轮没重写的交付物和中间产物移进 previous-output/，写 BUILD_FAILED.json，
+// 结果以 warning 放进 error.details.reportWarnings——与之前阶段收集的插件侧 warning
+// （STALE_LINT_REPORT_NOT_REPLACED）同一个位置；宿主脚本的 warning 仍在 hostWarnings。
+function failedRunWarnings(run, failure) {
+  // 目标 INDD 正被作者在 InDesign 里打开（OUTPUT_TARGET_OPEN）：那是人正在用的文档，不从脚下挪走。
+  const keep = failure.code === 'OUTPUT_TARGET_OPEN'
+    ? { [deliverableName(run.outputBaseName, 'indd')]: 'OUTPUT_TARGET_OPEN: 正在 InDesign 中打开，未移动' }
+    : {};
+  return settleFailedRun({
+    dir: run.dir,
+    baseName: run.outputBaseName,
+    snapshot: run.preRunOutputs,
+    runId: run.runId,
+    tool: TOOL_ID,
+    failure,
+    keep,
+  });
+}
+
+function withReportWarnings(details, extra) {
+  const base = details && typeof details === 'object' ? details : {};
+  const reportWarnings = [...(base.reportWarnings || []), ...extra];
+  return reportWarnings.length ? { ...base, reportWarnings } : base;
+}
+
+function withFailedRunSettled(error, run) {
+  if (!error || typeof error !== 'object') return error;
+  const details = (error.details && typeof error.details === 'object') ? error.details : {};
+  const warnings = failedRunWarnings(run, { code: error.code || TOOL_CALL_FAILED, stage: details.stage || null });
+  if (warnings.length) error.details = withReportWarnings(details, warnings);
+  return error;
+}
+
+function settleRunOutputs(state, response) {
+  if (!response) return response;
+  if (response.status === 'complete') {
+    const warnings = clearBuildFailedMarker(state.runDir);
+    if (!warnings.length) return response;
+    return { ...response, data: { ...response.data, warnings: [...(response.data.warnings || []), ...warnings] } };
+  }
+  if (response.status !== 'error' || !response.error) return response;
+  const details = response.error.details || {};
+  // lint 通过后才会出现的插件侧 warning 存在 state 里；过去只有 cleanupThenError 带出，
+  // 宿主失败、缺产物等出口都丢了。统一在这里并入。
+  const carried = state.reportWarnings || [];
+  const warnings = failedRunWarnings(runOfState(state), {
+    code: response.error.code || null,
+    stage: details.stage || response.error.stage || null,
+  });
+  if (!carried.length && !warnings.length) return response;
+  return {
+    ...response,
+    error: { ...response.error, details: withReportWarnings(details, [...carried, ...warnings]) },
+  };
+}
+
 // 显式 outDir 常被反复复用（例如作者包下的 build/）。上一轮的 lint/保真报告若原样留着，
 // 本次在 lint 阶段就失败时，读 build/ 的人会拿到上一轮的 valid:true（8/6 事故 seq 467）。
 // 开工前把已有的主报告换成本次占位，之后哪个阶段跑到就由哪个阶段用真实内容覆盖。
-// outDir 越界时不在这里报错：越界由后面的 lint 报告/ensureOutputDir 按原有口径报。
-function supersedePreviousRunReports(context, outDir, runId) {
-  if (!outDir) return;
-  const cwd = getCwd(context);
-  const dir = path.resolve(cwd, outDir);
-  if (!isPathInside(cwd, dir) || !fs.existsSync(dir)) return;
+function supersedePreviousRunReports(dir, runId) {
+  if (!dir || !fs.existsSync(dir)) return;
   try {
     supersedeReports(dir, RUN_REPORT_NAMES, { runId, tool: TOOL_ID });
   } catch (error) {

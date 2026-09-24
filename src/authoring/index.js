@@ -3,4 +3,5 @@ module.exports = {
   ...require('./entry-writer'),
   writeRevealPresentation: require('./reveal-presentation').writeRevealPresentation,
   ...require('./lint'),
+  ...require('./compile-options'),
 };
