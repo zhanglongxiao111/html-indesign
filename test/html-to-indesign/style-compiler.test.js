@@ -86,6 +86,79 @@ test('compileStyles keeps explicit object style names stable when only overflow 
   assert.equal(styled.report.messages.some((message) => message.code === 'STYLE_NAME_CONFLICT'), false);
 });
 
+test('compileStyles reads vector svg object fill from its paths when the svg box has no background', () => {
+  const vectorItem = (id, fills, computedStyle = {}) => ({
+    id,
+    role: 'shape',
+    tagName: 'svg',
+    classList: ['id-object'],
+    attributes: { 'data-id-object-style': id, 'data-id-vector': 'rectangle' },
+    computedStyle: { backgroundColor: 'rgba(0, 0, 0, 0)', ...computedStyle },
+    vectorElements: fills.map((fill) => ({ tagName: 'path', attributes: {}, computedStyle: { fill, stroke: 'none' } })),
+    text: '',
+  });
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [
+        vectorItem('single-fill', ['rgb(255, 255, 255)']),
+        vectorItem('shared-fill', ['rgb(200, 16, 46)', 'rgb(200, 16, 46)']),
+        vectorItem('mixed-fill', ['rgb(200, 16, 46)', 'rgb(255, 255, 255)']),
+        vectorItem('no-fill', ['none']),
+        vectorItem('box-fill', ['rgb(255, 255, 255)'], { backgroundColor: 'rgb(18, 52, 86)' }),
+      ],
+    }],
+  };
+
+  const { objectStyles } = compileStyles(snapshot).styles;
+
+  assert.equal(objectStyles['single-fill'].fillColor, '颜色-255-255-255');
+  assert.equal(objectStyles['shared-fill'].fillColor, '颜色-200-16-46');
+  assert.equal(objectStyles['mixed-fill'].fillColor, null);
+  assert.equal(objectStyles['no-fill'].fillColor, null);
+  assert.equal(objectStyles['box-fill'].fillColor, '颜色-18-52-86');
+});
+
+test('compileStyles leaves hand-written svg object fill to the svg box, not its paths', () => {
+  // 作者手写的图标 svg 没有反向写出的 id-object + data-id-vector 标记：对象样式与改动前一致，
+  // 只看盒子底色，path 填充留在逐 path 的局部填充里。
+  const handWritten = (id, classList, attributes) => ({
+    id,
+    role: 'shape',
+    tagName: 'svg',
+    classList,
+    attributes: { 'data-id-object-style': id, ...attributes },
+    computedStyle: { backgroundColor: 'rgba(0, 0, 0, 0)' },
+    vectorElements: [{ tagName: 'path', attributes: {}, computedStyle: { fill: 'rgb(200, 16, 46)', stroke: 'none' } }],
+    text: '',
+  });
+  const snapshot = {
+    metadata: { source: 'inline.html' },
+    pages: [{
+      id: 'page-1',
+      index: 0,
+      widthMm: 100,
+      heightMm: 60,
+      items: [
+        handWritten('icon-plain', ['icon'], {}),
+        handWritten('icon-vector-attr', ['icon'], { 'data-id-vector': 'path' }),
+        handWritten('icon-object-class', ['id-object'], {}),
+      ],
+    }],
+  };
+
+  const { styles } = compileStyles(snapshot);
+
+  for (const id of ['icon-plain', 'icon-vector-attr', 'icon-object-class']) {
+    assert.equal(styles.objectStyles[id].fillColor, null, id);
+  }
+  assert.equal(Boolean(styles.swatches['颜色-200-16-46']), false);
+});
+
 test('compileStyles maps CSS character typography into InDesign character style fields', () => {
   const snapshot = {
     metadata: { source: 'inline.html' },

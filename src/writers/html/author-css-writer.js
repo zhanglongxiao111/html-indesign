@@ -2,6 +2,7 @@ const { isDegenerateInvisibleVector } = require('./vector-svg');
 const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-vector-renderer');
 const { safeAuthorClassToken } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
+const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 
 function writeAuthorCssFiles(model, options = {}) {
   return {
@@ -69,7 +70,11 @@ function pagesCss(model) {
 }
 
 function reverseOverridesCss(model, options = {}) {
-  const lines = ['/* Generated fallback geometry for reverse-exported objects. */'];
+  const lines = [
+    '/* Generated fallback geometry for reverse-exported objects. */',
+    '/* Vector svg paints only through its paths; class styles must not add a box frame, fill or inset. */',
+    vectorSvgBoxPaintResetRule(),
+  ];
   const itemIds = new Set();
   for (const page of model.pages || []) {
     for (const item of page.items || []) itemIds.add(item.id);
@@ -90,7 +95,7 @@ function reverseOverridesCss(model, options = {}) {
         `height:${px(item.bounds.height)}`,
       ];
       for (const minDeclaration of vectorMinSizeDeclarations(item)) declarations.push(minDeclaration);
-      for (const reset of bakedVectorSourceResetDeclarations(item, options)) declarations.push(reset);
+      for (const reset of bakedVectorSourceResetDeclarations(item, context, options)) declarations.push(reset);
       if (isVectorContainerChild(item, context) && !declarations.includes('margin:0')) declarations.push('margin:0');
       lines.push(`[id="${cssString(item.id)}"] { ${declarations.join('; ')}; }`);
     }
@@ -161,10 +166,13 @@ function isGeneratedLabel(item) {
 }
 
 // 带 sourceRoot 时源码组件样式会被拷回；源码 class 上的变换、外边距描述的是旋转前的
-// 盒子，落在已烘焙的矢量 svg 上同样会二次旋转或挪位，兜底几何里一并归零。
-function bakedVectorSourceResetDeclarations(item, options) {
+// 盒子，落在已烘焙的矢量 svg 上同样会二次旋转或挪位，兜底几何里一并归零。源码 class 上的
+// 边框、底色、内边距（如 .line 的 border-top）同理只属于旧盒子，描边已在 path 上；
+// 矢量容器（#27）的盒子画的正是读回的填充和描边，不归零这几项。
+function bakedVectorSourceResetDeclarations(item, context, options) {
   if (!item || !item.sourceNode || !rendersBakedVectorSvg(item, options)) return [];
-  return ['margin:0', 'transform:none', 'rotate:none', 'translate:none', 'scale:none'];
+  const reset = ['margin:0', 'transform:none', 'rotate:none', 'translate:none', 'scale:none'];
+  return context.vectorContainerIds.has(item.id) ? reset : [...reset, ...VECTOR_SVG_BOX_PAINT_RESET];
 }
 
 function vectorMinSizeDeclarations(item) {

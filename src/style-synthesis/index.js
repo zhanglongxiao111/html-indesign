@@ -8,6 +8,7 @@ const {
   stableAutoName,
 } = require('../shared/style-utils');
 const { normalizeBlendMode } = require('../shared/blend-mode');
+const { isPathPaintedVectorSvg } = require('../shared/vector-svg-box-paint');
 const {
   styleLengthToPt,
   trackingValue,
@@ -416,7 +417,7 @@ function ensureCharacterStyle(styles, run, report, options) {
 
 function ensureObjectStyle(styles, item, report, options) {
   const style = item.computedStyle || {};
-  const fill = ensureFillSwatch(styles, style);
+  const fill = ensureFillSwatch(styles, style) || ensureVectorPathFillSwatch(styles, item);
   const fillColor = fill && fill.name;
   const uniformBorder = protocolStrokeForObject(item, styles, options) || uniformBorderForObject(item, options);
   const strokeColor = uniformBorder ? uniformBorder.color : null;
@@ -750,6 +751,20 @@ function ensureFillSwatch(styles, style) {
   if (!normalized) return null;
   ensureNormalizedSwatch(styles, normalized);
   return normalized;
+}
+
+// 反向写出的矢量 svg 只由 path 上色，盒子装饰被归零（见 shared/vector-svg-box-paint）。
+// 这类 svg 盒子没有底色时，对象样式填充取 path 的填充；多个 path 填充不一致时不归纳，
+// 留给逐 path 的局部填充。作者手写的 svg 不走这条路，对象样式只看盒子本身。
+function ensureVectorPathFillSwatch(styles, item) {
+  if (!isPathPaintedVectorSvg(item)) return null;
+  const elements = Array.isArray(item.vectorElements) ? item.vectorElements : [];
+  if (!elements.length) return null;
+  const fills = elements.map((element) => normalizeCssColor(element && element.computedStyle && element.computedStyle.fill));
+  const first = fills[0];
+  if (!first || fills.some((fill) => !fill || fill.hex !== first.hex || fill.alpha !== first.alpha)) return null;
+  ensureNormalizedSwatch(styles, first);
+  return first;
 }
 
 function singleColorGradientSwatch(backgroundImage) {

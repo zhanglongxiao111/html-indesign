@@ -162,6 +162,8 @@ reverse-export-<timestamp>/
 
 作者 HTML 写出时，作者树里的每个对象（含折回的伴生文字）都必须被某条写出路径写出；写出路径接不住的对象（例如父对象是空元素）不得静默丢弃，逐个记 `REVERSE_AUTHOR_ITEM_DROPPED`。这两类写出 warning 带 `source: "author-writer"` 与 `details.pageId`，和快照 warning 一起进入 `report.json` 的 `warnings`、`author/reports/authoring-report.json` 以及 `html.reverse_export` 返回体的 `warningsByCode`。
 
+写成 `<svg>` 的矢量对象只由 `path` 的 `fill`、`stroke`、`stroke-width` 等表达填充和描边，`<svg>` 盒子本身不得再画边框、底色、内边距或投影：合成样式 `synth-*`、对象样式 class 和源码 class 里的 `border`、`background`、`padding`、`box-shadow` 落到 svg 上会在外围多画一个矩形框或底色，`border`/`padding` 还会把 `viewBox` 内容区往里缩，斜线端点和角度随之偏移。写出侧因此在源码 inline style 里剥掉这些属性（`border-radius` 不画东西，保留作对象样式圆角），作者包 `reverse-overrides.css` 与视觉参照页 `deck.visual.html` 都固定写一条 `svg.id-object[data-id-vector] { border:0; background:none; padding:0; box-shadow:none; }`，已烘焙的源码矢量在自身兜底几何里再附同样的归零声明。`synth-*` 和对象样式规则本身保持完整，因为同一 token 可能还被非 svg 对象共用。正向回编时，描边仍由 svg 上的 `data-id-stroke-*` 协议属性和 `path` 的描边读回；带同一标记（`id-object` class + `data-id-vector`）的 svg 盒子没有底色时，对象样式填充取 `path` 的填充（多个 path 填充不一致时不归纳，只保留逐 path 的局部填充）。作者手写、不带该标记的 svg 不走这条路，对象样式只看盒子本身。上述归零只针对写成 `<svg>` 的对象；前面所述的矢量容器画的正是读回的填充和描边，不做归零。属性判定、归零规则和标记判定集中在 `src/shared/vector-svg-box-paint.js`。
+
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
 
 需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：

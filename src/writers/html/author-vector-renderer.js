@@ -12,6 +12,7 @@ const { hasVectorPaths, vectorMatchesBoundsBox, vectorPathElements, vectorViewBo
 const { rewriteResourceAttrs } = require('./author-resource-paths');
 const { ownContent } = require('./author-rich-text-renderer');
 const { buildAuthorTree } = require('./author-tree-builder');
+const { isVectorSvgBoxPaintProperty } = require('../../shared/vector-svg-box-paint');
 const {
   addObservedLabelAttrs,
   addParentPageAttrs,
@@ -199,7 +200,7 @@ function vectorAttrsForItem(item, sourceNode, options) {
   attrs.preserveAspectRatio = 'none';
   attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR] = item.vectorGeometry && item.vectorGeometry.kind || 'path';
   const style = mergeCss([
-    sourceStyle,
+    withoutSvgBoxPaint(sourceStyle),
     'overflow:visible',
     blendModeCss(item.visualStyle && item.visualStyle.blendMode),
     vectorOpacityStyle(item),
@@ -232,6 +233,19 @@ function bakedVectorSourceStyle(sourceStyle, item) {
       const property = declaration.slice(0, index).trim().toLowerCase();
       if (BAKED_VECTOR_TRANSFORM_PROPERTIES.has(property)) return false;
       return !(dropBox && SOURCE_BOX_PROPERTY_RE.test(property));
+    })
+    .join(';');
+}
+
+// 只用于写成 <svg> 的对象：svg 盒子上的边框、底色、内边距、投影会在 path 外多画一层（#28）。
+// 矢量容器（#27）的盒子本身就是读回的填充和描边，不走这里。
+function withoutSvgBoxPaint(style) {
+  return String(style || '')
+    .split(';')
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => {
+      const index = declaration.indexOf(':');
+      return index > 0 && !isVectorSvgBoxPaintProperty(declaration.slice(0, index).trim().toLowerCase());
     })
     .join(';');
 }
