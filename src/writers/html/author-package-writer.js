@@ -55,7 +55,10 @@ function writeReverseAuthorPackage(model, options = {}) {
       model.layers || [],
     ),
   }));
-  const generatedCss = writeAuthorCssFiles({ ...model, pages: pages.map((page) => page.authorPage) });
+  const generatedCss = writeAuthorCssFiles(
+    { ...model, pages: pages.map((page) => page.authorPage) },
+    { mode: options.mode },
+  );
   const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
   const styleFiles = authorStyleFiles({ sourceCss, generatedCss, sourceRoot });
   const assetCopy = prepareAuthorAssets(model, {

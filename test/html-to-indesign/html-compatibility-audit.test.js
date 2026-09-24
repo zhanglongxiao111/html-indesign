@@ -130,3 +130,46 @@ test('materialized pseudo content surfaces as a normalized compatibility message
   assert.equal(audit.summary.normalized, 1);
   assert.equal(audit.summary.blocked, 0);
 });
+
+test('auditHtmlCompatibility treats identity SVG transforms as untransformed and still blocks real transforms', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/svg-transform-deck.html');
+  const report = auditHtmlCompatibility(await renderSnapshot({ htmlPath }));
+  const blockedIds = new Set(report.messages
+    .filter((message) => message.code === 'HTML_INLINE_SVG_UNSUPPORTED')
+    .map((message) => message.itemId));
+  const normalizedIds = new Set(report.messages
+    .filter((message) => message.code === 'HTML_INLINE_SVG_NORMALIZED')
+    .map((message) => message.itemId));
+
+  for (const id of ['plain-line', 'identity-rotate-line', 'identity-matrix-line', 'identity-attr-line', 'identity-individual-line']) {
+    assert.equal(blockedIds.has(id), false, `${id} must not be blocked`);
+    assert.equal(normalizedIds.has(id), true, `${id} must compile to native vectors`);
+  }
+  for (const id of ['rotated-line', 'rotate-property-line', 'rotated-attr-line']) {
+    const message = report.messages.find((entry) => entry.code === 'HTML_INLINE_SVG_UNSUPPORTED' && entry.itemId === id);
+    assert.ok(message, `${id} must stay blocked`);
+    assert.equal(message.unsupportedElements.some((entry) => entry.reason === 'unsupported-transform'), true);
+  }
+});
+
+test('identity SVG transforms compile to the same native vector geometry as untransformed SVG', async () => {
+  const { snapshotToSemanticModel } = require('../../src/adapters/html');
+  const { semanticModelToInstructions } = require('../../src/writers/indesign');
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/svg-transform-deck.html');
+  const model = snapshotToSemanticModel(await renderSnapshot({ htmlPath }), { unitMode: 'presentation', targetSize: 'same' });
+  const items = new Map(model.pages[0].items.map((item) => [item.id, item]));
+  const instructionItems = new Map(semanticModelToInstructions(model, {}).pages[0].items.map((item) => [item.id, item]));
+  const relativeAnchors = (item) => item.vectorGeometry.paths[0].points.map((point) => ({
+    x: Math.round((point.anchor.x - item.bounds.x) * 100) / 100,
+    y: Math.round((point.anchor.y - item.bounds.y) * 100) / 100,
+  }));
+
+  const plain = items.get('plain-line');
+  for (const id of ['identity-rotate-line', 'identity-matrix-line', 'identity-attr-line', 'identity-individual-line']) {
+    const item = items.get(id);
+    assert.equal(item.bounds.width, plain.bounds.width, `${id} width`);
+    assert.equal(item.bounds.height, plain.bounds.height, `${id} height`);
+    assert.deepEqual(relativeAnchors(item), relativeAnchors(plain), `${id} anchors`);
+    assert.equal(Number(instructionItems.get(id).rotationAngle || 0), 0, `${id} rotation`);
+  }
+});
