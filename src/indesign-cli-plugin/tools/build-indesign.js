@@ -10,7 +10,7 @@ const { compileAuthoringPackage } = require('./compile-instructions');
 const { isPathInside, supersedeReports, writeReportFile } = require('../../shared');
 const { ensureOutputDir, getCwd, getPluginRoot, resolveProjectPath } = require('../path-policy');
 const { artifact } = require('../artifacts');
-const { runIdOf } = require('../run-context');
+const { TOOL_CALL_FAILED, runIdOf } = require('../run-context');
 const {
   DELIVERABLE_KINDS,
   clearBuildFailedMarker,
@@ -824,7 +824,7 @@ function withReportWarnings(details, extra) {
 function withFailedRunSettled(error, run) {
   if (!error || typeof error !== 'object') return error;
   const details = (error.details && typeof error.details === 'object') ? error.details : {};
-  const warnings = failedRunWarnings(run, { code: error.code || null, stage: details.stage || null });
+  const warnings = failedRunWarnings(run, { code: error.code || TOOL_CALL_FAILED, stage: details.stage || null });
   if (warnings.length) error.details = withReportWarnings(details, warnings);
   return error;
 }

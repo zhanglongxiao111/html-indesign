@@ -192,14 +192,15 @@ test('连续失败：previous-output/ 里同名旧副本只保留最近一份，
 });
 
 test('编译阶段失败：旧文件同样移走，BUILD_FAILED.json 记下 compile 阶段', () => {
-  const packagePath = architecturePackage('stale-outputs-compile-pkg', { withAssets: false });
+  // 资源缺失、重复 id 这类作者包问题 lint 已经拦下（#25）；只取决于构建参数的 targetSize 比例不符仍到 compile 才失败。
+  const packagePath = architecturePackage('stale-outputs-compile-pkg', { withAssets: true });
   const outDir = freshDir('stale-outputs-compile-out');
   seedPreviousRun(outDir);
 
-  const response = callPlugin('tools/call', { id: 'html.build_indesign', args: { package: packagePath, outDir } });
+  const response = callPlugin('tools/call', { id: 'html.build_indesign', args: { package: packagePath, outDir, targetSize: '1000x1000' } });
 
   assert.equal(response.status, 'error');
-  assert.equal(response.error.code, 'INSTRUCTIONS_VALIDATION_FAILED');
+  assert.equal(response.error.code, 'TOOL_CALL_FAILED');
   assert.equal(response.error.details.stage, 'compile');
   const moved = warningOf(response.error.details, 'PREVIOUS_OUTPUT_MOVED');
   assert.deepEqual([...moved.details.files].sort(), [...DELIVERABLES, ...INTERMEDIATES, 'previews'].sort());
@@ -210,7 +211,7 @@ test('编译阶段失败：旧文件同样移走，BUILD_FAILED.json 记下 comp
   assert.equal(lintReport.ok, true);
   const marker = readJson(path.join(outDir, 'BUILD_FAILED.json'));
   assert.equal(marker.stage, 'compile');
-  assert.equal(marker.errorCode, 'INSTRUCTIONS_VALIDATION_FAILED');
+  assert.equal(marker.errorCode, 'TOOL_CALL_FAILED');
 });
 
 test('保真阶段失败：本轮重写的中间产物是失败现场、原位保留，旧 INDD/PDF/IDML 与旧 previews 移走', () => {
