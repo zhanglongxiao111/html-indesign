@@ -33,7 +33,7 @@ React、Vue 和图表库可以用于创作阶段，但在转换前必须生成�
 
 - Canvas 必须转换为 SVG 或原生可回读结构。
 - 简单内联 SVG 可以直接使用 `path`、`circle`、`ellipse`、`rect`、`line`、`polyline` 和 `polygon`；它们会转换为可编辑的 InDesign 原生矢量对象，不需要先改写为协议专用 `div`。
-- 内联 SVG 的 `path` 当前只可使用 `M/L/C/Z` 命令。`use`、SVG text/image、几何变换、裁切、mask、filter、paint server 和其他 path 命令必须改为外部 SVG 资源，或拆成已支持的基础图元；CLI 会明确阻断，不能静默丢线。
+- 内联 SVG 的 `path` 当前只可使用 `M/L/C/Z` 命令。`use`、SVG text/image、几何变换、裁切、mask、filter、paint server 和其他 path 命令必须改为外部 SVG 资源，或拆成已支持的基础图元；CLI 会明确阻断，不能静默丢线。几何变换按浏览器计算值判断：`transform`、SVG `transform` 属性以及 `rotate` / `translate` / `scale` 独立属性只要不是单位变换就会阻断；`rotate(0deg)`、`matrix(1, 0, 0, 1, 0, 0)`、`translate(0 0)` 这类计算结果为单位矩阵的写法视同没有变换。斜线请直接写成斜向的 `path` / `line` 端点。
 - 动画必须固定到明确帧或最终状态。
 - 异步数据必须固定到作者包，转换时不得依赖接口请求。
 - 最终作者包不得依赖可执行脚本、远程运行时脚本或远程 stylesheet；`application/json` 协议载荷允许保留。
@@ -80,7 +80,7 @@ Agent 应优先使用正常 HTML 和 CSS，不需要为转换改写成反常 DOM
 
 | code | 表示什么 | 作者源码应如何改 |
 | ---- | -------- | ---------------- |
-| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含无效几何、复杂元素、变换、裁切、paint server 或不支持的 path 命令 | 修正基础图元的尺寸/坐标，拆成支持图元，或保存为外部 `.svg` 资源 |
+| `HTML_INLINE_SVG_UNSUPPORTED` | 内联 SVG 含无效几何、复杂元素、非单位变换、裁切、paint server 或不支持的 path 命令 | 修正基础图元的尺寸/坐标，拆成支持图元，或保存为外部 `.svg` 资源 |
 | `HTML_PSEUDO_ELEMENT_UNSUPPORTED` | `::before` / `::after` 使用动态 content（`counter()`、`attr()`、`url()`），或是纯装饰 paint 伪元素 | 动态 content 改成真实 HTML 元素写出静态文字，装饰几何可改为基础 SVG 图元 |
 | `HTML_CLIP_PATH_UNSUPPORTED` | 使用 `clip-path` 绘制或裁切可见对象 | 改为 SVG `polygon/path`，或使用外部 SVG |
 | `HTML_GRADIENT_UNSUPPORTED` | 使用多色或无法映射的渐变 | 单色透明度渐变可保留；其他渐变改为外部资源 |

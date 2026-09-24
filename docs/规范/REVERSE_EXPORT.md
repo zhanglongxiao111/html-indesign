@@ -156,6 +156,8 @@ reverse-export-<timestamp>/
 
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
 
+`observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径仍沿用源码几何与变换，不会叠加读回 bounds，不存在二次变换。
+
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
 
 需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：
