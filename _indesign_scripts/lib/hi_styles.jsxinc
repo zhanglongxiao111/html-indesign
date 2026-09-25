@@ -165,8 +165,7 @@ HI.strokeStyleName = function (value) {
 };
 HI.cssLengthToMm = function (value) {
     var text = String(value || "").replace(/\s+/g, "");
-    // Decimal alternative first: with \d+ first, "37.5001pt" matched "37" with no unit and fell back to px.
-    var match = text.match(/^([+-]?(?:\d*\.\d+|\d+))(mm|pt|px)?/);
+    var match = text.match(/^([+-]?(?:\d*\.\d+|\d+))(mm|pt|px)?/); // decimal first: "37.5001pt" must not match as "37" with no unit
     if (!match) return null;
     var amount = Number(match[1]);
     var unit = match[2] || "px";
