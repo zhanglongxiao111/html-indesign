@@ -1046,3 +1046,20 @@ test('JSX libs never negate DOM member expressions directly in conditions, retur
     .filter((key) => !usedAllowances.has(key));
   assert.deepEqual(staleAllowances, [], 'remove allowlist entries that no longer match any usage');
 });
+
+// InDesign 的 $.evalFile 对无 BOM 的文件按开头若干字节猜编码：第一个中文字符出现得晚（09-26 实测 12310 字节处）
+// 就会按本地编码读坏，整份脚本加载失败（INDESIGN_SNAPSHOT_FAILED: TypeError: Cannot convert）。
+// 单元测试不开 InDesign 抓不到，只能在这里静态守住：含非 ASCII 字节的生产 JSX 必须带 UTF-8 BOM。
+test('production JSX files with non-ASCII bytes start with a UTF-8 BOM', () => {
+  const scriptsDir = path.join(root, '_indesign_scripts');
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) return entry.name === '_debug' ? [] : walk(path.join(dir, entry.name));
+    return /\.(jsx|jsxinc)$/.test(entry.name) ? [path.join(dir, entry.name)] : [];
+  });
+  const missing = walk(scriptsDir).filter((file) => {
+    const bytes = fs.readFileSync(file);
+    const hasBom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+    return !hasBom && bytes.some((byte) => byte > 0x7f);
+  }).map((file) => path.relative(root, file));
+  assert.deepEqual(missing, [], `add a UTF-8 BOM (or keep the file ASCII-only): ${missing.join(', ')}`);
+});

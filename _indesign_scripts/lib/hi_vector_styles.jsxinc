@@ -1,4 +1,4 @@
-if (typeof HI === "undefined") { HI = {}; }
+﻿if (typeof HI === "undefined") { HI = {}; }
 
 HI.clearDefaultStroke = function (doc, pageItem) {
     HI.applyStrokePaint(doc, pageItem, null, 0);

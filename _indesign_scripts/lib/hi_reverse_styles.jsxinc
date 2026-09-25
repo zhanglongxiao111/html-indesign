@@ -1,4 +1,4 @@
-if (typeof HI === "undefined") { HI = {}; }
+﻿if (typeof HI === "undefined") { HI = {}; }
 HI.reverseVisualStyle = function (item) {
     var out = {
         fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor")),

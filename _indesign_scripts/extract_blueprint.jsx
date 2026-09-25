@@ -1,4 +1,4 @@
-/**
+﻿/**
  * extract_blueprint.jsx
  * V7: Composite fonts, Circle Numbering (①②③), paragraph spacing
  */

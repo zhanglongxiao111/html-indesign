@@ -1,4 +1,4 @@
-if (typeof HI === "undefined") { HI = {}; }
+﻿if (typeof HI === "undefined") { HI = {}; }
 
 HI.reverseTextRuns = function (item) {
     if (!HI.isTextFrame(item)) return [];
