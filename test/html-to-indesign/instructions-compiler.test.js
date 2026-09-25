@@ -918,7 +918,9 @@ test('compileInstructions scales browser pixels into a target presentation canva
   const reportParent = instructions.document.parentPages.find((parentPage) => parentPage.id === 'report-parent');
   const folio = reportParent && reportParent.items.find((item) => item.id === 'report-folio');
   const folioStyle = instructions.styles.paragraphStyles.folio;
-  const scale = 2560 / firstSnapshotPage.rectPx.width;
+  // 页面宽度取作者声明的 420mm（Chromium 把排版外框截到 1/64 px，1587.4016 量成 1587.390625）。
+  assert.ok(Math.abs(firstSnapshotPage.rectPx.width - 420 * 96 / 25.4) < 0.02);
+  const scale = 2560 / (420 * 96 / 25.4);
   const sitePage = instructions.pages.find((page) => page.id === 'site-analysis-page');
   const annotationLine = sitePage.items.find((item) => item.id === 'site-entry-line');
   const coverVeil = firstInstructionPage.items.find((item) => item.id === 'cover-hero-veil');
@@ -936,9 +938,10 @@ test('compileInstructions scales browser pixels into a target presentation canva
   assert.equal(instructions.styles.objectStyles['metric-card'].strokeWeight, Number((1 * scale).toFixed(4)));
   assert.equal(folio.bounds.height >= Number((folioStyle.pointSize * 1.2).toFixed(2)), true);
   assert.equal(folio.bounds.width > Number((folioStyle.pointSize * 2 * 0.65).toFixed(2)), true);
-  assert.equal(annotationLine.bounds.x, Number((269 * 96 / 25.4 * scale).toFixed(2)));
-  assert.equal(annotationLine.bounds.y, Number((102 * 96 / 25.4 * scale).toFixed(2)));
-  assert.equal(annotationLine.bounds.width, Number((46 * 96 / 25.4 * scale).toFixed(2)));
+  // 作者声明的长度（mm）按 presentation 长度精度（3 位小数）换算。
+  assert.equal(annotationLine.bounds.x, Number((269 * 96 / 25.4 * scale).toFixed(3)));
+  assert.equal(annotationLine.bounds.y, Number((102 * 96 / 25.4 * scale).toFixed(3)));
+  assert.equal(annotationLine.bounds.width, Number((46 * 96 / 25.4 * scale).toFixed(3)));
   assert.deepEqual(coverVeil.bounds, { x: 0, y: 0, width: 2560, height: 1440 });
 });
 

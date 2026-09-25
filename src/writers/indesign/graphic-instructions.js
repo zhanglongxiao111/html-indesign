@@ -4,6 +4,7 @@ const {
   cssLengthToTarget,
   cssLengthToMm,
   normalizeVisualMm,
+  roundTargetLength,
 } = require('../../semantic-model/layout');
 
 function graphicContentBounds(item, bounds, layout, placement = null) {
@@ -18,11 +19,12 @@ function explicitGraphicContentBounds(bounds, placement, layout) {
   if (!placement) return null;
   if (placement.contentBox) {
     const box = placement.contentBox;
+    // 作者声明的内容图几何（data-id-content-*）按目标长度精度换算，不再二次舍到两位小数。
     return {
-      x: round(bounds.x + cssLengthToTarget(box.x, layout), 2),
-      y: round(bounds.y + cssLengthToTarget(box.y, layout), 2),
-      width: round(cssLengthToTarget(box.width, layout), 2),
-      height: round(cssLengthToTarget(box.height, layout), 2),
+      x: roundTargetLength(bounds.x + cssLengthToTarget(box.x, layout), layout),
+      y: roundTargetLength(bounds.y + cssLengthToTarget(box.y, layout), layout),
+      width: cssLengthToTarget(box.width, layout),
+      height: cssLengthToTarget(box.height, layout),
     };
   }
   if (placement.contentBounds) {

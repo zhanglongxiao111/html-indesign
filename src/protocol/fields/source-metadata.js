@@ -146,6 +146,10 @@ module.exports = [
   htmlModelSourceMetadataField('items[].authoredStyle', [], 'object'),
   htmlModelSourceMetadataField('items[].ruleStyle', [], 'object'),
   htmlModelSourceMetadataField('items[].styleClassRules', [], 'object'),
+  {
+    ...htmlModelSourceMetadataField('items[].content.runs[].styleClassRules', [], 'object'),
+    description: 'Character style class rule of a text-frame run (.cstyle-<token> single-class rule; token from the run class or data-id-character-style), captured as { character: declarations }. The InDesign character style is defined from these declarations only; the run look beyond paragraph + style becomes runs[].textOverride.',
+  },
   htmlModelSourceMetadataField('items[].sourceSelector', [], 'string'),
   htmlModelSourceMetadataField('items[].boundsMm', [], 'object'),
   htmlModelSourceMetadataField('items[].box', [], 'object'),

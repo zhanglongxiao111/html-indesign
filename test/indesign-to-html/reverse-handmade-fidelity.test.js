@@ -201,7 +201,7 @@ test('multi-paragraph text frames are written as a text-role container with one 
   const paragraphs = body.match(/<p>[\s\S]*?<\/p>/g) || [];
   assert.equal(paragraphs.length, 2);
   assert.equal(paragraphs[0], '<p>Gradient text</p>');
-  assert.match(paragraphs[1], /<span data-id-character-style="渐变字符"[^>]*>S<\/span>/);
+  assert.match(paragraphs[1], /<span class="cstyle-渐变字符" data-id-character-style="渐变字符"[^>]*>S<\/span>/);
   assert.match(paragraphs[1], /-webkit-text-stroke:1px #000000[^>]*>econd para<\/span>/);
   assert.doesNotMatch(body, /<br>/);
 });
@@ -231,7 +231,7 @@ test('handmade INDD roundtrip keeps paragraphs, alignment, column widths, tint a
   assert.equal(items.get('300').paragraphStyle, null);
   assert.equal(items.get('300').textOverride.justification, 'justify-all');
   // 列宽按读回声明建。
-  assert.deepEqual(items.get('310').columnWidths, [84.69, 84.69]);
+  assert.deepEqual(items.get('310').columnWidths, [84.685, 84.685]);
   // 淡色等效颜色原样进色板。
   assert.equal(swatch(items.get('257').styleOverride.fillColor), '#ff9999');
   // 图层：只建原件图层，不补预设标准图层。

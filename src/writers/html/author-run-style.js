@@ -1,7 +1,7 @@
 // 字符级外观：读回的 run 外观（content.runs[].textStyle）与所在段落（item.textStyle）不同的部分
 // 写成 run 元素上的内联 style。没有源码 CSS 可拷时（observation 模式），来源 class（如 .accent）
 // 不带任何样式，不写这一步红字、加粗等字符样式就会丢（#34）。
-const { capitalizationCss, textStrokeCss } = require('./css-values');
+const { capitalizationCss, textStrokeCss, typeSizePx } = require('./css-values');
 
 function runStyleCss(runTextStyle, baseTextStyle) {
   if (!runTextStyle || !baseTextStyle) return '';
@@ -15,7 +15,7 @@ function runStyleCss(runTextStyle, baseTextStyle) {
   if (fontStyle(runTextStyle.fontStyle) !== fontStyle(baseTextStyle.fontStyle)) {
     styles.push(`font-style:${fontStyle(runTextStyle.fontStyle)}`);
   }
-  if (numberDiffers(runTextStyle.pointSize, baseTextStyle.pointSize)) styles.push(`font-size:${formatNumber(runTextStyle.pointSize)}px`);
+  if (numberDiffers(runTextStyle.pointSize, baseTextStyle.pointSize)) styles.push(`font-size:${typeSizePx(runTextStyle.pointSize)}`);
   if (runTextStyle.fillColor && color(runTextStyle.fillColor) !== color(baseTextStyle.fillColor)) {
     styles.push(`color:${runTextStyle.fillColor}`);
   }

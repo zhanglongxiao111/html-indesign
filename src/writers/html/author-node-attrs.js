@@ -46,7 +46,10 @@ function attrsForItem(item, sourceNode, options) {
     : authorClassesForItem(item, sourceNode.classList || [], attrs));
   if (!hasSourceNode(sourceNode) && item.role !== 'text' && !item.virtual) classes.add('id-object');
   if (options.mode === 'observation' && item.role === 'text') classes.add('observed-text');
-  if (options.mode === 'observation') classes.add('id-object');
+  // data-id-ignore 包裹层（如表格外的文本框包裹层）不是对象：来源里保留下来的包裹层与首轮按读回外框
+  // 写出的包裹层（tableFrameAttrs）一样不带 id-object，往返两代写法一致。
+  const ignoredWrapper = item.virtual && Object.prototype.hasOwnProperty.call(attrs, HTML_DATA_ID_ATTRIBUTES.IGNORE);
+  if (options.mode === 'observation' && !ignoredWrapper) classes.add('id-object');
   if (item.parentPageItem) {
     classes.add('id-parent-page-object');
     addParentPageAttrs(attrs, item);

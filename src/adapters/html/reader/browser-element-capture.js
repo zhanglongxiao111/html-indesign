@@ -690,10 +690,10 @@
     return trimmedTextWithHardBreaks(el, candidates) === '';
   }
 
-  function textRunsFor(el, candidates) {
+  function textRunsFor(el, candidates, styleRules) {
     const tagName = el.tagName.toLowerCase();
     if (!isTextTag(tagName) && !isNaturalTextElement(el) && !isParagraphTextFrame(el)) return [];
-    const inlineRuns = inlineRunsFor(el, candidates);
+    const inlineRuns = inlineRunsFor(el, candidates, styleRules);
     if (inlineRuns.length) return inlineRuns;
     return [{
       text: trimmedTextWithHardBreaks(el, candidates),
@@ -798,18 +798,31 @@
     return parts.join('>');
   }
 
-  function inlineRunsFor(el, candidates) {
+  // styleRules（文本框的 run 才传）：run 的字符样式定义取 .cstyle-<token> 单类规则（styleClassRules.character），
+  // token 取 run 的 class 或 data-id-character-style；字符样式只定义这条规则写了的属性，其余是局部格式。
+  function inlineRunsFor(el, candidates, styleRules) {
     const dataId = dataIdAttributes();
     const inlineSelector = `span,strong,b,em,i,mark,sup,sub,[${dataId.CHARACTER_STYLE}]`;
     const inlineEls = Array.from(el.querySelectorAll(inlineSelector))
       .filter((runEl) => !Array.isArray(candidates) || !candidates.includes(runEl));
-    return inlineEls.map((runEl) => ({
-      text: trimmedTextWithHardBreaks(runEl),
-      tagName: runEl.tagName.toLowerCase(),
-      classList: classList(runEl),
-      attributes: attrs(runEl),
-      computedStyle: styleApi().styleObject(runEl),
-    })).filter((run) => run.text);
+    return inlineEls.map((runEl) => {
+      const run = {
+        text: trimmedTextWithHardBreaks(runEl),
+        tagName: runEl.tagName.toLowerCase(),
+        classList: classList(runEl),
+        attributes: attrs(runEl),
+        computedStyle: styleApi().styleObject(runEl),
+      };
+      const characterRule = styleRules ? characterStyleClassRule(runEl, styleRules) : null;
+      if (characterRule) run.styleClassRules = { character: characterRule };
+      return run;
+    }).filter((run) => run.text);
+  }
+
+  function characterStyleClassRule(runEl, styleRules) {
+    const token = runEl.getAttribute(dataIdAttributes().CHARACTER_STYLE);
+    const implied = token ? [`cstyle-${styleApi().styleClassToken(token)}`] : [];
+    return styleApi().styleClassRuleObjects(runEl, styleRules, implied).character || null;
   }
 
   function isCandidateElement(el) {

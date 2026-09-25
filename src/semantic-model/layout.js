@@ -2,8 +2,14 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const {
   parseCssLength,
   cssLengthStringToMmOrZero,
+  cssLengthStringToPx,
   round,
+  roundPresentationLength,
 } = require('../shared/geometry');
+
+// Chromium 按 1/64 px 排版：页面外框（getBoundingClientRect、computed width）会把作者写的 595.276px 截成
+// 595.265625、1587.39px 截成 1587.375。页面尺寸是作者契约，与量出的外框相差不到这个量化误差时取作者声明值。
+const LAYOUT_UNIT_TOLERANCE_PX = 0.02;
 
 function resolveLayout(snapshot, options = {}) {
   if (options && options.layout) return options.layout;
@@ -17,10 +23,7 @@ function resolveLayout(snapshot, options = {}) {
     };
   }
   const firstPage = snapshot.pages && snapshot.pages[0];
-  const source = {
-    width: firstPage && firstPage.rectPx ? Number(firstPage.rectPx.width) : Number((firstPage && firstPage.widthMm) || 0),
-    height: firstPage && firstPage.rectPx ? Number(firstPage.rectPx.height) : Number((firstPage && firstPage.heightMm) || 0),
-  };
+  const source = pageSourceSize(firstPage);
   const target = targetSizeFor(options.targetSize, source);
   assertCompatibleAspectRatio(source, target);
   return {
@@ -28,15 +31,31 @@ function resolveLayout(snapshot, options = {}) {
     targetUnit: 'pt',
     sourceSize: source,
     targetSize: target,
-    scale: target.width / source.width,
+    // 保持源尺寸时 1 px 就是 1 pt：比例恒为 1，不能拿舍入后的目标尺寸除以量出的尺寸（那样每代多出 0.0001pt 字号）。
+    scale: target.name === 'source' ? 1 : target.width / source.width,
   };
+}
+
+function pageSourceSize(page) {
+  if (!page) return { width: 0, height: 0 };
+  if (!page.rectPx) return { width: Number(page.widthMm || 0), height: Number(page.heightMm || 0) };
+  return {
+    width: declaredPageLength(page, 'width', Number(page.rectPx.width)),
+    height: declaredPageLength(page, 'height', Number(page.rectPx.height)),
+  };
+}
+
+function declaredPageLength(page, prop, measured) {
+  const declared = cssLengthStringToPx(page.authoredStyle && page.authoredStyle[prop]);
+  if (declared == null || !Number.isFinite(measured)) return measured;
+  return Math.abs(declared - measured) <= LAYOUT_UNIT_TOLERANCE_PX ? declared : measured;
 }
 
 function targetSizeFor(value, source) {
   if (!value || value === 'same' || value === 'source') {
     return {
-      width: round(source.width, 2),
-      height: round(source.height, 2),
+      width: roundPresentationLength(source.width),
+      height: roundPresentationLength(source.height),
       name: 'source',
     };
   }
@@ -70,8 +89,8 @@ function pageDimensions(page, layout) {
     };
   }
   return {
-    width: round(layout.targetSize.width, 2),
-    height: round(layout.targetSize.height, 2),
+    width: roundPresentationLength(layout.targetSize.width),
+    height: roundPresentationLength(layout.targetSize.height),
   };
 }
 
@@ -296,7 +315,20 @@ function itemBounds(item, page, layout) {
   if (layout.unitMode !== 'presentation' || !item.rectPx || !page.rectPx) {
     return item.boundsMm;
   }
-  return boundsFromRect(item.rectPx, page.rectPx, layout);
+  const measured = boundsFromRect(item.rectPx, page.rectPx, layout);
+  const pinnedHeight = observedPinnedHeight(item, page, layout);
+  return pinnedHeight == null ? measured : { ...measured, height: pinnedHeight };
+}
+
+// 留在网格里、高度按读回钉住的观察对象（reverse-overrides.css 写 align-self:start; height:…）：
+// 左、上、宽由网格排出（量出的外框），高度取作者声明值，不取按 1/64 px 截断后的外框高。
+function observedPinnedHeight(item, page, layout) {
+  if (!isObservedReverseItem(item, page)) return null;
+  const style = item && item.authoredStyle || {};
+  const parsed = parseCssLength(style.height);
+  if (!parsed || item.gridPlaced !== true || String(style.position || '').trim().toLowerCase() === 'absolute') return null;
+  const height = cssLengthToTarget(style.height, layout);
+  return Number.isFinite(height) && height > 0 ? height : null;
 }
 
 function observedAuthoredBounds(item, page, layout) {
@@ -306,8 +338,8 @@ function observedAuthoredBounds(item, page, layout) {
   if (![style.left, style.top, style.width, style.height].every((value) => String(value || '').trim())) return null;
   const ancestorOffset = observedAncestorOffset(item, page, layout);
   return {
-    x: round(cssLengthToTarget(style.left, layout) + ancestorOffset.x, 2),
-    y: round(cssLengthToTarget(style.top, layout) + ancestorOffset.y, 2),
+    x: roundPresentationLength(cssLengthToTarget(style.left, layout) + ancestorOffset.x),
+    y: roundPresentationLength(cssLengthToTarget(style.top, layout) + ancestorOffset.y),
     width: cssLengthToTarget(style.width, layout),
     height: cssLengthToTarget(style.height, layout),
   };
@@ -348,14 +380,27 @@ function isObservedReverseItem(item, page) {
   return classList.includes('observed-text');
 }
 
+// 量出的外框按 1/64 px 截断，页面尺寸取的是作者声明值：贴着页面右 / 下边的对象（满版底图、蒙版）
+// 延伸到页面边，不因截断差出一条缝。
 function boundsFromRect(rect, pageRect, layout) {
   const scale = Number(layout.scale || 1);
+  const x = round((Number(rect.x) - Number(pageRect.x)) * scale, 2);
+  const y = round((Number(rect.y) - Number(pageRect.y)) * scale, 2);
   return {
-    x: round((Number(rect.x) - Number(pageRect.x)) * scale, 2),
-    y: round((Number(rect.y) - Number(pageRect.y)) * scale, 2),
-    width: round(Number(rect.width) * scale, 2),
-    height: round(Number(rect.height) * scale, 2),
+    x,
+    y,
+    width: extentToPageEdge(rect.x, rect.width, pageRect.x, pageRect.width, x, layout, 'width'),
+    height: extentToPageEdge(rect.y, rect.height, pageRect.y, pageRect.height, y, layout, 'height'),
   };
+}
+
+function extentToPageEdge(start, size, pageStart, pageSize, targetStart, layout, prop) {
+  const scaled = round(Number(size) * Number(layout.scale || 1), 2);
+  const pageTarget = Number(layout.targetSize && layout.targetSize[prop]);
+  if (!Number.isFinite(pageTarget) || pageTarget <= 0) return scaled;
+  const gap = (Number(pageStart) + Number(pageSize)) - (Number(start) + Number(size));
+  if (Math.abs(gap) > LAYOUT_UNIT_TOLERANCE_PX) return scaled;
+  return roundPresentationLength(pageTarget - targetStart);
 }
 
 function cssLengthToTarget(value, layout) {
@@ -365,7 +410,12 @@ function cssLengthToTarget(value, layout) {
   let px = parsed.value;
   if (parsed.unit === 'pt') px = parsed.value * 96 / 72;
   if (parsed.unit === 'mm') px = parsed.value * 96 / 25.4;
-  return round(px * Number(layout.scale || 1), 2);
+  return roundPresentationLength(px * Number(layout.scale || 1));
+}
+
+// 目标坐标系里的长度舍入：presentation（pt）按作者长度精度，print（mm）按两位小数。
+function roundTargetLength(value, layout) {
+  return layout && layout.unitMode === 'presentation' ? roundPresentationLength(value) : round(value, 2);
 }
 
 function cssLengthToPrintMmOrZero(value) {
@@ -386,6 +436,7 @@ module.exports = {
   pageGuides,
   itemBounds,
   cssLengthToTarget,
+  roundTargetLength,
   cssLengthToMm: cssLengthToPrintMmOrZero,
   normalizeVisualMm,
 };

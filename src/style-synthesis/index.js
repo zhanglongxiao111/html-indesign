@@ -156,10 +156,11 @@ function compileItemStyles(item, styles, report, options) {
     // paragraph/character/object/frame, which hash a signature object via
     // stableAutoName), so there is nothing to hash into an auto-name; fall
     // back to a fixed Chinese default name instead of a Latin literal.
+    // 观察页（反向导出的作者包）上原件没有表样式的表格不建「默认表格」，沿用 InDesign 默认表样式（local-formatting）。
     const tableStyleName = styleNameForKind(item, 'tableStyles', null, options)
-      || '默认表格';
+      || (keepsLocalFormatting(item, 'tableStyles', options) ? null : '默认表格');
     styleRefs.tableStyle = tableStyleName;
-    if (!styles.tableStyles[styleRefs.tableStyle]) {
+    if (tableStyleName && !styles.tableStyles[styleRefs.tableStyle]) {
       const identity = styleIdentityForKind(item, 'tableStyles', tableStyleName, options);
       styles.tableStyles[styleRefs.tableStyle] = {
         name: styleRefs.tableStyle,
@@ -270,9 +271,13 @@ function compileTextRuns(item, styles, styleRefs, report, options) {
     if (characterStyle && !styleRefs.characterStyles.includes(characterStyle)) {
       styleRefs.characterStyles.push(characterStyle);
     }
+    // 字符样式只定义样式类规则写了的属性时，run 实际外观与「段落 + 字符样式」的差异写成 run 级局部覆盖。
+    const declared = declaredCharacterSignature(styles, run, options);
+    const textOverride = declared ? runTextOverride(styles, run, item, options, declared) : null;
     return {
       text: run.text,
       characterStyle,
+      ...(textOverride ? { textOverride } : {}),
     };
   });
 }
@@ -485,12 +490,16 @@ function paragraphComposerFor(item) {
   return attributes[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] || item && item.textStyle && item.textStyle.composer || null;
 }
 
-// 观察页上没有字符样式的 run：与所在段落计算外观不同的字符属性写成 run 级局部覆盖，不建自动字符样式。
+// run 级局部覆盖：观察页上没有字符样式的 run，或字符样式只定义了样式类规则写的属性（characterSignature）时，
+// 与「所在段落计算外观 + 字符样式定义」不同的字符属性写成 run 级局部覆盖，不建自动字符样式。
 const RUN_OVERRIDE_KEYS = ['appliedFont', 'fontStyleName', 'pointSize', 'fontWeight', 'fontStyle', 'fillColor', 'tracking', 'capitalization', 'strokeColor', 'strokeWeight'];
 
-function runTextOverride(styles, run, item, options) {
+function runTextOverride(styles, run, item, options, characterSignature = null) {
   const style = run.computedStyle || {};
-  const base = paragraphSignatureFor(item.computedStyle || {}, item, styles, options);
+  const base = { ...paragraphSignatureFor(item.computedStyle || {}, item, styles, options) };
+  for (const [key, value] of Object.entries(characterSignature || {})) {
+    if (value != null) base[key] = value;
+  }
   const signature = {
     appliedFont: ensureFont(styles, style.fontFamily, options, run.text),
     fontStyleName: fontStyleNameFor(style),
@@ -517,6 +526,11 @@ function runTextOverride(styles, run, item, options) {
 }
 
 function ensureCharacterStyle(styles, run, report, options) {
+  const declared = declaredCharacterSignature(styles, run, options);
+  if (declared) {
+    const requestedName = styleNameForKind(run, 'characterStyles', declared, options) || stableAutoName('character', declared);
+    return ensureNamedStyle(styles, 'characterStyles', requestedName, 'character', declared, run, report, options);
+  }
   const style = run.computedStyle || {};
   const fillColor = ensureSwatch(styles, style.color);
   const fontName = ensureFont(styles, style.fontFamily, options, run.text);
@@ -540,6 +554,33 @@ function ensureCharacterStyle(styles, run, report, options) {
     addMessage(report, 'warning', 'FONT_MISSING', 'Text run has no computed font family', { text: run.text });
   }
   return name;
+}
+
+// A character style class rule (.cstyle-<token>, captured on text-frame runs as styleClassRules.character)
+// is the whole character style definition: InDesign character styles only set the attributes they define,
+// the rest comes from the paragraph. Properties the rule leaves out stay null (not written to the style);
+// the run's own look beyond paragraph + style becomes a run textOverride (runTextOverride).
+function declaredCharacterSignature(styles, run, options) {
+  const rule = run && run.styleClassRules && run.styleClassRules.character;
+  if (!rule) return null;
+  const computed = run.computedStyle || {};
+  const has = (prop) => ruleFactValue(rule[prop]) != null;
+  const fontFamily = isCssVariableReference(rule.fontFamily) ? computed.fontFamily : rule.fontFamily;
+  const faceDeclared = has('fontWeight') || has('fontStyle');
+  const face = { fontWeight: rule.fontWeight || '400', fontStyle: rule.fontStyle || 'normal' };
+  return {
+    appliedFont: has('fontFamily') ? ensureFont(styles, fontFamily, options, run.text) : null,
+    fontStyleName: faceDeclared ? fontStyleNameFor(face) : null,
+    pointSize: has('fontSize') ? styleLengthToPt(rule, 'fontSize', options) : null,
+    fontWeight: has('fontWeight') ? rule.fontWeight : null,
+    fontStyle: has('fontStyle') ? rule.fontStyle : null,
+    fillColor: has('color') ? ensureSwatch(styles, rule.color) : null,
+    tracking: has('letterSpacing') ? trackingValue({ letterSpacing: rule.letterSpacing, fontSize: rule.fontSize || computed.fontSize }, options) : null,
+    verticalPosition: has('verticalAlign') ? rule.verticalAlign : null,
+    textDecoration: has('textDecorationLine') ? rule.textDecorationLine : null,
+    capitalization: has('textTransform') ? capitalizationFor(rule) : null,
+    ...textStrokeSignature(styles, rule, options),
+  };
 }
 
 function ensureObjectStyle(styles, item, report, options) {

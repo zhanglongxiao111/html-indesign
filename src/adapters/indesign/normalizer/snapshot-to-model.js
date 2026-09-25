@@ -9,6 +9,7 @@ const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
 const { isIndesignBuiltinStyleName } = require('../../../shared/style-utils');
 const { normalizeLineEndings } = require('../../../shared/text');
+const { roundPresentationLength } = require('../../../shared/geometry');
 const { validateReverseLabel } = require('./label-whitelist');
 const { tableSourceHtmlMatchesTable } = require('./table-source-html');
 const { decodeSpecialCharacterNames } = require('../special-characters');
@@ -192,6 +193,34 @@ function reassembleNativeVectorPathGroup(item = {}, auditItems = []) {
   };
 }
 
+// InDesign 读回的描边粗细、圆角带浮点尾巴（0.28346456692913、37.5000000000001）：按作者长度精度取整，
+// 与写进作者 HTML 的值（data-id-stroke-weight、border 宽）同一个数，合成样式指纹两代往返一致。
+const QUANTIZED_VISUAL_LENGTHS = ['strokeWeight', 'cornerRadius'];
+
+function quantizedVisualStyle(visualStyle) {
+  if (!isPlainObject(visualStyle)) return visualStyle || null;
+  const out = { ...visualStyle };
+  for (const key of QUANTIZED_VISUAL_LENGTHS) {
+    const value = out[key];
+    if (typeof value === 'number' && Number.isFinite(value)) out[key] = roundPresentationLength(value);
+  }
+  return out;
+}
+
+// 置入内容的外框与偏移同样按作者长度精度取整（作者 HTML 的 data-id-content-* 就写这个数）。
+function quantizedPlacement(placement) {
+  const out = { ...placement };
+  for (const key of ['contentBounds', 'contentOffset']) {
+    if (!isPlainObject(out[key])) continue;
+    const box = { ...out[key] };
+    for (const [name, value] of Object.entries(box)) {
+      if (typeof value === 'number' && Number.isFinite(value)) box[name] = roundPresentationLength(value);
+    }
+    out[key] = box;
+  }
+  return out;
+}
+
 function vectorPathIndex(item = {}) {
   const index = Number(item.vectorPathIndex);
   return Number.isInteger(index) && index >= 0 ? index : null;
@@ -276,7 +305,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
   const observed = observedLabelWithReasons(validation);
   const role = effective.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
-  const visualStyle = item.visualStyle || null;
+  const visualStyle = quantizedVisualStyle(item.visualStyle);
   const vectorGeometry = reverseVectorGeometry(item.vectorGeometry, visualStyle);
   const extensions = reverseItemExtensions(item);
   return {
@@ -324,7 +353,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
 
 function normalizePlacedAsset(asset) {
   if (!asset) return null;
-  const placement = isPlainObject(asset.placement) ? { ...asset.placement } : asset.placement;
+  const placement = isPlainObject(asset.placement) ? quantizedPlacement(asset.placement) : asset.placement;
   const normalized = {
     ...asset,
     ...(placement ? { placement } : {}),

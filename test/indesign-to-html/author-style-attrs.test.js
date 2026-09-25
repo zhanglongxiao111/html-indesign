@@ -14,9 +14,10 @@ test('author text style CSS snaps sub-millipixel InDesign jitter to stable px va
     textStyleCss({ pointSize: 45.0001, leading: 72.0002 }),
     'font-size:45px;line-height:72px',
   );
+  // 1/3 px 字号保留四位小数（与样式规则、正向读回同精度），往返不丢位。
   assert.equal(
     textStyleCss({ pointSize: 29.3333, leading: 34.6667 }),
-    'font-size:29.333px;line-height:34.667px',
+    'font-size:29.3333px;line-height:34.6667px',
   );
 });
 

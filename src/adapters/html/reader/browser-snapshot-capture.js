@@ -160,10 +160,12 @@
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),
       computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),
-      authoredStyle: styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle),
+      authoredStyle: frameEl === el
+        ? itemAuthoredStyle
+        : styles.withVisualFrameGeometry(styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle), frameAuthoredStyle),
       ruleStyle: itemRuleStyle,
       styleClassRules: itemStyleClassRules,
-      runs: elements.textRunsFor(el, candidates),
+      runs: elements.textRunsFor(el, candidates, styleRules),
       table: elements.tableRowsFor(el, styleRules),
       tableColumnWidths: elements.tableColumnWidthsFor(el, styleRules),
       unsupported: elements.unsupportedFor(el),

@@ -11,7 +11,7 @@ const {
   synthesizedStyleDeclarations,
 } = require('./author-style-residual');
 const { foldedBorderCss } = require('./author-border-fold');
-const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, textStrokeCss } = require('./css-values');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, textStrokeCss, typeSizePx } = require('./css-values');
 
 function generatedInlineStyleForItem(item, options = {}) {
   const indesign = item && item.extensions && item.extensions.indesign || {};
@@ -147,8 +147,8 @@ function textStyleCss(textStyle) {
   if (textStyle.fontFamily) styles.push(`font-family:"${textStyle.fontFamily}", Arial, sans-serif`);
   if (textStyle.fontWeight) styles.push(`font-weight:${textStyle.fontWeight}`);
   if (textStyle.fontStyle) styles.push(`font-style:${textStyle.fontStyle}`);
-  if (textStyle.pointSize != null) styles.push(`font-size:${px(textStyle.pointSize)}`);
-  if (textStyle.leading != null) styles.push(`line-height:${px(textStyle.leading)}`);
+  if (textStyle.pointSize != null) styles.push(`font-size:${typeSizePx(textStyle.pointSize)}`);
+  if (textStyle.leading != null) styles.push(`line-height:${typeSizePx(textStyle.leading)}`);
   if (textStyle.fillColor) styles.push(`color:${textStyle.fillColor}`);
   if (textStyle.tracking != null && Number(textStyle.tracking) !== 0) {
     styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);

@@ -143,7 +143,12 @@ function tableFrameAttrs(item) {
 function renderElementNode(node, sourceNode, inputTag, options, depth) {
   const item = node.item;
   // 多段文本框写成 data-id-role="text" 的 div 容器、每段一个 <p>（段落不能嵌在 p/h*/span 里）。
-  const paragraphFrame = isParagraphFrameItem(item, node.children.length > 0);
+  const contentOptions = {
+    ignoreSourceHtml: node.children.length > 0,
+    // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
+    writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
+  };
+  const paragraphFrame = isParagraphFrameItem(item, node.children.length > 0, contentOptions);
   const tag = paragraphFrame && inputTag !== 'div' ? 'div' : inputTag;
   const attrs = attrsForItem(item, sourceNode, paragraphFrame ? { ...options, paragraphTextFrame: true } : options);
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
@@ -155,12 +160,7 @@ function renderElementNode(node, sourceNode, inputTag, options, depth) {
     node.children.forEach((child) => markSubtreeRendered(options, child));
     return `${indent(depth)}${open}${preservedInlineSourceHtml}</${tag}>`;
   }
-  const own = ownContent(item, depth, {
-    ignoreSourceHtml: node.children.length > 0,
-    paragraphFrame,
-    // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
-    writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
-  });
+  const own = ownContent(item, depth, { ...contentOptions, paragraphFrame });
   if (node.children.length && node.children.every((child) => rendersInline(child, options))) {
     const children = node.children.map((child) => renderNode(child, options, 0)).join('');
     return `${indent(depth)}${open}${own}${children}</${tag}>`;

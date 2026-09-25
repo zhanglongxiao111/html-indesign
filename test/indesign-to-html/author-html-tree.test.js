@@ -250,7 +250,8 @@ test('pageItemsToAuthorHtml restores inline character runs as editable inline ta
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /本页用 <span class="accent" data-id-character-style="term-accent">PDF 置入<\/span> 校核。/);
+  // 字符样式类（cstyle-<token>）与段落的 pstyle 类同一规则写在 run 上。
+  assert.match(html, /本页用 <span class="accent cstyle-term-accent" data-id-character-style="term-accent">PDF 置入<\/span> 校核。/);
 });
 
 test('pageItemsToAuthorHtml restores original source inner html when text is unchanged', () => {
@@ -625,7 +626,7 @@ test('pageItemsToAuthorHtml restores InDesign character styles as inline charact
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /流线和 <span data-id-character-style="术语强调">PDF 置入<\/span> 校核。/);
+  assert.match(html, /流线和 <span class="cstyle-术语强调" data-id-character-style="术语强调">PDF 置入<\/span> 校核。/);
 });
 
 test('pageItemsToAuthorHtml adds style classes without inventing generic object classes', () => {

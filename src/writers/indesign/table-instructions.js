@@ -52,8 +52,9 @@ function declaredTableColumnWidths(table, rows, layout) {
   if (!values.length) return null;
   const columnCount = tableColumnCountFor(rows);
   if (columnCount && values.length !== columnCount) return null;
+  // cssLengthToTarget 已按作者长度精度舍入，这里不再二次舍入（否则 84.685 读回写出后变 84.69）。
   const widths = values.map((value) => cssLengthToTarget(value, layout));
-  return widths.every((width) => Number.isFinite(width) && width > 0) ? widths.map((width) => round(width, 2)) : null;
+  return widths.every((width) => Number.isFinite(width) && width > 0) ? widths : null;
 }
 
 function tableColumnCountFor(rows) {
@@ -68,7 +69,7 @@ function tableRowHeightsForInstruction(item, rows, layout) {
   if (layout.unitMode !== 'presentation') return table.rowHeights || [];
   return (rows || []).map((row) => {
     const declared = declaredTableRowHeight(item, row.index, layout);
-    return declared != null ? round(declared, 2) : estimatedTableRowHeight(row, layout);
+    return declared != null ? declared : estimatedTableRowHeight(row, layout);
   });
 }
 

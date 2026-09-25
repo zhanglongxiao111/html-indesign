@@ -175,7 +175,7 @@ test('observation vector containers keep their children as an HTML container ins
   const label = $('div#entry-label');
   assert.equal(label.text().trim(), 'Public entry band');
   assert.equal($('#entry-label-text').length, 0, 'companion text folds into its shape');
-  assert.match(label.attr('style'), /font-size:9\.333px/);
+  assert.match(label.attr('style'), /font-size:9\.3333px/);
   assert.match(label.attr('style'), /padding:7\.56px 11\.34px 7\.56px 11\.34px/);
 });
 

@@ -336,6 +336,7 @@ const ITEM_CONTENT_RUN_FIELD_PATHS = Object.freeze({
   characterStyle: 'items[].content.runs[].characterStyle',
   textStyle: 'items[].content.runs[].textStyle',
   inlineStyle: 'items[].content.runs[].inlineStyle',
+  styleClassRules: 'items[].content.runs[].styleClassRules',
 });
 
 const ITEM_TABLE_FIELD_PATHS = Object.freeze({

@@ -1,5 +1,5 @@
 const { blendModeCss } = require('./css-blend-mode');
-const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss } = require('./css-values');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, typeSizePx } = require('./css-values');
 
 function inlineResidualForSynth({ inlineCss, token, synthesizedStyles }) {
   const inline = parseCssDeclarations(inlineCss);
@@ -49,8 +49,8 @@ function synthesizedTextStyleDeclarations(properties) {
   if (properties.fontFamily) declarations.push(`font-family:"${properties.fontFamily}", Arial, sans-serif`);
   if (properties.fontWeight) declarations.push(`font-weight:${properties.fontWeight}`);
   if (properties.fontStyle) declarations.push(`font-style:${properties.fontStyle}`);
-  if (properties.pointSize != null) declarations.push(`font-size:${px(properties.pointSize)}`);
-  if (properties.leading != null) declarations.push(`line-height:${px(properties.leading)}`);
+  if (properties.pointSize != null) declarations.push(`font-size:${typeSizePx(properties.pointSize)}`);
+  if (properties.leading != null) declarations.push(`line-height:${typeSizePx(properties.leading)}`);
   if (properties.fillColor) declarations.push(`color:${properties.fillColor}`);
   if (properties.tracking != null && Number(properties.tracking) !== 0) {
     declarations.push(`letter-spacing:${formatNumber(Number(properties.tracking) / 1000)}em`);

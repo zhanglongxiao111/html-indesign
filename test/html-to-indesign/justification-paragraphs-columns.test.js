@@ -72,7 +72,8 @@ test('declared <col> widths drive the InDesign column widths instead of browser 
   ] }];
   const layout = { unitMode: 'presentation', scale: 1 };
   const item = { bounds: { width: 170.08 }, table: { rows, sourceColumnWidths: ['84.685px', '84.685px'] } };
-  assert.deepEqual(tableColumnWidthsForInstruction(item, rows, layout), [84.69, 84.69]);
+  // 声明列宽按作者长度精度保留（84.685，不再舍成 84.69）：读回写出的列宽往返不变。
+  assert.deepEqual(tableColumnWidthsForInstruction(item, rows, layout), [84.685, 84.685]);
   const mismatched = { bounds: { width: 170.08 }, table: { rows, sourceColumnWidths: ['84.685px'] } };
   assert.deepEqual(tableColumnWidthsForInstruction(mismatched, rows, layout), [86.82, 83.26]);
 });

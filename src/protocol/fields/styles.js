@@ -305,7 +305,7 @@ module.exports = [
     lifecycle: 'active',
     owner: 'style-refs',
     type: 'object',
-    description: 'Run-level local character formatting (appliedFont, fontStyleName, pointSize, fontWeight, fontStyle, fillColor, tracking, capitalization, strokeColor, strokeWeight) for a run without a character style on an observed reverse-export page, where the original InDesign text carried local overrides instead of a named character style. Applied after the run character style, so it wins.',
+    description: 'Run-level local character formatting (appliedFont, fontStyleName, pointSize, fontWeight, fontStyle, fillColor, tracking, capitalization, strokeColor, strokeWeight): for a run without a character style on an observed reverse-export page, where the original InDesign text carried local overrides instead of a named character style; and for a styled run whose character style is defined by its .cstyle-<token> rule (items[].content.runs[].styleClassRules), the look beyond paragraph + character style. Applied after the run character style, so it wins.',
     capabilities: {
       html: { read: 'native', write: 'unsupported', persist: 'native' },
       indesign: { read: 'unsupported', write: 'native', persist: 'native' },

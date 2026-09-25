@@ -1,3 +1,4 @@
+const { roundTypeSize } = require('../../shared/geometry');
 // 作者 HTML 的填充、描边写法：读回的不透明度和描边类型要落进 CSS，
 // 否则浏览器和再次正向构建都会退回实色实线（#34）。
 function colorWithOpacity(color, opacityPercent) {
@@ -55,6 +56,19 @@ function hexToRgb(value) {
   };
 }
 
+// 字号、行距统一按 TYPE_SIZE_DIGITS 写（正向读回同一精度），1/3 px 一类的字号（11.3333）不丢位。
+// 旧版本按页面比例漂出来的万分位抖动（45.0001、72.0002）离三位小数不到 0.00025，收回到三位小数；
+// k/3、k/6 这类字号离三位小数 0.0003，不受影响。
+const TYPE_SIZE_JITTER = 0.00025;
+
+function typeSizePx(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '0px';
+  const precise = roundTypeSize(number);
+  const snapped = Math.round(number * 1000) / 1000;
+  return `${Math.abs(precise - snapped) <= TYPE_SIZE_JITTER ? snapped : precise}px`;
+}
+
 function formatNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '0';
@@ -62,6 +76,7 @@ function formatNumber(value) {
 }
 
 module.exports = {
+  typeSizePx,
   capitalizationCss,
   colorWithOpacity,
   cssBorderStyle,

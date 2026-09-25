@@ -2,6 +2,7 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml, escapeHtml } = require('./author-attribute-writer');
 const { patchTableSourceHtmlCells, patchTableSourceHtmlRows, tableContent } = require('./author-table-renderer');
 const { patchSourceHtmlStyles, runStyleCss } = require('./author-run-style');
+const { safeAuthorClassToken } = require('../../shared/style-utils');
 const {
   isUsefulCharacterStyle,
   orderInlineAttrs,
@@ -11,9 +12,7 @@ const {
 // options.writeRunStyles：对象的读回样式写进作者 HTML 时（未保留可信源码样式），
 // 字符级外观与段落不同的 run 同样写内联 style（author-run-style）。
 function ownContent(item, depth, options = {}) {
-  const sourceHtml = !options.ignoreSourceHtml && item.content && typeof item.content.sourceHtml === 'string' && item.content.sourceHtml !== ''
-    ? item.content.sourceHtml
-    : null;
+  const sourceHtml = itemSourceHtml(item, options);
   const baseTextStyle = options.writeRunStyles ? item.textStyle || null : null;
   if (item.role === 'table' && sourceHtml) {
     const cellStyled = options.writeRunStyles && item.table
@@ -24,20 +23,29 @@ function ownContent(item, depth, options = {}) {
   if (sourceHtml) {
     const styled = styledSourceHtml(item, sourceHtml, baseTextStyle);
     if (styled != null) return sourceHtmlContent(styled, depth);
-    const rich = richTextContent(item, baseTextStyle);
-    return rich != null ? rich : sourceHtmlContent(sourceHtml, depth);
+  } else {
+    if (item.role === 'table' && item.table) {
+      const tableOptions = { writeRunStyles: options.writeRunStyles, baseTextStyle: item.textStyle || null };
+      return `\n${tableContent(item.table, depth + 2, tableOptions)}\n${' '.repeat(depth)}`;
+    }
+    if (item.authorTextCompanion && item.authorTextCompanion.content) {
+      return plainTextContent(item.authorTextCompanion.content.text || '');
+    }
   }
-  if (item.role === 'table' && item.table) {
-    const tableOptions = { writeRunStyles: options.writeRunStyles, baseTextStyle: item.textStyle || null };
-    return `\n${tableContent(item.table, depth + 2, tableOptions)}\n${' '.repeat(depth)}`;
-  }
-  if (item.authorTextCompanion && item.authorTextCompanion.content) {
-    return plainTextContent(item.authorTextCompanion.content.text || '');
-  }
+  // 来源 HTML 保不住（或没有来源 HTML）时按读回 run 重新渲染：带构建标签的多段文本框与无标签对象
+  // 走同一条分段写出（每段一个 <p>），段落结束符不能写成 <br>。
   if (options.paragraphFrame) return paragraphFrameContent(item, depth, baseTextStyle);
   const rich = richTextContent(item, baseTextStyle);
   if (rich != null) return rich;
+  if (sourceHtml) return sourceHtmlContent(sourceHtml, depth);
   return plainTextContent((item.content && item.content.text) || '');
+}
+
+function itemSourceHtml(item, options = {}) {
+  const content = item && item.content;
+  return !options.ignoreSourceHtml && content && typeof content.sourceHtml === 'string' && content.sourceHtml !== ''
+    ? content.sourceHtml
+    : null;
 }
 
 // 来源 HTML 片段原样保留，只给外观与段落不同的 run 按 id 合并 style；
@@ -124,6 +132,10 @@ function renderInlineRun(run) {
     attrs[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE] = run.characterStyle;
   }
   const classes = new Set(run.classList || []);
+  // 字符样式类（cstyle-<token>）与元素上的 pstyle / ostyle 类同一规则：components.css 的 .cstyle-* 是
+  // 字符样式定义，浏览器预览按它上色，正向构建也只从这条规则读字符样式定义（其余是 run 局部格式）。
+  const characterStyle = attrs[HTML_DATA_ID_ATTRIBUTES.CHARACTER_STYLE];
+  if (isUsefulCharacterStyle(characterStyle)) classes.add(`cstyle-${safeAuthorClassToken(characterStyle)}`);
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   if (run.authorStyle) attrs.style = run.authorStyle;
   const attrHtml = attrsToHtml(orderInlineAttrs(attrs));
@@ -142,7 +154,8 @@ function hasRichRunMarkup(run) {
 
 // 多段文本框（InDesign 段落结束符 \r 分隔的多段）：文本框写成 data-id-role="text" 容器，每段一个 <p>，
 // 段内强制换行（\n）仍写 <br>。正向把这种容器读回成一个文本框、段间用 \r 分隔（browser-element-capture）。
-// 只处理由读回 run 重新渲染的文本；保留来源 HTML 的对象、有子对象的对象不走这里。
+// 只处理由读回 run 重新渲染的文本：来源 HTML 能原样保留（run 外观可按 id 合并）的对象、有子对象的对象
+// 不走这里；带构建标签但来源 HTML 保不住的对象与无标签对象走同一条分段写出。
 const PARAGRAPH_BREAK = '\r';
 
 function frameParagraphTexts(item) {
@@ -152,11 +165,14 @@ function frameParagraphTexts(item) {
   return paragraphs;
 }
 
-function isParagraphFrameItem(item, hasChildren) {
-  if (!item || item.role !== 'text' || hasChildren || item.authorTextCompanion) return false;
-  const content = item.content || {};
-  if (typeof content.sourceHtml === 'string' && content.sourceHtml !== '') return false;
-  return frameParagraphTexts(item).length > 1;
+// options 与 ownContent 相同：writeRunStyles 决定来源 HTML 能否原样保留。
+function isParagraphFrameItem(item, hasChildren, options = {}) {
+  if (!item || item.role !== 'text' || hasChildren) return false;
+  if (frameParagraphTexts(item).length <= 1) return false;
+  const sourceHtml = itemSourceHtml(item, options);
+  if (!sourceHtml) return !item.authorTextCompanion;
+  const baseTextStyle = options.writeRunStyles ? item.textStyle || null : null;
+  return styledSourceHtml(item, sourceHtml, baseTextStyle) == null;
 }
 
 function paragraphFrameContent(item, depth, baseTextStyle) {

@@ -222,6 +222,7 @@ npm run assemble:authoring -- -- --package <deck.config.json>
 - 一个文本框里的多段文字（InDesign 同一文本框的多个段落，反向导出也这样写）用带 `data-id-role="text"` 的容器包若干只含内联内容、自身不带段落样式 / 对象 / 角色 / 语义 / 放置声明的 `p`/`h1`–`h6`，段落样式等声明写在容器上；正向构建成一个文本框、每个子元素一段。段内换行才用 `<br>`。
 - 段落对齐：`text-align:justify` 对应 InDesign「左对齐两端」（末行靠左）；要末行也撑满（全部两端对齐）写 `text-align:justify; text-align-last:justify`，末行居中 / 靠右写 `text-align-last:center` / `right`。
 - 表格需要固定列宽时在 `<colgroup>` 里逐列写 `<col style="width:…">`，正向按声明建 InDesign 列宽。
+- 字符样式：`<span data-id-character-style="x" class="cstyle-x">`，`.cstyle-x` 规则只写这个字符样式本身的属性（例如只写颜色）；这段文字另外的字号、描边等写在 span 的内联 `style` 上，正向构建成字符样式 + 局部格式，不会并进样式定义。
 - 表格用真实 `table`，不要用一堆绝对定位 div 假装表格。
 
 回读保护依赖原始结构能被保存为 `sourceNode`。如果对象没有稳定 `id` 或结构只是视觉碎片，系统只能把它当观察对象。

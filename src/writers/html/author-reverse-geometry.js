@@ -2,7 +2,7 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { isDegenerateInvisibleVector } = require('./vector-svg');
 const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-vector-renderer');
 const { tableBoxHeight, tableFrameOverflow } = require('./table-html');
-const { cssLengthStringToPx } = require('../../shared/geometry');
+const { cssLengthStringToPx, roundPresentationLength } = require('../../shared/geometry');
 const { foldedBordersForPage } = require('./author-border-fold');
 
 // 反向作者包的外框规划：每个对象的外框落在哪里，由这里统一决定，
@@ -136,13 +136,13 @@ function authorPageStyleVarPairs(page) {
     pairs.push(['--id-grid-columns', page.grid.columns]);
     pairs.push(['--id-grid-rows', page.grid.rows]);
     if (page.grid.columnGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER]) {
-      pairs.push(['--id-column-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] || `${page.grid.columnGutter}px`]);
+      pairs.push(['--id-column-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] || lengthPx(page.grid.columnGutter)]);
     }
     if (page.grid.rowGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER]) {
-      pairs.push(['--id-row-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] || `${page.grid.rowGutter}px`]);
+      pairs.push(['--id-row-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] || lengthPx(page.grid.rowGutter)]);
     }
     if (page.grid.baseline != null || attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE]) {
-      pairs.push(['--id-baseline', attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] || `${page.grid.baseline}px`]);
+      pairs.push(['--id-baseline', attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] || lengthPx(page.grid.baseline)]);
     }
   }
   const marginTokens = marginTokensFor(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN]);
@@ -152,12 +152,18 @@ function authorPageStyleVarPairs(page) {
     pairs.push(['--id-margin-bottom', marginTokens.bottom]);
     pairs.push(['--id-margin-left', marginTokens.left]);
   } else if (page && page.margins) {
-    pairs.push(['--id-margin-top', `${page.margins.top}px`]);
-    pairs.push(['--id-margin-right', `${page.margins.right}px`]);
-    pairs.push(['--id-margin-bottom', `${page.margins.bottom}px`]);
-    pairs.push(['--id-margin-left', `${page.margins.left}px`]);
+    pairs.push(['--id-margin-top', lengthPx(page.margins.top)]);
+    pairs.push(['--id-margin-right', lengthPx(page.margins.right)]);
+    pairs.push(['--id-margin-bottom', lengthPx(page.margins.bottom)]);
+    pairs.push(['--id-margin-left', lengthPx(page.margins.left)]);
   }
   return pairs;
+}
+
+// 读回的 InDesign 长度（56.6929133858268）按作者长度精度写出，与正向读回的精度一致。
+function lengthPx(value) {
+  const number = Number(value);
+  return `${Number.isFinite(number) ? roundPresentationLength(number) : 0}px`;
 }
 
 function marginTokensFor(value) {

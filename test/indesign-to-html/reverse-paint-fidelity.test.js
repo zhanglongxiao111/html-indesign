@@ -300,11 +300,11 @@ test('unlabelled runs whose appearance differs from the paragraph get an inline 
 
   assert.equal(
     ownContent(item, 0, { writeRunStyles: true }),
-    'Gradient text<br><span data-id-character-style="渐变字符" style="font-size:12px">S</span><span style="font-size:12px">econd</span>',
+    'Gradient text<br><span class="cstyle-渐变字符" data-id-character-style="渐变字符" style="font-size:12px">S</span><span style="font-size:12px">econd</span>',
   );
   // 保留可信源码时不写读回外观。
   assert.equal(
     ownContent(item, 0, { writeRunStyles: false }),
-    'Gradient text<br><span data-id-character-style="渐变字符">S</span>econd',
+    'Gradient text<br><span class="cstyle-渐变字符" data-id-character-style="渐变字符">S</span>econd',
   );
 });

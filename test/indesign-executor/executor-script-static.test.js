@@ -787,7 +787,7 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(textSource.split(/\r?\n/).length <= 180, 'hi_reverse_text.jsxinc should stay focused');
   assert.ok(effectSource.split(/\r?\n/).length <= 120, 'hi_reverse_effects.jsxinc should stay focused');
   assert.ok(tableSource.split(/\r?\n/).length <= 240, 'hi_reverse_tables.jsxinc should stay focused');
-  assert.ok(colorSource.split(/\r?\n/).length <= 140, 'hi_reverse_colors.jsxinc should stay focused');
+  assert.ok(colorSource.split(/\r?\n/).length <= 170, 'hi_reverse_colors.jsxinc should stay focused');
 });
 
 test('reverse text helper restores InDesign special-character names to authored Unicode', () => {

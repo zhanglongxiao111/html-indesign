@@ -7,7 +7,7 @@ const {
   orderInlineAttrs,
   safeInlineTag,
 } = require('./author-render-utils');
-const { colorWithOpacity, justificationCss } = require('./css-values');
+const { colorWithOpacity, justificationCss, typeSizePx } = require('./css-values');
 const { mergeDeclarations, runStyleCss, tagWithMergedStyle } = require('./author-run-style');
 const { readBackRowHeights } = require('./table-html');
 
@@ -94,7 +94,7 @@ function tableCellCss(cell, baseTextStyle) {
   const textCss = runStyleCss(textStyle, base);
   if (textCss) styles.push(textCss);
   if (textStyle.leading != null && Number(textStyle.leading) !== Number(base.leading)) {
-    styles.push(`line-height:${formatNumber(textStyle.leading)}px`);
+    styles.push(`line-height:${typeSizePx(textStyle.leading)}`);
   }
   if (textStyle.justification && textStyle.justification !== base.justification) {
     styles.push(justificationCss(textStyle.justification));

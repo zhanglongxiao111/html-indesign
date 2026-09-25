@@ -4,7 +4,8 @@ if (typeof HI === "undefined") { HI = {}; }
 // localTint: the owner's own tint (item.fillTint, character.fillTint, ...), read with HI.reverseTint.
 // Tint swatches report the base color in colorValue and the percentage in tintValue; the effective color is
 // the base color at that tint (CMYK/Lab components scaled, RGB blended toward white). A local tint on the owner
-// is absolute against the base color and wins over the swatch tint. Colors that cannot be converted report a
+// is absolute against the base color and wins over the swatch tint. CMYK and Lab values are converted to RGB by
+// InDesign's own color management (HI.reverseBeginColorConversion). Colors that cannot be converted report a
 // warning instead of silently falling back.
 HI.reverseColor = function (color, localTint) {
     var swatchName = "";
@@ -60,12 +61,53 @@ HI.reverseTintedHex = function (v, spaceKey, tint) {
     if (spaceKey === "RGB") {
         return HI.rgbHex(255 - (255 - Number(v[0] || 0)) * t, 255 - (255 - Number(v[1] || 0)) * t, 255 - (255 - Number(v[2] || 0)) * t);
     }
-    if (spaceKey === "CMYK") {
-        var c = Number(v[0] || 0) * t / 100, m = Number(v[1] || 0) * t / 100, y = Number(v[2] || 0) * t / 100, k = Number(v[3] || 0) * t / 100;
-        return HI.rgbHex(255 * (1 - c) * (1 - k), 255 * (1 - m) * (1 - k), 255 * (1 - y) * (1 - k));
+    var values = null;
+    if (spaceKey === "CMYK") values = [Number(v[0] || 0) * t, Number(v[1] || 0) * t, Number(v[2] || 0) * t, Number(v[3] || 0) * t];
+    if (spaceKey === "LAB") values = [100 - (100 - Number(v[0] || 0)) * t, Number(v[1] || 0) * t, Number(v[2] || 0) * t];
+    if (!values) return null;
+    var rgb = HI.reverseConvertedRgb(spaceKey, values);
+    if (rgb) return HI.rgbHex(rgb[0], rgb[1], rgb[2]);
+    if (spaceKey === "LAB") return HI.labHex(values[0], values[1], values[2]);
+    var c = values[0] / 100, m = values[1] / 100, y = values[2] / 100, k = values[3] / 100;
+    return HI.rgbHex(255 * (1 - c) * (1 - k), 255 * (1 - m) * (1 - k), 255 * (1 - y) * (1 - k));
+};
+
+// InDesign color management for CMYK / Lab (the document's CMYK and RGB profiles, as InDesign converts for RGB
+// output). A naive device formula turns CMYK 0/100/100/0 into pure #ff0000 and its 40% tint into a pink #ff9999,
+// while the profile gives a warmer red / salmon. The converter exists only during one reverse export; outside it
+// (unit tests) the device formula is used. A failing conversion is reported and falls back to the formula.
+HI.reverseColorConverter = null;
+HI.reverseBeginColorConversion = function (doc) {
+    var cache = {};
+    HI.reverseColorConverter = function (spaceKey, values) {
+        var key = spaceKey + ":" + values.join(",");
+        if (!cache.hasOwnProperty(key)) cache[key] = HI.reverseProfileRgb(doc, spaceKey, values);
+        return cache[key];
+    };
+};
+HI.reverseEndColorConversion = function () { HI.reverseColorConverter = null; };
+HI.reverseConvertedRgb = function (spaceKey, values) {
+    var convert = HI.reverseColorConverter;
+    if (!convert) return null;
+    try {
+        return convert(spaceKey, values);
+    } catch (error) {
+        HI.reverseNoteColorIssue("REVERSE_COLOR_PROFILE_FAILED", spaceKey + " color " + values.join("/") + " could not be converted by InDesign color management (" + String(error) + "); a device formula approximates it.", { colorSpace: spaceKey, colorValue: values.join(",") });
+        return null;
     }
-    if (spaceKey === "LAB") return HI.labHex(100 - (100 - Number(v[0] || 0)) * t, Number(v[1] || 0) * t, Number(v[2] || 0) * t);
-    return null;
+};
+// A temporary process color is added, switched to RGB (InDesign converts its values through the profiles), read
+// and removed inside one undo step that is undone right away: the document keeps no object and its modified state.
+HI.reverseProfileRgb = function (doc, spaceKey, values) {
+    var undoName = "html-indesign reverse color conversion";
+    var rgb = null;
+    app.doScript(function () {
+        var temp = doc.colors.add({ model: ColorModel.PROCESS, space: spaceKey === "CMYK" ? ColorSpace.CMYK : ColorSpace.LAB, colorValue: values });
+        try { temp.space = ColorSpace.RGB; rgb = temp.colorValue; } finally { temp.remove(); }
+    }, ScriptLanguage.JAVASCRIPT, undefined, UndoModes.ENTIRE_SCRIPT, undoName);
+    if (String(HI.reverseSafeProperty(doc, "undoName") || "") === undoName) doc.undo();
+    if (!rgb || rgb.length < 3) throw new Error("no RGB value");
+    return [Number(rgb[0]), Number(rgb[1]), Number(rgb[2])];
 };
 
 // CIE Lab (D65 reference white) to sRGB hex.

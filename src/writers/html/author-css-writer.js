@@ -37,6 +37,9 @@ function layoutCss(model) {
     // InDesign 表格相邻单元格共用描边，对应 CSS 的合并边框模型。
     '.page :where(table) { border-collapse: collapse; }',
     '.grid-item { grid-column: var(--grid-col) / span var(--grid-span, 1); grid-row: var(--grid-row) / span var(--grid-row-span, 1); min-width: 0; min-height: 0; }',
+    // 网格里的矢量 svg 是替换元素，默认按 viewBox 宽高比定尺寸、不拉伸：外框就会跟着上一代读回的路径尺寸走，
+    // 每代往返漂一点。让它撑满网格区域，与首代的 div 图框一样由网格决定外框。
+    '.page > svg.grid-item { width: 100%; height: 100%; }',
     // 置入图的内容图按图框内偏移绝对定位，留在网格里的图框要成为它的定位参照（只含内容图、不含子对象）。
     '.grid-item:has(> .placed-asset-content, > .placed-asset-preview) { position: relative; }',
     '.id-object { margin: 0; overflow: hidden; }',
@@ -173,8 +176,10 @@ function establishesAuthorPositioning(item, context) {
 // 盒子，落在已烘焙的矢量 svg 上同样会二次旋转或挪位，兜底几何里一并归零。源码 class 上的
 // 边框、底色、内边距（如 .line 的 border-top）同理只属于旧盒子，描边已在 path 上；
 // 矢量容器（#27）的盒子画的正是读回的填充和描边，不归零这几项。
+// 没有来源节点的烘焙矢量（人工 INDD 第一代回读）同样写这组归零：第二代起对象带上构建标签就有来源节点，
+// 两代写法必须一致，否则往返作者包每代多出一串归零声明。
 function bakedVectorSourceResetDeclarations(item, context, options) {
-  if (!item || !item.sourceNode || !rendersBakedVectorSvg(item, options)) return [];
+  if (!item || !rendersBakedVectorSvg(item, options)) return [];
   const reset = ['margin:0', 'transform:none', 'rotate:none', 'translate:none', 'scale:none'];
   return context.vectorContainerIds.has(item.id) ? reset : [...reset, ...VECTOR_SVG_BOX_PAINT_RESET];
 }

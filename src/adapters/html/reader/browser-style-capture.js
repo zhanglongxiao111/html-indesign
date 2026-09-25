@@ -78,7 +78,8 @@
   function authoredStyleObject(el, styleRules) {
     const out = ruleStyleObject(el, styleRules);
     const inline = el.style || {};
-    const inlineDecls = rawDeclarationMap(inline.cssText || '');
+    // The style attribute text keeps the author's digits; cssText is re-serialized by CSSOM (see preciseLength).
+    const inlineDecls = rawDeclarationMap((el.getAttribute && el.getAttribute('style')) || inline.cssText || '');
     for (const prop of snapshotStyleProps) {
       const value = inline.getPropertyValue ? authoredValue(inline, prop, inlineDecls) : '';
       if (value) out[prop] = value.trim();
@@ -103,15 +104,16 @@
     return out;
   }
 
-  // A native style class (.pstyle-<token> / .ostyle-<token>, as the reverse author writer emits them)
-  // names one InDesign style and its single-class rule carries that style's definition. ruleStyle is the
-  // union of every matching rule (synth-* appearance classes, reverse-overrides geometry, layout resets),
+  // A native style class (.pstyle-<token> / .cstyle-<token> / .ostyle-<token>, as the reverse author writer
+  // emits them) names one InDesign style and its single-class rule carries that style's definition. ruleStyle
+  // is the union of every matching rule (synth-* appearance classes, reverse-overrides geometry, layout resets),
   // i.e. the element's look; the style definition has to be read from the style class rule alone.
-  const STYLE_CLASS_RULE_PREFIXES = { paragraph: 'pstyle-', object: 'ostyle-' };
+  // extraClassNames: style classes implied by the element's declarations (a run's data-id-character-style).
+  const STYLE_CLASS_RULE_PREFIXES = { paragraph: 'pstyle-', character: 'cstyle-', object: 'ostyle-' };
 
-  function styleClassRuleObjects(el, styleRules) {
+  function styleClassRuleObjects(el, styleRules, extraClassNames = []) {
     const out = {};
-    const classNames = new Set(Array.from(el.classList || []));
+    const classNames = new Set(Array.from(el.classList || []).concat(extraClassNames || []));
     for (const [kind, prefix] of Object.entries(STYLE_CLASS_RULE_PREFIXES)) {
       let declarations = null;
       for (const rule of styleRules) {
@@ -126,6 +128,15 @@
       if (declarations) out[kind] = declarations;
     }
     return out;
+  }
+
+  // Same sanitizing as shared/style-utils safeAuthorClassToken: the class the author writer derives from a style name.
+  function styleClassToken(value) {
+    const token = String(value || 'style')
+      .replace(/[^a-zA-Z0-9_\-\u4e00-\u9fa5]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return token || 'style';
   }
 
   function singleClassSelectorName(selectorText) {
@@ -208,6 +219,20 @@
     return out;
   }
 
+  // The visual frame's authored placement is the InDesign frame's placement (a table inside a data-id-ignore
+  // text-frame wrapper, an asset inside its frame): an absolutely placed frame lends the item its authored
+  // left/top/width/height, so the item keeps the authored lengths instead of the 1/64 px laid-out rect.
+  const FRAME_GEOMETRY_PROPS = ['position', 'left', 'top', 'width', 'height'];
+
+  function withVisualFrameGeometry(style, frameStyle) {
+    const frame = frameStyle || {};
+    if (String(frame.position || '').trim().toLowerCase() !== 'absolute') return style;
+    if (!FRAME_GEOMETRY_PROPS.every((prop) => String(frame[prop] || '').trim())) return style;
+    const out = Object.assign({}, style);
+    for (const prop of FRAME_GEOMETRY_PROPS) out[prop] = frame[prop];
+    return out;
+  }
+
   function stylePaints(style) {
     const background = String(style.backgroundColor || '').trim().toLowerCase().replace(/\s+/g, '');
     if (background && background !== 'transparent' && background !== 'rgba(0,0,0,0)') return true;
@@ -222,8 +247,8 @@
 
   function authoredValue(styleDecl, prop, rawDecls) {
     const direct = styleDecl.getPropertyValue(cssPropertyName(prop)) || styleDecl[prop] || '';
-    if (direct) return direct;
     const rawDirect = rawDecls && rawDecls[cssPropertyName(prop)];
+    if (direct) return preciseLength(direct, rawDirect);
     if (rawDirect) return rawDirect;
     const border = prop.match(/^border(Top|Right|Bottom|Left)(Width|Style|Color)$/);
     if (!border) return '';
@@ -241,6 +266,19 @@
     if (boxShorthand) return borderBoxSideValue(boxShorthand, side);
     const shorthand = styleDecl.getPropertyValue('border') || '';
     return borderShorthandValue(shorthand, kind);
+  }
+
+  // CSSOM serializes numbers with 6 significant digits: an authored 1587.402px reads back as 1587.4px and
+  // 1016.693px as 1016.69px. When the raw declaration is the same plain length, keep the author's digits.
+  const PLAIN_LENGTH = /^([+-]?(?:\d*\.\d+|\d+))(px|pt|mm)$/i;
+
+  function preciseLength(value, raw) {
+    const cssom = PLAIN_LENGTH.exec(String(value || '').trim());
+    const authored = PLAIN_LENGTH.exec(String(raw || '').trim());
+    if (!cssom || !authored || cssom[2].toLowerCase() !== authored[2].toLowerCase()) return value;
+    const a = Number(cssom[1]);
+    const b = Number(authored[1]);
+    return Math.abs(a - b) <= Math.abs(b) * 1e-5 + 1e-9 ? String(raw).trim() : value;
   }
 
   function cssPropertyName(prop) {
@@ -339,8 +377,10 @@
     authoredStyleObject,
     ruleStyleObject,
     styleClassRuleObjects,
+    styleClassToken,
     collectStyleRules,
     mergeVisualFrameStyle,
+    withVisualFrameGeometry,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
