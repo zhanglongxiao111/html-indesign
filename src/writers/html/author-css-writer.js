@@ -3,6 +3,8 @@ const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-v
 const { safeAuthorClassToken } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
 const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
+const { foldedBordersForPage } = require('./author-border-fold');
+const { deckPageBackground } = require('./author-page-background');
 
 function writeAuthorCssFiles(model, options = {}) {
   return {
@@ -17,7 +19,7 @@ function writeAuthorCssFiles(model, options = {}) {
 function tokensCss(model) {
   return [
     ':root {',
-    '  --id-page-bg: #ffffff;',
+    `  --id-page-bg: ${deckPageBackground(model)};`,
     '  --id-text: #14324a;',
     '}',
     '',
@@ -32,6 +34,8 @@ function layoutCss(model) {
     '.deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `.page { width: ${px(first.width || 0)}; height: ${px(first.height || 0)}; background: var(--id-page-bg); overflow: hidden; position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--id-grid-columns, 12), minmax(0, 1fr)); grid-template-rows: repeat(var(--id-grid-rows, 8), minmax(0, 1fr)); column-gap: var(--id-column-gutter, 0px); row-gap: var(--id-row-gutter, 0px); padding: var(--id-margin-top, 0px) var(--id-margin-right, 0px) var(--id-margin-bottom, 0px) var(--id-margin-left, 0px); }`,
     '.page :where(p, h1, h2, h3, h4, h5, h6, figure, figcaption, ul, ol) { margin: 0; }',
+    // InDesign 表格相邻单元格共用描边，对应 CSS 的合并边框模型。
+    '.page :where(table) { border-collapse: collapse; }',
     '.grid-item { grid-column: var(--grid-col) / span var(--grid-span, 1); grid-row: var(--grid-row) / span var(--grid-row-span, 1); min-width: 0; min-height: 0; }',
     '.id-object { margin: 0; overflow: hidden; }',
     '.observed-text.id-object { overflow: visible; }',
@@ -81,7 +85,13 @@ function reverseOverridesCss(model, options = {}) {
   }
   for (const page of model.pages || []) {
     const itemById = new Map((page.items || []).map((item) => [item && item.id, item]));
-    const context = { itemIds, vectorContainerIds: vectorContainerIdsForPage(page, options) };
+    const folded = foldedBordersForPage(page);
+    const context = {
+      itemIds,
+      vectorContainerIds: vectorContainerIdsForPage(page, options),
+      foldedBorderItemIds: folded.foldedItemIds,
+      foldedBordersByContainer: folded.byContainer,
+    };
     for (const item of page.items || []) {
       if (shouldOmitAuthorOverride(item, context, options)) continue;
       if (item.layout && item.layout.grid) continue;
@@ -114,13 +124,25 @@ function authorPosition(item, itemById, context, options) {
   if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, context, options)) {
     return position;
   }
-  // 绝对定位以容器的内边距盒为参照；矢量容器的描边写成 CSS border，要扣掉，
-  // 子对象才能落回读回 bounds（正向构建累加祖先偏移时同样计入祖先 border）。
-  const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
+  // 绝对定位以容器的内边距盒为参照；矢量容器的描边、折回容器的边框对象都写成 CSS border，
+  // 要扣掉左、上边宽，子对象才能落回读回 bounds（正向构建累加祖先偏移时同样计入祖先 border）。
+  const inset = containerBorderInset(parent, context);
   return {
-    x: position.x - (Number(parent.bounds.x) || 0) - border,
-    y: position.y - (Number(parent.bounds.y) || 0) - border,
+    x: position.x - (Number(parent.bounds.x) || 0) - inset.left,
+    y: position.y - (Number(parent.bounds.y) || 0) - inset.top,
   };
+}
+
+function containerBorderInset(parent, context) {
+  const folded = context.foldedBordersByContainer && context.foldedBordersByContainer.get(parent.id);
+  if (folded) {
+    return {
+      left: folded.left ? folded.left.width : 0,
+      top: folded.top ? folded.top.width : 0,
+    };
+  }
+  const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
+  return { left: border, top: border };
 }
 
 // 与 author-style-attrs.visualStyleCss 写出的 border 宽度一致。
@@ -152,10 +174,10 @@ function shouldOmitAuthorOverride(item, context, options = {}) {
   // 读回 bounds 定外框，其源码定位、尺寸和变换已在写出时剥掉（见 author-vector-renderer）。
   // 矢量容器的直接子对象同理：容器不再按源码排版，子对象按读回 bounds 定位。
   if (item.sourceNode && !rendersBakedVectorSvg(item, options) && !isVectorContainerChild(item, context)) return true;
+  if (context.foldedBorderItemIds && context.foldedBorderItemIds.has(item.id)) return true;
   if (isGeneratedLabel(item)) return true;
   const itemIds = context.itemIds;
   const id = String(item.id || '');
-  if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
   if (item.semantic == null && /-background$/i.test(id)) return true;
   if (/-text$/i.test(id) && itemIds.has(id.replace(/-text$/i, ''))) return true;
   return false;

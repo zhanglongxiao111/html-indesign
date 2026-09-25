@@ -48,6 +48,7 @@ function attrsForItem(item, sourceNode, options) {
   const mergedStyle = preserveTrustedSource || preserveAcceptedSourceStyle ? sourceStyle : authorInlineStyleForItem(item, sourceStyle, {
     synthesizedStyles: options.synthesizedStyles,
     styleResidualReport: options.styleResidualReport,
+    foldedBordersByContainer: options.foldedBordersByContainer,
   });
   if (mergedStyle) attrs.style = mergedStyle;
   if (classes.size) attrs.class = Array.from(classes).join(' ');

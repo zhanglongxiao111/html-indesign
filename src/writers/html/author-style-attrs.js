@@ -4,11 +4,14 @@ const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
 const { safeAuthorClassToken, isIndesignBuiltinStyleName } = require('../../shared/style-utils');
 const { inlineResidualForSynth } = require('./author-style-residual');
+const { foldedBorderCss } = require('./author-border-fold');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle } = require('./css-values');
 
 function authorInlineStyleForItem(item, sourceStyle, options = {}) {
   const indesign = item && item.extensions && item.extensions.indesign || {};
+  const foldedBorders = options.foldedBordersByContainer && item && options.foldedBordersByContainer.get(item.id);
   const generatedStyle = mergeCss([
-    visualStyleCss(item && item.visualStyle),
+    visualStyleCss(item && item.visualStyle, { foldedBorders }),
     textStyleCss(item && item.textStyle),
     textFrameStyleCss(indesign.textFrameStyle),
     cssForHtml(item && item.inlineStyle),
@@ -65,12 +68,17 @@ function authorClassesForItem(item, sourceClasses, sourceAttrs = {}) {
   return Array.from(classes).filter(Boolean);
 }
 
-function visualStyleCss(visualStyle) {
-  if (!visualStyle) return '';
+// options.foldedBorders：折回容器的边框对象（author-border-fold），取代容器自身为 0 的描边。
+function visualStyleCss(inputVisualStyle, options = {}) {
+  if (!inputVisualStyle && !options.foldedBorders) return '';
+  const visualStyle = inputVisualStyle || {};
   const styles = [];
-  if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
-  if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
-    styles.push(`border:${geometryPx(visualStyle.strokeWeight)} solid ${visualStyle.strokeColor}`);
+  if (visualStyle.fillColor) styles.push(`background-color:${colorWithOpacity(visualStyle.fillColor, visualStyle.fillOpacity)}`);
+  if (options.foldedBorders) {
+    styles.push(foldedBorderCss(options.foldedBorders));
+  } else if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
+    const strokeColor = colorWithOpacity(visualStyle.strokeColor, visualStyle.strokeOpacity);
+    styles.push(`border:${geometryPx(visualStyle.strokeWeight)} ${cssBorderStyle(visualStyle.strokeStyle)} ${strokeColor}`);
   } else if (hasExplicitStrokeFact(visualStyle)) {
     styles.push('border:0 solid transparent');
   }
@@ -100,6 +108,8 @@ function textStyleCss(textStyle) {
     styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);
   }
   if (textStyle.justification) styles.push(`text-align:${textStyle.justification}`);
+  const capitalization = capitalizationCss(textStyle.capitalization);
+  if (capitalization) styles.push(capitalization);
   return styles.join(';');
 }
 

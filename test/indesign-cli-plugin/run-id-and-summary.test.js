@@ -416,7 +416,7 @@ test('反向导出把快照里的 warning（含 REVERSE_GRADIENT_APPROXIMATED）
   ].map((owner) => ({
     level: 'warning',
     code: 'REVERSE_GRADIENT_APPROXIMATED',
-    message: 'Gradient swatch "Grad-Used" is approximated by its first stop color; HTML keeps a solid color.',
+    message: 'Gradient swatch "Grad-Used" is approximated by its first stop color: the gradient is not kept, author HTML writes that stop as a solid color (fills, strokes, text and table cells).',
     details: { gradient: 'Grad-Used', approximatedColor: '#ff0000', ...owner },
   }));
   const previewWarning = {

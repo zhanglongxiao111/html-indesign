@@ -54,7 +54,7 @@ function renderVectorContainerNode(node, options, depth, renderChild) {
   const attrs = vectorContainerAttrsForItem(item, sourceNode, options);
   if (!vectorMatchesBoundsBox(item)) recordShapeApproximated(item, options);
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
-  const own = ownContent(item, depth, { ignoreSourceHtml: true });
+  const own = ownContent(item, depth, { ignoreSourceHtml: true, writeRunStyles: true });
   const children = node.children.map((child) => renderChild(child, options, depth + 2)).join('\n');
   if (!children) return `${indent(depth)}${open}${own}</${tag}>`;
   return `${indent(depth)}${open}\n${own ? `${indent(depth + 2)}${own}\n` : ''}${children}\n${indent(depth)}</${tag}>`;
@@ -104,7 +104,7 @@ function vectorContainerAttrsForItem(item, sourceNode, options) {
   }
   const style = mergeCss([
     sourceStyle,
-    visualStyleCss(item.visualStyle),
+    visualStyleCss(item.visualStyle, { foldedBorders: foldedBordersFor(item, options) }),
     companionTextCss(item),
     'overflow:visible',
     zIndexStyle(item.zIndex),
@@ -112,6 +112,11 @@ function vectorContainerAttrsForItem(item, sourceNode, options) {
   if (style) attrs.style = style;
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   return attrsToHtml(orderAttrs(attrs));
+}
+
+function foldedBordersFor(item, options) {
+  const byContainer = options && options.foldedBordersByContainer;
+  return byContainer && item ? byContainer.get(item.id) || null : null;
 }
 
 // 伴生文字（正向构建从带文字的形状拆出的 <id>-text 文本框）折回容器自身文字：

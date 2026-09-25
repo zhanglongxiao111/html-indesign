@@ -35,6 +35,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     }),
     layerVisibility,
     diagnostics,
+    pageBackgroundByParentName: pageBackgroundByParentName(snapshot.parentPages || []),
     labelOptions: {
       mode: reverseMode,
       strictFields: options.strictFields === true,
@@ -99,10 +100,14 @@ function reversePage(page, styleMaps, context = {}) {
   const effectiveForPage = sourcePackageSemantic ? { ...effective, semantic: sourcePackageSemantic } : effective;
   const parent = effective.parentPage || {};
   const appliedParentPageName = page.appliedParentPageName || null;
+  const background = appliedParentPageName && context.pageBackgroundByParentName
+    ? context.pageBackgroundByParentName.get(appliedParentPageName)
+    : null;
   return {
     id: label.id || page.id,
     index: page.index,
     semantic: effectiveForPage.semantic || null,
+    ...(background ? { visualStyle: background } : {}),
     parentPageId: effective.parentPageId || parent.id || appliedParentPageName || null,
     parentPageName: effective.parentPageName || parent.name || appliedParentPageName,
     layout: effective.layout || null,
@@ -395,6 +400,29 @@ function reverseItemExtensions(item = {}) {
     : null;
 }
 
+// 正向构建（background-instructions）把页面底色做成生成的背景母版：母版标签 semantic=page-background、
+// generated=true，里面一块 role=background、id 为「<母版 id>-fill」的满版填充矩形。这里按同一规则反推，
+// 套用该母版的页面读回 visualStyle.fillColor；母版本身仍按基础母版（页面标签里的 parentPage）写回。
+function pageBackgroundByParentName(parentPages) {
+  const out = new Map();
+  for (const parentPage of parentPages || []) {
+    const label = firstLabel(parentPage && parentPage.labels, 'parentPage') || {};
+    if (label.semantic !== 'page-background' || label.generated !== true || !parentPage.name) continue;
+    const fillId = `${label.id}-fill`;
+    const fill = (parentPage.items || []).find((item) => {
+      const itemLabel = firstLabel(item && item.labels, 'item') || {};
+      return itemLabel.id === fillId && itemLabel.role === 'background';
+    });
+    const visualStyle = fill && fill.visualStyle || {};
+    if (!visualStyle.fillColor) continue;
+    const background = { fillColor: visualStyle.fillColor };
+    const opacity = Number(visualStyle.fillOpacity);
+    if (visualStyle.fillOpacity != null && Number.isFinite(opacity) && opacity < 100) background.fillOpacity = opacity;
+    out.set(String(parentPage.name), background);
+  }
+  return out;
+}
+
 function reverseParentPage(parentPage, styleMaps, context = {}) {
   const label = firstLabel(parentPage.labels, 'parentPage') || {};
   const appliedParentPageName = parentPage.appliedParentPageName || null;
@@ -615,7 +643,7 @@ function contentForReverseItem(role, item, label, styleMaps, table = null) {
     return {
       text: sourceText,
       sourceHtml: typeof label.sourceHtml === 'string' ? label.sourceHtml : null,
-      runs: sourceRunsFromLabel(label, styleMaps),
+      runs: withObservedRunTextStyles(sourceRunsFromLabel(label, styleMaps), sourceText, item.textRuns || item.runs || []),
     };
   }
   return {
@@ -644,6 +672,38 @@ function sourceRunsFromLabel(label, styleMaps) {
       characterStyle,
     };
   });
+}
+
+// 标签里的来源 run 只记结构（标签名、class、字符样式名），读回外观在快照的逐字 run 上。
+// 按文字位置把覆盖该来源 run 的快照 run 找出来：外观一致时挂上读回 textStyle，
+// 作者 HTML 据此写出与段落不同的字符外观（颜色、字重等）；不一致或对不上位置时不挂，不猜。
+function withObservedRunTextStyles(runs, text, snapshotRuns) {
+  if (!runs.length || !Array.isArray(snapshotRuns) || !snapshotRuns.length) return runs;
+  const fullText = normalizeLineEndings(String(text || ''));
+  const spans = [];
+  let offset = 0;
+  for (const run of snapshotRuns) {
+    const runText = normalizeLineEndings(normalizeReverseText(run && run.text || ''));
+    spans.push({ start: offset, end: offset + runText.length, textStyle: run && run.textStyle || null });
+    offset += runText.length;
+  }
+  if (offset !== fullText.length) return runs;
+  let cursor = 0;
+  return runs.map((run) => {
+    const runText = normalizeLineEndings(String(run.text || ''));
+    const start = runText ? fullText.indexOf(runText, cursor) : -1;
+    if (start < 0) return run;
+    const end = start + runText.length;
+    cursor = end;
+    const covering = spans.filter((span) => span.end > start && span.start < end);
+    const textStyle = covering.length ? covering[0].textStyle : null;
+    if (!textStyle || covering.some((span) => !sameRunTextStyle(span.textStyle, textStyle))) return run;
+    return { ...run, textStyle: { ...textStyle } };
+  });
+}
+
+function sameRunTextStyle(left, right) {
+  return JSON.stringify(left || null) === JSON.stringify(right || null);
 }
 
 function reverseTextRuns(runs, styleMaps) {

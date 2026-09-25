@@ -12,6 +12,7 @@ const TEXT_STYLE_FIELDS = Object.freeze([
   'rightIndent',
   'spaceBefore',
   'spaceAfter',
+  'capitalization',
 ]);
 
 const TEXT_OVERRIDE_FIELDS = Object.freeze([

@@ -1,5 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle } = require('./css-values');
 const { vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 const {
   requiredNumber,
@@ -96,9 +97,10 @@ function itemClasses(item, model) {
 function visualStyleCss(visualStyle) {
   if (!visualStyle) return '';
   const styles = [];
-  if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
+  if (visualStyle.fillColor) styles.push(`background-color:${colorWithOpacity(visualStyle.fillColor, visualStyle.fillOpacity)}`);
   if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
-    styles.push(`border:${Math.round(Number(visualStyle.strokeWeight) * 100) / 100}px solid ${visualStyle.strokeColor}`);
+    const strokeColor = colorWithOpacity(visualStyle.strokeColor, visualStyle.strokeOpacity);
+    styles.push(`border:${Math.round(Number(visualStyle.strokeWeight) * 100) / 100}px ${cssBorderStyle(visualStyle.strokeStyle)} ${strokeColor}`);
   }
   if (Number(visualStyle.cornerRadius) > 0) {
     styles.push(`border-radius:${formatPx(visualStyle.cornerRadius)}`);
@@ -125,6 +127,8 @@ function textStyleCss(textStyle) {
     styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);
   }
   if (textStyle.justification) styles.push(`text-align:${textStyle.justification}`);
+  const capitalization = capitalizationCss(textStyle.capitalization);
+  if (capitalization) styles.push(capitalization);
   return styles.join(';');
 }
 

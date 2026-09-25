@@ -6,6 +6,7 @@ const {
   HTML_DATA_ID_ATTRIBUTES,
 } = require('../../protocol');
 const { writeAuthorCssFiles } = require('./author-css-writer');
+const { deckPageBackground, pageBackgroundOverride } = require('./author-page-background');
 const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
@@ -84,6 +85,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     synthesizedStyles,
     styleResidualReport,
     authorWarnings,
+    deckPageBackground: deckPageBackground({ pages: pages.map((page) => page.authorPage) }),
   };
   const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
   copySourceSemanticPreset(sourceConfig, sourceRoot, outDir);
@@ -593,7 +595,7 @@ function sourcePageAttrs(page, sourceFile, options) {
   }
   const style = preserveTrustedSource
     ? attrs.style || ''
-    : pageStyleVars(page);
+    : pageStyleVars(page, options);
   if (style) attrs.style = style;
   return attrsToHtml(orderPageAttrs(attrs));
 }
@@ -602,8 +604,10 @@ function shouldWritePageParentAttrs(page, options = {}) {
   return pageHasEffectiveParentPage(page, options.effectiveParentPageKeys);
 }
 
-function pageStyleVars(page) {
+function pageStyleVars(page, options = {}) {
   const pairs = [];
+  const background = pageBackgroundOverride(page, options.deckPageBackground);
+  if (background) pairs.push(['--id-page-bg', background]);
   const attrs = (page.sourceNode && page.sourceNode.attributes) || {};
   if (page.grid) {
     pairs.push(['--id-grid-columns', page.grid.columns]);

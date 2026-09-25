@@ -1,5 +1,6 @@
 const { isVoidTag } = require('./author-attribute-writer');
 const { buildAuthorTree } = require('./author-tree-builder');
+const { foldedBordersForPage } = require('./author-border-fold');
 const { tagForAsset } = require('./author-asset-attrs');
 const {
   renderAssetFigureNode,
@@ -7,7 +8,7 @@ const {
   shouldRenderAssetFigureNode,
   shouldRenderPlacedAssetFrame,
 } = require('./author-asset-renderer');
-const { attrsForItem, sourceNodeForItem } = require('./author-node-attrs');
+const { attrsForItem, shouldPreserveTrustedSource, sourceNodeForItem } = require('./author-node-attrs');
 const { isPdfObjectItem, renderPdfObjectNode } = require('./author-pdf-renderer');
 const { ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
 const { indent, safeTag, tagForRole } = require('./author-render-utils');
@@ -30,6 +31,7 @@ function pageItemsToAuthorHtml(page, options = {}) {
   const pageOptions = {
     ...options,
     vectorContainerIds: vectorContainerIdsForPage(page, options),
+    foldedBordersByContainer: foldedBordersForPage(page).byContainer,
     authorRenderState: state,
   };
   const html = tree.map((node) => renderNode(node, pageOptions, 0)).join('\n');
@@ -120,7 +122,11 @@ function renderNode(node, options, depth) {
     node.children.forEach((child) => markSubtreeRendered(options, child));
     return `${indent(depth)}${open}${preservedInlineSourceHtml}</${tag}>`;
   }
-  const own = ownContent(item, depth, { ignoreSourceHtml: node.children.length > 0 });
+  const own = ownContent(item, depth, {
+    ignoreSourceHtml: node.children.length > 0,
+    // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
+    writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
+  });
   if (node.children.length && node.children.every(isInlineNode)) {
     const children = node.children.map((child) => renderNode(child, options, 0)).join('');
     return `${indent(depth)}${open}${own}${children}</${tag}>`;

@@ -251,3 +251,24 @@ test('real InDesign gradient probe fixture matches the reverse gradient assumpti
   const unused = probe.gradients.find((gradient) => gradient.name === 'Grad-Unused');
   assert.equal(context.HI.reverseGradientVisualStyle({ fillColor: fake(unused) }).fillGradient.type, 'radial');
 });
+
+test('reverse text style reads InDesign capitalization as allCaps / smallCaps and writes text-transform (#34)', () => {
+  const context = loadReverseStylesContext();
+  context.Capitalization = { NORMAL: 1852797549, ALL_CAPS: 1634493296, SMALL_CAPS: 1664250723 };
+  context.Justification = { LEFT_ALIGN: 1, CENTER_ALIGN: 2, RIGHT_ALIGN: 3 };
+  const { HI } = context;
+
+  assert.equal(HI.reverseCapitalization(context.Capitalization.ALL_CAPS), 'allCaps');
+  assert.equal(HI.reverseCapitalization(context.Capitalization.SMALL_CAPS), 'smallCaps');
+  assert.equal(HI.reverseCapitalization(context.Capitalization.NORMAL), null);
+  assert.equal(HI.reverseCapitalization(undefined), null);
+
+  assert.match(HI.textStyleCss({ pointSize: 10, leading: null, tracking: null, capitalization: 'allCaps' }), /text-transform:uppercase/);
+  assert.doesNotMatch(HI.textStyleCss({ pointSize: 10, leading: null, tracking: null, capitalization: null }), /text-transform/);
+  assert.match(HI.paragraphStyleCss({ capitalization: context.Capitalization.ALL_CAPS }), /text-transform:uppercase/);
+});
+
+test('reverse capitalization stays null without the InDesign Capitalization enum', () => {
+  const context = loadReverseStylesContext();
+  assert.equal(context.HI.reverseCapitalization(1634493296), null);
+});

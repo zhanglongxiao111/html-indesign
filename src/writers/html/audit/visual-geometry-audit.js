@@ -179,8 +179,20 @@ function normalizeBox(value, element = false) {
     width: num(value.width),
     height: num(value.height),
   };
+  const borderWidths = normalizeBorderWidths(value.borderWidths);
+  if (borderWidths) out.borderWidths = borderWidths;
   if (element && !out.key) out.key = elementKey(out);
   return out;
+}
+
+function normalizeBorderWidths(value) {
+  if (!value || typeof value !== 'object') return null;
+  return {
+    top: num(value.top),
+    right: num(value.right),
+    bottom: num(value.bottom),
+    left: num(value.left),
+  };
 }
 
 function elementKey(element) {
@@ -247,7 +259,18 @@ function isGeneratedBorderFragment(element, context) {
   const baseReference = samePageElement(context.referenceElements, element, match[1]);
   const baseCandidate = samePageElement(context.candidateElements, element, match[1]);
   if (!baseReference || !baseCandidate || !isRegisteredVectorRectangle(baseReference)) return false;
-  return hasBorderFragmentGeometry(element, match[2]);
+  if (!hasBorderFragmentGeometry(element, match[2])) return false;
+  return candidateCarriesFoldedBorder(baseCandidate, element, match[2], context.tolerance);
+}
+
+// 边框对象算「已折回作者 HTML」的前提是作者 HTML 的容器在这一边真的画了同样粗的 border（#34：
+// 过去只看几何就放行，容器实际写的是 border:0）。
+function candidateCarriesFoldedBorder(baseCandidate, element, side, tolerance) {
+  const widths = baseCandidate && baseCandidate.borderWidths;
+  if (!widths) return false;
+  const thickness = side === 'left' || side === 'right' ? num(element.width) : num(element.height);
+  const allowed = Math.max(0.5, Math.min(Number(tolerance) || 0, thickness / 2));
+  return Math.abs(num(widths[side]) - thickness) <= allowed;
 }
 
 function isGeneratedTextFragment(element, context) {
