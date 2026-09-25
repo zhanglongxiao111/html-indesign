@@ -1,10 +1,10 @@
 const { HTML_DATA_ID_ATTRIBUTES, RETIRED_HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { formatLayerListAttribute } = require('../../shared/assets');
 const {
   finiteOrNull,
   fileExtension,
   fileStem,
   formatNumber,
-  layerListAttr,
   normalizeCropToken,
   numberOrZero,
   positiveIntegerOrNull,
@@ -92,9 +92,9 @@ function addAssetPlacementAttrs(out, nodeAttrs, asset, item) {
   }
   const crop = placement.crop || placement.pdfCropName || asset.crop || null;
   if (crop && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.CROP]) out[HTML_DATA_ID_ATTRIBUTES.CROP] = normalizeCropToken(crop);
-  const visibleLayers = layerListAttr(placement.visibleLayers);
+  const visibleLayers = formatLayerListAttribute(placement.visibleLayers);
   if (visibleLayers && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.VISIBLE_LAYERS]) out[HTML_DATA_ID_ATTRIBUTES.VISIBLE_LAYERS] = visibleLayers;
-  const hiddenLayers = layerListAttr(placement.hiddenLayers);
+  const hiddenLayers = formatLayerListAttribute(placement.hiddenLayers);
   if (hiddenLayers && !nodeAttrs[HTML_DATA_ID_ATTRIBUTES.HIDDEN_LAYERS]) out[HTML_DATA_ID_ATTRIBUTES.HIDDEN_LAYERS] = hiddenLayers;
   const geometry = assetContentGeometry(item || { asset });
   if (geometry) {

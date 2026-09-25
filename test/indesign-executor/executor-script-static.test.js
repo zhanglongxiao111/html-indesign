@@ -646,6 +646,39 @@ test('asset helper does not silently ignore advanced placement options', () => {
   }
 });
 
+test('asset helper matches placed graphic layer names verbatim, including "|" and commas (#33)', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
+  const messages = [];
+  const context = {
+    HI: {
+      addMessage: (report, level, code, message, details) => messages.push({ level, code, details }),
+    },
+  };
+  vm.runInNewContext(source, context);
+  const layer = (name, currentVisibility) => ({ name, currentVisibility });
+  const layers = [
+    layer('A_建筑_2D_区域.A', false),
+    layer('合并底图|PM-隔断', false),
+    layer('合并底图', true),
+    layer('PM-隔断', true),
+    layer('A, B', true),
+  ];
+  const frame = { allGraphics: [{ graphicLayerOptions: { graphicLayers: layers } }] };
+
+  context.HI.applyPlacedGraphicLayerOptions(frame, {
+    visibleLayers: ['A_建筑_2D_区域.A', '合并底图|PM-隔断'],
+    hiddenLayers: ['合并底图', 'PM-隔断', 'A, B', '不存在的图层'],
+  }, {}, { id: 'asset-drawing-pdf' });
+
+  assert.deepEqual(layers.map((entry) => entry.currentVisibility), [true, true, false, false, false]);
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].code, 'PLACED_ASSET_LAYER_NOT_FOUND');
+  assert.deepEqual(JSON.parse(JSON.stringify(messages[0].details.missingLayers)), ['不存在的图层']);
+  // 字符串不再被当成 `|` / `,` 拼接的图层名单拆开：图层名单只接受数组。
+  assert.equal(context.HI.layerNameSet('合并底图|PM-隔断'), null);
+  assert.equal(context.HI.layerNameSet([]), null);
+});
+
 test('executor reports structured counts for CLI result_json consumers', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_executor.jsxinc'), 'utf8');
   for (const token of [
@@ -884,7 +917,7 @@ const NEGATED_MEMBER_GLOBAL_RECEIVERS = Object.freeze({
 const NEGATED_MEMBER_ALLOWED_RECEIVERS = Object.freeze({
   'build_from_instructions.jsx': { lib: 'ExtendScript File，exists 在所有 File 上都存在' },
   'export_to_html_snapshot.jsx': { lib: 'ExtendScript File，exists 在所有 File 上都存在' },
-  'hi_assets.jsxinc': { file: 'ExtendScript File', items: '图层名 JS 数组，已先做 typeof length 检查' },
+  'hi_assets.jsxinc': { file: 'ExtendScript File' },
   'hi_composite_fonts.jsxinc': { def: 'instruction 里的复合字体定义 JSON', familyFaces: 'JS 数组' },
   'hi_core.jsxinc': { file: 'ExtendScript File' },
   'hi_document.jsxinc': { ordered: 'JS 数组' },

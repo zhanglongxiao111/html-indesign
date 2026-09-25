@@ -198,7 +198,7 @@ PDF 反向导出必须保留：
 - 原始 PDF 链接路径。
 - InDesign 当前指定的 PDF 页码，写入 `data-id-pdf-page`。
 - crop box，写入 `data-id-crop`。
-- PDF/AI 图层显隐，写入 `data-id-visible-layers` / `data-id-hidden-layers`。
+- PDF/AI 图层显隐，写入 `data-id-visible-layers` / `data-id-hidden-layers`。值是 JSON 字符串数组，数组元素是 InDesign 回读到的图层名原文（不 trim、不拆分），因为图层名本身可以含 `|`、逗号（例如 `合并底图|PM-隔断`）；不得再用 `|` 拼接。
 - 图框 bounds、内容 bounds、缩放和偏移，写入 `data-id-fit="manual"` 及内容几何字段。
 
 反向生成预览图时，应导出 InDesign 图框当前可见结果，因此预览图必须对应实际页码、crop box、图层显隐和裁切状态。若只能按文件名旁路寻找 `*-pageN.png` 之类缓存，必须先拿到 `data-id-pdf-page` / 模型 `placement.pageNumber`；没有页码事实时不得静默回退第一页。

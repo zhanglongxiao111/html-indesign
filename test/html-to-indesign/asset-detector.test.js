@@ -38,8 +38,8 @@ test('detectAssetsFromItems preserves PDF and AI layer visibility metadata', () 
       'data-id-asset-kind': 'pdf',
       'data-id-pdf-page': '7',
       'data-id-crop': 'trim',
-      'data-id-visible-layers': '结构|标注',
-      'data-id-hidden-layers': '家具',
+      'data-id-visible-layers': '["结构","合并底图|标注"]',
+      'data-id-hidden-layers': '["家具"]',
       'data-id-preserve-vector': 'true',
     },
     computedStyle: {
@@ -54,7 +54,7 @@ test('detectAssetsFromItems preserves PDF and AI layer visibility metadata', () 
   assert.equal(assets[0].kind, 'pdf');
   assert.equal(assets[0].placement.pageNumber, 7);
   assert.equal(assets[0].placement.crop, 'trim');
-  assert.deepEqual(assets[0].placement.visibleLayers, ['结构', '标注']);
+  assert.deepEqual(assets[0].placement.visibleLayers, ['结构', '合并底图|标注']);
   assert.deepEqual(assets[0].placement.hiddenLayers, ['家具']);
   assert.equal(assets[0].placement.preserveVector, true);
 });

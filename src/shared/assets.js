@@ -134,18 +134,48 @@ function positiveIntegerOrUndefined(value) {
   return number;
 }
 
-function layerListFromAttribute(value) {
-  if (!value) return undefined;
+// PDF/AI 置入图层名单（data-id-visible-layers / data-id-hidden-layers）的属性编码。
+// 当前写法是 JSON 字符串数组：图层名可以含 `|`、逗号、引号（例如「合并底图|PM-隔断」），
+// 任何分隔符拼接都会与图层名冲突。数组元素原样保留，不 trim，与 InDesign 回读的图层名逐字对应。
+// 旧包里用 `|` / `,` 拼接的非 JSON 值只作为兼容边界读取：按旧规则拆分，
+// 并由 authoring lint 报 ASSET_LAYER_LIST_DELIMITED 提示改写；
+// 以 `[` 开头却不是合法 JSON 字符串数组的值不读取，由 lint 报 ASSET_LAYER_LIST_INVALID。
+const LAYER_LIST_ENCODING = Object.freeze({
+  EMPTY: 'empty',
+  JSON: 'json',
+  DELIMITED: 'delimited',
+  INVALID: 'invalid',
+});
+
+function parseLayerListAttribute(value) {
+  if (value == null) return { encoding: LAYER_LIST_ENCODING.EMPTY, layers: undefined };
   const raw = String(value).trim();
-  if (!raw) return undefined;
+  if (!raw) return { encoding: LAYER_LIST_ENCODING.EMPTY, layers: undefined };
   if (raw.startsWith('[')) {
+    let parsed;
     try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
-    } catch (_error) {}
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      return { encoding: LAYER_LIST_ENCODING.INVALID, layers: undefined, reason: `not valid JSON: ${error.message}` };
+    }
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== 'string')) {
+      return { encoding: LAYER_LIST_ENCODING.INVALID, layers: undefined, reason: 'must be a JSON array of layer name strings' };
+    }
+    const layers = parsed.filter((item) => item !== '');
+    return { encoding: LAYER_LIST_ENCODING.JSON, layers: layers.length ? layers : undefined };
   }
   const parts = raw.split(/[|,]/).map((item) => item.trim()).filter(Boolean);
-  return parts.length ? parts : undefined;
+  return { encoding: LAYER_LIST_ENCODING.DELIMITED, layers: parts.length ? parts : undefined };
+}
+
+function layerListFromAttribute(value) {
+  return parseLayerListAttribute(value).layers;
+}
+
+function formatLayerListAttribute(layers) {
+  if (!Array.isArray(layers)) return '';
+  const names = layers.map((item) => (item == null ? '' : String(item))).filter((item) => item !== '');
+  return names.length ? JSON.stringify(names) : '';
 }
 
 function fitFromBackgroundSize(value) {
@@ -270,6 +300,9 @@ module.exports = {
   createAssetId,
   firstCssUrl,
   placementFromAttributes,
+  LAYER_LIST_ENCODING,
+  parseLayerListAttribute,
+  formatLayerListAttribute,
   normalizePathKey,
   sourceFileKey,
   resolveLocalAssetReference,

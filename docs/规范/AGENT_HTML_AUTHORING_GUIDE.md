@@ -269,7 +269,7 @@ npm run assemble:authoring -- -- --package <deck.config.json>
 | 对象 | `data-id-object`、`data-id-role`、`data-id-placement`、`data-id-object-style`、`data-id-frame-style` |
 | 图层 | `data-id-layer` |
 | 表格 | `data-id-table-style`、`data-id-cell-style` |
-| 资源 | `data-id-asset-kind`、`data-id-fit`、`data-id-pdf-page`、`data-id-crop` |
+| 资源 | `data-id-asset-kind`、`data-id-fit`、`data-id-pdf-page`、`data-id-crop`、`data-id-visible-layers` / `data-id-hidden-layers`（JSON 字符串数组，例如 `'["合并底图\|PM-隔断","标注"]'`，不要用 `\|` 拼接） |
 
 要求：
 

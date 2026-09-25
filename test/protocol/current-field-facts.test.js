@@ -10,8 +10,8 @@ test('current HTML asset placement reads data-id-pdf-page and not data-id-page',
     'data-id-pdf-page': '3',
     'data-id-page': '9',
     'data-id-crop': 'trim',
-    'data-id-visible-layers': 'base|annotations',
-    'data-id-hidden-layers': 'old',
+    'data-id-visible-layers': '["base","annotations"]',
+    'data-id-hidden-layers': '["old"]',
   }, { objectFit: 'contain', objectPosition: '50% 50%' });
 
   assert.equal(placement.pageNumber, 3);

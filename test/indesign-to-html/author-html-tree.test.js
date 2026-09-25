@@ -1213,7 +1213,7 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
           placement: {
             pageNumber: 3,
             crop: 'CROP_CONTENT_VISIBLE_LAYERS',
-            visibleLayers: ['结构', '标注'],
+            visibleLayers: ['结构', '合并底图|PM-隔断', 'A, "B"'],
             hiddenLayers: ['家具'],
           },
         },
@@ -1259,8 +1259,9 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
   assert.match(html, /data-id-asset-kind="pdf"/);
   assert.match(html, /data-id-pdf-page="3"/);
   assert.match(html, /data-id-crop="content"/);
-  assert.match(html, /data-id-visible-layers="结构\|标注"/);
-  assert.match(html, /data-id-hidden-layers="家具"/);
+  // 图层名含 `|`、逗号、引号：属性值是 JSON 数组，HTML 转义后仍能逐字还原（#33）。
+  assert.ok(html.includes('data-id-visible-layers="[&quot;结构&quot;,&quot;合并底图|PM-隔断&quot;,&quot;A, \\&quot;B\\&quot;&quot;]"'), html);
+  assert.match(html, /data-id-hidden-layers="\[&quot;家具&quot;\]"/);
   assert.match(html, /<img id="layered-ai"[^>]+src="previews\/layered-ai\.png"/);
   assert.match(html, /data-id-asset-kind="ai"/);
   assert.match(html, /data-id-artboard="2"/);

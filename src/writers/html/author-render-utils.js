@@ -14,11 +14,6 @@ function normalizeCropToken(value) {
   return text;
 }
 
-function layerListAttr(value) {
-  if (!Array.isArray(value)) return '';
-  return value.map((item) => String(item || '').trim()).filter(Boolean).join('|');
-}
-
 function fileExtension(value) {
   const clean = String(value || '').split(/[?#]/)[0];
   const index = clean.lastIndexOf('.');
@@ -128,7 +123,6 @@ function fileStem(filePath) {
 
 module.exports = {
   normalizeCropToken,
-  layerListAttr,
   fileExtension,
   safeInlineTag,
   hasSourceNode,
