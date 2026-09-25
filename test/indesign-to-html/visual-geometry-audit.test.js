@@ -550,3 +550,17 @@ test('compareVisualGeometry invalid-input 必须 fail', () => {
 test('loadReverseHtmlEvidence invalid-input 必须 fail', () => {
   assert.throws(() => loadReverseHtmlEvidence({}));
 });
+
+test('compareVisualGeometry compares whole text when inline run spans carry part of it (#34)', () => {
+  const element = (ownTextContent) => ({
+    key: '0:286', id: '286', pageIndex: 0, tagName: 'p', dataIdAttrs: [], hasIdChildren: false,
+    textContent: 'Gradient textSecond para', ownTextContent, x: 10, y: 10, width: 100, height: 40,
+  });
+  const report = compareVisualGeometry({
+    reference: { pages: [{ index: 0, id: 'p', width: 600, height: 800 }], elements: [element('Gradient textecond para')] },
+    candidate: { pages: [{ index: 0, id: 'p', width: 600, height: 800 }], elements: [element('Gradient text')] },
+    tolerance: 2,
+  });
+  assert.equal(report.ok, true);
+  assert.equal(report.stats.textMismatches, 0);
+});

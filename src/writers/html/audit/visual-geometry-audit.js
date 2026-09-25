@@ -453,9 +453,12 @@ function withFoldedCompanionText(textComparison, refElement, context) {
 function textForComparison(element, ownTextOnly = false) {
   if (!element) return undefined;
   if (ownTextOnly) return normalizeTextValue(element.ownTextContent);
+  // 没有带 id 的子对象时比较整段文字：字符级 run 写成的内联 span 不是独立对象，
+  // 只取直接文字节点会把 span 里的字漏掉（#34）。
+  const textContent = normalizeTextValue(element && element.textContent);
+  if (textContent) return textContent;
   const ownText = normalizeTextValue(element.ownTextContent);
   if (ownText) return ownText;
-  const textContent = normalizeTextValue(element && element.textContent);
   if (textContent != null) return textContent;
   return normalizeTextValue(element && element.innerText);
 }
