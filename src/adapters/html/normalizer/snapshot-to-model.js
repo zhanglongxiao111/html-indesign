@@ -392,6 +392,7 @@ function itemModelFor(item, page, layout) {
     computedStyle: { ...(item.computedStyle || {}) },
     authoredStyle: { ...(item.authoredStyle || {}) },
     ruleStyle: { ...(item.ruleStyle || {}) },
+    styleClassRules: { ...(item.styleClassRules || {}) },
     sourceSelector: item.sourceSelector || null,
     bounds,
     boundsMm: item.boundsMm || null,
@@ -555,7 +556,8 @@ function pageGridFromAttributes(attrs = {}) {
 }
 
 function lengthNumber(value) {
-  const match = String(value || '').match(/^([+-]?(?:\d+|\d*\.\d+))/);
+  // Decimal alternative first: the pattern is not anchored at the end, so "\d+" first reads "4.5mm" as 4.
+  const match = String(value || '').match(/^([+-]?(?:\d*\.\d+|\d+))/);
   return match ? Number(match[1]) : null;
 }
 

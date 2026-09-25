@@ -157,7 +157,7 @@ function renderElementNode(node, sourceNode, tag, options, depth) {
     // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
     writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
   });
-  if (node.children.length && node.children.every(isInlineNode)) {
+  if (node.children.length && node.children.every((child) => rendersInline(child, options))) {
     const children = node.children.map((child) => renderNode(child, options, 0)).join('');
     return `${indent(depth)}${open}${own}${children}</${tag}>`;
   }
@@ -166,6 +166,18 @@ function renderElementNode(node, sourceNode, tag, options, depth) {
     return `${indent(depth)}${open}\n${own ? `${indent(depth + 2)}${own}\n` : ''}${children}\n${indent(depth)}</${tag}>`;
   }
   return `${indent(depth)}${open}${own}</${tag}>`;
+}
+
+// 子节点按实际写出的标签判断是否行内：矢量对象不论来源标签（首轮是源码的 span/div，二轮是上一轮
+// 写出的 svg）都写成 <svg>（行内元素），带作者内容的写成容器。按来源标签判断会让同一父节点在
+// 两轮往返之间一次写成行内、一次写成分行，作者包因排版空白抖动。
+function rendersInline(node, options) {
+  const item = node && node.item || {};
+  const sourceNode = sourceNodeForItem(item);
+  if (!item.virtual && shouldRenderVectorSvg(item, sourceNode, options)) {
+    return !vectorNodeHasAuthorContent(node);
+  }
+  return isInlineNode(node);
 }
 
 function isInlineNode(node) {

@@ -1,3 +1,4 @@
+const cheerio = require('cheerio');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const {
@@ -67,8 +68,9 @@ function figureAssetContentAttrs(item, tag, sourceNode, options) {
   attrs[HTML_DATA_ID_ATTRIBUTES.IGNORE] = '';
   const style = figureAssetContentStyle(item, asset);
   if (style) attrs.style = style;
-  if (tag === 'img' && !attrs.alt) {
-    attrs.alt = (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path);
+  if (tag === 'img') {
+    // assetAttributes 在图框自身没有 alt 时先填了文件名；来源里找得到作者写的替代文字时以它为准。
+    attrs.alt = sourceAltText(item, sourceNode) || attrs.alt || fileStem(asset.path);
   }
   rewriteResourceAttrs(attrs, options);
   return attrsToHtml(orderAttrs(attrs));
@@ -88,6 +90,21 @@ function figureAssetContentStyle(item, asset) {
     'max-height:none',
     'object-fit:fill',
   ]);
+}
+
+// 替代文字：来源元素自己的 alt（作者写的 <img alt>）；反向写成 figure 图框后 alt 落在框内的
+// 内容图（.placed-asset-content / .placed-asset-preview）上，再次往返时从图框的来源 HTML 里取回，
+// 不能退成文件名（#34 往返：venue public frontage → architecture-facade）。
+function sourceAltText(item, sourceNode) {
+  const own = sourceNode && sourceNode.attributes && sourceNode.attributes.alt;
+  if (own) return own;
+  for (const html of [sourceNode && sourceNode.sourceHtml, item && item.content && item.content.sourceHtml]) {
+    if (typeof html !== 'string' || !html.toLowerCase().includes('<img')) continue;
+    const $ = cheerio.load(html, null, false);
+    const alt = $('img.placed-asset-content, img.placed-asset-preview').first().attr('alt');
+    if (alt) return alt;
+  }
+  return '';
 }
 
 function placedAssetFrameSourceNode(sourceNode) {
@@ -113,7 +130,7 @@ function placedAssetContentAttrs(item, sourceNode, options) {
   const attrs = {
     class: usesGeneratedFramePreview(asset, item) ? 'placed-asset-preview' : 'placed-asset-content',
     src,
-    alt: (sourceNode && sourceNode.attributes && sourceNode.attributes.alt) || fileStem(asset.path || src),
+    alt: sourceAltText(item, sourceNode) || fileStem(asset.path || src),
     [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '',
     style: placedAssetContentStyle(item, asset),
   };

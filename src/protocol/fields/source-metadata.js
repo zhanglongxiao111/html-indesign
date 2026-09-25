@@ -144,6 +144,7 @@ module.exports = [
   htmlModelSourceMetadataField('items[].computedStyle', [], 'object'),
   htmlModelSourceMetadataField('items[].authoredStyle', [], 'object'),
   htmlModelSourceMetadataField('items[].ruleStyle', [], 'object'),
+  htmlModelSourceMetadataField('items[].styleClassRules', [], 'object'),
   htmlModelSourceMetadataField('items[].sourceSelector', [], 'string'),
   htmlModelSourceMetadataField('items[].boundsMm', [], 'object'),
   htmlModelSourceMetadataField('items[].box', [], 'object'),

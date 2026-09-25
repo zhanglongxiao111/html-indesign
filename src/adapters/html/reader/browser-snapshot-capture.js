@@ -136,6 +136,7 @@
     const itemAuthoredStyle = styles.authoredStyleObject(el, styleRules);
     const frameAuthoredStyle = styles.authoredStyleObject(frameEl, styleRules);
     const itemRuleStyle = styles.ruleStyleObject(el, styleRules);
+    const itemStyleClassRules = styles.styleClassRuleObjects(el, styleRules);
     const itemAttrs = elements.attrs(el);
     const frameAttrs = elements.attrs(frameEl);
     const previewNode = elements.sourcePreviewNodeFor(el, frameEl, pageEl);
@@ -161,6 +162,7 @@
       computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),
       authoredStyle: styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle),
       ruleStyle: itemRuleStyle,
+      styleClassRules: itemStyleClassRules,
       runs: elements.textRunsFor(el, candidates),
       table: elements.tableRowsFor(el, styleRules),
       unsupported: elements.unsupportedFor(el),

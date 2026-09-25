@@ -1,7 +1,13 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { SYNTHESIZED_STYLE_TOKEN_RE } = require('../../semantic-model/synthesized-styles');
 const { mergeAttributes, attrsToHtml } = require('./author-attribute-writer');
 const { assetAttributes, sanitizeRetiredAssetAttrs, tagForAsset } = require('./author-asset-attrs');
-const { authorInlineStyleForItem, authorClassesForItem, mergeCss } = require('./author-style-attrs');
+const {
+  authorInlineStyleForItem,
+  authorClassesForItem,
+  mergeCss,
+  synthesizedOverrideStyle,
+} = require('./author-style-attrs');
 const { rewriteResourceAttrs } = require('./author-resource-paths');
 const {
   classForRole,
@@ -50,7 +56,9 @@ function attrsForItem(item, sourceNode, options) {
   const preserveAcceptedSourceStyle = item && item.labelStatus === 'accepted' && hasSourceNode(sourceNode);
   let mergedStyle;
   if (preserveTrustedSource) mergedStyle = sourceStyle;
-  else if (preserveAcceptedSourceStyle) mergedStyle = mergeCss([sourceStyle, readBackStackingCss(item, options)]);
+  else if (preserveAcceptedSourceStyle) {
+    mergedStyle = mergeCss([synthesizedOverrideStyle(item, sourceStyle, options), readBackStackingCss(item, options)]);
+  }
   else {
     mergedStyle = authorInlineStyleForItem(item, sourceStyle, {
       synthesizedStyles: options.synthesizedStyles,
@@ -180,7 +188,12 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
     if (!attrs[attr] && refs[key]) attrs[attr] = key === 'layer' ? layerToken(refs.layer, options) : refs[key];
   }
   addVisualStyleProtocolAttrs(attrs, item && item.visualStyle);
-  if (!attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] && refs.synthesizedToken) {
+  // 合成样式 token 与显示名只取模型这一轮的分配；来源属性里上一轮的 synth token/名字一并替换或清掉。
+  if (SYNTHESIZED_STYLE_TOKEN_RE.test(String(attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] || ''))) {
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN];
+    delete attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_NAME];
+  }
+  if (refs.synthesizedToken) {
     attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] = refs.synthesizedToken;
   }
   const displayPairs = [

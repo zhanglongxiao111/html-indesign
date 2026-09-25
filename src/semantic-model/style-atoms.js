@@ -119,8 +119,11 @@ function isTextItem(item) {
   return item.role === 'text';
 }
 
+// 标签角色是 shape 的 InDesign 线条（GraphicLine，源码是 CSS 边框画的线）也按线条外观归组：
+// 反向写出的 <svg data-id-vector="line"> 正向回编后角色变成 line，归组种类若随角色变，
+// 合成样式编号在往返之间就对不上。没有标签角色的对象仍不按 sourceType 归组。
 function isLineItem(item) {
-  return item.role === 'line';
+  return item.role === 'line' || (item.role === 'shape' && item.sourceType === 'GraphicLine');
 }
 
 function isAssetItem(item) {

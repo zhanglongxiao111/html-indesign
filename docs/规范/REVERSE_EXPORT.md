@@ -193,6 +193,16 @@ reverse-export-<timestamp>/
 
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
 
+样式定义与合成样式在往返之间必须稳定（09-26 往返验收）：
+
+- **样式类与规则同键。** 作者 HTML 元素上的 `pstyle-` / `cstyle-` / `ostyle-` 类与 `components.css` 规则都取模型样式 token（有样式标签时是标签 token，否则是 InDesign 样式名），不得一边用 token、一边用显示名。读回没有任何属性的用户样式也写一条空规则，表示“这个样式的定义就是没有属性”；InDesign 内置样式不写空规则。
+- **样式定义只读样式本身。** 规则内容是 InDesign 样式定义（快照 `styles[].css`），不是某个套用它的对象的外观。正向构建把元素上单类选择器规则 `.pstyle-<token>` / `.ostyle-<token>` 捕获为 `items[].styleClassRules`，段落样式定义取这条规则（规则没写的属性按样式默认值，不取元素外观），元素实际外观与它的差异写成局部覆盖；`synth-*` 规则、`reverse-overrides.css` 的兜底几何（`margin:0`）都不再污染样式定义，元素外边距也不生成段前/段后距覆盖。对象样式的描边取 `.ostyle-*` 规则的 border，对象自身的描边（`data-id-stroke-*`、svg path）作为局部外观写出。`data-id-ignore` 包裹层自身不上色时，对象的填充、描边、圆角取对象元素自己的（样式类在对象上）。
+- **合成样式编号由模型统一分配。** `synth_<kind>_NNN` 只在 `semantic-model/synthesized-styles` 分配：外观组内成员带着上一轮编号（快照里套用的 `synth_*` 样式，或二轮往返时对象标签 `sourceNode` 带回的 `data-id-style-token`）时沿用旧编号（多数优先，被占用的跳过），新组取空闲编号。作者 HTML 元素上的 `synth-*` 类、`data-id-style-token`、`data-id-style-name` 只取这一轮的分配结果，来源 class / 属性里上一轮的旧值原位替换或清掉，与 `components.css` 永远同源。标签角色为 `shape` 的 InDesign 线条（GraphicLine）与 `line` 角色一样按线条外观归组，正向回编后角色变成 `line` 也不改编号种类。
+- **合成样式不吞掉组内差异。** 外观组按覆盖字段（文字颜色）以外的属性归组，规则取组内第一个成员的值；保留来源内联样式的 accepted 对象，与规则不同的属性写成局部覆盖，与规则相同的属性从来源内联样式里剥掉，避免上一轮的旧覆盖压过本轮读回。
+- **伴生文字的段落样式。** 伴生文字折回容器时，伴生文本框的段落样式以 `pstyle-<token>` 类和 `data-id-paragraph-style-name` 写到容器上（不写 `data-id-paragraph-style`，否则容器会被当成文本框）。合成对象/线条/图框/置入样式的 `data-id-style-name` 不得兜底段落、字符样式名；合成文字样式仍可兜底。
+- **替代文字。** 置入图写成 `figure` 图框后，作者写的 `alt` 在框内内容图（`.placed-asset-content` / `.placed-asset-preview`）上；再次往返时从图框来源 HTML 取回，不得退回文件名。
+- **文档自己定义的样式 token。** 回读复核对象标签时，文档里带 `html_indesign` 样式标签的样式 token（正向按包内语义库写回的 `色块-08371558`、`自动对象-…`）视为已知样式 token，只补语义库已经约束的样式种类，不因标准语义库里没有就把对象降级为观察标签。
+
 需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：
 
 ```powershell

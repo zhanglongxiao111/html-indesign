@@ -279,6 +279,7 @@
 | items[].sourceText | labels[].sourceText, effectiveLabel.sourceText, pages[].effectiveLabel.sourceText | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].sourceType | pages[].items[].sourceType | reverse-model | active | native/observe-only/lossless | lossless/observe-only/lossless | unsupported/unsupported/lossless | Observed source-format object type, not a semantic role. |
 | items[].structure | labels[].structure, effectiveLabel.structure, pages[].effectiveLabel.structure | source-metadata | active | native/native/native | lossless/observe-only/lossless | unsupported/unsupported/lossless | n/a |
+| items[].styleClassRules | n/a | source-metadata | active | native/observe-only/lossless | unsupported/unsupported/lossless | unsupported/unsupported/lossless | n/a |
 | items[].table.rows[].cells[].runs[].attributes | n/a | table-content | active | native/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].table.rows[].cells[].runs[].classList | n/a | table-content | active | native/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |
 | items[].table.rows[].cells[].runs[].inlineStyle | n/a | table-content | active | native/observe-only/lossless | native/observe-only/lossless | unsupported/unsupported/lossless | n/a |

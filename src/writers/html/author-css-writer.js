@@ -1,7 +1,7 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { rendersBakedVectorSvg } = require('./author-vector-renderer');
 const { reverseBoxHeight, reverseGeometryPlanForPage } = require('./author-reverse-geometry');
-const { safeAuthorClassToken } = require('../../shared/style-utils');
+const { safeAuthorClassToken, isIndesignBuiltinStyleName } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
 const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 const { deckPageBackground } = require('./author-page-background');
@@ -196,10 +196,22 @@ function hasLineMarker(visualStyle) {
   return Boolean(visualStyle && (visualStyle.lineStartMarker || visualStyle.lineEndMarker));
 }
 
+// 样式类名与作者 HTML 上的样式类（author-style-attrs.authorClassesForItem）取同一个键：模型样式
+// token（有样式标签时是标签 token，否则是 InDesign 样式名）。按显示名写规则会对不上元素上的类，
+// 样式定义就落不到元素上（#34 往返：.ostyle-图纸图框 与 class="ostyle-drawing-frame-object"）。
+// 读回没有任何属性的用户样式也写一条空规则：正向构建据此知道该样式的定义就是“无属性”，
+// 不把元素自身的局部外观当成样式定义（style-synthesis 的 styleClassRules）。
 function styleCollectionCss(collection, prefix) {
-  return Object.values(collection || {}).filter((style) => style && style.css).map((style) => {
-    return `.${prefix}-${safeAuthorClassToken(style.safeName || style.token || style.name)} { ${String(style.css).replace(/pt\b/g, 'px')} }`;
-  }).join('\n');
+  return Object.values(collection || {})
+    .filter((style) => style && (style.css || !isIndesignBuiltinStyleName(style.name)))
+    .map((style) => {
+      const css = String(style.css || '').replace(/pt\b/g, 'px');
+      return `.${prefix}-${authorStyleClassToken(style)} { ${css} }`;
+    }).join('\n');
+}
+
+function authorStyleClassToken(style) {
+  return safeAuthorClassToken(style.token || style.safeName || style.name);
 }
 
 function px(value) {

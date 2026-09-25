@@ -291,7 +291,9 @@ function compileParagraphStyle(styles, item, report, options) {
   }
   return {
     name,
-    textOverride: declaredFacts ? paragraphOverrideFor(computedSignature, signature) : null,
+    textOverride: declaredFacts
+      ? paragraphOverrideFor(computedSignature, signature, { frameMargins: hasParagraphStyleClassRule(item) })
+      : null,
   };
 }
 
@@ -327,16 +329,33 @@ const DECLARED_PARAGRAPH_FACT_PROPS = [
   'marginBottom',
 ];
 
+// A paragraph style class rule (.pstyle-<token>, captured as styleClassRules.paragraph) is the whole
+// style definition: properties it leaves out are the style's defaults, not the element's look. Without
+// one, the declared facts come from the union of matching rules and fall back to the computed look.
+const PARAGRAPH_STYLE_CLASS_DEFAULTS = Object.freeze({
+  fontWeight: '400',
+  fontStyle: 'normal',
+  lineHeight: 'normal',
+  letterSpacing: 'normal',
+  textTransform: 'none',
+  marginTop: '0px',
+  marginBottom: '0px',
+});
+
 function declaredParagraphFacts(item) {
-  const rule = item.ruleStyle || {};
+  const classRule = item.styleClassRules && item.styleClassRules.paragraph;
+  const rule = classRule || item.ruleStyle || {};
   const computed = item.computedStyle || {};
   if (!ruleFactValue(rule.fontSize) && !ruleFactValue(rule.fontFamily)) return null;
   const facts = {};
   for (const prop of DECLARED_PARAGRAPH_FACT_PROPS) {
     const declared = ruleFactValue(rule[prop]);
+    const fallback = classRule && Object.prototype.hasOwnProperty.call(PARAGRAPH_STYLE_CLASS_DEFAULTS, prop)
+      ? PARAGRAPH_STYLE_CLASS_DEFAULTS[prop]
+      : computed[prop];
     facts[prop] = prop === 'fontFamily' && isCssVariableReference(declared)
       ? computed[prop]
-      : declared || computed[prop];
+      : declared || fallback;
   }
   return facts;
 }
@@ -367,9 +386,18 @@ const PARAGRAPH_OVERRIDE_KEYS = [
 
 const NUMERIC_OVERRIDE_TOLERANCE = 0.01;
 
-function paragraphOverrideFor(computed, declared) {
+// 样式类规则给出段落样式定义时，元素自身的外边距是文本框在页面上的摆放（反向作者包的兜底几何
+// 统一写 margin:0），不是框内段落间距：段前/段后距不因此生成局部覆盖。
+const FRAME_MARGIN_OVERRIDE_KEYS = new Set(['spaceBefore', 'spaceAfter']);
+
+function hasParagraphStyleClassRule(item) {
+  return Boolean(item && item.styleClassRules && item.styleClassRules.paragraph);
+}
+
+function paragraphOverrideFor(computed, declared, options = {}) {
   const override = {};
   for (const key of PARAGRAPH_OVERRIDE_KEYS) {
+    if (options.frameMargins && FRAME_MARGIN_OVERRIDE_KEYS.has(key)) continue;
     if (computed[key] == null) continue;
     if (overrideValuesMatch(computed[key], declared[key])) continue;
     override[key] = computed[key];
@@ -420,7 +448,10 @@ function ensureObjectStyle(styles, item, report, options) {
   const style = item.computedStyle || {};
   const fill = ensureFillSwatch(styles, style) || ensureVectorPathFillSwatch(styles, item);
   const fillColor = fill && fill.name;
-  const uniformBorder = protocolStrokeForObject(item, styles, options) || uniformBorderForObject(item, options);
+  const declaredObject = item.styleClassRules && item.styleClassRules.object;
+  const uniformBorder = declaredObject
+    ? declaredObjectStyleBorder(item, declaredObject, styles, options)
+    : protocolStrokeForObject(item, styles, options) || uniformBorderForObject(item, options);
   const strokeColor = uniformBorder ? uniformBorder.color : null;
   const blendMode = normalizeBlendMode(style.mixBlendMode);
   const signature = {
@@ -444,6 +475,26 @@ function ensureObjectStyle(styles, item, report, options) {
     });
   }
   return name;
+}
+
+// An object style class rule (.ostyle-<token>) is the style definition, so the style's stroke is the
+// rule's border. The object's own stroke (data-id-stroke-* protocol facts, svg path stroke) is a local
+// look: it reaches InDesign as the item's visualStyle override, not as part of the object style.
+function declaredObjectStyleBorder(item, declared, styles, options) {
+  const computedStyle = { ...(item.computedStyle || {}) };
+  const authoredStyle = { ...(item.authoredStyle || {}) };
+  for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+    computedStyle[`border${side}Width`] = declared[`border${side}Width`] || '0px';
+    computedStyle[`border${side}Style`] = declared[`border${side}Style`] || 'none';
+    computedStyle[`border${side}Color`] = declared[`border${side}Color`] || '';
+    delete authoredStyle[`border${side}Width`];
+  }
+  const declaredItem = { ...item, computedStyle, authoredStyle };
+  const box = compileBoxModel(declaredItem, styles, options);
+  const edges = [box.borders.top, box.borders.right, box.borders.bottom, box.borders.left];
+  if (!edges.every((edge) => visibleBorder(edge)) || !bordersAreUniform(box.borders)) return null;
+  const protocol = protocolStrokeForObject(item, styles, options);
+  return { ...edges[0], alignment: protocol && protocol.alignment || null };
 }
 
 function shouldCompileTextFrameObjectStyle(item) {

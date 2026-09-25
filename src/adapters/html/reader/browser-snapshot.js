@@ -173,6 +173,7 @@ function itemSnapshotToModel(item, pageInfo, widthMm, heightMm) {
     computedStyle: item.computedStyle,
     authoredStyle: item.authoredStyle || {},
     ruleStyle: item.ruleStyle || {},
+    styleClassRules: item.styleClassRules || {},
     unsupported: item.unsupported || {},
     runs: item.runs,
     table: tableRowsWithBounds(item.table || [], pageInfo.rectPx, widthMm, heightMm),

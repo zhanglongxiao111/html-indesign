@@ -13,6 +13,7 @@ const { rewriteResourceAttrs } = require('./author-resource-paths');
 const { ownContent } = require('./author-rich-text-renderer');
 const { buildAuthorTree } = require('./author-tree-builder');
 const { isVectorSvgBoxPaintProperty } = require('../../shared/vector-svg-box-paint');
+const { isIndesignBuiltinStyleName, safeAuthorClassToken } = require('../../shared/style-utils');
 const {
   addObservedLabelAttrs,
   addParentPageAttrs,
@@ -97,6 +98,7 @@ function vectorContainerTag(item, sourceNode) {
 
 function vectorContainerAttrsForItem(item, sourceNode, options) {
   const { attrs, classes, sourceStyle } = vectorIdentityAttrs(item, sourceNode, options);
+  addCompanionParagraphStyle(attrs, classes, item);
   delete attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR];
   delete attrs.xmlns;
   if (!hasDataIdObject(attrs) && item.role !== 'text' && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
@@ -112,6 +114,19 @@ function vectorContainerAttrsForItem(item, sourceNode, options) {
   if (style) attrs.style = style;
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   return attrsToHtml(orderAttrs(attrs));
+}
+
+// 伴生文字折回容器后，容器自身就是这段文字的载体：伴生文本框的段落样式以样式类（pstyle-<token>）
+// 和显示名（data-id-paragraph-style-name）写到容器上，再次正向构建时伴生文本框拿回同名段落样式，
+// 而不是把容器上合成对象样式的名字（data-id-style-name）当成段落样式名（#34 往返：标注文字 → 对象样式-09）。
+// 不写 data-id-paragraph-style：声明段落样式 token 的元素会被当成文本框，容器就不再是带伴生文字的形状。
+function addCompanionParagraphStyle(attrs, classes, item) {
+  const refs = item && item.authorTextCompanion && item.authorTextCompanion.styleRefs || {};
+  const token = refs.paragraphStyle;
+  if (!token || isIndesignBuiltinStyleName(token)) return;
+  classes.add(`pstyle-${safeAuthorClassToken(token)}`);
+  const name = refs.paragraphStyleDisplayName || token;
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE_NAME]) attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE_NAME] = name;
 }
 
 function foldedBordersFor(item, options) {

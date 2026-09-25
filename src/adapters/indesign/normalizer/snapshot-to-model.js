@@ -1,5 +1,5 @@
 const { loadStandardSemanticPreset } = require('../../../semantic-preset');
-const { normalizeSynthesizedStyles } = require('../../../semantic-model/synthesized-styles');
+const { normalizeSynthesizedStyles, SYNTHESIZED_STYLE_TOKEN_RE } = require('../../../semantic-model/synthesized-styles');
 const { validateSemanticModel } = require('../../../semantic-model');
 const {
   fieldRegistry,
@@ -27,7 +27,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
   const diagnostics = createLabelDiagnostics();
   const context = {
-    semanticPreset,
+    semanticPreset: presetWithDocumentStyleTokens(semanticPreset, snapshot.styles || {}),
     sourcePageSemanticByFile: sourcePageSemanticByFile(sourcePackage, semanticPreset, {
       mode: reverseMode,
       strictFields: options.strictFields === true,
@@ -355,7 +355,7 @@ function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {
 
 function foldSynthesizedStyleRefs(refs) {
   for (const key of ['paragraphStyle', 'objectStyle', 'frameStyle']) {
-    const match = /^synth_[a-z]+_\d+$/.exec(String(refs[key] || ''));
+    const match = SYNTHESIZED_STYLE_TOKEN_RE.exec(String(refs[key] || ''));
     if (!match) continue;
     refs[key] = null;
     refs[`${key}DisplayName`] = null;
@@ -811,6 +811,36 @@ function activeSemanticPreset(snapshot, documentLabel, options = {}, semanticPro
   } catch (error) {
     throw semanticPresetLoadFailed(semanticProfile, error.message, error);
   }
+}
+
+// 文档自己定义、带 html_indesign 样式标签的样式（正向构建按包内语义库写回的 色块-08371558、
+// 自动对象-66324081 等变体）是 INDD 里真实存在的资源名：对象标签引用它们时按已知样式 token 复核，
+// 不因标准语义库里没有这个名字就把对象降级成观察标签（#34 二轮往返）。只补语义库已经在管的样式种类，
+// 语义库没有约束的种类保持不约束；语义 token 与布局 token 不受影响。
+const LABEL_VALIDATED_STYLE_KINDS = ['paragraphStyles', 'characterStyles', 'objectStyles', 'frameStyles', 'tableStyles', 'cellStyles'];
+
+function presetWithDocumentStyleTokens(preset, styles) {
+  if (!isNonEmptyObject(preset)) return preset;
+  const presetMap = isPlainObject(preset.styleNameMap) ? preset.styleNameMap : {};
+  const presetStyles = isPlainObject(preset.styles) ? preset.styles : {};
+  const additions = {};
+  for (const kind of LABEL_VALIDATED_STYLE_KINDS) {
+    const known = { ...(isPlainObject(presetStyles[kind]) ? presetStyles[kind] : {}), ...(isPlainObject(presetMap[kind]) ? presetMap[kind] : {}) };
+    if (!Object.keys(known).length) continue;
+    for (const style of styleItems(styles[kind])) {
+      const label = firstLabel(style && style.labels, 'style');
+      const token = label && (label.token || label.id);
+      if (!token || Object.prototype.hasOwnProperty.call(known, token)) continue;
+      if (!additions[kind]) additions[kind] = {};
+      additions[kind][token] = label.displayName || style.name || token;
+    }
+  }
+  if (!Object.keys(additions).length) return preset;
+  const styleNameMap = { ...presetMap };
+  for (const [kind, entries] of Object.entries(additions)) {
+    styleNameMap[kind] = { ...(isPlainObject(presetMap[kind]) ? presetMap[kind] : {}), ...entries };
+  }
+  return { ...preset, styleNameMap };
 }
 
 function activeSemanticProfile(snapshot, documentLabel, options = {}) {
