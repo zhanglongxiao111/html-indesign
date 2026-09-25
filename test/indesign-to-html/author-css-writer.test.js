@@ -349,3 +349,8 @@ test('observation rotated line renders once-rotated inside its reverse bounds in
     await browser.close();
   }
 });
+
+test('reverse-overrides resets the UA figure margin even when source CSS replaces layout.css (#32)', () => {
+  const css = writeAuthorCssFiles({ pages: [] }, { mode: 'observation' })['styles/reverse-overrides.css'];
+  assert.match(css, /\.page :where\(figure\) \{ margin: 0; \}/);
+});

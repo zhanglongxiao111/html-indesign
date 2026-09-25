@@ -74,6 +74,10 @@ function reverseOverridesCss(model, options = {}) {
     '/* Generated fallback geometry for reverse-exported objects. */',
     '/* Vector svg paints only through its paths; class styles must not add a box frame, fill or inset. */',
     vectorSvgBoxPaintResetRule(),
+    // 置入图框写成 figure；带 sourceRoot 时 layout.css 换成源码包的，源码包没用过 figure 就不会清
+    // 浏览器默认外边距（16px 40px），图框整体错位。零特异度，源码 CSS 仍可覆盖（#32）。
+    '/* Reverse-written placed-asset frames are figures; neutralize the UA figure margin even when source CSS replaced layout.css. */',
+    '.page :where(figure) { margin: 0; }',
   ];
   const itemIds = new Set();
   for (const page of model.pages || []) {

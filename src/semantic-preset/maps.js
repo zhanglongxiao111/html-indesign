@@ -29,6 +29,20 @@ function collectKnownSemanticTokens(preset) {
   return tokens;
 }
 
+// 正向构建按 styleNameMap.layers 把图层语义键写成 InDesign 图层名（text -> 文字）；
+// 反向读回的是图层名，这里给出反函数。多个键映射到同一图层名时取先登记的键。
+function layerTokensByDisplayName(preset) {
+  const layers = preset && preset.styleNameMap && preset.styleNameMap.layers;
+  const out = new Map();
+  if (!layers || typeof layers !== 'object' || Array.isArray(layers)) return out;
+  for (const [token, displayName] of Object.entries(layers)) {
+    const name = typeof displayName === 'string' ? displayName.trim() : '';
+    const key = typeof token === 'string' ? token.trim() : '';
+    if (name && key && !out.has(name)) out.set(name, key);
+  }
+  return out;
+}
+
 function emptyKnownTokenSets() {
   const tokens = {};
   STYLE_NAME_MAP_KINDS.forEach((kind) => {
@@ -47,4 +61,5 @@ function addToken(set, value) {
 module.exports = {
   presetToStyleNameMap,
   collectKnownSemanticTokens,
+  layerTokensByDisplayName,
 };

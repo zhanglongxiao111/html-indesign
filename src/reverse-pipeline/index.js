@@ -73,6 +73,7 @@ function compileReverseSnapshotToHtml(options) {
     outDir: authorResult.outDir,
     pages: authorResult.pages,
     sourceRoot: options.sourceRoot,
+    mode: options.mode,
   });
 
   fs.writeFileSync(path.join(outDir, 'deck.visual.html'), visualHtml, 'utf8');

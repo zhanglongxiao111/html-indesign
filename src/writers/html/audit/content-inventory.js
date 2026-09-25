@@ -153,7 +153,7 @@ function furnitureDigest($, roots, root, assetAliases = new Map()) {
     if (!isFurnitureRootElement($, element)) continue;
     const node = $(element);
     const resources = [];
-    const candidates = [element, ...node.find('img[src],object[data]').toArray()];
+    const candidates = [element, ...node.find(`img[src],object[data],[${HTML_DATA_ID_ATTRIBUTES.ASSET_PATH}]`).toArray()];
     for (const candidate of candidates) {
       if (!isResourceElement(candidate)) continue;
       const entry = resourceEntryFor($, candidate, root, assetAliases);
@@ -268,12 +268,15 @@ function tagNameOf(element) {
   return String(element && (element.tagName || element.name) || '').toLowerCase();
 }
 
+// 反向写出器的置入图框（figure 等容器）把资源写在容器的 data-id-asset-path 上，
+// 框内 <img class="placed-asset-content" data-id-ignore> 只是浏览器预览；资源身份认容器，
+// 否则 observation 回读的置入图片会被当成丢失（#32）。
 function isResourceElement(element) {
   const tag = tagNameOf(element);
   const attributes = element.attribs || {};
   if (tag === 'img') return attributes.src != null;
   if (tag === 'object') return attributes.data != null;
-  return false;
+  return Boolean(String(attributes[HTML_DATA_ID_ATTRIBUTES.ASSET_PATH] || '').trim());
 }
 
 function matchesRoleSelector($, element) {

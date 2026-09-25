@@ -44,6 +44,40 @@ function assertReverseHtmlSemantics(html, source = 'reverse HTML') {
   return audit;
 }
 
+// observation / inferred 回读不保留可信源码结构，而是按 INDD 里观察到的对象写：裁切置入写成
+// figure 图框、矢量写成 svg、定位写成内联几何、资源写成读回的绝对路径。拿它和源码包逐字比，
+// 这几类「写法」差异必然出现，不代表内容丢失（#32）。在这两种模式下它们降为 warning，
+// 内容类差异——页面缺失、文本变化、字符样式、表格单元格样式、节点缺失、class 被删、
+// 节点资源身份变化、内容库存（文本 / 资源身份与内容哈希 / 角色计数 / 母版家具）——仍然是 error。
+const OBSERVATION_FORM_DIFF_CODES = new Set([
+  'ROUNDTRIP_TAG_SEQUENCE_CHANGED',
+  'ROUNDTRIP_INLINE_STYLE_CHANGED',
+  'ROUNDTRIP_RESOURCE_CHANGED',
+  'STRUCTURE_NODE_TAG_CHANGED',
+  'STRUCTURE_NODE_ORDER_CHANGED',
+  'STRUCTURE_NODE_PARENT_CHANGED',
+]);
+
+function isObservationReverseMode(mode) {
+  return mode === 'observation' || mode === 'inferred';
+}
+
+function demoteObservationFormDiffs(report, mode) {
+  if (!report || !isObservationReverseMode(mode)) return report;
+  const demoted = report.errors.filter((entry) => OBSERVATION_FORM_DIFF_CODES.has(entry.code));
+  if (!demoted.length) return report;
+  const errors = report.errors.filter((entry) => !OBSERVATION_FORM_DIFF_CODES.has(entry.code));
+  return {
+    ...report,
+    ok: errors.length === 0,
+    errors,
+    warnings: [
+      ...(report.warnings || []),
+      ...demoted.map((entry) => ({ ...entry, severity: 'warning', demotedBy: mode })),
+    ],
+  };
+}
+
 function auditReverseAuthorPackage(author) {
   if (!author || !author.config || !fs.existsSync(author.config)) {
     return { ok: false, missing: ['author/deck.config.json'] };
@@ -64,11 +98,11 @@ function auditReverseAuthorPackage(author) {
   const outDir = author.outDir || path.dirname(author.config);
   const editable = auditEditableAuthorPackage(outDir);
   const sourceRoundtrip = author.sourceRoot
-    ? auditAuthorSourceRoundtrip({
+    ? demoteObservationFormDiffs(auditAuthorSourceRoundtrip({
       sourceRoot: author.sourceRoot,
       reverseRoot: outDir,
       includeSourceDrift: true,
-    })
+    }), author.mode)
     : null;
   if (sourceRoundtrip) {
     const reportDir = path.join(outDir, 'reports');
@@ -85,10 +119,10 @@ function auditReverseAuthorPackage(author) {
       authorPackageContentInventory(outDir),
       { strictGeometry: false },
     );
-    structureSignature = compareStructureSignatures(
+    structureSignature = demoteObservationFormDiffs(compareStructureSignatures(
       authorPackageStructureSignature(author.sourceRoot),
       authorPackageStructureSignature(outDir),
-    );
+    ), author.mode);
     fs.writeFileSync(path.join(reportDir, 'content-inventory-report.json'), JSON.stringify(contentInventory, null, 2), 'utf8');
     fs.writeFileSync(path.join(reportDir, 'structure-signature-report.json'), JSON.stringify(structureSignature, null, 2), 'utf8');
   }
