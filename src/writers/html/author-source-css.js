@@ -11,7 +11,7 @@ function authorStyleFiles({ sourceCss, generatedCss, sourceRoot }) {
   return Object.keys(generatedCss).map(slash);
 }
 
-function planSourceCss(model, { sourceRoot, generatedCss }) {
+function planSourceCss(model, { sourceRoot }) {
   const requested = ((model.sourcePackage && model.sourcePackage.styleFiles) || [])
     .map(slash)
     .filter(Boolean);

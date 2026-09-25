@@ -19,6 +19,7 @@ const {
   vectorContainerIdsForPage,
   vectorNodeHasAuthorContent,
 } = require('./author-vector-renderer');
+const { reverseGeometryPlanForPage } = require('./author-reverse-geometry');
 const { normalizeLineEndings } = require('../../shared/text');
 
 const AUTHOR_ITEM_DROPPED = 'REVERSE_AUTHOR_ITEM_DROPPED';
@@ -27,9 +28,12 @@ const AUTHOR_ITEM_DROPPED = 'REVERSE_AUTHOR_ITEM_DROPPED';
 function pageItemsToAuthorHtml(page, options = {}) {
   const tree = buildAuthorTree(page);
   const state = { rendered: new Set(), warnings: [] };
+  const vectorContainerIds = vectorContainerIdsForPage(page, options);
   const pageOptions = {
     ...options,
-    vectorContainerIds: vectorContainerIdsForPage(page, options),
+    vectorContainerIds,
+    // 与 reverse-overrides.css 同一份外框规划：哪些对象按读回 bounds 兜底、哪些退出网格。
+    reverseBoxes: reverseGeometryPlanForPage(page, { ...options, vectorContainerIds }).boxes,
     authorRenderState: state,
   };
   const html = tree.map((node) => renderNode(node, pageOptions, 0)).join('\n');

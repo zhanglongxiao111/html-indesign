@@ -25,6 +25,9 @@ function baseCss(model) {
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; isolation: isolate; }`,
     '    .id-object { position: absolute; margin: 0; overflow: hidden; }',
+    // 段落样式 class 上的段前/段后距（margin-top 等）描述框内段落间距；InDesign 在框顶不加段前距，
+    // 它不能把对象外框挪离读回 bounds。提高选择器权重，压过同权重、排在后面的 .pstyle-* 规则。
+    '    .page .id-object { margin: 0; }',
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="text"] { overflow: visible; }`,
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] { border-collapse: collapse; table-layout: fixed; }`,
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] th, .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] td { overflow: hidden; vertical-align: top; }`,

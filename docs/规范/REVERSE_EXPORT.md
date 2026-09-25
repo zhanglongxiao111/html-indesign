@@ -157,7 +157,15 @@ reverse-export-<timestamp>/
 
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
 
-`observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径仍沿用源码几何与变换，不会叠加读回 bounds，不存在二次变换。
+作者包里每个对象的外框以 InDesign 读回 bounds 为准，层级以读回 z 序为准；外框写法由 `src/writers/html/author-reverse-geometry.js` 统一规划，`reverse-overrides.css` 与页面 HTML 共用同一份结果：
+
+- 源码样式随包（带 `sourceRoot` 且源码 CSS 已拷回）时，有源码节点的对象沿用源码 class 定位，不写兜底几何。否则源码 class 上的定位、尺寸和 z-index 都不在包里（满版图、靠 class 绝对定位的页码等），这些对象一律按读回 bounds 写兜底绝对几何并附 `margin:0`，源码 inline style 里的定位、尺寸、外边距剥掉；保留源码 inline style 的对象另按读回 z 序补写 `z-index`（`preserveTrustedSource` 的可信源码不补）。
+- 网格对象先按页面网格变量（与作者 `.page` 规则同构）算出网格区域。区域的左、上、宽与读回 bounds 一致（容差 0.5px）时保留网格放置，Agent 改 `--grid-*` 即可挪动；只是高度不同（文字框、表格按内容高）时写 `align-self:start` 并钉住读回高度，不再被网格行拉高。左、上、宽对不上时对象退出网格：去掉 `grid-item` 类和 `--grid-*` 变量，按读回 bounds 绝对定位——不改写网格变量，因为凑到另一组格子上同样对不上读回 bounds。源码把读回对象包在同 id 的网格包裹层里时（如 PDF 图框 `div.drawing-frame.grid-item > object`），网格放置取包裹层上的变量。
+- 表格外框是表格所在的文本框，正向构建建的表格外框高 = 行高之和 + 余量（`src/shared/geometry.js` 的 `tableFrameSlack`）。读回行高齐全且外框正好等于「行高之和 + 余量」时，表格盒子高取行高之和，再次正向构建把余量加回；否则以外框为准。视觉参照页 `deck.visual.html` 同样只画各行。
+- 网格对象不是子对象的定位参照（正向构建对观察态对象只累加绝对定位祖先的 `left/top`），子对象按页面坐标定位；只含置入内容图的网格图框另由 `layout.css` 设为 `position:relative`，让内容图在框内偏移。
+- 段落样式 class 上的段前距（`margin-top` 等）描述框内段落间距，InDesign 在框顶不加段前距，不能把对象外框挪离读回 bounds：作者包兜底几何附 `margin:0`，视觉参照页用 `.page .id-object { margin: 0; }` 压过 `.pstyle-*`。
+
+`observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径不剥变换；它们的外框按上面的外框规划处理。
 
 `<svg>` 里只能放路径。读回带矢量路径、同时挂着作者内容（子对象、折回的伴生文字 `<id>-text` 或自身文字）的对象不得写成 `<svg>`，改写成普通 HTML 容器（源码标签，`svg`/空元素退回 `div`）：id、class、`data-id-object` 等观察态标记和对象样式属性落在容器上，不带 `data-id-vector`；外框沿用上段已烘焙矢量的剥离与兜底规则；填充、描边、圆角、透明度按读回 `visualStyle` 内联成 CSS 盒子，正向构建读的也是它。容器的直接子对象一律按读回 bounds 写兜底几何并附 `margin:0`，源码 style 里的定位、尺寸和外边距剥掉：非网格容器相对容器内边距盒定位（扣掉描边写成的 border 宽），网格容器不是定位参照，子对象按页面坐标定位。折回的伴生文字相对容器的偏移写成 `padding`，字号、行距等按伴生文字读回写出。路径不是贴合读回 bounds 的直角矩形时（椭圆、多边形、烘焙了旋转的矩形等），CSS 盒子只能近似，记 `REVERSE_VECTOR_CONTAINER_SHAPE_APPROXIMATED`。
 

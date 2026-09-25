@@ -1,4 +1,5 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { tableFrameSlack } = require('../../shared/geometry');
 const { attr, formatPx, formatNumber, cssForHtml } = require('./visual-html-utils');
 const { textStyleCss } = require('./visual-style-css');
 const { renderRichTextRuns, renderTextWithBreaks } = require('./rich-text-html');
@@ -103,7 +104,24 @@ function cleanTableCellText(value) {
     .replace(/\n+$/g, '');
 }
 
+// 读回的表格外框是表格所在的文本框。正向构建建的表格，外框高 = 各行高之和 + 余量（shared/geometry.tableFrameSlack），
+// HTML 里的表格盒子只含各行：读回行高齐全且外框正好是「行高之和 + 余量」时，盒子高取行高之和，
+// 再次正向构建会把余量加回来；否则（如人工 INDD 里文本框比表格高）只能以外框为准。
+function tableBoxHeight(item, unitMode) {
+  const frameHeight = Number(item && item.bounds && item.bounds.height) || 0;
+  const table = item && item.table || {};
+  const heights = Array.isArray(table.rowHeights) ? table.rowHeights.map(Number) : [];
+  const rows = Array.isArray(table.rows) ? table.rows : [];
+  if (!heights.length || (rows.length && heights.length !== rows.length)) return frameHeight;
+  if (!heights.every((height) => Number.isFinite(height) && height > 0)) return frameHeight;
+  const rowsHeight = heights.reduce((sum, height) => sum + height, 0);
+  const slack = tableFrameSlack(heights.length, unitMode);
+  if (Math.abs(rowsHeight + slack - frameHeight) > 0.5) return frameHeight;
+  return Math.round(rowsHeight * 1000) / 1000;
+}
+
 module.exports = {
   renderTableContent,
+  tableBoxHeight,
   tableStyleName,
 };

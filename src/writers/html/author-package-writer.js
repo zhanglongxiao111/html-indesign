@@ -10,6 +10,7 @@ const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
+const { authorPageStyleVarPairs } = require('./author-reverse-geometry');
 const { collectSemanticCandidates } = require('./semantic-candidates');
 const {
   loadProjectSemanticPreset,
@@ -55,11 +56,15 @@ function writeReverseAuthorPackage(model, options = {}) {
       model.layers || [],
     ),
   }));
+  const sourceCss = planSourceCss(model, { sourceRoot });
+  // 源码样式拷回包里时，有源码节点的对象沿用源码 class 定位；否则外框全部按读回 bounds 兜底。
+  const sourceLayoutCarried = sourceCss.copiedSet.size > 0;
+  // 与 deck.config.json 写出的 unitMode 一致：再次正向构建按它换算表格外框余量。
+  const unitMode = authorUnitMode(model, sourceConfig);
   const generatedCss = writeAuthorCssFiles(
     { ...model, pages: pages.map((page) => page.authorPage) },
-    { mode: options.mode },
+    { mode: options.mode, sourceLayoutCarried, unitMode },
   );
-  const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
   const styleFiles = authorStyleFiles({ sourceCss, generatedCss, sourceRoot });
   const assetCopy = prepareAuthorAssets(model, {
     outDir,
@@ -78,6 +83,8 @@ function writeReverseAuthorPackage(model, options = {}) {
   const renderOptions = {
     ...options,
     sourceRoot,
+    sourceLayoutCarried,
+    unitMode,
     preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
     assetPathMap: assetCopy.pathMap,
     effectiveParentPageKeys,
@@ -126,6 +133,10 @@ function writeReverseAuthorPackage(model, options = {}) {
     // 反向导出的 content-manifest.json 用它找作者包内的拷贝。
     assetPathMap: assetCopy.pathMap,
   };
+}
+
+function authorUnitMode(model, sourceConfig) {
+  return sourceConfig && sourceConfig.unitMode || model.unitMode || 'presentation';
 }
 
 function effectiveSynthesizedStyles(model, sourceConfig) {
@@ -220,7 +231,7 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     id,
     title,
     profile: hasSourceProfile ? sourceConfig.profile : hasPackageProfile ? sourcePackage.profile : model.profile || null,
-    unitMode: sourceConfig && sourceConfig.unitMode || model.unitMode || 'presentation',
+    unitMode: authorUnitMode(model, sourceConfig),
     targetSize: sourceConfig && sourceConfig.targetSize || 'source',
     entry: sourceConfig && sourceConfig.entry || sourcePackage.entry || 'deck.html',
     styles: styleFiles,
@@ -603,49 +614,7 @@ function shouldWritePageParentAttrs(page, options = {}) {
 }
 
 function pageStyleVars(page) {
-  const pairs = [];
-  const attrs = (page.sourceNode && page.sourceNode.attributes) || {};
-  if (page.grid) {
-    pairs.push(['--id-grid-columns', page.grid.columns]);
-    pairs.push(['--id-grid-rows', page.grid.rows]);
-    if (page.grid.columnGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER]) {
-      pairs.push(['--id-column-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] || `${page.grid.columnGutter}px`]);
-    }
-    if (page.grid.rowGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER]) {
-      pairs.push(['--id-row-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] || `${page.grid.rowGutter}px`]);
-    }
-    if (page.grid.baseline != null || attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE]) {
-      pairs.push(['--id-baseline', attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] || `${page.grid.baseline}px`]);
-    }
-  }
-  const marginTokens = marginTokensFor(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN]);
-  if (marginTokens) {
-    pairs.push(['--id-margin-top', marginTokens.top]);
-    pairs.push(['--id-margin-right', marginTokens.right]);
-    pairs.push(['--id-margin-bottom', marginTokens.bottom]);
-    pairs.push(['--id-margin-left', marginTokens.left]);
-  } else if (page.margins) {
-    pairs.push(['--id-margin-top', `${page.margins.top}px`]);
-    pairs.push(['--id-margin-right', `${page.margins.right}px`]);
-    pairs.push(['--id-margin-bottom', `${page.margins.bottom}px`]);
-    pairs.push(['--id-margin-left', `${page.margins.left}px`]);
-  }
-  return pairs.map(([name, value]) => `${name}:${value}`).join(';');
-}
-
-function marginTokensFor(value) {
-  const tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
-  if (!tokens.length) return null;
-  if (tokens.length === 1) {
-    return { top: tokens[0], right: tokens[0], bottom: tokens[0], left: tokens[0] };
-  }
-  if (tokens.length === 2) {
-    return { top: tokens[0], right: tokens[1], bottom: tokens[0], left: tokens[1] };
-  }
-  if (tokens.length === 3) {
-    return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[1] };
-  }
-  return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[3] };
+  return authorPageStyleVarPairs(page).map(([name, value]) => `${name}:${value}`).join(';');
 }
 
 function pageMarginAttrValue(margins) {

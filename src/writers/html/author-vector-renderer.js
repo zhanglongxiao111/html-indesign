@@ -17,7 +17,7 @@ const {
   addObservedLabelAttrs,
   addParentPageAttrs,
   addStyleProtocolAttrs,
-  SOURCE_BOX_PROPERTY_RE,
+  reverseBoxSourceStyle,
   sourceNodeForItem,
   sourceStyleForItem,
 } = require('./author-node-attrs');
@@ -190,7 +190,9 @@ function vectorIdentityAttrs(item, sourceNode, options) {
   if (options.mode === 'observation') attrs[HTML_DATA_ID_ATTRIBUTES.OBJECT] = '';
   if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   addObservedLabelAttrs(attrs, item);
-  const sourceStyle = bakedVectorSourceStyle(sourceStyleForItem(item, sourceNode, classes), item);
+  const sourceStyle = withoutBakedTransforms(
+    reverseBoxSourceStyle(item, classes, sourceStyleForItem(item, sourceNode, classes), options),
+  );
   return { attrs, classes, sourceStyle };
 }
 
@@ -217,22 +219,16 @@ function rendersBakedVectorSvg(item, options = {}) {
   return shouldRenderVectorSvg(item, sourceNodeForItem(item), options);
 }
 
-// 与 reverse-overrides.css 写兜底几何的条件一致：有读回 bounds、不走作者网格。
-function bakedVectorBoxFromBounds(item) {
-  return Boolean(item && item.bounds) && !(item.layout && item.layout.grid);
-}
-
-function bakedVectorSourceStyle(sourceStyle, item) {
-  const dropBox = bakedVectorBoxFromBounds(item);
+// 源码里的定位、尺寸、外边距由外框规划剥掉（author-node-attrs.reverseBoxSourceStyle）；
+// 变换已烘焙进 path，无论外框怎么写都不能留在 svg 或容器上。
+function withoutBakedTransforms(sourceStyle) {
   return String(sourceStyle || '')
     .split(';')
     .map((declaration) => declaration.trim())
     .filter((declaration) => {
       const index = declaration.indexOf(':');
       if (index <= 0) return false;
-      const property = declaration.slice(0, index).trim().toLowerCase();
-      if (BAKED_VECTOR_TRANSFORM_PROPERTIES.has(property)) return false;
-      return !(dropBox && SOURCE_BOX_PROPERTY_RE.test(property));
+      return !BAKED_VECTOR_TRANSFORM_PROPERTIES.has(declaration.slice(0, index).trim().toLowerCase());
     })
     .join(';');
 }
