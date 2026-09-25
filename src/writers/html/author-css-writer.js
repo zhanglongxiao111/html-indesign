@@ -1,5 +1,5 @@
-const { isDegenerateInvisibleVector } = require('./vector-svg');
-const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-vector-renderer');
+const { rendersBakedVectorSvg } = require('./author-vector-renderer');
+const { reverseBoxHeight, reverseGeometryPlanForPage } = require('./author-reverse-geometry');
 const { safeAuthorClassToken } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
 const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
@@ -33,6 +33,8 @@ function layoutCss(model) {
     `.page { width: ${px(first.width || 0)}; height: ${px(first.height || 0)}; background: var(--id-page-bg); overflow: hidden; position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--id-grid-columns, 12), minmax(0, 1fr)); grid-template-rows: repeat(var(--id-grid-rows, 8), minmax(0, 1fr)); column-gap: var(--id-column-gutter, 0px); row-gap: var(--id-row-gutter, 0px); padding: var(--id-margin-top, 0px) var(--id-margin-right, 0px) var(--id-margin-bottom, 0px) var(--id-margin-left, 0px); }`,
     '.page :where(p, h1, h2, h3, h4, h5, h6, figure, figcaption, ul, ol) { margin: 0; }',
     '.grid-item { grid-column: var(--grid-col) / span var(--grid-span, 1); grid-row: var(--grid-row) / span var(--grid-row-span, 1); min-width: 0; min-height: 0; }',
+    // 置入图的内容图按图框内偏移绝对定位，留在网格里的图框要成为它的定位参照（只含内容图、不含子对象）。
+    '.grid-item:has(> .placed-asset-content, > .placed-asset-preview) { position: relative; }',
     '.id-object { margin: 0; overflow: hidden; }',
     '.observed-text.id-object { overflow: visible; }',
     '.id-parent-page-object { pointer-events: none; }',
@@ -79,28 +81,28 @@ function reverseOverridesCss(model, options = {}) {
     '/* Reverse-written placed-asset frames are figures; neutralize the UA figure margin even when source CSS replaced layout.css. */',
     '.page :where(figure) { margin: 0; }',
   ];
-  const itemIds = new Set();
-  for (const page of model.pages || []) {
-    for (const item of page.items || []) itemIds.add(item.id);
-  }
   for (const page of model.pages || []) {
     const itemById = new Map((page.items || []).map((item) => [item && item.id, item]));
-    const context = { itemIds, vectorContainerIds: vectorContainerIdsForPage(page, options) };
+    const plan = reverseGeometryPlanForPage(page, options);
     for (const item of page.items || []) {
-      if (shouldOmitAuthorOverride(item, context, options)) continue;
-      if (item.layout && item.layout.grid) continue;
-      if (!item.bounds) continue;
-      const position = authorPosition(item, itemById, context, options);
+      const box = item && plan.boxes.get(item.id);
+      if (!box) continue;
+      if (box.keepsGrid) {
+        // 留在网格里：左、上、宽由网格给出，高度按读回 bounds 钉住，不再被网格行拉高。
+        lines.push(`[id="${cssString(item.id)}"] { align-self:start; height:${px(reverseBoxHeight(item, options.unitMode))}; }`);
+        continue;
+      }
+      const position = authorPosition(item, itemById, plan);
       const declarations = [
         'position:absolute',
         `left:${px(position.x)}`,
         `top:${px(position.y)}`,
         `width:${px(item.bounds.width)}`,
-        `height:${px(item.bounds.height)}`,
+        `height:${px(reverseBoxHeight(item, options.unitMode))}`,
       ];
       for (const minDeclaration of vectorMinSizeDeclarations(item)) declarations.push(minDeclaration);
-      for (const reset of bakedVectorSourceResetDeclarations(item, context, options)) declarations.push(reset);
-      if (isVectorContainerChild(item, context) && !declarations.includes('margin:0')) declarations.push('margin:0');
+      for (const reset of bakedVectorSourceResetDeclarations(item, plan, options)) declarations.push(reset);
+      if (!declarations.includes('margin:0')) declarations.push('margin:0');
       lines.push(`[id="${cssString(item.id)}"] { ${declarations.join('; ')}; }`);
     }
   }
@@ -108,18 +110,18 @@ function reverseOverridesCss(model, options = {}) {
   return lines.join('\n');
 }
 
-function authorPosition(item, itemById, context, options) {
+function authorPosition(item, itemById, context) {
   const position = {
     x: Number(item && item.bounds && item.bounds.x) || 0,
     y: Number(item && item.bounds && item.bounds.y) || 0,
   };
   const parentId = item && item.structure && item.structure.parentId;
   const parent = parentId && itemById.get(parentId);
-  if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, context, options)) {
+  if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, context)) {
     return position;
   }
   // 绝对定位以容器的内边距盒为参照；矢量容器的描边写成 CSS border，要扣掉，
-  // 子对象才能落回读回 bounds（正向构建累加祖先偏移时同样计入祖先 border）。
+  // 子对象才能落回读回 bounds。
   const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
   return {
     x: position.x - (Number(parent.bounds.x) || 0) - border,
@@ -135,38 +137,16 @@ function containerBorderWidth(item) {
   return Math.round(weight * 100) / 100;
 }
 
-function establishesAuthorPositioning(item, context, options) {
-  // 网格对象不是定位参照：它的子对象按页面坐标定位（正向构建只累加绝对定位祖先的偏移）。
-  // 非网格矢量容器走兜底绝对定位，下面按「写了兜底几何」成为参照。
-  if (!item || !item.bounds || item.layout && item.layout.grid) return false;
-  if (!shouldOmitAuthorOverride(item, context, options)) return true;
+// 子对象的定位参照：写了兜底绝对几何的对象，以及源码内联声明了定位的对象。
+// 网格对象（含留在网格里、只钉住高度的对象）不是定位参照：它的子对象按页面坐标定位
+// （正向构建对观察态对象只累加绝对定位祖先的 left/top，见 semantic-model/layout.observedAncestorOffset）。
+function establishesAuthorPositioning(item, context) {
+  if (!item || !item.bounds) return false;
+  const box = context.boxes.get(item.id);
+  if (box) return !box.keepsGrid;
+  if (item.layout && item.layout.grid) return false;
   const style = item.sourceNode && item.sourceNode.attributes && item.sourceNode.attributes.style || '';
   return /(?:^|;)\s*position\s*:\s*(?:absolute|relative|fixed|sticky)\b/i.test(style);
-}
-
-function isVectorContainerChild(item, context) {
-  const parentId = item && item.structure && item.structure.parentId;
-  return Boolean(parentId && context.vectorContainerIds.has(parentId));
-}
-
-function shouldOmitAuthorOverride(item, context, options = {}) {
-  if (!item) return true;
-  if (isDegenerateInvisibleVector(item)) return true;
-  // 有源码节点的对象沿用源码定位；但走已烘焙矢量写出路径（svg 或矢量容器）的对象只能用
-  // 读回 bounds 定外框，其源码定位、尺寸和变换已在写出时剥掉（见 author-vector-renderer）。
-  // 矢量容器的直接子对象同理：容器不再按源码排版，子对象按读回 bounds 定位。
-  if (item.sourceNode && !rendersBakedVectorSvg(item, options) && !isVectorContainerChild(item, context)) return true;
-  if (isGeneratedLabel(item)) return true;
-  const itemIds = context.itemIds;
-  const id = String(item.id || '');
-  if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
-  if (item.semantic == null && /-background$/i.test(id)) return true;
-  if (/-text$/i.test(id) && itemIds.has(id.replace(/-text$/i, ''))) return true;
-  return false;
-}
-
-function isGeneratedLabel(item) {
-  return (item.labels || []).some((label) => label && (label.generated === true || label.kind === 'generated'));
 }
 
 // 带 sourceRoot 时源码组件样式会被拷回；源码 class 上的变换、外边距描述的是旋转前的

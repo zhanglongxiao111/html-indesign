@@ -3,7 +3,7 @@ const { blendModeCss } = require('./css-blend-mode');
 const { hasVectorPaths, vectorPathElements, vectorViewBox } = require('./vector-svg');
 const { assetHtml, assetPlacementAttrs } = require('./asset-html');
 const { renderTextContent, textContent } = require('./rich-text-html');
-const { renderTableContent, tableStyleName } = require('./table-html');
+const { renderTableContent, tableBoxHeight, tableStyleName } = require('./table-html');
 const { assertReverseVisualHtmlContainerTag } = require('./safe-tags');
 const {
   baseCss,
@@ -105,7 +105,7 @@ function itemToHtml(item, model, options) {
     item.asset && item.asset.path ? `${HTML_DATA_ID_ATTRIBUTES.ASSET_PATH}="${attr(item.asset.path)}"` : null,
     item.asset && item.asset.cropped ? `${HTML_DATA_ID_ATTRIBUTES.IMAGE_CROPPED}="true"` : null,
     ...assetPlacementAttrs(item.asset),
-    `style="${attr(boundsStyle(itemId, item.bounds, inlineStyle))}"`,
+    `style="${attr(boundsStyle(itemId, visualBoxBounds(item, tag, model), inlineStyle))}"`,
   ].filter(Boolean);
 
   if (tag === 'table') {
@@ -175,6 +175,12 @@ function vectorMinSizeCss(item) {
 
 function hasLineMarker(visualStyle) {
   return Boolean(visualStyle && (visualStyle.lineStartMarker || visualStyle.lineEndMarker));
+}
+
+// 表格盒子只画各行（外框里行下方的余量是正向构建加的，不是表格的一部分）。
+function visualBoxBounds(item, tag, model) {
+  if (tag !== 'table' || !item.bounds) return item.bounds;
+  return { ...item.bounds, height: tableBoxHeight(item, model && model.unitMode) };
 }
 
 function marginValue(margins) {

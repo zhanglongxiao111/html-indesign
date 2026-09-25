@@ -1156,10 +1156,7 @@ test('writeReverseAuthorPackage reports accepted partial and observed reverse la
   });
 });
 
-test('writeReverseAuthorPackage keeps structured source geometry in html instead of dead override rules', () => {
-  const outDir = path.resolve('test/workspace/reverse-author-overrides-test');
-  fs.rmSync(outDir, { recursive: true, force: true });
-
+function timelineModel() {
   const model = taggedModel();
   model.pages[0].items.push(
     {
@@ -1185,16 +1182,42 @@ test('writeReverseAuthorPackage keeps structured source geometry in html instead
       bounds: { x: 0, y: 0, width: 10, height: 100 },
     },
   );
+  return model;
+}
 
-  writeReverseAuthorPackage(model, { outDir, mode: 'authoring' });
+test('writeReverseAuthorPackage keeps structured source geometry in html when source styles are carried', () => {
+  const root = path.resolve('test/workspace/reverse-author-overrides-test');
+  const outDir = path.join(root, 'author');
+  const sourceRoot = path.join(root, 'source');
+  fs.rmSync(root, { recursive: true, force: true });
+  writeFixtureFile(path.join(sourceRoot, 'styles/layout.css'), '.line { position:absolute; border-top:1pt solid #c8102e; }');
+
+  writeReverseAuthorPackage(timelineModel(), { outDir, sourceRoot, mode: 'authoring' });
 
   const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
   const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
 
   assert.match(pageHtml, /id="timeline"[^>]+style="left:158mm;top:184mm;width:225mm;transform:rotate\(0deg\)"/);
   assert.doesNotMatch(pageHtml, /chapter-1-border-left/);
-  assert.doesNotMatch(overrides, /#timeline/);
-  assert.doesNotMatch(overrides, /#chapter-1-border-left/);
+  assert.doesNotMatch(overrides, /timeline/);
+  assert.doesNotMatch(overrides, /chapter-1-border-left/);
+});
+
+test('writeReverseAuthorPackage places sourced objects by read-back bounds when source styles are not carried', () => {
+  // 源码 class（.line 的 position:absolute）不在包里时，源码内联的 left/top 不起作用：外框按读回 bounds 兜底，
+  // 源码里的定位、尺寸从内联剥掉，免得压过兜底几何；变换等非外框声明照留。
+  const outDir = path.resolve('test/workspace/reverse-author-overrides-uncarried-test');
+  fs.rmSync(outDir, { recursive: true, force: true });
+
+  writeReverseAuthorPackage(timelineModel(), { outDir, mode: 'authoring' });
+
+  const pageHtml = fs.readFileSync(path.join(outDir, 'pages/01-agenda.html'), 'utf8');
+  const overrides = fs.readFileSync(path.join(outDir, 'styles/reverse-overrides.css'), 'utf8');
+
+  assert.match(pageHtml, /id="timeline"[^>]+style="transform:rotate\(0deg\)"/);
+  assert.ok(overrides.includes('[id="timeline"] { position:absolute; left:597.17px; top:695.43px; width:850.39px; height:0px; margin:0; }'));
+  assert.doesNotMatch(pageHtml, /chapter-1-border-left/);
+  assert.doesNotMatch(overrides, /chapter-1-border-left/);
 });
 
 test('writeReverseAuthorPackage does not write unknown semantic markers', () => {
@@ -1266,7 +1289,8 @@ function taggedModel() {
               grid: { col: 1, span: 4, row: 1, rowSpan: 1 },
               cssVars: { '--grid-col': '1', '--grid-span': '4', '--grid-row': '1', '--grid-row-span': '1' },
             },
-            bounds: { x: 120, y: 140, width: 460, height: 80 },
+            // 与页面网格（12 栏、6px 栏距、无版心边距）第 1 栏起跨 4 栏的区域左、上、宽一致，只是文字框比网格行矮。
+            bounds: { x: 0, y: 0, width: 525.13, height: 80 },
             styleRefs: { paragraphStyle: '页面标题' },
             content: { text: '汇报结构', runs: [] },
           },

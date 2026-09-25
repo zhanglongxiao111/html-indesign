@@ -102,8 +102,16 @@ function boundsToGeometricBounds(bounds) {
   ];
 }
 
+// 正向构建给原生表格留的外框余量：表格所在文本框高 = 各行高之和 + 余量（presentation 模式下行多时按行数放大）。
+// 反向写出据此从读回的外框高还原表格本身的高度。
+function tableFrameSlack(rowCount, unitMode) {
+  if (unitMode !== 'presentation') return 1;
+  return Math.max(24, (Number(rowCount) || 0) * 4);
+}
+
 module.exports = {
   round,
+  tableFrameSlack,
   parseCssLength,
   cssLengthToMm,
   cssLengthStringToMm,
