@@ -1,6 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
-const { capitalizationCss, colorWithOpacity, cssBorderStyle } = require('./css-values');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, textStrokeCss } = require('./css-values');
 const { vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 const {
   requiredNumber,
@@ -129,9 +129,11 @@ function textStyleCss(textStyle) {
   if (textStyle.tracking != null && Number(textStyle.tracking) !== 0) {
     styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);
   }
-  if (textStyle.justification) styles.push(`text-align:${textStyle.justification}`);
+  if (textStyle.justification) styles.push(justificationCss(textStyle.justification));
   const capitalization = capitalizationCss(textStyle.capitalization);
   if (capitalization) styles.push(capitalization);
+  const stroke = textStrokeCss(textStyle);
+  if (stroke) styles.push(stroke);
   return styles.join(';');
 }
 

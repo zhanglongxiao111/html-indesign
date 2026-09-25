@@ -1,5 +1,5 @@
 const { blendModeCss } = require('./css-blend-mode');
-const { capitalizationCss, colorWithOpacity, cssBorderStyle } = require('./css-values');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss } = require('./css-values');
 
 function inlineResidualForSynth({ inlineCss, token, synthesizedStyles }) {
   const inline = parseCssDeclarations(inlineCss);
@@ -55,7 +55,7 @@ function synthesizedTextStyleDeclarations(properties) {
   if (properties.tracking != null && Number(properties.tracking) !== 0) {
     declarations.push(`letter-spacing:${formatNumber(Number(properties.tracking) / 1000)}em`);
   }
-  if (properties.justification) declarations.push(`text-align:${properties.justification}`);
+  if (properties.justification) declarations.push(justificationCss(properties.justification).replace(';', '; '));
   const capitalization = capitalizationCss(properties.capitalization);
   if (capitalization) declarations.push(capitalization);
   return declarations.join('; ');

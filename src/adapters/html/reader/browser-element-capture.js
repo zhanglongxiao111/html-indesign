@@ -53,7 +53,47 @@
 
   const HARD_BREAK_TOKEN = '\u0000';
 
+  // 多段文本框：带 data-id-role="text" 的容器，子元素全是只含内联内容的段落（p、h1-h6）。
+  // 整个容器是一个文本框，每个子段落是框里的一段；段落之间用 PARAGRAPH_SEPARATOR 分隔，
+  // 与 InDesign 段落结束符 \r 一致（<br> 仍是段内强制换行 \n）。子段落不再单独成为候选对象。
+  const PARAGRAPH_SEPARATOR = '\r';
+  const FRAME_PARAGRAPH_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+  function isParagraphTextFrame(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const dataId = dataIdAttributes();
+    if (String(el.getAttribute(dataId.ROLE) || '').trim().toLowerCase() !== 'text') return false;
+    if (directText(el)) return false;
+    const children = Array.from(el.children || []).filter((child) => !child.hasAttribute(dataId.IGNORE));
+    if (!children.length) return false;
+    return children.every((child) => FRAME_PARAGRAPH_TAGS.includes(String(child.tagName || '').toLowerCase())
+      && !hasDataIdAttribute(child)
+      && Array.from(child.children || []).every(isInlineSourceElement));
+  }
+
+  // 子段落带自己的对象声明（段落样式、对象、角色、语义）时它是独立文字对象，外层应是 container，不按多段文本框合并。
+  function hasDataIdAttribute(el) {
+    const dataId = dataIdAttributes();
+    return [dataId.PARAGRAPH_STYLE, dataId.OBJECT, dataId.ROLE, dataId.SEMANTIC, dataId.PLACEMENT]
+      .some((name) => name && el.hasAttribute(name));
+  }
+
+  function isTextFrameParagraph(el) {
+    return FRAME_PARAGRAPH_TAGS.includes(String(el && el.tagName || '').toLowerCase())
+      && isParagraphTextFrame(el.parentElement);
+  }
+
+  function textFrameParagraphs(el) {
+    const dataId = dataIdAttributes();
+    return Array.from(el.children || []).filter((child) => !child.hasAttribute(dataId.IGNORE));
+  }
+
   function trimmedTextWithHardBreaks(el, candidates) {
+    if (isParagraphTextFrame(el)) {
+      return textFrameParagraphs(el)
+        .map((paragraph) => trimmedTextWithHardBreaks(paragraph, candidates))
+        .join(PARAGRAPH_SEPARATOR);
+    }
     const excludedElements = new Set(candidateDescendantsFor(el, candidates));
     return textWithHardBreaks(el, HARD_BREAK_TOKEN, excludedElements, el)
       .trim()
@@ -597,7 +637,8 @@
           .filter((child) => !child.hasAttribute(dataId.IGNORE));
         return contentChildren.length !== 1 || !isNaturalSingleAssetFrame(el, contentChildren[0]);
       })
-      .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'));
+      .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'))
+      .filter((el) => !isTextFrameParagraph(el));
     return candidates.filter((el) => !isRedundantTextContainer(el, candidates));
   }
 
@@ -651,7 +692,7 @@
 
   function textRunsFor(el, candidates) {
     const tagName = el.tagName.toLowerCase();
-    if (!isTextTag(tagName) && !isNaturalTextElement(el)) return [];
+    if (!isTextTag(tagName) && !isNaturalTextElement(el) && !isParagraphTextFrame(el)) return [];
     const inlineRuns = inlineRunsFor(el, candidates);
     if (inlineRuns.length) return inlineRuns;
     return [{
@@ -689,6 +730,20 @@
         })),
       };
     });
+  }
+
+  // 作者在 <col> 上声明的列宽（按 span 展开成逐列）。任何一列没声明时返回空数组，编译时回退到单元格几何。
+  function tableColumnWidthsFor(el, styleRules) {
+    if (String(el && el.tagName || '').toLowerCase() !== 'table') return [];
+    const cols = Array.from(el.querySelectorAll('col')).filter((col) => col.closest('table') === el);
+    const widths = [];
+    for (const col of cols) {
+      const width = String(styleApi().authoredStyleObject(col, styleRules).width || '').trim();
+      if (!width || width === 'auto') return [];
+      const span = Math.max(1, Number(col.span || 1));
+      for (let index = 0; index < span; index += 1) widths.push(width);
+    }
+    return widths;
   }
 
   function ancestorCandidateIndexes(el, candidates, pageEl) {
@@ -766,6 +821,7 @@
     const tagName = el.tagName.toLowerCase();
     return isTextTag(tagName)
       || isNaturalTextElement(el)
+      || isParagraphTextFrame(el)
       || ['hr', 'img', 'object', 'embed', 'svg', 'canvas', 'table'].includes(tagName)
       || el.hasAttribute(dataId.OBJECT)
       || el.hasAttribute(dataId.PARAGRAPH_STYLE);
@@ -874,6 +930,7 @@
     isNaturalTextElement,
     textRunsFor,
     tableRowsFor,
+    tableColumnWidthsFor,
     ancestorCandidateIndexes,
     ancestorCandidateIds,
     sourceAncestorNodes,

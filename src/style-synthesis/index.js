@@ -35,7 +35,13 @@ const {
   capitalizationFor,
   ensureFont,
   fontStyleNameFor,
+  justificationFor,
 } = require('./text-style-mapping');
+const {
+  keepsLocalFormatting,
+  localFormattingOptions,
+  synthesizedTokenUsage,
+} = require('./local-formatting');
 
 function createEmptyStyleModel() {
   return {
@@ -58,10 +64,14 @@ function compileStyles(snapshot, options = {}) {
     pageCount: snapshot.pages.length,
   });
 
-  const pages = snapshot.pages.map((page) => ({
-    ...page,
-    items: page.items.map((item) => compileItemStyles(item, styles, report, options)),
-  }));
+  const tokenUsage = synthesizedTokenUsage(snapshot.pages, options);
+  const pages = snapshot.pages.map((page) => {
+    const pageOptions = localFormattingOptions(page, options, tokenUsage);
+    return {
+      ...page,
+      items: page.items.map((item) => compileItemStyles(item, styles, report, pageOptions)),
+    };
+  });
 
   return {
     metadata: snapshot.metadata,
@@ -117,14 +127,14 @@ function compileItemStyles(item, styles, report, options) {
     styleRefs.paragraphStyle = paragraph.name;
     if (paragraph.textOverride) compiled.textOverride = paragraph.textOverride;
     if (shouldCompileTextFrameObjectStyle(item)) {
-      styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
+      styleRefs.objectStyle = objectStyleFor(styles, item, report, options, compiled);
       styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     }
     compiled.content.runs = compileTextRuns(item, styles, styleRefs, report, options);
   }
 
   if (item.role === 'graphic' || item.role === 'shape') {
-    styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
+    styleRefs.objectStyle = objectStyleFor(styles, item, report, options, compiled);
     styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     compiled.box = compileBoxModel(item, styles, options);
     warnObjectBorderLimitations(item, compiled.box, report);
@@ -158,7 +168,7 @@ function compileItemStyles(item, styles, report, options) {
         labels: [styleProtocolLabel('tableStyles', identity)],
       };
     }
-    styleRefs.objectStyle = ensureObjectStyle(styles, item, report, options);
+    styleRefs.objectStyle = objectStyleFor(styles, item, report, options, compiled);
     if (explicitFrameStyleName(item, options)) {
       styleRefs.frameStyle = ensureFrameStyle(styles, item, options, report);
     }
@@ -170,6 +180,39 @@ function compileItemStyles(item, styles, report, options) {
   }
 
   return compiled;
+}
+
+// 观察页上原件没有样式的对象不建命名对象样式（local-formatting）：本该进对象样式的 CSS 盒子外观
+// （填充、描边、圆角）记为 localVisualStyle，由 HTML adapter 并进对象 visualStyle，编译成 styleOverride 局部覆盖。
+function objectStyleFor(styles, item, report, options, compiled) {
+  if (!keepsLocalFormatting(item, 'objectStyles', options)) return ensureObjectStyle(styles, item, report, options);
+  const local = localObjectVisualStyle(item, options);
+  if (local && compiled) compiled.localVisualStyle = local;
+  return null;
+}
+
+function localObjectVisualStyle(item, options) {
+  const style = item.computedStyle || {};
+  const out = {};
+  const fill = normalizeCssColor(style.backgroundColor) || singleColorGradientSwatch(style.backgroundImage);
+  if (fill) {
+    out.fillColor = fill.hex;
+    if (fill.alpha != null && Number(fill.alpha) < 1) out.fillOpacity = round(Number(fill.alpha) * 100, 2);
+  }
+  const swatches = createEmptyStyleModel();
+  const box = compileBoxModel(item, swatches, options);
+  const edges = [box.borders.top, box.borders.right, box.borders.bottom, box.borders.left];
+  if (edges.every((edge) => visibleBorder(edge)) && bordersAreUniform(box.borders)) {
+    const swatch = swatches.swatches[edges[0].color];
+    if (swatch) {
+      out.strokeColor = swatch.value;
+      out.strokeWeight = edges[0].widthPt;
+      out.strokeStyle = edges[0].style;
+    }
+  }
+  const radius = Number.parseFloat(String(cornerRadiusValue(item, options) || ''));
+  if (Number.isFinite(radius) && radius > 0 && /pt$/.test(String(cornerRadiusValue(item, options)))) out.cornerRadius = radius;
+  return Object.keys(out).length ? out : null;
 }
 
 function contentForItem(item) {
@@ -218,6 +261,10 @@ function compileTextRuns(item, styles, styleRefs, report, options) {
         text: run.text,
         characterStyle: null,
       };
+    }
+    if (keepsLocalFormatting(run, 'characterStyles', options)) {
+      const textOverride = runTextOverride(styles, run, item, options);
+      return { text: run.text, characterStyle: null, ...(textOverride ? { textOverride } : {}) };
     }
     const characterStyle = ensureCharacterStyle(styles, run, report, options);
     if (characterStyle && !styleRefs.characterStyles.includes(characterStyle)) {
@@ -279,6 +326,10 @@ function ensureParagraphStyle(styles, item, report, options) {
 
 function compileParagraphStyle(styles, item, report, options) {
   const computedSignature = paragraphSignatureFor(item.computedStyle || {}, item, styles, options);
+  if (keepsLocalFormatting(item, 'paragraphStyles', options)) {
+    // 观察页上原件没有段落样式的文字：不建段落样式（沿用默认段落样式），整段外观写成局部覆盖。
+    return { name: null, textOverride: paragraphOverrideFor(computedSignature, {}) };
+  }
   const declaredName = styleNameForKind(item, 'paragraphStyles', null, options);
   const declaredFacts = declaredName ? declaredParagraphFacts(item) : null;
   const signature = declaredFacts
@@ -306,13 +357,23 @@ function paragraphSignatureFor(style, item, styles, options) {
     fontWeight: style.fontWeight || '400',
     fontStyle: style.fontStyle || 'normal',
     fillColor: ensureSwatch(styles, style.color),
-    justification: style.textAlign || 'left',
+    justification: justificationFor(style),
     tracking: trackingValue(style, options),
     capitalization: capitalizationFor(style),
     spaceBefore: styleLengthToPt(style, 'marginTop', options),
     spaceAfter: styleLengthToPt(style, 'marginBottom', options),
     composer: paragraphComposerFor(item),
+    ...textStrokeSignature(styles, style, options),
   };
+}
+
+// 文字描边（CSS -webkit-text-stroke）-> 段落 / 字符样式与局部覆盖的 strokeColor、strokeWeight。
+// 没有描边时不写这两个键：签名不变，既有自动样式名（按签名取哈希）保持稳定。
+function textStrokeSignature(styles, style, options) {
+  const weight = styleLengthToPt(style, 'webkitTextStrokeWidth', options);
+  if (!(Number(weight) > 0)) return {};
+  const strokeColor = ensureSwatch(styles, style.webkitTextStrokeColor);
+  return strokeColor ? { strokeColor, strokeWeight: weight } : {};
 }
 
 const DECLARED_PARAGRAPH_FACT_PROPS = [
@@ -323,8 +384,11 @@ const DECLARED_PARAGRAPH_FACT_PROPS = [
   'fontStyle',
   'color',
   'textAlign',
+  'textAlignLast',
   'letterSpacing',
   'textTransform',
+  'webkitTextStrokeWidth',
+  'webkitTextStrokeColor',
   'marginTop',
   'marginBottom',
 ];
@@ -382,6 +446,8 @@ const PARAGRAPH_OVERRIDE_KEYS = [
   'capitalization',
   'spaceBefore',
   'spaceAfter',
+  'strokeColor',
+  'strokeWeight',
 ];
 
 const NUMERIC_OVERRIDE_TOLERANCE = 0.01;
@@ -419,6 +485,37 @@ function paragraphComposerFor(item) {
   return attributes[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] || item && item.textStyle && item.textStyle.composer || null;
 }
 
+// 观察页上没有字符样式的 run：与所在段落计算外观不同的字符属性写成 run 级局部覆盖，不建自动字符样式。
+const RUN_OVERRIDE_KEYS = ['appliedFont', 'fontStyleName', 'pointSize', 'fontWeight', 'fontStyle', 'fillColor', 'tracking', 'capitalization', 'strokeColor', 'strokeWeight'];
+
+function runTextOverride(styles, run, item, options) {
+  const style = run.computedStyle || {};
+  const base = paragraphSignatureFor(item.computedStyle || {}, item, styles, options);
+  const signature = {
+    appliedFont: ensureFont(styles, style.fontFamily, options, run.text),
+    fontStyleName: fontStyleNameFor(style),
+    pointSize: styleLengthToPt(style, 'fontSize', options),
+    fontWeight: style.fontWeight || '400',
+    fontStyle: style.fontStyle || 'normal',
+    fillColor: ensureSwatch(styles, style.color),
+    tracking: trackingValue(style, options),
+    capitalization: capitalizationFor(style),
+    ...textStrokeSignature(styles, style, options),
+  };
+  const override = {};
+  for (const key of RUN_OVERRIDE_KEYS) {
+    if (signature[key] == null || overrideValuesMatch(signature[key], base[key])) continue;
+    override[key] = signature[key];
+  }
+  if (override.appliedFont || override.fontStyleName) {
+    override.appliedFont = signature.appliedFont;
+    override.fontStyleName = signature.fontStyleName;
+    override.fontWeight = signature.fontWeight;
+    override.fontStyle = signature.fontStyle;
+  }
+  return Object.keys(override).length ? override : null;
+}
+
 function ensureCharacterStyle(styles, run, report, options) {
   const style = run.computedStyle || {};
   const fillColor = ensureSwatch(styles, style.color);
@@ -434,6 +531,7 @@ function ensureCharacterStyle(styles, run, report, options) {
     verticalPosition: style.verticalAlign || 'baseline',
     textDecoration: style.textDecorationLine || 'none',
     capitalization: capitalizationFor(style),
+    ...textStrokeSignature(styles, style, options),
   };
   const requestedName = styleNameForKind(run, 'characterStyles', signature, options)
     || stableAutoName('character', signature);
@@ -579,7 +677,7 @@ function compileTableCell(cell, styles, report, options) {
     fontStyleName: fontStyleNameFor(style),
     tracking: trackingValue(style, options),
     capitalization: capitalizationFor(style),
-    textAlign: style.textAlign || 'left',
+    textAlign: justificationFor(style),
     borderColor: ensureSwatch(styles, style.borderTopColor),
     borderWeight: itemLengthToPt(cell, 'borderTopWidth', options),
     borders,

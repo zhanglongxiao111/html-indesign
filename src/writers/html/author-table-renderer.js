@@ -7,7 +7,7 @@ const {
   orderInlineAttrs,
   safeInlineTag,
 } = require('./author-render-utils');
-const { colorWithOpacity } = require('./css-values');
+const { colorWithOpacity, justificationCss } = require('./css-values');
 const { mergeDeclarations, runStyleCss, tagWithMergedStyle } = require('./author-run-style');
 const { readBackRowHeights } = require('./table-html');
 
@@ -22,9 +22,20 @@ function tableContent(table, depth, options = {}) {
     ? { ...options, rowHeightByRow: new Map(rows.map((row, index) => [row, rowHeights[index]])) }
     : options;
   const sections = [];
+  const colgroup = options.writeRunStyles ? tableColGroup(table, depth) : '';
+  if (colgroup) sections.push(colgroup);
   if (headRows.length) sections.push(tableSection('thead', headRows, depth, rowOptions));
   if (bodyRows.length) sections.push(tableSection('tbody', bodyRows, depth, rowOptions));
   return sections.join('\n');
+}
+
+// 读回列宽写成 <col style="width">：浏览器按内容与外框分配列宽会把等宽列算歪，
+// 正向按 <col> 声明建 InDesign 列宽（table-instructions.declaredTableColumnWidths）。
+function tableColGroup(table, depth) {
+  const widths = Array.isArray(table.columnWidths) ? table.columnWidths.map(Number) : [];
+  if (!widths.length || !widths.every((width) => Number.isFinite(width) && width > 0)) return '';
+  const cols = widths.map((width) => `${indent(depth + 2)}<col style="width:${formatNumber(width)}px">`).join('\n');
+  return `${indent(depth)}<colgroup>\n${cols}\n${indent(depth)}</colgroup>`;
 }
 
 function tableSection(tag, rows, depth, options = {}) {
@@ -86,7 +97,7 @@ function tableCellCss(cell, baseTextStyle) {
     styles.push(`line-height:${formatNumber(textStyle.leading)}px`);
   }
   if (textStyle.justification && textStyle.justification !== base.justification) {
-    styles.push(`text-align:${textStyle.justification}`);
+    styles.push(justificationCss(textStyle.justification));
   }
   const padding = cell.padding || {};
   const paddingValues = [padding.top, padding.right, padding.bottom, padding.left];

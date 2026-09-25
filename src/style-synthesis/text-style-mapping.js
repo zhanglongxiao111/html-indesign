@@ -4,6 +4,19 @@ function capitalizationFor(style) {
   return null;
 }
 
+// CSS 对齐 -> 段落对齐（canonical justification）。CSS `text-align:justify` 的末行按起始边对齐，
+// 就是 InDesign「左对齐两端」（LEFT_JUSTIFIED）；末行对齐由 `text-align-last` 决定：
+// justify -> 全部两端对齐（justify-all），center / right(end) -> 居中 / 右对齐两端。
+function justificationFor(style) {
+  const align = String(style && style.textAlign || '').trim().toLowerCase();
+  if (align !== 'justify') return align || 'left';
+  const last = String(style && style.textAlignLast || '').trim().toLowerCase();
+  if (last === 'justify') return 'justify-all';
+  if (last === 'center') return 'justify-center';
+  if (last === 'right' || last === 'end') return 'justify-right';
+  return 'justify';
+}
+
 function ensureFont(styles, fontFamily, options = {}, text) {
   const families = fontStack(fontFamily);
   const family = selectFontFamily(fontFamily, text, options) || options.fontFallback || 'Arial';
@@ -82,6 +95,7 @@ function fontFaceForWeight(fontWeight) {
 
 module.exports = {
   capitalizationFor,
+  justificationFor,
   ensureFont,
   fontStyleNameFor,
 };

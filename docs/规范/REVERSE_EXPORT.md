@@ -191,6 +191,16 @@ reverse-export-<timestamp>/
 
 读回外观在没有源码 CSS 可拷时（`observation` 模式不保留可信源码）也要写回作者 HTML：对象填充不透明度写成 `rgba()` 背景，描边类型「虚线」「点线」写成 `dashed`/`dotted`；字符级 run 外观与所在段落（`textStyle`）不同的部分（字体、字重、字形、字号、颜色、字距、大小写）写在 run 元素的内联 `style` 上，来源 HTML 片段按 run 的 `id` 合并 `style`，定位不到时改由 run 重新渲染；表格单元格的填充、文字外观、内边距和各边描边写在单元格内联 `style` 上（来源 HTML 表格按单元格顺序合并），作者包 `layout.css` 让表格使用合并边框模型。大小写读回为 `textStyle.capitalization`（`allCaps`/`smallCaps`），写成 `text-transform:uppercase`/`font-variant-caps:small-caps`；正向只把 `uppercase` 读回为全部大写。渐变色板按首个色标近似成纯色写出（`REVERSE_GRADIENT_APPROXIMATED`），渐变本身不保留。
 
+人工 INDD 往返还要守住以下几条（09-26 gradient-sample 真机验收）：
+
+- **淡色与颜色读回。** 色调色板（Tint，如 `G-Red 40%`）的 `colorValue` 是基色、`tintValue` 是色调百分比，读回颜色取等效色（CMYK/Lab 分量按色调缩放，RGB 向白色混合）；对象、字符、段落、样式、单元格及单元格各边自身的局部色调（`fillTint`、`strokeTint`、`*EdgeStrokeTint`，0–100，-1/100 表示没有）按基色的绝对色调计算，优先于色板色调。等效色写成普通颜色，正向按颜色值建色板（色板名不参与往返，淡色色板不会以同名 tint 重建，视觉颜色一致）。读不到色调值记 `REVERSE_TINT_UNREADABLE`（按基色全强度写），混合油墨、未知色彩空间等无法折成 RGB 的颜色记 `REVERSE_COLOR_UNRESOLVED`，不再静默丢色。颜色读取集中在 `_indesign_scripts/lib/hi_reverse_colors.jsxinc`。
+- **文字描边。** 字符、段落及段落 / 字符样式的描边（`strokeColor` + `strokeWeight`，色调同上，渐变描边按首个色标近似并记 `REVERSE_GRADIENT_APPROXIMATED`）读回为 `textStyle.strokeColor/strokeWeight`，写成 `-webkit-text-stroke`；正向从 `-webkit-text-stroke-width/-color` 读回成段落 / 字符样式或局部覆盖的描边。
+- **段落边界。** InDesign 段落结束符（`\r`）分隔的多段文本框写成带 `data-id-role="text"` 的 `div` 容器，每段一个 `<p>`，段内强制换行（`\n`）仍写 `<br>`；正向把「`data-id-role="text"` 且子元素全是只含内联内容的 `p`/`h1`–`h6`」的容器读成一个文本框，段间写 `\r`，子段落不再单独成为对象。保留来源 HTML 的对象不走这条改写。
+- **段落对齐。** `justify` 是「左对齐两端」（LEFT_JUSTIFIED，CSS `text-align:justify` 末行靠起始边）；「全部两端对齐 / 居中对齐两端 / 右对齐两端」读回为 `justify-all` / `justify-center` / `justify-right`，写成 `text-align:justify` 加 `text-align-last:justify|center|right`，正向按同一对 CSS 读回。正向不再把 `text-align:justify` 建成全部两端对齐。
+- **列宽。** 读回列宽写成 `<colgroup><col style="width:…px">`；正向在每列都声明了宽度且列数一致时按声明建列（`items[].table.sourceColumnWidths`），不再从浏览器单元格几何推算。
+- **图层清单。** 作者包 `deck.config.json` 声明了 `layers`（反向导出按原 INDD 图层写出）时，正向只建这份清单加上对象实际用到的图层，不补词表里的标准图层；没声明图层清单的正常 HTML 作者包照旧预建全部标准图层。
+- **样式清单。** 作者包 `components.css` 不写 InDesign 内置样式（`[基本段落]`、`[无段落样式]`、`[基本图形框架]` 等）的类规则，作者 HTML 也不引用它们。观察页（`data-id-observed="true"` 或带 `data-id-reverse-mode`）上原件没有绑定样式的对象，正向不凭空新建命名样式：该种类没有声明样式身份、且合成样式 token 只被这一个未声明样式的对象使用时，不建段落 / 字符 / 对象样式（沿用 InDesign 默认样式），外观写成局部覆盖——段落写 `textOverride`，没有字符样式的 run 写 `runs[].textOverride`，对象的 CSS 盒子外观（填充、描边、圆角）并进 `visualStyle` 编译成 `styleOverride`。多个未声明样式的对象共用的合成样式照旧建成样式（相同外观归并）；原件本来就有的样式同名保留。表样式「默认表格」是刻意保留的兜底。判定集中在 `src/style-synthesis/local-formatting.js`。
+
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
 
 样式定义与合成样式在往返之间必须稳定（09-26 往返验收）：
