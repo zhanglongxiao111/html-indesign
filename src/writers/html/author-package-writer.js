@@ -6,14 +6,18 @@ const {
   HTML_DATA_ID_ATTRIBUTES,
 } = require('../../protocol');
 const { writeAuthorCssFiles } = require('./author-css-writer');
+const { deckPageBackground, pageBackgroundOverride } = require('./author-page-background');
 const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
 const { pageItemsToAuthorHtml } = require('./author-html-tree');
+const { authorPageStyleVarPairs } = require('./author-reverse-geometry');
 const { collectSemanticCandidates } = require('./semantic-candidates');
 const {
+  layerTokensByDisplayName,
   loadProjectSemanticPreset,
   loadStandardSemanticPreset,
+  registerObservedSemanticTokens,
 } = require('../../semantic-preset');
 const { isUsefulSemantic } = require('./author-render-utils');
 const {
@@ -27,6 +31,10 @@ const { boundsIntersectPage } = require('../../shared/geometry');
 const { compositeFontsConfig } = require('../../semantic-model/composite-fonts');
 
 const SEMANTIC_ATTR = htmlWriteAttrFromRegistry('items[].semantic');
+// 反向导出需要登记新 token、而源码包又没有项目语义库时，包内语义库写在这里。
+const PACKAGE_SEMANTIC_PRESET_FILE = 'semantic-preset.json';
+// 与 resolveSemanticPreset 的缺省一致：config 没有 profile 时 lint / compile 用这份标准库。
+const DEFAULT_SEMANTIC_PROFILE = 'architecture-report';
 
 function writeReverseAuthorPackage(model, options = {}) {
   if (!model || model.kind !== 'DocumentModel') {
@@ -55,11 +63,15 @@ function writeReverseAuthorPackage(model, options = {}) {
       model.layers || [],
     ),
   }));
+  const sourceCss = planSourceCss(model, { sourceRoot });
+  // 源码样式拷回包里时，有源码节点的对象沿用源码 class 定位；否则外框全部按读回 bounds 兜底。
+  const sourceLayoutCarried = sourceCss.copiedSet.size > 0;
+  // 与 deck.config.json 写出的 unitMode 一致：再次正向构建按它换算表格外框余量。
+  const unitMode = authorUnitMode(model, sourceConfig);
   const generatedCss = writeAuthorCssFiles(
     { ...model, pages: pages.map((page) => page.authorPage) },
-    { mode: options.mode },
+    { mode: options.mode, sourceLayoutCarried, unitMode },
   );
-  const sourceCss = planSourceCss(model, { sourceRoot, generatedCss });
   const styleFiles = authorStyleFiles({ sourceCss, generatedCss, sourceRoot });
   const assetCopy = prepareAuthorAssets(model, {
     outDir,
@@ -75,19 +87,22 @@ function writeReverseAuthorPackage(model, options = {}) {
   };
   const synthesizedStyles = effectiveSynthesizedStyles(model, sourceConfig);
   const authorWarnings = [];
+  const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
+  const vocabulary = packageVocabularyFor(config, sourceConfig, sourceRoot);
   const renderOptions = {
     ...options,
     sourceRoot,
+    sourceLayoutCarried,
+    unitMode,
     preserveTrustedSource: options.preserveTrustedSource !== false && Boolean(sourceRoot),
     assetPathMap: assetCopy.pathMap,
     effectiveParentPageKeys,
     synthesizedStyles,
     styleResidualReport,
     authorWarnings,
+    layerTokenByName: layerTokensByDisplayName(vocabulary.preset),
+    deckPageBackground: deckPageBackground({ pages: pages.map((page) => page.authorPage) }),
   };
-  const config = deckConfigFor({ ...model, parentPages: effectiveParentPages }, pages, styleFiles, sourceConfig);
-  copySourceSemanticPreset(sourceConfig, sourceRoot, outDir);
-  fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
   for (const [relativePath, css] of Object.entries(generatedCss)) {
     if (sourceCss.copiedSet.has(slash(relativePath))) continue;
@@ -97,12 +112,15 @@ function writeReverseAuthorPackage(model, options = {}) {
   for (const page of pages) {
     writeText(outDir, page.file, pageHtml(page.authorPage, page.file, renderOptions));
   }
+  const packagePreset = writePackageSemanticPreset(vocabulary, pages, outDir, config);
+  fs.writeFileSync(path.join(outDir, 'deck.config.json'), JSON.stringify(config, null, 2), 'utf8');
 
   const report = authoringReport(model, pages, options, {
     assets: assetCopy.report,
     sourceCss: sourceCss.report,
     styleResidual: styleResidualReport,
     warnings: authorWarnings,
+    semanticPreset: packagePreset,
   });
   const semanticCandidates = collectSemanticCandidates(model, semanticPreset);
   fs.writeFileSync(path.join(outDir, 'reports/authoring-report.json'), JSON.stringify(report, null, 2), 'utf8');
@@ -125,7 +143,84 @@ function writeReverseAuthorPackage(model, options = {}) {
     // 原始资源路径（normalizePathKey）到作者 HTML 引用的映射；copy 策略下值是包内相对路径。
     // 反向导出的 content-manifest.json 用它找作者包内的拷贝。
     assetPathMap: assetCopy.pathMap,
+    semanticPreset: packagePreset,
   };
+}
+
+// 作者包的语义词表就是 lint 与 compile 将要用的那一份（resolveSemanticPreset 的同一口径）：
+// 源码包带项目语义库时用它，否则用 config.profile 的标准库（缺省 architecture-report）。
+// 图层反查和包内登记都以它为底。
+function packageVocabularyFor(config, sourceConfig, sourceRoot) {
+  const profile = config.profile || DEFAULT_SEMANTIC_PROFILE;
+  if (sourceConfig && Object.prototype.hasOwnProperty.call(sourceConfig, 'semanticPreset')) {
+    const loaded = loadProjectSemanticPreset(sourceRoot, sourceConfig.semanticPreset);
+    return {
+      base: 'project',
+      relativePath: loaded.relativePath,
+      sourceFile: loaded.filePath,
+      preset: loaded.preset,
+      // 项目语义库的 profile 可以是项目自定义名，没有同名标准库；枚举值的标准口径退回默认标准库。
+      canonicalPreset: standardPresetOrNull(profile) || standardPresetOrNull(DEFAULT_SEMANTIC_PROFILE),
+    };
+  }
+  let canonical;
+  try {
+    canonical = loadStandardSemanticPreset(profile);
+  } catch (error) {
+    throw semanticPresetLoadFailed(profile, error.message, error);
+  }
+  return {
+    base: 'standard',
+    profile,
+    relativePath: PACKAGE_SEMANTIC_PRESET_FILE,
+    sourceFile: null,
+    preset: canonical.preset,
+    canonicalPreset: canonical.preset,
+  };
+}
+
+function standardPresetOrNull(profile) {
+  try {
+    return loadStandardSemanticPreset(profile).preset;
+  } catch (_error) {
+    return null;
+  }
+}
+
+// 写完页面再登记：登记对象就是 lint 会读到的属性值，不必另外推算一遍。
+// 源码包的项目语义库没有新增登记时原样拷贝（保持字节一致）；标准库没有新增登记时不写包内语义库，
+// 作者包继续按 profile 解析标准库。
+function writePackageSemanticPreset(vocabulary, pages, outDir, config) {
+  const pageFiles = pages.map((page) => ({ filePath: path.join(outDir, page.file), relativePath: slash(page.file) }));
+  const registered = registerObservedSemanticTokens({
+    preset: vocabulary.preset,
+    canonicalPreset: vocabulary.canonicalPreset,
+    pageFiles,
+  });
+  const summary = {
+    base: vocabulary.base,
+    ...(vocabulary.profile ? { profile: vocabulary.profile } : {}),
+    path: null,
+    registered: registered.registrations,
+    unresolved: registered.unresolved,
+  };
+  // unresolved 只记进 authoring-report.json：这些 token 由 lint 以 SEMANTIC_TOKEN_UNKNOWN 报出，
+  // 那里带词表和修法，这里不再重复一条 warning。
+  if (!registered.registrations.length && vocabulary.base === 'standard') return summary;
+  const target = path.resolve(outDir, vocabulary.relativePath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  if (registered.registrations.length) {
+    fs.writeFileSync(target, `${JSON.stringify(registered.preset, null, 2)}\n`, 'utf8');
+  } else if (path.resolve(vocabulary.sourceFile) !== target) {
+    fs.copyFileSync(vocabulary.sourceFile, target);
+  }
+  config.semanticPreset = vocabulary.relativePath;
+  summary.path = vocabulary.relativePath;
+  return summary;
+}
+
+function authorUnitMode(model, sourceConfig) {
+  return sourceConfig && sourceConfig.unitMode || model.unitMode || 'presentation';
 }
 
 function effectiveSynthesizedStyles(model, sourceConfig) {
@@ -220,7 +315,7 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     id,
     title,
     profile: hasSourceProfile ? sourceConfig.profile : hasPackageProfile ? sourcePackage.profile : model.profile || null,
-    unitMode: sourceConfig && sourceConfig.unitMode || model.unitMode || 'presentation',
+    unitMode: authorUnitMode(model, sourceConfig),
     targetSize: sourceConfig && sourceConfig.targetSize || 'source',
     entry: sourceConfig && sourceConfig.entry || sourcePackage.entry || 'deck.html',
     styles: styleFiles,
@@ -251,16 +346,6 @@ function deckConfigFor(model, pages, styleFiles, sourceConfig = null) {
     config.semanticPreset = sourceConfig.semanticPreset;
   }
   return config;
-}
-
-function copySourceSemanticPreset(sourceConfig, sourceRoot, outDir) {
-  if (!sourceConfig || !Object.prototype.hasOwnProperty.call(sourceConfig, 'semanticPreset')) return;
-  const loaded = loadProjectSemanticPreset(sourceRoot, sourceConfig.semanticPreset);
-  const target = path.resolve(outDir, loaded.relativePath);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  if (path.resolve(loaded.filePath) !== target) {
-    fs.copyFileSync(loaded.filePath, target);
-  }
 }
 
 function layersConfigFor(layers = []) {
@@ -554,7 +639,7 @@ function parentPageItemForPage(item, parentPage, page, index) {
 }
 
 function pageHtml(page, sourceFile, options) {
-  const attrs = sourcePageAttrs(page, sourceFile, options);
+  const attrs = sourcePageAttrs(withObservedPageContract(page, options), sourceFile, options);
   const items = pageItemsToAuthorHtml(page, options);
   return [`<section ${attrs}>`, indent(items, 2), '</section>', ''].join('\n');
 }
@@ -582,7 +667,9 @@ function sourcePageAttrs(page, sourceFile, options) {
   if (!attrs[HTML_DATA_ID_ATTRIBUTES.GUIDES]) {
     const guidesAttr = pageGuidesAttrValue(page.guides);
     if (guidesAttr) attrs[HTML_DATA_ID_ATTRIBUTES.GUIDES] = guidesAttr;
+    else if (page.writeEmptyGuides) attrs[HTML_DATA_ID_ATTRIBUTES.GUIDES] = '[]';
   }
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.LAYOUT] && page.contractLayout) attrs[HTML_DATA_ID_ATTRIBUTES.LAYOUT] = page.contractLayout;
   if (options.mode === 'observation') attrs[HTML_DATA_ID_ATTRIBUTES.OBSERVED] = 'true';
   if (options.mode && options.mode !== 'structured') attrs[HTML_DATA_ID_ATTRIBUTES.REVERSE_MODE] = options.mode;
   if (page.grid) {
@@ -593,59 +680,46 @@ function sourcePageAttrs(page, sourceFile, options) {
   }
   const style = preserveTrustedSource
     ? attrs.style || ''
-    : pageStyleVars(page);
+    : pageStyleVars(page, options);
   if (style) attrs.style = style;
   return attrsToHtml(orderPageAttrs(attrs));
+}
+
+// 人做的 INDD 没有页面标签，observation / inferred 回读的页面缺 data-id-layout 与 data-id-grid，
+// strict lint 报 AUTHOR_PAGE_CONTRACT_MISSING（#32）。这里补一份明确的中性契约，而不是从视觉推断：
+// - data-id-layout="observed"：尚未语义化的自由版面，Agent 语义化时换成真正的页面结构模板 token；
+// - data-id-grid="1x1"：只有版心一个格（边距已由 data-id-margin 读回；快照不含 InDesign 分栏），
+//   和 InDesign 新建页面的单栏默认一致；
+// - data-id-guides 固定写出（没有参考线时写 []）：声明网格后正向构建不再生成网格参考线，
+//   往返后页面参考线仍是 INDD 原有的那一组。
+// 观察对象的网格偏移在 lintProfile reverse-export 下降为提示，这份网格不会带来成批的 GRID_ALIGNMENT_OFF。
+const OBSERVED_PAGE_LAYOUT = 'observed';
+const OBSERVED_PAGE_GRID = Object.freeze({ columns: 1, rows: 1 });
+
+function withObservedPageContract(page, options = {}) {
+  if (!options.mode || options.mode === 'structured') return page;
+  const sourceAttrs = page.sourceNode && page.sourceNode.attributes || {};
+  const hasLayout = Boolean(sourceAttrs[HTML_DATA_ID_ATTRIBUTES.LAYOUT]);
+  const hasGrid = Boolean(sourceAttrs[HTML_DATA_ID_ATTRIBUTES.GRID] || page.grid);
+  if (hasLayout && hasGrid) return page;
+  return {
+    ...page,
+    // 页面标签里读回了布局 token 就写它；都没有才写中性值。
+    ...(hasLayout ? {} : { contractLayout: page.layout || OBSERVED_PAGE_LAYOUT }),
+    ...(hasGrid ? {} : { grid: { ...OBSERVED_PAGE_GRID }, writeEmptyGuides: true }),
+  };
 }
 
 function shouldWritePageParentAttrs(page, options = {}) {
   return pageHasEffectiveParentPage(page, options.effectiveParentPageKeys);
 }
 
-function pageStyleVars(page) {
+function pageStyleVars(page, options = {}) {
   const pairs = [];
-  const attrs = (page.sourceNode && page.sourceNode.attributes) || {};
-  if (page.grid) {
-    pairs.push(['--id-grid-columns', page.grid.columns]);
-    pairs.push(['--id-grid-rows', page.grid.rows]);
-    if (page.grid.columnGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER]) {
-      pairs.push(['--id-column-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.COLUMN_GUTTER] || `${page.grid.columnGutter}px`]);
-    }
-    if (page.grid.rowGutter != null || attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER]) {
-      pairs.push(['--id-row-gutter', attrs[HTML_DATA_ID_ATTRIBUTES.ROW_GUTTER] || `${page.grid.rowGutter}px`]);
-    }
-    if (page.grid.baseline != null || attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE]) {
-      pairs.push(['--id-baseline', attrs[HTML_DATA_ID_ATTRIBUTES.BASELINE] || `${page.grid.baseline}px`]);
-    }
-  }
-  const marginTokens = marginTokensFor(attrs[HTML_DATA_ID_ATTRIBUTES.MARGIN]);
-  if (marginTokens) {
-    pairs.push(['--id-margin-top', marginTokens.top]);
-    pairs.push(['--id-margin-right', marginTokens.right]);
-    pairs.push(['--id-margin-bottom', marginTokens.bottom]);
-    pairs.push(['--id-margin-left', marginTokens.left]);
-  } else if (page.margins) {
-    pairs.push(['--id-margin-top', `${page.margins.top}px`]);
-    pairs.push(['--id-margin-right', `${page.margins.right}px`]);
-    pairs.push(['--id-margin-bottom', `${page.margins.bottom}px`]);
-    pairs.push(['--id-margin-left', `${page.margins.left}px`]);
-  }
+  const background = pageBackgroundOverride(page, options.deckPageBackground);
+  if (background) pairs.push(['--id-page-bg', background]);
+  for (const pair of authorPageStyleVarPairs(page)) pairs.push(pair);
   return pairs.map(([name, value]) => `${name}:${value}`).join(';');
-}
-
-function marginTokensFor(value) {
-  const tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
-  if (!tokens.length) return null;
-  if (tokens.length === 1) {
-    return { top: tokens[0], right: tokens[0], bottom: tokens[0], left: tokens[0] };
-  }
-  if (tokens.length === 2) {
-    return { top: tokens[0], right: tokens[1], bottom: tokens[0], left: tokens[1] };
-  }
-  if (tokens.length === 3) {
-    return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[1] };
-  }
-  return { top: tokens[0], right: tokens[1], bottom: tokens[2], left: tokens[3] };
 }
 
 function pageMarginAttrValue(margins) {
@@ -693,6 +767,8 @@ function authoringReport(model, pages, options, extras = {}) {
     labels: labelReport(model),
     // 作者 HTML 写出时的降级与兜底记账（如 REVERSE_AUTHOR_ITEM_DROPPED），反向导出汇总进 report.json。
     warnings: extras.warnings || [],
+    // 包内语义库：以哪份词表为底、登记了哪些读回的样式/图层名、哪些 token 无法登记（#32）。
+    ...(extras.semanticPreset ? { semanticPreset: extras.semanticPreset } : {}),
   };
 }
 

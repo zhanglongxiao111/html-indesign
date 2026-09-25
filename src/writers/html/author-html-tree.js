@@ -1,4 +1,4 @@
-const { isVoidTag } = require('./author-attribute-writer');
+const { attrsToHtml, isVoidTag } = require('./author-attribute-writer');
 const { buildAuthorTree } = require('./author-tree-builder');
 const { tagForAsset } = require('./author-asset-attrs');
 const {
@@ -7,10 +7,16 @@ const {
   shouldRenderAssetFigureNode,
   shouldRenderPlacedAssetFrame,
 } = require('./author-asset-renderer');
-const { attrsForItem, sourceNodeForItem } = require('./author-node-attrs');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const {
+  attrsForItem,
+  shouldPreserveTrustedSource,
+  sourceNodeForItem,
+  tableFrameWrapperFor,
+} = require('./author-node-attrs');
 const { isPdfObjectItem, renderPdfObjectNode } = require('./author-pdf-renderer');
-const { ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
-const { indent, safeTag, tagForRole } = require('./author-render-utils');
+const { isParagraphFrameItem, ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
+const { indent, orderAttrs, safeTag, tagForRole } = require('./author-render-utils');
 const { AUTHOR_HTML_SAFE_INLINE_TAGS } = require('./safe-tags');
 const {
   renderVectorContainerNode,
@@ -19,17 +25,25 @@ const {
   vectorContainerIdsForPage,
   vectorNodeHasAuthorContent,
 } = require('./author-vector-renderer');
+const { reverseGeometryPlanForPage } = require('./author-reverse-geometry');
 const { normalizeLineEndings } = require('../../shared/text');
 
 const AUTHOR_ITEM_DROPPED = 'REVERSE_AUTHOR_ITEM_DROPPED';
+
+function reverseGeometryPageOptions(plan) {
+  return { reverseBoxes: plan.boxes, foldedBordersByContainer: plan.foldedBordersByContainer };
+}
 
 // options.authorWarnings 为数组时收集写出 warning（带 pageId），由作者包写出器汇总进 report.json。
 function pageItemsToAuthorHtml(page, options = {}) {
   const tree = buildAuthorTree(page);
   const state = { rendered: new Set(), warnings: [] };
+  const vectorContainerIds = vectorContainerIdsForPage(page, options);
   const pageOptions = {
     ...options,
-    vectorContainerIds: vectorContainerIdsForPage(page, options),
+    vectorContainerIds,
+    // 与 reverse-overrides.css 同一份外框规划：哪些对象按读回 bounds 兜底、哪些退出网格、哪些边框对象折回容器。
+    ...reverseGeometryPageOptions(reverseGeometryPlanForPage(page, { ...options, vectorContainerIds })),
     authorRenderState: state,
   };
   const html = tree.map((node) => renderNode(node, pageOptions, 0)).join('\n');
@@ -110,7 +124,33 @@ function renderNode(node, options, depth) {
   if (isPdfObjectItem(item, sourceNode, tag)) {
     return renderPdfObjectNode(node, options, depth, renderNode);
   }
-  const attrs = attrsForItem(item, sourceNode, options);
+  if (tableFrameWrapperFor(item, options) === 'write') {
+    // 表格所在文本框比表格高：文本框写成 data-id-ignore 包裹层，带对象 id 与读回外框（reverse-overrides.css）；
+    // 表格在框内按读回行高排，文本框多出的高度不分摊到行上。
+    const inner = renderElementNode(node, sourceNode, tag, options, depth + 2);
+    return `${indent(depth)}<div ${tableFrameAttrs(item)}>\n${inner}\n${indent(depth)}</div>`;
+  }
+  return renderElementNode(node, sourceNode, tag, options, depth);
+}
+
+function tableFrameAttrs(item) {
+  const attrs = { id: item.id, [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '' };
+  const zIndex = Number(item.zIndex);
+  if (Number.isFinite(zIndex)) attrs.style = `z-index:${Math.round(zIndex * 1000) / 1000}`;
+  return attrsToHtml(orderAttrs(attrs));
+}
+
+function renderElementNode(node, sourceNode, inputTag, options, depth) {
+  const item = node.item;
+  // 多段文本框写成 data-id-role="text" 的 div 容器、每段一个 <p>（段落不能嵌在 p/h*/span 里）。
+  const contentOptions = {
+    ignoreSourceHtml: node.children.length > 0,
+    // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
+    writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
+  };
+  const paragraphFrame = isParagraphFrameItem(item, node.children.length > 0, contentOptions);
+  const tag = paragraphFrame && inputTag !== 'div' ? 'div' : inputTag;
+  const attrs = attrsForItem(item, sourceNode, paragraphFrame ? { ...options, paragraphTextFrame: true } : options);
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
   if (isVoidTag(tag)) return `${indent(depth)}${open}`;
   markRendered(options, item, { companion: true });
@@ -120,8 +160,8 @@ function renderNode(node, options, depth) {
     node.children.forEach((child) => markSubtreeRendered(options, child));
     return `${indent(depth)}${open}${preservedInlineSourceHtml}</${tag}>`;
   }
-  const own = ownContent(item, depth, { ignoreSourceHtml: node.children.length > 0 });
-  if (node.children.length && node.children.every(isInlineNode)) {
+  const own = ownContent(item, depth, { ...contentOptions, paragraphFrame });
+  if (node.children.length && node.children.every((child) => rendersInline(child, options))) {
     const children = node.children.map((child) => renderNode(child, options, 0)).join('');
     return `${indent(depth)}${open}${own}${children}</${tag}>`;
   }
@@ -130,6 +170,18 @@ function renderNode(node, options, depth) {
     return `${indent(depth)}${open}\n${own ? `${indent(depth + 2)}${own}\n` : ''}${children}\n${indent(depth)}</${tag}>`;
   }
   return `${indent(depth)}${open}${own}</${tag}>`;
+}
+
+// 子节点按实际写出的标签判断是否行内：矢量对象不论来源标签（首轮是源码的 span/div，二轮是上一轮
+// 写出的 svg）都写成 <svg>（行内元素），带作者内容的写成容器。按来源标签判断会让同一父节点在
+// 两轮往返之间一次写成行内、一次写成分行，作者包因排版空白抖动。
+function rendersInline(node, options) {
+  const item = node && node.item || {};
+  const sourceNode = sourceNodeForItem(item);
+  if (!item.virtual && shouldRenderVectorSvg(item, sourceNode, options)) {
+    return !vectorNodeHasAuthorContent(node);
+  }
+  return isInlineNode(node);
 }
 
 function isInlineNode(node) {

@@ -19,10 +19,15 @@ function layerForItem(item, options) {
   return mappedLayerName(token, options);
 }
 
+// 作者包 config 声明了图层清单（document.sourcePackage.layers，反向导出按原 INDD 的图层写出）时，
+// 图层清单就是这份声明加上对象实际用到的图层，不再补建词表里的全部标准图层；
+// 没声明图层清单的作者包（正常 HTML 作者包）照旧按词表预建标准图层，供后期编辑使用。
 function collectLayers(pages, options, observedLayers = []) {
   const names = new Map();
   const map = configuredLayerNameMap(options);
+  const declaresLayers = Array.isArray(observedLayers) && observedLayers.length > 0;
   for (const token of ['background', 'image', 'drawing', 'graphics', 'content', 'overlay', 'tables', 'text', 'annotation', 'annotations']) {
+    if (declaresLayers) break;
     if (!map || !Object.prototype.hasOwnProperty.call(map, token) || !map[token]) continue;
     names.set(map[token], names.size);
   }

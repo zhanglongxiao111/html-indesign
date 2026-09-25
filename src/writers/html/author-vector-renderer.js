@@ -13,11 +13,12 @@ const { rewriteResourceAttrs } = require('./author-resource-paths');
 const { ownContent } = require('./author-rich-text-renderer');
 const { buildAuthorTree } = require('./author-tree-builder');
 const { isVectorSvgBoxPaintProperty } = require('../../shared/vector-svg-box-paint');
+const { isIndesignBuiltinStyleName, safeAuthorClassToken } = require('../../shared/style-utils');
 const {
   addObservedLabelAttrs,
   addParentPageAttrs,
   addStyleProtocolAttrs,
-  SOURCE_BOX_PROPERTY_RE,
+  reverseBoxSourceStyle,
   sourceNodeForItem,
   sourceStyleForItem,
 } = require('./author-node-attrs');
@@ -54,7 +55,7 @@ function renderVectorContainerNode(node, options, depth, renderChild) {
   const attrs = vectorContainerAttrsForItem(item, sourceNode, options);
   if (!vectorMatchesBoundsBox(item)) recordShapeApproximated(item, options);
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
-  const own = ownContent(item, depth, { ignoreSourceHtml: true });
+  const own = ownContent(item, depth, { ignoreSourceHtml: true, writeRunStyles: true });
   const children = node.children.map((child) => renderChild(child, options, depth + 2)).join('\n');
   if (!children) return `${indent(depth)}${open}${own}</${tag}>`;
   return `${indent(depth)}${open}\n${own ? `${indent(depth + 2)}${own}\n` : ''}${children}\n${indent(depth)}</${tag}>`;
@@ -97,6 +98,7 @@ function vectorContainerTag(item, sourceNode) {
 
 function vectorContainerAttrsForItem(item, sourceNode, options) {
   const { attrs, classes, sourceStyle } = vectorIdentityAttrs(item, sourceNode, options);
+  addCompanionParagraphStyle(attrs, classes, item);
   delete attrs[HTML_DATA_ID_ATTRIBUTES.VECTOR];
   delete attrs.xmlns;
   if (!hasDataIdObject(attrs) && item.role !== 'text' && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
@@ -104,7 +106,7 @@ function vectorContainerAttrsForItem(item, sourceNode, options) {
   }
   const style = mergeCss([
     sourceStyle,
-    visualStyleCss(item.visualStyle),
+    visualStyleCss(item.visualStyle, { foldedBorders: foldedBordersFor(item, options) }),
     companionTextCss(item),
     'overflow:visible',
     zIndexStyle(item.zIndex),
@@ -112,6 +114,24 @@ function vectorContainerAttrsForItem(item, sourceNode, options) {
   if (style) attrs.style = style;
   if (classes.size) attrs.class = Array.from(classes).join(' ');
   return attrsToHtml(orderAttrs(attrs));
+}
+
+// 伴生文字折回容器后，容器自身就是这段文字的载体：伴生文本框的段落样式以样式类（pstyle-<token>）
+// 和显示名（data-id-paragraph-style-name）写到容器上，再次正向构建时伴生文本框拿回同名段落样式，
+// 而不是把容器上合成对象样式的名字（data-id-style-name）当成段落样式名（#34 往返：标注文字 → 对象样式-09）。
+// 不写 data-id-paragraph-style：声明段落样式 token 的元素会被当成文本框，容器就不再是带伴生文字的形状。
+function addCompanionParagraphStyle(attrs, classes, item) {
+  const refs = item && item.authorTextCompanion && item.authorTextCompanion.styleRefs || {};
+  const token = refs.paragraphStyle;
+  if (!token || isIndesignBuiltinStyleName(token)) return;
+  classes.add(`pstyle-${safeAuthorClassToken(token)}`);
+  const name = refs.paragraphStyleDisplayName || token;
+  if (!attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE_NAME]) attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_STYLE_NAME] = name;
+}
+
+function foldedBordersFor(item, options) {
+  const byContainer = options && options.foldedBordersByContainer;
+  return byContainer && item ? byContainer.get(item.id) || null : null;
 }
 
 // 伴生文字（正向构建从带文字的形状拆出的 <id>-text 文本框）折回容器自身文字：
@@ -190,7 +210,9 @@ function vectorIdentityAttrs(item, sourceNode, options) {
   if (options.mode === 'observation') attrs[HTML_DATA_ID_ATTRIBUTES.OBJECT] = '';
   if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   addObservedLabelAttrs(attrs, item);
-  const sourceStyle = bakedVectorSourceStyle(sourceStyleForItem(item, sourceNode, classes), item);
+  const sourceStyle = withoutBakedTransforms(
+    reverseBoxSourceStyle(item, classes, sourceStyleForItem(item, sourceNode, classes), options),
+  );
   return { attrs, classes, sourceStyle };
 }
 
@@ -217,22 +239,16 @@ function rendersBakedVectorSvg(item, options = {}) {
   return shouldRenderVectorSvg(item, sourceNodeForItem(item), options);
 }
 
-// 与 reverse-overrides.css 写兜底几何的条件一致：有读回 bounds、不走作者网格。
-function bakedVectorBoxFromBounds(item) {
-  return Boolean(item && item.bounds) && !(item.layout && item.layout.grid);
-}
-
-function bakedVectorSourceStyle(sourceStyle, item) {
-  const dropBox = bakedVectorBoxFromBounds(item);
+// 源码里的定位、尺寸、外边距由外框规划剥掉（author-node-attrs.reverseBoxSourceStyle）；
+// 变换已烘焙进 path，无论外框怎么写都不能留在 svg 或容器上。
+function withoutBakedTransforms(sourceStyle) {
   return String(sourceStyle || '')
     .split(';')
     .map((declaration) => declaration.trim())
     .filter((declaration) => {
       const index = declaration.indexOf(':');
       if (index <= 0) return false;
-      const property = declaration.slice(0, index).trim().toLowerCase();
-      if (BAKED_VECTOR_TRANSFORM_PROPERTIES.has(property)) return false;
-      return !(dropBox && SOURCE_BOX_PROPERTY_RE.test(property));
+      return !BAKED_VECTOR_TRANSFORM_PROPERTIES.has(declaration.slice(0, index).trim().toLowerCase());
     })
     .join(';');
 }

@@ -841,6 +841,61 @@ test('validateAuthoringRules rejects graphic protocol fields on a container with
     && entry.itemId === 'graphic-container'), true);
 });
 
+function layeredPdfSnapshot(attributes) {
+  return snapshotWithPage({
+    attributes: {
+      'data-id-margin': '10mm',
+      'data-id-grid': '4x2',
+    },
+    items: [{
+      id: 'drawing-pdf-frame',
+      role: ITEM_ROLE.GRAPHIC,
+      tagName: 'img',
+      classList: ['drawing'],
+      attributes: {
+        'data-id-role': ITEM_ROLE.GRAPHIC,
+        src: './previews/drawing.png',
+        'data-id-asset-path': './assets/drawing.pdf',
+        ...attributes,
+      },
+      boundsMm: { x: 10, y: 10, width: 25, height: 30 },
+    }],
+  });
+}
+
+test('validateAuthoringRules accepts JSON array layer lists whose names contain "|" (#33)', () => {
+  const result = validateAuthoringRules(layeredPdfSnapshot({
+    'data-id-visible-layers': '["合并底图|PM-隔断","A, \\"B\\""]',
+    'data-id-hidden-layers': '[]',
+  }), { strict: true });
+
+  assert.equal(result.valid, true);
+  assert.equal([...result.errors, ...result.warnings].some((entry) => /^ASSET_LAYER_LIST_/.test(entry.code)), false);
+});
+
+test('validateAuthoringRules warns on "|" delimited layer lists and suggests the JSON form (#33)', () => {
+  const result = validateAuthoringRules(layeredPdfSnapshot({
+    'data-id-visible-layers': '结构|标注',
+  }));
+  const warning = result.warnings.find((entry) => entry.code === 'ASSET_LAYER_LIST_DELIMITED');
+
+  assert.ok(warning);
+  assert.equal(warning.itemId, 'drawing-pdf-frame');
+  assert.equal(warning.attribute, 'data-id-visible-layers');
+  assert.match(warning.suggestedFix, /\["结构","标注"\]/);
+  assert.equal(validateAuthoringRules(layeredPdfSnapshot({ 'data-id-visible-layers': '结构|标注' }), { strict: true }).valid, false);
+});
+
+test('validateAuthoringRules rejects layer lists that start with "[" but are not JSON string arrays (#33)', () => {
+  const result = validateAuthoringRules(layeredPdfSnapshot({
+    'data-id-hidden-layers': '[草图]|标注',
+  }));
+
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.some((entry) => entry.code === 'ASSET_LAYER_LIST_INVALID'
+    && entry.attribute === 'data-id-hidden-layers'), true);
+});
+
 test('validateAuthoringRules accepts graphic protocol fields on an image with its own source', () => {
   const snapshot = snapshotWithPage({
     attributes: {

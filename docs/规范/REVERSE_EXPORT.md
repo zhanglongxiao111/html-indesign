@@ -157,7 +157,26 @@ reverse-export-<timestamp>/
 
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
 
-`observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径仍沿用源码几何与变换，不会叠加读回 bounds，不存在二次变换。
+#### 4.1.0 作者包必须直接通过 strict lint（#32）
+
+「反向导出 → 改作者包 → 正向构建」要求反向写出的作者包不经人工修改就能通过 `html.build_indesign` 固定使用的 strict lint。写出器按以下规则收口：
+
+- **包内语义库。** 作者包的词表就是 lint / compile 将要解析的那一份：源码包带项目语义库时用它，否则用 `config.profile` 的标准库（缺省 `architecture-report`）。写完页面后，把页面上所有不在词表里的样式与图层 token（`data-id-paragraph-style`、`-character-style`、`-object-style`、`-frame-style`、`-table-style`、`-cell-style`、`-layer`）按「token → 同元素上 `*-style-name` 读回的 InDesign 名（没有时即 token 本身）」登记进包内语义库，`deck.config.json` 的 `semanticPreset` 指向它（源码包有项目语义库时沿用其相对路径，否则为 `semantic-preset.json`）。这些都是 INDD 里真实存在的资源名（正向按样式签名派生的变体如 `色块-08371558`、作者未登记的自动对象样式、人做 INDD 的 `渐变段落`、`图层 1`），登记不改变语义；正向构建再按同一张表写回同名样式和图层。没有任何新登记且没有源码项目语义库时不写包内语义库。
+- **不自动登记的。** `data-id-semantic` 是语义白名单，绝不自动登记；`data-id-asset-kind`、`data-id-fit`、`data-id-crop` 三类枚举只接受标准语义库里已有的值（旧版标准库拷贝出的项目语义库缺 `none`、`manual` 时补上）。无法登记的 token 记进 `reports/authoring-report.json` 的 `semanticPreset.unresolved`，由 lint 以 `SEMANTIC_TOKEN_UNKNOWN` 报出。
+- **图层写语义键。** InDesign 图层名按词表 `styleNameMap.layers` 反查成语义键（`文字` → `text`）；反查不到的人做图层名原样写，并由上一条登记为「图层名 → 同名图层」，往返后对象仍落在同名图层上。`data-id-layer` 等 `data-id-*` 都是单值字段，带空格的图层名（`图层 1`）是一个 token，不得按空白拆开。
+- **观察页面契约。** `observation` / `inferred` 模式下页面根缺 `data-id-layout` 或 `data-id-grid` 时，补一份明确的中性契约，不从视觉推断：`data-id-layout` 取页面标签读回的布局 token，没有时写 `observed`（尚未语义化的自由版面，Agent 语义化时替换成真正的页面结构模板）；`data-id-grid="1x1"`（只有版心一格，边距已由 `data-id-margin` 读回，快照不含 InDesign 分栏）；同时固定写出 `data-id-guides`（没有参考线时写 `[]`），声明网格后正向构建不会额外生成网格参考线。人做 INDD 的观察对象不会压在这份网格上，应以 `lintProfile: "reverse-export"` 跑 lint / build，观察对象的 `GRID_ALIGNMENT_OFF` 降为提示。
+- 置入图框写成 `figure` 时，`reverse-overrides.css` 用零特异度规则清掉浏览器默认的 figure 外边距，带 `sourceRoot` 换成源码 `layout.css` 时图框也不会错位。
+
+作者包里每个对象的外框以 InDesign 读回 bounds 为准，层级以读回 z 序为准；外框写法由 `src/writers/html/author-reverse-geometry.js` 统一规划，`reverse-overrides.css` 与页面 HTML 共用同一份结果：
+
+- 源码样式随包（带 `sourceRoot` 且源码 CSS 已拷回）时，有源码节点的对象沿用源码 class 定位，不写兜底几何。否则源码 class 上的定位、尺寸和 z-index 都不在包里（满版图、靠 class 绝对定位的页码等），这些对象一律按读回 bounds 写兜底绝对几何并附 `margin:0`，源码 inline style 里的定位、尺寸、外边距剥掉；保留源码 inline style 的对象另按读回 z 序补写 `z-index`（`preserveTrustedSource` 的可信源码不补）。
+- 网格对象先按页面网格变量（与作者 `.page` 规则同构）算出网格区域。区域的左、上、宽与读回 bounds 一致（容差 0.5px）时保留网格放置，Agent 改 `--grid-*` 即可挪动；只是高度不同（文字框、表格按内容高）时写 `align-self:start` 并钉住读回高度，不再被网格行拉高。左、上、宽对不上时对象退出网格：去掉 `grid-item` 类和 `--grid-*` 变量，按读回 bounds 绝对定位——不改写网格变量，因为凑到另一组格子上同样对不上读回 bounds。源码把读回对象包在同 id 的网格包裹层里时（如 PDF 图框 `div.drawing-frame.grid-item > object`），网格放置取包裹层上的变量。
+- 表格外框是表格所在的文本框，表格本身的高度是读回行高之和。读回行高齐全时逐行写成 `<tr style="height:…">`（CSS 行高与 InDesign 行高都是「至少」这么高），表格盒子高取行高之和，文本框多出的高度不分摊到行上。正向构建建的表格外框高 = 行高之和 + 余量（`src/shared/geometry.js` 的 `tableFrameSlack`），再次正向构建会把余量加回；文本框比「行高之和 + 余量」还高时（人工 INDD 常见），文本框写成包着表格的 `data-id-ignore` 包裹层：包裹层带对象 id、读回外框和 z-index，表格不带 id、占满框宽；这类表格一律按读回 bounds 绝对定位（网格放置表达不了「框比表格高」）。上一轮已写出同 id 包裹层的表格原样沿用，不再套第二层。视觉参照页 `deck.visual.html` 的表格盒子按同一规则取行高之和或文本框外框。
+- 正向构建对应两条规则：表格放在 `data-id-ignore` 包裹层里时，外框取包裹层（与置入图框同一机制，`browser-element-capture.visualFrameFor`）；`<tr>` 声明了高度时按声明写 InDesign 行高，外框仍按单元格几何与内容估算（含原生行余量）留足高度，防止 InDesign 行撑高后表格溢出。
+- 网格对象不是子对象的定位参照（正向构建对观察态对象只累加绝对定位祖先的 `left/top`），子对象按页面坐标定位；只含置入内容图的网格图框另由 `layout.css` 设为 `position:relative`，让内容图在框内偏移。
+- 段落样式 class 上的段前距（`margin-top` 等）描述框内段落间距，InDesign 在框顶不加段前距，不能把对象外框挪离读回 bounds：作者包兜底几何附 `margin:0`，视觉参照页用 `.page .id-object { margin: 0; }` 压过 `.pstyle-*`。
+
+`observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径不剥变换；它们的外框按上面的外框规划处理。
 
 `<svg>` 里只能放路径。读回带矢量路径、同时挂着作者内容（子对象、折回的伴生文字 `<id>-text` 或自身文字）的对象不得写成 `<svg>`，改写成普通 HTML 容器（源码标签，`svg`/空元素退回 `div`）：id、class、`data-id-object` 等观察态标记和对象样式属性落在容器上，不带 `data-id-vector`；外框沿用上段已烘焙矢量的剥离与兜底规则；填充、描边、圆角、透明度按读回 `visualStyle` 内联成 CSS 盒子，正向构建读的也是它。容器的直接子对象一律按读回 bounds 写兜底几何并附 `margin:0`，源码 style 里的定位、尺寸和外边距剥掉：非网格容器相对容器内边距盒定位（扣掉描边写成的 border 宽），网格容器不是定位参照，子对象按页面坐标定位。折回的伴生文字相对容器的偏移写成 `padding`，字号、行距等按伴生文字读回写出。路径不是贴合读回 bounds 的直角矩形时（椭圆、多边形、烘焙了旋转的矩形等），CSS 盒子只能近似，记 `REVERSE_VECTOR_CONTAINER_SHAPE_APPROXIMATED`。
 
@@ -165,7 +184,36 @@ reverse-export-<timestamp>/
 
 写成 `<svg>` 的矢量对象只由 `path` 的 `fill`、`stroke`、`stroke-width` 等表达填充和描边，`<svg>` 盒子本身不得再画边框、底色、内边距或投影：合成样式 `synth-*`、对象样式 class 和源码 class 里的 `border`、`background`、`padding`、`box-shadow` 落到 svg 上会在外围多画一个矩形框或底色，`border`/`padding` 还会把 `viewBox` 内容区往里缩，斜线端点和角度随之偏移。写出侧因此在源码 inline style 里剥掉这些属性（`border-radius` 不画东西，保留作对象样式圆角），作者包 `reverse-overrides.css` 与视觉参照页 `deck.visual.html` 都固定写一条 `svg.id-object[data-id-vector] { border:0; background:none; padding:0; box-shadow:none; }`，已烘焙的源码矢量在自身兜底几何里再附同样的归零声明。`synth-*` 和对象样式规则本身保持完整，因为同一 token 可能还被非 svg 对象共用。正向回编时，描边仍由 svg 上的 `data-id-stroke-*` 协议属性和 `path` 的描边读回；带同一标记（`id-object` class + `data-id-vector`）的 svg 盒子没有底色时，对象样式填充取 `path` 的填充（多个 path 填充不一致时不归纳，只保留逐 path 的局部填充）。作者手写、不带该标记的 svg 不走这条路，对象样式只看盒子本身。上述归零只针对写成 `<svg>` 的对象；前面所述的矢量容器画的正是读回的填充和描边，不做归零。属性判定、归零规则和标记判定集中在 `src/shared/vector-svg-box-paint.js`。
 
+正向构建为 CSS 生成的辅助对象，反向写作者 HTML 时按正向规则的反函数折回，不能只跳过（#34）：
+
+- 边框对象：容器 CSS 四边 border 不等宽时，正向把每条可见边做成贴在容器内侧、以该边颜色填充的 `<容器 id>-border-<side>` 矩形。反向只在容器存在、边框条贴齐容器对应边、自身无描边且不透明时折回，容器写 `border-<side>:<宽>px solid <色>`（无边框对象的边写 0），再次正向构建会生成同样的边框对象；对不上、又不带正向生成标记的同名对象按普通对象写出。判定集中在 `src/writers/html/author-border-fold.js`，外框规划 `author-reverse-geometry.js` 与容器子对象扣边宽都用同一份折回结果。视觉审计只在作者 HTML 容器这一边的计算 border 与边框条厚度一致时，才把边框条记为 `AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED`。
+- 页面底色：正向把 `section.page` 的 `background-color` 做成生成的背景母版（标签 `semantic: "page-background"`、`generated: true`，内含 `<母版 id>-fill` 满版填充）。反向从页面套用的这类母版读回 `pages[].visualStyle.fillColor`（及不透明度），作者包多数页面共用的底色写进 `tokens.css` 的 `--id-page-bg`，其余页面在 `section` 上覆盖 `--id-page-bg`。页面仍按页面标签写回基础母版。
+
+读回外观在没有源码 CSS 可拷时（`observation` 模式不保留可信源码）也要写回作者 HTML：对象填充不透明度写成 `rgba()` 背景，描边类型「虚线」「点线」写成 `dashed`/`dotted`；字符级 run 外观与所在段落（`textStyle`）不同的部分（字体、字重、字形、字号、颜色、字距、大小写）写在 run 元素的内联 `style` 上，来源 HTML 片段按 run 的 `id` 合并 `style`，定位不到时改由 run 重新渲染；表格单元格的填充、文字外观、内边距和各边描边写在单元格内联 `style` 上（来源 HTML 表格按单元格顺序合并），作者包 `layout.css` 让表格使用合并边框模型。大小写读回为 `textStyle.capitalization`（`allCaps`/`smallCaps`），写成 `text-transform:uppercase`/`font-variant-caps:small-caps`；正向只把 `uppercase` 读回为全部大写。渐变色板按首个色标近似成纯色写出（`REVERSE_GRADIENT_APPROXIMATED`），渐变本身不保留。
+
+人工 INDD 往返还要守住以下几条（09-26 gradient-sample 真机验收）：
+
+- **淡色与颜色读回。** 色调色板（Tint，如 `G-Red 40%`）的 `colorValue` 是基色、`tintValue` 是色调百分比，读回颜色取等效色（CMYK/Lab 分量按色调缩放，RGB 向白色混合）；CMYK / Lab 分量交给 InDesign 自己的色彩管理（文档的 CMYK / RGB 配置文件）换成 RGB，不用设备公式（设备公式把 CMYK 0/100/100/0 当成纯 `#ff0000`、把它的 40% 淡色算成偏粉的 `#ff9999`）：读回脚本在一个撤销步骤里临时建一个印刷色、改成 RGB 读值、删掉，随即撤销这一步，用户文档不留对象、修改状态不变，同一颜色值只转换一次；转换失败记 `REVERSE_COLOR_PROFILE_FAILED` 并退回设备公式；对象、字符、段落、样式、单元格及单元格各边自身的局部色调（`fillTint`、`strokeTint`、`*EdgeStrokeTint`，0–100，-1/100 表示没有）按基色的绝对色调计算，优先于色板色调。等效色写成普通颜色，正向按颜色值建色板（色板名不参与往返，淡色色板不会以同名 tint 重建，视觉颜色一致）。读不到色调值记 `REVERSE_TINT_UNREADABLE`（按基色全强度写），混合油墨、未知色彩空间等无法折成 RGB 的颜色记 `REVERSE_COLOR_UNRESOLVED`，不再静默丢色。颜色读取集中在 `_indesign_scripts/lib/hi_reverse_colors.jsxinc`。
+- **文字描边。** 字符、段落及段落 / 字符样式的描边（`strokeColor` + `strokeWeight`，色调同上，渐变描边按首个色标近似并记 `REVERSE_GRADIENT_APPROXIMATED`）读回为 `textStyle.strokeColor/strokeWeight`，写成 `-webkit-text-stroke`；正向从 `-webkit-text-stroke-width/-color` 读回成段落 / 字符样式或局部覆盖的描边。
+- **段落边界。** InDesign 段落结束符（`\r`）分隔的多段文本框写成带 `data-id-role="text"` 的 `div` 容器，每段一个 `<p>`，段内强制换行（`\n`）仍写 `<br>`；正向把「`data-id-role="text"` 且子元素全是只含内联内容的 `p`/`h1`–`h6`」的容器读成一个文本框，段间写 `\r`，子段落不再单独成为对象。只有来源 HTML 能原样保留（run 外观可按 `id` 合并）的对象才保留来源片段；带构建标签、但来源 HTML 保不住的文本框（第二代起的人工 INDD 回读，run 没有 `id`）与无标签文本框走同一条分段写出，不得把段落结束符写成 `<br>`（09-27 第三代合段）。
+- **段落对齐。** `justify` 是「左对齐两端」（LEFT_JUSTIFIED，CSS `text-align:justify` 末行靠起始边）；「全部两端对齐 / 居中对齐两端 / 右对齐两端」读回为 `justify-all` / `justify-center` / `justify-right`，写成 `text-align:justify` 加 `text-align-last:justify|center|right`，正向按同一对 CSS 读回。正向不再把 `text-align:justify` 建成全部两端对齐。
+- **列宽。** 读回列宽写成 `<colgroup><col style="width:…px">`；正向在每列都声明了宽度且列数一致时按声明建列（`items[].table.sourceColumnWidths`），不再从浏览器单元格几何推算。
+- **图层清单。** 作者包 `deck.config.json` 声明了 `layers`（反向导出按原 INDD 图层写出）时，正向只建这份清单加上对象实际用到的图层，不补词表里的标准图层；没声明图层清单的正常 HTML 作者包照旧预建全部标准图层。
+- **样式清单。** 作者包 `components.css` 不写 InDesign 内置样式（`[基本段落]`、`[无段落样式]`、`[基本图形框架]` 等）的类规则，作者 HTML 也不引用它们。观察页（`data-id-observed="true"` 或带 `data-id-reverse-mode`）上原件没有绑定样式的对象，正向不凭空新建命名样式：该种类没有声明样式身份、且合成样式 token 只被这一个未声明样式的对象使用时，不建段落 / 字符 / 对象样式（沿用 InDesign 默认样式），外观写成局部覆盖——段落写 `textOverride`，没有字符样式的 run 写 `runs[].textOverride`，对象的 CSS 盒子外观（填充、描边、圆角）并进 `visualStyle` 编译成 `styleOverride`。多个未声明样式的对象共用的合成样式照旧建成样式（相同外观归并）；原件本来就有的样式同名保留。观察页上没有声明表样式的表格同样不建表样式，沿用 InDesign 默认表样式；表样式「默认表格」只对正常 HTML 作者包保留兜底。判定集中在 `src/style-synthesis/local-formatting.js`。
+- **字符样式定义。** 作者 HTML 的字符 run 与段落一样带样式类 `cstyle-<token>`（与 `data-id-character-style` 同名），`components.css` 的 `.cstyle-<token>` 规则就是字符样式定义。正向把文本框 run 上的这条单类规则捕获为 `items[].content.runs[].styleClassRules.character`（run 没带类时按 `data-id-character-style` 推出类名），InDesign 字符样式只定义规则里写了的属性；run 实际外观与「段落 + 字符样式」的差异写成 `runs[].textOverride`，不再把套用它的那段文字的局部字号、描边吸进样式定义（09-27「渐变字符」多出字号 12 与 0.71pt 描边）。表格单元格里的 run 没有 run 级覆盖通道，仍按 run 外观建字符样式。
+- **长度与字号精度。** presentation 模式（CSS px 即 pt）下作者声明的长度统一按 3 位小数换算（`src/shared/geometry.js` 的 `roundPresentationLength`），与反向写出精度一致；字号、行距按 4 位小数（`roundTypeSize`，1/3 px 字号不丢位，旧版本漂出的万分位抖动收回三位小数）。页面尺寸取作者声明的 `.page` 宽高（与量出的外框相差不到一个 1/64 px 排版单位时），保持源尺寸时页面比例恒为 1：Chromium 按 1/64 px 截断外框，旧版本拿舍入后的目标尺寸除以截断的外框，每代把字号、行距多乘出 0.0001pt、页宽截短（595.276→595.27）。观察对象的绝对定位外框、表格包裹层外框、网格里钉住的高度、内容图几何（`data-id-content-*`）、声明列宽与行高都取作者声明值，不取截断后的外框；贴页面右 / 下边的满版对象延伸到页面边。CSSOM 把长度序列化成 6 位有效数字（1587.402px→1587.4px），捕获时同值的原始声明优先。读回的描边粗细、圆角、置入内容外框按同一精度取整后再进合成样式指纹；作者包 `layout.css` 让网格里的矢量 svg 撑满网格区域（`.page > svg.grid-item`），外框不随上一代路径的宽高比漂移。
+
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
+
+样式定义与合成样式在往返之间必须稳定（09-26 往返验收）：
+
+- **样式类与规则同键。** 作者 HTML 元素上的 `pstyle-` / `cstyle-` / `ostyle-` 类与 `components.css` 规则都取模型样式 token（有样式标签时是标签 token，否则是 InDesign 样式名），不得一边用 token、一边用显示名。读回没有任何属性的用户样式也写一条空规则，表示“这个样式的定义就是没有属性”；InDesign 内置样式不写空规则。
+- **样式定义只读样式本身。** 规则内容是 InDesign 样式定义（快照 `styles[].css`），不是某个套用它的对象的外观。正向构建把元素上单类选择器规则 `.pstyle-<token>` / `.ostyle-<token>` 捕获为 `items[].styleClassRules`，段落样式定义取这条规则（规则没写的属性按样式默认值，不取元素外观），元素实际外观与它的差异写成局部覆盖；`synth-*` 规则、`reverse-overrides.css` 的兜底几何（`margin:0`）都不再污染样式定义，元素外边距也不生成段前/段后距覆盖。对象样式的描边取 `.ostyle-*` 规则的 border，对象自身的描边（`data-id-stroke-*`、svg path）作为局部外观写出。`data-id-ignore` 包裹层自身不上色时，对象的填充、描边、圆角取对象元素自己的（样式类在对象上）。
+- **合成样式编号由模型统一分配。** `synth_<kind>_NNN` 只在 `semantic-model/synthesized-styles` 分配：外观组内成员带着上一轮编号（快照里套用的 `synth_*` 样式，或二轮往返时对象标签 `sourceNode` 带回的 `data-id-style-token`）时沿用旧编号（多数优先，被占用的跳过），新组取空闲编号。作者 HTML 元素上的 `synth-*` 类、`data-id-style-token`、`data-id-style-name` 只取这一轮的分配结果，来源 class / 属性里上一轮的旧值原位替换或清掉，与 `components.css` 永远同源。标签角色为 `shape` 的 InDesign 线条（GraphicLine）与 `line` 角色一样按线条外观归组，正向回编后角色变成 `line` 也不改编号种类。
+- **合成样式不吞掉组内差异。** 外观组按覆盖字段（文字颜色）以外的属性归组，规则取组内第一个成员的值；保留来源内联样式的 accepted 对象，与规则不同的属性写成局部覆盖，与规则相同的属性从来源内联样式里剥掉，避免上一轮的旧覆盖压过本轮读回。
+- **伴生文字的段落样式。** 伴生文字折回容器时，伴生文本框的段落样式以 `pstyle-<token>` 类和 `data-id-paragraph-style-name` 写到容器上（不写 `data-id-paragraph-style`，否则容器会被当成文本框）。合成对象/线条/图框/置入样式的 `data-id-style-name` 不得兜底段落、字符样式名；合成文字样式仍可兜底。
+- **替代文字。** 置入图写成 `figure` 图框后，作者写的 `alt` 在框内内容图（`.placed-asset-content` / `.placed-asset-preview`）上；再次往返时从图框来源 HTML 取回，不得退回文件名。
+- **文档自己定义的样式 token。** 回读复核对象标签时，文档里带 `html_indesign` 样式标签的样式 token（正向按包内语义库写回的 `色块-08371558`、`自动对象-…`）视为已知样式 token，只补语义库已经约束的样式种类，不因标准语义库里没有就把对象降级为观察标签。
 
 需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：
 
@@ -198,7 +246,7 @@ PDF 反向导出必须保留：
 - 原始 PDF 链接路径。
 - InDesign 当前指定的 PDF 页码，写入 `data-id-pdf-page`。
 - crop box，写入 `data-id-crop`。
-- PDF/AI 图层显隐，写入 `data-id-visible-layers` / `data-id-hidden-layers`。
+- PDF/AI 图层显隐，写入 `data-id-visible-layers` / `data-id-hidden-layers`。值是 JSON 字符串数组，数组元素是 InDesign 回读到的图层名原文（不 trim、不拆分），因为图层名本身可以含 `|`、逗号（例如 `合并底图|PM-隔断`）；不得再用 `|` 拼接。
 - 图框 bounds、内容 bounds、缩放和偏移，写入 `data-id-fit="manual"` 及内容几何字段。
 
 反向生成预览图时，应导出 InDesign 图框当前可见结果，因此预览图必须对应实际页码、crop box、图层显隐和裁切状态。若只能按文件名旁路寻找 `*-pageN.png` 之类缓存，必须先拿到 `data-id-pdf-page` / 模型 `placement.pageNumber`；没有页码事实时不得静默回退第一页。
@@ -558,7 +606,7 @@ read blueprint.json
 - `data-id-layout` 对应页面结构模板。
 - 不因为 `data-id-layout="左文右图"`、`data-id-layout="四图矩阵"` 等页面结构模板自动创建同名 InDesign 母版。
 - 页面结构模板应记录到页面标签和 `reverse-model.json`。
-- 反向导出不根据视觉自动创建 `data-id-layout`，除非 Agent 语义化阶段明确补写。
+- 反向导出不根据视觉自动创建 `data-id-layout`，除非 Agent 语义化阶段明确补写。观察页面缺布局 token 时写的是固定中性值 `observed`（见 4.1.0），它不表示任何页面结构模板。
 
 ## 7. Agent 语义化流程
 
@@ -626,6 +674,8 @@ HTML -> InDesign -> HTML
 - 表格结构。
 
 视觉比较已进入反向作者包审核链路。交付前或作为规范样例时，应运行 `npm run audit:reverse-visual`；允许的 accepted 差异必须有结构化证据和报告说明，missing、mismatched 和 errors 必须为 0。
+
+带 `sourceRoot` 反向导出时，作者包会和源码包做源码回环、内容库存与结构签名三项审计。`observation` / `inferred` 模式不保留可信源码结构，而是按 INDD 里观察到的对象写（裁切置入写成 `figure` 图框、矢量写成 `svg`、定位写成内联几何、资源写成读回的绝对路径），所以以下「写法」差异在这两种模式下降为 warning（带 `demotedBy`）：`ROUNDTRIP_TAG_SEQUENCE_CHANGED`、`ROUNDTRIP_INLINE_STYLE_CHANGED`、`ROUNDTRIP_RESOURCE_CHANGED`、`STRUCTURE_NODE_TAG_CHANGED`、`STRUCTURE_NODE_ORDER_CHANGED`、`STRUCTURE_NODE_PARENT_CHANGED`。内容类差异仍是 error：页面缺失、文本变化、字符样式、表格单元格样式、节点缺失、class 被删、节点资源身份变化，以及内容库存的全部检查（文本、资源身份与内容哈希、角色计数、母版家具）。`structured` 模式不降级。内容库存与结构签名把带 `data-id-asset-path` 的图框容器认作资源本身（框内预览 `img` 带 `data-id-ignore`，不参与比较）。
 
 回环验证的门禁口径以 `src/writers/html/audit/` 为准。CLI、plugin 和 E2E 可以选择不同输入、输出目录或严格度参数，但不能绕过内容库存、结构签名和反向视觉证据这些共享审核语义；否则同一作者包会在不同入口产生相互矛盾的通过/失败结论。
 

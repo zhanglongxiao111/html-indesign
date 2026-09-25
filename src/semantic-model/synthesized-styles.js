@@ -1,4 +1,9 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../protocol');
 const { sortObject, styleAtomForItem } = require('./style-atoms');
+
+// 合成样式 token 的唯一形状：synth_<kind>_<编号>。编号只在 buildSynthesizedStyleRegistry 分配，
+// 作者 HTML 元素上的 synth-* 类、data-id-style-token 与 components.css 规则都取这里分配的结果。
+const SYNTHESIZED_STYLE_TOKEN_RE = /^synth_[a-z]+_\d+$/;
 
 const DISPLAY_NAME_PREFIX = Object.freeze({
   text: '文字样式',
@@ -117,17 +122,35 @@ function buildSynthesizedStyleRegistry(items) {
   return { styles, references };
 }
 
+// 上一轮分配的编号：快照里套用的 synth_* 样式（styleRefs.synthesizedToken），或二轮往返时对象
+// 标签 sourceNode 带回的上一轮作者 HTML 的 data-id-style-token。
+function previousSynthesizedToken(item) {
+  const refs = item && item.styleRefs;
+  if (refs && refs.synthesizedToken) return String(refs.synthesizedToken);
+  const sourceNode = item && (item.effectiveLabel && item.effectiveLabel.sourceNode || item.sourceNode);
+  const attributes = sourceNode && sourceNode.attributes || {};
+  const token = String(attributes[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] || '');
+  return SYNTHESIZED_STYLE_TOKEN_RE.test(token) ? token : '';
+}
+
+// 组内成员带着上一轮的编号提示时沿用旧编号，编号在往返之间保持稳定。成员提示不一致
+// （上一轮的两组外观这一轮并成一组）时取多数，平票取先出现的；已被别组占用的编号跳过。
 function inheritedGroupToken(group, takenTokens) {
   const pattern = new RegExp(`^synth_${group.kind}_(\\d{3,})$`);
+  const votes = new Map();
   for (const entry of group.items) {
-    const refs = entry.item && entry.item.styleRefs;
-    const candidate = refs && refs.synthesizedToken ? String(refs.synthesizedToken) : '';
+    const candidate = previousSynthesizedToken(entry.item);
     const match = pattern.exec(candidate);
-    if (match && !takenTokens.has(candidate)) {
-      return { token: candidate, number: Number(match[1]) };
-    }
+    if (!match || takenTokens.has(candidate)) continue;
+    const vote = votes.get(candidate) || { token: candidate, number: Number(match[1]), count: 0 };
+    vote.count += 1;
+    votes.set(candidate, vote);
   }
-  return null;
+  let best = null;
+  for (const vote of votes.values()) {
+    if (!best || vote.count > best.count) best = vote;
+  }
+  return best ? { token: best.token, number: best.number } : null;
 }
 
 function synthesizedStyleFingerprint(item) {
@@ -212,6 +235,7 @@ function isPlainObject(value) {
 }
 
 module.exports = Object.freeze({
+  SYNTHESIZED_STYLE_TOKEN_RE,
   buildSynthesizedStyleRegistry,
   normalizeSynthesizedStyles,
   synthesizedStyleFingerprint,

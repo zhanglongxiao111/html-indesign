@@ -50,6 +50,7 @@ const PAGE_FIELD_PATHS = Object.freeze({
   rejectedFields: 'pages[].rejectedFields',
   rejectionReasons: 'pages[].rejectionReasons',
   migration: 'pages[].migration',
+  visualStyle: 'pages[].visualStyle',
 });
 
 const ASSET_FIELD_PATHS = Object.freeze({
@@ -128,6 +129,7 @@ const ITEM_FIELD_PATHS = Object.freeze({
   computedStyle: 'items[].computedStyle',
   authoredStyle: 'items[].authoredStyle',
   ruleStyle: 'items[].ruleStyle',
+  styleClassRules: 'items[].styleClassRules',
   textOverride: 'items[].textOverride',
   sourceSelector: 'items[].sourceSelector',
   boundsMm: 'items[].boundsMm',
@@ -204,6 +206,11 @@ const ITEM_EXTENSION_FIELD_PATHS = Object.freeze({
     effects: 'items[].extensions.indesign.effects',
     textFrameStyle: 'items[].extensions.indesign.textFrameStyle',
   }),
+});
+
+const PAGE_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
+  fillColor: 'pages[].visualStyle.fillColor',
+  fillOpacity: 'pages[].visualStyle.fillOpacity',
 });
 
 const PAGE_MIGRATION_FIELD_PATHS = Object.freeze({
@@ -329,6 +336,7 @@ const ITEM_CONTENT_RUN_FIELD_PATHS = Object.freeze({
   characterStyle: 'items[].content.runs[].characterStyle',
   textStyle: 'items[].content.runs[].textStyle',
   inlineStyle: 'items[].content.runs[].inlineStyle',
+  styleClassRules: 'items[].content.runs[].styleClassRules',
 });
 
 const ITEM_TABLE_FIELD_PATHS = Object.freeze({
@@ -339,6 +347,7 @@ const ITEM_TABLE_FIELD_PATHS = Object.freeze({
   columnWidths: 'items[].table.columnWidths',
   rowHeights: 'items[].table.rowHeights',
   sourceRows: 'items[].table.sourceRows',
+  sourceColumnWidths: 'items[].table.sourceColumnWidths',
 });
 
 const ITEM_TABLE_ROW_FIELD_PATHS = Object.freeze({
@@ -451,6 +460,9 @@ function scanPages(paths, seen, pages) {
       } else if (key === 'migration') {
         addPath(paths, seen, PAGE_FIELD_PATHS.migration);
         scanObjectSurface(paths, seen, value, PAGE_MIGRATION_FIELD_PATHS, 'pages[].migration');
+      } else if (key === 'visualStyle') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.visualStyle);
+        scanObjectSurface(paths, seen, value, PAGE_VISUAL_STYLE_FIELD_PATHS, 'pages[].visualStyle');
       } else if (hasOwn.call(PAGE_FIELD_PATHS, key)) {
         addPath(paths, seen, PAGE_FIELD_PATHS[key]);
       } else if (!STRUCTURAL_KEYS.has(key)) {

@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function loadReverseStylesContext({ withEffects = false } = {}) {
-  const libs = ['hi_reverse_styles.jsxinc', ...(withEffects ? ['hi_reverse_effects.jsxinc'] : [])];
+  const libs = ['hi_reverse_styles.jsxinc', 'hi_reverse_colors.jsxinc', ...(withEffects ? ['hi_reverse_effects.jsxinc'] : [])];
   const context = {
     HI: {},
     ColorSpace: {
@@ -210,10 +210,59 @@ test('reverseVisualStyle leaves solid fills without gradient fields', () => {
 
 test('reverseColor reads tints and mixed inks without escaping try/catch', () => {
   const context = loadReverseStylesContext({ withEffects: true });
+  const messages = trackGradientWarnings(context);
+  context.HI.reverseSetGradientOwner({ itemId: '257' });
 
-  assert.equal(context.HI.reverseColor(new Tint('Red 40%', 'CMYK', [0, 100, 100, 0], 40)), '#ff0000');
+  // 探针实测：Tint.colorValue 是基色，tintValue 是色调百分比；等效色 = 基色按色调缩放（09-26 gradient-sample 的 G-Red 40%）。
+  assert.equal(context.HI.reverseColor(new Tint('Red 40%', 'CMYK', [0, 100, 100, 0], 40)), '#ff9999');
+  assert.equal(context.HI.reverseColor(new Tint('Blue 50%', 'RGB', [0, 0, 255], 50)), '#8080ff');
   assert.equal(context.HI.reverseColor(new MixedInk('Mixed')), null);
   assert.equal(context.HI.reverseColor(new Swatch(new MixedInk('Mixed'))), null);
+  assert.deepEqual(messages.map((entry) => [entry.code, entry.details.swatch, entry.details.itemId]), [
+    ['REVERSE_COLOR_UNRESOLVED', 'Mixed', '257'],
+  ]);
+});
+
+test('reverseColor applies the owner local tint over the base color and warns on unreadable tints', () => {
+  const context = loadReverseStylesContext({ withEffects: true });
+  const messages = trackGradientWarnings(context);
+  context.HI.reverseSetGradientOwner({ itemId: '9' });
+  const red = new Color('Red', 'CMYK', [0, 100, 100, 0]);
+
+  assert.equal(context.HI.reverseVisualStyle({ fillColor: red, fillTint: 40 }).fillColor, '#ff9999');
+  assert.equal(context.HI.reverseVisualStyle({ fillColor: red, fillTint: -1 }).fillColor, '#ff0000');
+  assert.equal(context.HI.reverseVisualStyle({ fillColor: red, fillTint: 100 }).fillColor, '#ff0000');
+  assert.equal(context.HI.reverseColor(new Tint('Red ?', 'CMYK', [0, 100, 100, 0], undefined)), '#ff0000');
+  assert.deepEqual(messages.map((entry) => entry.code), ['REVERSE_TINT_UNREADABLE']);
+  assert.equal(context.HI.labHex(100, 0, 0), '#ffffff');
+});
+
+test('reverse text stroke reads character stroke color and weight and writes -webkit-text-stroke', () => {
+  const context = loadReverseStylesContext({ withEffects: true });
+  trackGradientWarnings(context);
+  const { HI } = context;
+  const stroke = HI.reverseTextStroke({ strokeColor: new Color('Black', 'CMYK', [0, 0, 0, 100]), strokeWeight: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(stroke)), { strokeColor: '#000000', strokeWeight: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(HI.reverseTextStroke({ strokeColor: new Color('None', 'RGB', [0, 0, 0]), strokeWeight: 1 }))), { strokeColor: null, strokeWeight: null });
+  // 渐变描边按首个色标近似（REVERSE_GRADIENT_APPROXIMATED 由渐变路径记账）。
+  assert.equal(HI.reverseTextStroke({ strokeColor: sampleGradient(), strokeWeight: 0.5 }).strokeColor, '#ff0000');
+  assert.match(HI.textStyleCss({ pointSize: 12, leading: null, tracking: null, strokeColor: '#000000', strokeWeight: 1 }), /-webkit-text-stroke:1px #000000/);
+  assert.match(HI.characterStyleCss({ strokeColor: new Color('Black', 'RGB', [0, 0, 0]), strokeWeight: 2 }), /-webkit-text-stroke:2pt #000000/);
+});
+
+test('reverse justification separates LEFT_JUSTIFIED from FULLY_JUSTIFIED and writes text-align-last', () => {
+  const context = loadReverseStylesContext();
+  context.Justification = {
+    LEFT_ALIGN: 1, CENTER_ALIGN: 2, RIGHT_ALIGN: 3, LEFT_JUSTIFIED: 4, FULLY_JUSTIFIED: 5, CENTER_JUSTIFIED: 6, RIGHT_JUSTIFIED: 7,
+  };
+  const { HI, Justification } = context;
+  assert.equal(HI.reverseJustification(Justification.LEFT_JUSTIFIED), 'justify');
+  assert.equal(HI.reverseJustification(Justification.FULLY_JUSTIFIED), 'justify-all');
+  assert.equal(HI.reverseJustification(Justification.CENTER_JUSTIFIED), 'justify-center');
+  assert.equal(HI.reverseJustification(Justification.RIGHT_JUSTIFIED), 'justify-right');
+  assert.equal(HI.justificationCss('justify'), 'text-align:justify');
+  assert.equal(HI.justificationCss('justify-all'), 'text-align:justify; text-align-last:justify');
+  assert.match(HI.paragraphStyleCss({ justification: Justification.FULLY_JUSTIFIED }), /text-align:justify; text-align-last:justify/);
 });
 
 test('real InDesign gradient probe fixture matches the reverse gradient assumptions (#9)', () => {
@@ -250,4 +299,90 @@ test('real InDesign gradient probe fixture matches the reverse gradient assumpti
   ]);
   const unused = probe.gradients.find((gradient) => gradient.name === 'Grad-Unused');
   assert.equal(context.HI.reverseGradientVisualStyle({ fillColor: fake(unused) }).fillGradient.type, 'radial');
+});
+
+test('reverse text style reads InDesign capitalization as allCaps / smallCaps and writes text-transform (#34)', () => {
+  const context = loadReverseStylesContext();
+  context.Capitalization = { NORMAL: 1852797549, ALL_CAPS: 1634493296, SMALL_CAPS: 1664250723 };
+  context.Justification = { LEFT_ALIGN: 1, CENTER_ALIGN: 2, RIGHT_ALIGN: 3 };
+  const { HI } = context;
+
+  assert.equal(HI.reverseCapitalization(context.Capitalization.ALL_CAPS), 'allCaps');
+  assert.equal(HI.reverseCapitalization(context.Capitalization.SMALL_CAPS), 'smallCaps');
+  assert.equal(HI.reverseCapitalization(context.Capitalization.NORMAL), null);
+  assert.equal(HI.reverseCapitalization(undefined), null);
+
+  assert.match(HI.textStyleCss({ pointSize: 10, leading: null, tracking: null, capitalization: 'allCaps' }), /text-transform:uppercase/);
+  assert.doesNotMatch(HI.textStyleCss({ pointSize: 10, leading: null, tracking: null, capitalization: null }), /text-transform/);
+  assert.match(HI.paragraphStyleCss({ capitalization: context.Capitalization.ALL_CAPS }), /text-transform:uppercase/);
+});
+
+test('reverse capitalization stays null without the InDesign Capitalization enum', () => {
+  const context = loadReverseStylesContext();
+  assert.equal(context.HI.reverseCapitalization(1634493296), null);
+});
+
+// 09-27 真机验收：CMYK 底色的淡色偏粉。CMYK / Lab 走 InDesign 自己的色彩管理（文档的 CMYK / RGB 配置文件），
+// 淡色先按色调缩放油墨再转换；临时颜色在一个撤销步骤里建、转、删，随即撤销，文档不留对象也不变成已修改。
+function colorManagedDocument(convert) {
+  const calls = { added: [], removed: 0, undone: 0 };
+  const doc = {
+    undoName: '',
+    colors: {
+      add(props) {
+        const temp = {
+          values: props.colorValue,
+          spaceValue: props.space,
+          get space() { return this.spaceValue; },
+          set space(value) { this.spaceValue = value; this.colorValue = convert(props.space, props.colorValue); },
+          remove() { calls.removed += 1; },
+        };
+        calls.added.push(props);
+        return temp;
+      },
+    },
+    undo() { calls.undone += 1; doc.undoName = ''; },
+  };
+  const app = {
+    doScript(fn, language, args, mode, name) {
+      fn();
+      doc.undoName = name;
+    },
+  };
+  return { doc, app, calls };
+}
+
+test('reverseColor converts CMYK and Lab through InDesign color management and leaves no temporary color', () => {
+  const context = loadReverseStylesContext({ withEffects: true });
+  const messages = trackGradientWarnings(context);
+  const profile = (space, values) => (space === 'CMYK' ? [230 + values[1] / 100, 0, 18] : [213, 60, 55]);
+  const { doc, app, calls } = colorManagedDocument(profile);
+  Object.assign(context, { app, ColorModel: { PROCESS: 'PROCESS' }, ScriptLanguage: { JAVASCRIPT: 'JS' }, UndoModes: { ENTIRE_SCRIPT: 'ENTIRE' }, ColorSpace: { RGB: 'RGB', CMYK: 'CMYK', LAB: 'LAB' } });
+  context.HI.reverseBeginColorConversion(doc);
+
+  assert.equal(context.HI.reverseColor(new Color('G-Red', 'CMYK', [0, 100, 100, 0])), '#e70012');
+  // 淡色：油墨按色调缩放后再交给色彩管理（不再先当 RGB 纯红再向白混合成 #ff9999）。
+  assert.equal(context.HI.reverseColor(new Tint('G-Red 40%', 'CMYK', [0, 100, 100, 0], 40)), '#e60012');
+  assert.deepEqual(Array.from(calls.added[1].colorValue), [0, 40, 40, 0]);
+  assert.equal(context.HI.reverseColor(new Color('Lab', 'LAB', [50, 60, 40])), '#d53c37');
+  // 同一颜色值只转换一次；每次转换的临时颜色都删掉、撤销步骤随即撤销。
+  assert.equal(context.HI.reverseColor(new Color('G-Red again', 'CMYK', [0, 100, 100, 0])), '#e70012');
+  assert.equal(calls.added.length, 3);
+  assert.equal(calls.removed, 3);
+  assert.equal(calls.undone, 3);
+  assert.deepEqual(messages, []);
+  context.HI.reverseEndColorConversion();
+});
+
+test('a failing color-managed conversion is reported and falls back to the device formula', () => {
+  const context = loadReverseStylesContext({ withEffects: true });
+  const messages = trackGradientWarnings(context);
+  context.HI.reverseSetGradientOwner({ itemId: '257' });
+  context.HI.reverseColorConverter = () => { throw new Error('document is read-only'); };
+
+  assert.equal(context.HI.reverseColor(new Tint('G-Red 40%', 'CMYK', [0, 100, 100, 0], 40)), '#ff9999');
+  assert.deepEqual(messages.map((entry) => [entry.code, entry.details.colorSpace, entry.details.itemId]), [
+    ['REVERSE_COLOR_PROFILE_FAILED', 'CMYK', '257'],
+  ]);
+  context.HI.reverseEndColorConversion();
 });

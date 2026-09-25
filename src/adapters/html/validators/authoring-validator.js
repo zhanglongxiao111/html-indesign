@@ -1,4 +1,5 @@
 const { parseCssLength, round } = require('../../../shared/geometry');
+const { LAYER_LIST_ENCODING, parseLayerListAttribute, formatLayerListAttribute } = require('../../../shared/assets');
 const {
   AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
   HTML_DATA_ID_ATTRIBUTES,
@@ -16,6 +17,14 @@ const TEXT_CONTAINER_HAS_CHILD_OBJECTS = 'TEXT_CONTAINER_HAS_CHILD_OBJECTS';
 const HTML_TEXT_NOT_CONVERTIBLE = 'HTML_TEXT_NOT_CONVERTIBLE';
 const TEXT_FIRST_LINE_CANNOT_FIT = 'TEXT_FIRST_LINE_CANNOT_FIT';
 const GRID_OBSERVED_DOWNGRADED = 'GRID_OBSERVED_DOWNGRADED';
+const ASSET_LAYER_LIST_INVALID = 'ASSET_LAYER_LIST_INVALID';
+const ASSET_LAYER_LIST_DELIMITED = 'ASSET_LAYER_LIST_DELIMITED';
+const ASSET_LAYER_LIST_ATTRIBUTES = Object.freeze([
+  HTML_DATA_ID_ATTRIBUTES.VISIBLE_LAYERS,
+  HTML_DATA_ID_ATTRIBUTES.PDF_VISIBLE_LAYERS,
+  HTML_DATA_ID_ATTRIBUTES.HIDDEN_LAYERS,
+  HTML_DATA_ID_ATTRIBUTES.PDF_HIDDEN_LAYERS,
+]);
 
 // lintProfile：default 是作者包的完整规则；reverse-export 面向从人做的 INDD 反向导出的包，
 // 只把「带观察态标记的对象」的 GRID_ALIGNMENT_OFF 降为提示（notices[]），其余规则不变。
@@ -205,6 +214,15 @@ function validateAuthoringRules(snapshot, options = {}) {
           itemIdFor(item, itemIndex),
           `Graphic protocol fields must be placed on the resource element itself, with src, data, href or ${HTML_DATA_ID_ATTRIBUTES.ASSET_PATH}.`,
         ));
+      }
+      for (const issue of assetLayerListIssues(item)) {
+        const target = issue.level === 'error' ? errors : warnings;
+        target.push({
+          ...message(issue.level, issue.code, pageId, itemIdFor(item, itemIndex), issue.text),
+          attribute: issue.attribute,
+          suggestedFix: issue.suggestedFix,
+          ...(page && page.sourceFile ? { sourceFile: page.sourceFile } : {}),
+        });
       }
       if (!isMappableItem(item) || hasStableSemanticToken(item)) return;
       // Materialized pseudo spans are tool output, not authored markup;
@@ -900,6 +918,36 @@ function coversWholePage(bounds, page) {
     && Math.abs(Number(bounds.height || 0) - pageHeight(page)) < 0.01;
 }
 
+// 置入图层名单必须写成 JSON 字符串数组：图层名自身可以含 `|`、逗号（#33）。
+// 旧的 `|` 拼接值仍按旧规则拆分读取，但拆分结果对含 `|` 的图层名是错的，必须显式提示改写。
+function assetLayerListIssues(item) {
+  const attrs = attributesFor(item);
+  const issues = [];
+  for (const name of ASSET_LAYER_LIST_ATTRIBUTES) {
+    const value = attributeValue(attrs, name);
+    if (value == null) continue;
+    const parsed = parseLayerListAttribute(value);
+    if (parsed.encoding === LAYER_LIST_ENCODING.INVALID) {
+      issues.push({
+        level: 'error',
+        code: ASSET_LAYER_LIST_INVALID,
+        attribute: name,
+        text: `${name} ${parsed.reason}; the layer list is ignored.`,
+        suggestedFix: `Write ${name} as a JSON array of layer names, e.g. ${name}='["Layer A","Layer B"]'.`,
+      });
+    } else if (parsed.encoding === LAYER_LIST_ENCODING.DELIMITED) {
+      issues.push({
+        level: 'warning',
+        code: ASSET_LAYER_LIST_DELIMITED,
+        attribute: name,
+        text: `${name} uses the retired "|"/"," delimited form; layer names that themselves contain "|" or "," are split apart and will not match the placed file's layers.`,
+        suggestedFix: `Rewrite ${name} as a JSON array of the exact layer names. Read as ${formatLayerListAttribute(parsed.layers) || '[]'}; merge entries back if a layer name contains "|" or ",".`,
+      });
+    }
+  }
+  return issues;
+}
+
 function isMappableItem(item) {
   const role = String(item && item.role || '').toLowerCase();
   if (isAuthoringMappableItemRole(role)) return true;
@@ -951,4 +999,6 @@ module.exports = {
   AUTHORING_MAPPABLE_ITEM_ROLE_VALUES,
   DEFAULT_AUTHORING_LINT_PROFILE,
   GRID_OBSERVED_DOWNGRADED,
+  ASSET_LAYER_LIST_INVALID,
+  ASSET_LAYER_LIST_DELIMITED,
 };

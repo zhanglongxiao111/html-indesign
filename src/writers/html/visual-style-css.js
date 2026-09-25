@@ -1,5 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { blendModeCss } = require('./css-blend-mode');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, textStrokeCss } = require('./css-values');
 const { vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 const {
   requiredNumber,
@@ -25,6 +26,9 @@ function baseCss(model) {
     '    .deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `    .page { position: relative; width: ${formatPx(width)}; height: ${formatPx(height)}; background: #fff; overflow: hidden; isolation: isolate; }`,
     '    .id-object { position: absolute; margin: 0; overflow: hidden; }',
+    // 段落样式 class 上的段前/段后距（margin-top 等）描述框内段落间距；InDesign 在框顶不加段前距，
+    // 它不能把对象外框挪离读回 bounds。提高选择器权重，压过同权重、排在后面的 .pstyle-* 规则。
+    '    .page .id-object { margin: 0; }',
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="text"] { overflow: visible; }`,
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] { border-collapse: collapse; table-layout: fixed; }`,
     `    .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] th, .id-object[${HTML_DATA_ID_ATTRIBUTES.ROLE}="table"] td { overflow: hidden; vertical-align: top; }`,
@@ -96,9 +100,10 @@ function itemClasses(item, model) {
 function visualStyleCss(visualStyle) {
   if (!visualStyle) return '';
   const styles = [];
-  if (visualStyle.fillColor) styles.push(`background-color:${visualStyle.fillColor}`);
+  if (visualStyle.fillColor) styles.push(`background-color:${colorWithOpacity(visualStyle.fillColor, visualStyle.fillOpacity)}`);
   if (visualStyle.strokeColor && Number(visualStyle.strokeWeight) > 0) {
-    styles.push(`border:${Math.round(Number(visualStyle.strokeWeight) * 100) / 100}px solid ${visualStyle.strokeColor}`);
+    const strokeColor = colorWithOpacity(visualStyle.strokeColor, visualStyle.strokeOpacity);
+    styles.push(`border:${Math.round(Number(visualStyle.strokeWeight) * 100) / 100}px ${cssBorderStyle(visualStyle.strokeStyle)} ${strokeColor}`);
   }
   if (Number(visualStyle.cornerRadius) > 0) {
     styles.push(`border-radius:${formatPx(visualStyle.cornerRadius)}`);
@@ -124,7 +129,11 @@ function textStyleCss(textStyle) {
   if (textStyle.tracking != null && Number(textStyle.tracking) !== 0) {
     styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);
   }
-  if (textStyle.justification) styles.push(`text-align:${textStyle.justification}`);
+  if (textStyle.justification) styles.push(justificationCss(textStyle.justification));
+  const capitalization = capitalizationCss(textStyle.capitalization);
+  if (capitalization) styles.push(capitalization);
+  const stroke = textStrokeCss(textStyle);
+  if (stroke) styles.push(stroke);
   return styles.join(';');
 }
 

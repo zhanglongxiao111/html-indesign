@@ -1,4 +1,5 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { tableFrameSlack } = require('../../shared/geometry');
 const { attr, formatPx, formatNumber, cssForHtml } = require('./visual-html-utils');
 const { textStyleCss } = require('./visual-style-css');
 const { renderRichTextRuns, renderTextWithBreaks } = require('./rich-text-html');
@@ -103,7 +104,37 @@ function cleanTableCellText(value) {
     .replace(/\n+$/g, '');
 }
 
+// 读回的表格外框是表格所在的文本框，表格本身的高度是各行读回行高之和。
+// 读回行高齐全（每行一个正数）时返回行高数组，否则 null。
+function readBackRowHeights(table) {
+  const heights = Array.isArray(table && table.rowHeights) ? table.rowHeights.map(Number) : [];
+  const rows = Array.isArray(table && table.rows) ? table.rows : [];
+  if (!heights.length || (rows.length && heights.length !== rows.length)) return null;
+  if (!heights.every((height) => Number.isFinite(height) && height > 0)) return null;
+  return heights.map((height) => Math.round(height * 1000) / 1000);
+}
+
+// HTML 里表格盒子只含各行：读回行高齐全时取行高之和，文本框多出的高度不分摊到行上；否则只能用外框高。
+function tableBoxHeight(item) {
+  const heights = readBackRowHeights(item && item.table);
+  if (!heights) return Number(item && item.bounds && item.bounds.height) || 0;
+  return Math.round(heights.reduce((sum, height) => sum + height, 0) * 1000) / 1000;
+}
+
+// 表格所在文本框比「行高之和 + 正向构建余量」（shared/geometry.tableFrameSlack）还高出的部分。
+// 正向构建建出的表格外框正好等于行高之和 + 余量，返回 0；人工 INDD 里文本框常比表格高得多。
+function tableFrameOverflow(item, unitMode) {
+  const heights = readBackRowHeights(item && item.table);
+  if (!heights) return 0;
+  const frameHeight = Number(item && item.bounds && item.bounds.height) || 0;
+  const overflow = frameHeight - tableBoxHeight(item) - tableFrameSlack(heights.length, unitMode);
+  return overflow > 0.5 ? Math.round(overflow * 1000) / 1000 : 0;
+}
+
 module.exports = {
+  readBackRowHeights,
   renderTableContent,
+  tableBoxHeight,
+  tableFrameOverflow,
   tableStyleName,
 };

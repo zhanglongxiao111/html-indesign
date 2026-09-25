@@ -3,6 +3,23 @@ function round(value, digits = 6) {
   return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
+// presentation 模式（CSS px 即 InDesign pt）下作者声明的长度统一按这个精度舍入：与反向作者包写出的
+// 精度（3 位小数）一致，作者写的长度经 HTML -> InDesign -> HTML 回来还是同一个数。浏览器排版量出来的
+// 几何（getBoundingClientRect）本身按 1/64 px 量化，不走这里。
+const PRESENTATION_LENGTH_DIGITS = 3;
+
+function roundPresentationLength(value) {
+  return round(value, PRESENTATION_LENGTH_DIGITS);
+}
+
+// 字号、行距（pt，presentation 下即 CSS px）的精度：与正向 cssLengthToPt 的 4 位小数一致，
+// 1/3 px 一类的字号（8.5pt -> 11.3333px）往返不丢位。
+const TYPE_SIZE_DIGITS = 4;
+
+function roundTypeSize(value) {
+  return round(value, TYPE_SIZE_DIGITS);
+}
+
 function parseCssLength(raw) {
   if (raw == null) return null;
   const text = String(raw).trim();
@@ -102,8 +119,20 @@ function boundsToGeometricBounds(bounds) {
   ];
 }
 
+// 正向构建给原生表格留的外框余量：表格所在文本框高 = 各行高之和 + 余量（presentation 模式下行多时按行数放大）。
+// 反向写出据此从读回的外框高还原表格本身的高度。
+function tableFrameSlack(rowCount, unitMode) {
+  if (unitMode !== 'presentation') return 1;
+  return Math.max(24, (Number(rowCount) || 0) * 4);
+}
+
 module.exports = {
   round,
+  PRESENTATION_LENGTH_DIGITS,
+  roundPresentationLength,
+  TYPE_SIZE_DIGITS,
+  roundTypeSize,
+  tableFrameSlack,
   parseCssLength,
   cssLengthToMm,
   cssLengthStringToMm,

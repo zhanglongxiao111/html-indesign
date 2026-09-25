@@ -1,5 +1,5 @@
 const { loadStandardSemanticPreset } = require('../../../semantic-preset');
-const { normalizeSynthesizedStyles } = require('../../../semantic-model/synthesized-styles');
+const { normalizeSynthesizedStyles, SYNTHESIZED_STYLE_TOKEN_RE } = require('../../../semantic-model/synthesized-styles');
 const { validateSemanticModel } = require('../../../semantic-model');
 const {
   fieldRegistry,
@@ -9,6 +9,7 @@ const { createProtocolLabel } = require('../../../shared/labels');
 const { createReport, addMessage } = require('../../../shared/report');
 const { isIndesignBuiltinStyleName } = require('../../../shared/style-utils');
 const { normalizeLineEndings } = require('../../../shared/text');
+const { roundPresentationLength } = require('../../../shared/geometry');
 const { validateReverseLabel } = require('./label-whitelist');
 const { tableSourceHtmlMatchesTable } = require('./table-source-html');
 const { decodeSpecialCharacterNames } = require('../special-characters');
@@ -27,7 +28,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
   const layerVisibility = reverseLayerVisibility(snapshot.layers || []);
   const diagnostics = createLabelDiagnostics();
   const context = {
-    semanticPreset,
+    semanticPreset: presetWithDocumentStyleTokens(semanticPreset, snapshot.styles || {}),
     sourcePageSemanticByFile: sourcePageSemanticByFile(sourcePackage, semanticPreset, {
       mode: reverseMode,
       strictFields: options.strictFields === true,
@@ -35,6 +36,7 @@ function reverseSnapshotToSemanticModel(snapshot, options = {}) {
     }),
     layerVisibility,
     diagnostics,
+    pageBackgroundByParentName: pageBackgroundByParentName(snapshot.parentPages || []),
     labelOptions: {
       mode: reverseMode,
       strictFields: options.strictFields === true,
@@ -99,10 +101,14 @@ function reversePage(page, styleMaps, context = {}) {
   const effectiveForPage = sourcePackageSemantic ? { ...effective, semantic: sourcePackageSemantic } : effective;
   const parent = effective.parentPage || {};
   const appliedParentPageName = page.appliedParentPageName || null;
+  const background = appliedParentPageName && context.pageBackgroundByParentName
+    ? context.pageBackgroundByParentName.get(appliedParentPageName)
+    : null;
   return {
     id: label.id || page.id,
     index: page.index,
     semantic: effectiveForPage.semantic || null,
+    ...(background ? { visualStyle: background } : {}),
     parentPageId: effective.parentPageId || parent.id || appliedParentPageName || null,
     parentPageName: effective.parentPageName || parent.name || appliedParentPageName,
     layout: effective.layout || null,
@@ -185,6 +191,34 @@ function reassembleNativeVectorPathGroup(item = {}, auditItems = []) {
     },
     childIds: children.map((child) => String(child.id || '')).filter(Boolean),
   };
+}
+
+// InDesign 读回的描边粗细、圆角带浮点尾巴（0.28346456692913、37.5000000000001）：按作者长度精度取整，
+// 与写进作者 HTML 的值（data-id-stroke-weight、border 宽）同一个数，合成样式指纹两代往返一致。
+const QUANTIZED_VISUAL_LENGTHS = ['strokeWeight', 'cornerRadius'];
+
+function quantizedVisualStyle(visualStyle) {
+  if (!isPlainObject(visualStyle)) return visualStyle || null;
+  const out = { ...visualStyle };
+  for (const key of QUANTIZED_VISUAL_LENGTHS) {
+    const value = out[key];
+    if (typeof value === 'number' && Number.isFinite(value)) out[key] = roundPresentationLength(value);
+  }
+  return out;
+}
+
+// 置入内容的外框与偏移同样按作者长度精度取整（作者 HTML 的 data-id-content-* 就写这个数）。
+function quantizedPlacement(placement) {
+  const out = { ...placement };
+  for (const key of ['contentBounds', 'contentOffset']) {
+    if (!isPlainObject(out[key])) continue;
+    const box = { ...out[key] };
+    for (const [name, value] of Object.entries(box)) {
+      if (typeof value === 'number' && Number.isFinite(value)) box[name] = roundPresentationLength(value);
+    }
+    out[key] = box;
+  }
+  return out;
 }
 
 function vectorPathIndex(item = {}) {
@@ -271,7 +305,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
   const observed = observedLabelWithReasons(validation);
   const role = effective.role || roleFromInDesignType(item.type, item);
   const table = reverseTable(item.table, styleMaps);
-  const visualStyle = item.visualStyle || null;
+  const visualStyle = quantizedVisualStyle(item.visualStyle);
   const vectorGeometry = reverseVectorGeometry(item.vectorGeometry, visualStyle);
   const extensions = reverseItemExtensions(item);
   return {
@@ -319,7 +353,7 @@ function reverseItem(item, styleMaps = {}, context = {}) {
 
 function normalizePlacedAsset(asset) {
   if (!asset) return null;
-  const placement = isPlainObject(asset.placement) ? { ...asset.placement } : asset.placement;
+  const placement = isPlainObject(asset.placement) ? quantizedPlacement(asset.placement) : asset.placement;
   const normalized = {
     ...asset,
     ...(placement ? { placement } : {}),
@@ -350,7 +384,7 @@ function reverseStyleNamePair(styleMaps, kind, refKey, rawName) {
 
 function foldSynthesizedStyleRefs(refs) {
   for (const key of ['paragraphStyle', 'objectStyle', 'frameStyle']) {
-    const match = /^synth_[a-z]+_\d+$/.exec(String(refs[key] || ''));
+    const match = SYNTHESIZED_STYLE_TOKEN_RE.exec(String(refs[key] || ''));
     if (!match) continue;
     refs[key] = null;
     refs[`${key}DisplayName`] = null;
@@ -393,6 +427,29 @@ function reverseItemExtensions(item = {}) {
   return Object.keys(indesign).length
     ? { indesign }
     : null;
+}
+
+// 正向构建（background-instructions）把页面底色做成生成的背景母版：母版标签 semantic=page-background、
+// generated=true，里面一块 role=background、id 为「<母版 id>-fill」的满版填充矩形。这里按同一规则反推，
+// 套用该母版的页面读回 visualStyle.fillColor；母版本身仍按基础母版（页面标签里的 parentPage）写回。
+function pageBackgroundByParentName(parentPages) {
+  const out = new Map();
+  for (const parentPage of parentPages || []) {
+    const label = firstLabel(parentPage && parentPage.labels, 'parentPage') || {};
+    if (label.semantic !== 'page-background' || label.generated !== true || !parentPage.name) continue;
+    const fillId = `${label.id}-fill`;
+    const fill = (parentPage.items || []).find((item) => {
+      const itemLabel = firstLabel(item && item.labels, 'item') || {};
+      return itemLabel.id === fillId && itemLabel.role === 'background';
+    });
+    const visualStyle = fill && fill.visualStyle || {};
+    if (!visualStyle.fillColor) continue;
+    const background = { fillColor: visualStyle.fillColor };
+    const opacity = Number(visualStyle.fillOpacity);
+    if (visualStyle.fillOpacity != null && Number.isFinite(opacity) && opacity < 100) background.fillOpacity = opacity;
+    out.set(String(parentPage.name), background);
+  }
+  return out;
 }
 
 function reverseParentPage(parentPage, styleMaps, context = {}) {
@@ -615,7 +672,7 @@ function contentForReverseItem(role, item, label, styleMaps, table = null) {
     return {
       text: sourceText,
       sourceHtml: typeof label.sourceHtml === 'string' ? label.sourceHtml : null,
-      runs: sourceRunsFromLabel(label, styleMaps),
+      runs: withObservedRunTextStyles(sourceRunsFromLabel(label, styleMaps), sourceText, item.textRuns || item.runs || []),
     };
   }
   return {
@@ -644,6 +701,38 @@ function sourceRunsFromLabel(label, styleMaps) {
       characterStyle,
     };
   });
+}
+
+// 标签里的来源 run 只记结构（标签名、class、字符样式名），读回外观在快照的逐字 run 上。
+// 按文字位置把覆盖该来源 run 的快照 run 找出来：外观一致时挂上读回 textStyle，
+// 作者 HTML 据此写出与段落不同的字符外观（颜色、字重等）；不一致或对不上位置时不挂，不猜。
+function withObservedRunTextStyles(runs, text, snapshotRuns) {
+  if (!runs.length || !Array.isArray(snapshotRuns) || !snapshotRuns.length) return runs;
+  const fullText = normalizeLineEndings(String(text || ''));
+  const spans = [];
+  let offset = 0;
+  for (const run of snapshotRuns) {
+    const runText = normalizeLineEndings(normalizeReverseText(run && run.text || ''));
+    spans.push({ start: offset, end: offset + runText.length, textStyle: run && run.textStyle || null });
+    offset += runText.length;
+  }
+  if (offset !== fullText.length) return runs;
+  let cursor = 0;
+  return runs.map((run) => {
+    const runText = normalizeLineEndings(String(run.text || ''));
+    const start = runText ? fullText.indexOf(runText, cursor) : -1;
+    if (start < 0) return run;
+    const end = start + runText.length;
+    cursor = end;
+    const covering = spans.filter((span) => span.end > start && span.start < end);
+    const textStyle = covering.length ? covering[0].textStyle : null;
+    if (!textStyle || covering.some((span) => !sameRunTextStyle(span.textStyle, textStyle))) return run;
+    return { ...run, textStyle: { ...textStyle } };
+  });
+}
+
+function sameRunTextStyle(left, right) {
+  return JSON.stringify(left || null) === JSON.stringify(right || null);
 }
 
 function reverseTextRuns(runs, styleMaps) {
@@ -751,6 +840,36 @@ function activeSemanticPreset(snapshot, documentLabel, options = {}, semanticPro
   } catch (error) {
     throw semanticPresetLoadFailed(semanticProfile, error.message, error);
   }
+}
+
+// 文档自己定义、带 html_indesign 样式标签的样式（正向构建按包内语义库写回的 色块-08371558、
+// 自动对象-66324081 等变体）是 INDD 里真实存在的资源名：对象标签引用它们时按已知样式 token 复核，
+// 不因标准语义库里没有这个名字就把对象降级成观察标签（#34 二轮往返）。只补语义库已经在管的样式种类，
+// 语义库没有约束的种类保持不约束；语义 token 与布局 token 不受影响。
+const LABEL_VALIDATED_STYLE_KINDS = ['paragraphStyles', 'characterStyles', 'objectStyles', 'frameStyles', 'tableStyles', 'cellStyles'];
+
+function presetWithDocumentStyleTokens(preset, styles) {
+  if (!isNonEmptyObject(preset)) return preset;
+  const presetMap = isPlainObject(preset.styleNameMap) ? preset.styleNameMap : {};
+  const presetStyles = isPlainObject(preset.styles) ? preset.styles : {};
+  const additions = {};
+  for (const kind of LABEL_VALIDATED_STYLE_KINDS) {
+    const known = { ...(isPlainObject(presetStyles[kind]) ? presetStyles[kind] : {}), ...(isPlainObject(presetMap[kind]) ? presetMap[kind] : {}) };
+    if (!Object.keys(known).length) continue;
+    for (const style of styleItems(styles[kind])) {
+      const label = firstLabel(style && style.labels, 'style');
+      const token = label && (label.token || label.id);
+      if (!token || Object.prototype.hasOwnProperty.call(known, token)) continue;
+      if (!additions[kind]) additions[kind] = {};
+      additions[kind][token] = label.displayName || style.name || token;
+    }
+  }
+  if (!Object.keys(additions).length) return preset;
+  const styleNameMap = { ...presetMap };
+  for (const [kind, entries] of Object.entries(additions)) {
+    styleNameMap[kind] = { ...(isPlainObject(presetMap[kind]) ? presetMap[kind] : {}), ...entries };
+  }
+  return { ...preset, styleNameMap };
 }
 
 function activeSemanticProfile(snapshot, documentLabel, options = {}) {

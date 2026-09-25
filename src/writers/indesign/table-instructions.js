@@ -1,5 +1,5 @@
-const { round } = require('../../shared/geometry');
-const { itemBounds } = require('../../semantic-model/layout');
+const { round, tableFrameSlack } = require('../../shared/geometry');
+const { cssLengthToTarget, itemBounds } = require('../../semantic-model/layout');
 const { normalizeTableWidths } = require('../../style-synthesis/box-model');
 
 // Native InDesign table rows need a small per-row reserve beyond browser
@@ -24,17 +24,15 @@ function tableRowsForInstruction(item, page, layout) {
 }
 
 function tableCellSnapshot(item, rowIndex, cellIndex) {
-  const table = tablePayload(item);
-  const sourceRows = Array.isArray(table.sourceRows)
-    ? table.sourceRows
-    : Array.isArray(item.table) ? item.table : [];
-  const row = sourceRows.find((candidate) => Number(candidate.index) === Number(rowIndex));
+  const row = tableRowSnapshot(item, rowIndex);
   if (!row) return null;
   return (row.cells || []).find((candidate) => Number(candidate.index) === Number(cellIndex)) || null;
 }
 
 function tableColumnWidthsForInstruction(item, rows, layout) {
   const table = tablePayload(item);
+  const declared = declaredTableColumnWidths(table, rows, layout);
+  if (declared) return declared;
   if (layout.unitMode !== 'presentation') return table.columnWidths || [];
   const sourceRow = (rows || []).find((row) => (row.cells || []).every((cell) => cell.bounds && Number(cell.bounds.width) > 0));
   if (!sourceRow) return [];
@@ -47,13 +45,64 @@ function tableColumnWidthsForInstruction(item, rows, layout) {
   return normalizeTableWidths(widths, item.bounds && item.bounds.width);
 }
 
+// 作者在 <col> 上逐列声明了宽度（反向导出写出的读回列宽）时，按声明建列，不再从浏览器单元格几何推算：
+// 浏览器按内容和外框分配列宽，会把等宽列算成不等宽。列数对不上或有列宽无效时回退几何推算。
+function declaredTableColumnWidths(table, rows, layout) {
+  const values = Array.isArray(table.sourceColumnWidths) ? table.sourceColumnWidths : [];
+  if (!values.length) return null;
+  const columnCount = tableColumnCountFor(rows);
+  if (columnCount && values.length !== columnCount) return null;
+  // cssLengthToTarget 已按作者长度精度舍入，这里不再二次舍入（否则 84.685 读回写出后变 84.69）。
+  const widths = values.map((value) => cssLengthToTarget(value, layout));
+  return widths.every((width) => Number.isFinite(width) && width > 0) ? widths : null;
+}
+
+function tableColumnCountFor(rows) {
+  return (rows || []).reduce((max, row) => Math.max(max, (row.cells || [])
+    .reduce((sum, cell) => sum + Math.max(1, Number(cell.colSpan || 1)), 0)), 0);
+}
+
+// 作者在 <tr> 上声明了行高时按声明写 InDesign 行高：两边的行高都是「至少」这么高，
+// InDesign 内容放不下会自动撑高。未声明时按单元格几何与内容估算（含原生行余量）取保底值。
 function tableRowHeightsForInstruction(item, rows, layout) {
   const table = tablePayload(item);
   if (layout.unitMode !== 'presentation') return table.rowHeights || [];
   return (rows || []).map((row) => {
-    const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell, layout)), 0);
-    return round(height, 2);
+    const declared = declaredTableRowHeight(item, row.index, layout);
+    return declared != null ? declared : estimatedTableRowHeight(row, layout);
   });
+}
+
+// 表格外框（所在文本框）按保底估算留足高度：声明行高低于内容估算时，InDesign 行会撑高，
+// 外框不能按声明行高算小，否则表格溢出。
+function tableFrameRowHeightsForInstruction(item, rows, layout) {
+  const table = tablePayload(item);
+  if (layout.unitMode !== 'presentation') return table.rowHeights || [];
+  return (rows || []).map((row) => {
+    const declared = declaredTableRowHeight(item, row.index, layout);
+    return round(Math.max(declared || 0, estimatedTableRowHeight(row, layout)), 2);
+  });
+}
+
+function estimatedTableRowHeight(row, layout) {
+  const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell, layout)), 0);
+  return round(height, 2);
+}
+
+function tableRowSnapshot(item, rowIndex) {
+  const table = tablePayload(item);
+  const sourceRows = Array.isArray(table.sourceRows)
+    ? table.sourceRows
+    : Array.isArray(item.table) ? item.table : [];
+  return sourceRows.find((candidate) => Number(candidate.index) === Number(rowIndex)) || null;
+}
+
+function declaredTableRowHeight(item, rowIndex, layout) {
+  const row = tableRowSnapshot(item, rowIndex);
+  const value = row && String(row.authoredHeight || '').trim();
+  if (!value) return null;
+  const height = cssLengthToTarget(value, layout);
+  return Number.isFinite(height) && height > 0 ? height : null;
 }
 
 function tablePayload(item) {
@@ -112,9 +161,7 @@ function scaleBounds(bounds, layout) {
 
 function nativeTableBounds(bounds, rowHeights, layout) {
   const rowTotal = (rowHeights || []).reduce((sum, height) => sum + Number(height || 0), 0);
-  const slack = layout && layout.unitMode === 'presentation'
-    ? Math.max(24, (rowHeights || []).length * 4)
-    : 1;
+  const slack = tableFrameSlack((rowHeights || []).length, layout && layout.unitMode);
   const requiredHeight = rowTotal > 0 ? rowTotal + slack : 0;
   if (requiredHeight <= Number(bounds.height || 0)) return bounds;
   return {
@@ -127,5 +174,6 @@ module.exports = {
   tableRowsForInstruction,
   tableColumnWidthsForInstruction,
   tableRowHeightsForInstruction,
+  tableFrameRowHeightsForInstruction,
   nativeTableBounds,
 };

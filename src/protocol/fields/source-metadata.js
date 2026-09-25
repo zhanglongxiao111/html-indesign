@@ -98,6 +98,7 @@ module.exports = [
     lifecycle: 'active',
     owner: 'source-metadata',
     type: 'array',
+    description: 'Declared document layer list (deck.config.json layers; reverse export writes the source INDD layers). When declared, the InDesign writer builds exactly these layers plus any layer an item uses, and no longer adds the preset standard layers; packages without it keep the preset standard layers.',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
@@ -144,10 +145,19 @@ module.exports = [
   htmlModelSourceMetadataField('items[].computedStyle', [], 'object'),
   htmlModelSourceMetadataField('items[].authoredStyle', [], 'object'),
   htmlModelSourceMetadataField('items[].ruleStyle', [], 'object'),
+  htmlModelSourceMetadataField('items[].styleClassRules', [], 'object'),
+  {
+    ...htmlModelSourceMetadataField('items[].content.runs[].styleClassRules', [], 'object'),
+    description: 'Character style class rule of a text-frame run (.cstyle-<token> single-class rule; token from the run class or data-id-character-style), captured as { character: declarations }. The InDesign character style is defined from these declarations only; the run look beyond paragraph + style becomes runs[].textOverride.',
+  },
   htmlModelSourceMetadataField('items[].sourceSelector', [], 'string'),
   htmlModelSourceMetadataField('items[].boundsMm', [], 'object'),
   htmlModelSourceMetadataField('items[].box', [], 'object'),
   htmlModelSourceMetadataField('items[].table.sourceRows', [], 'array'),
+  {
+    ...htmlModelSourceMetadataField('items[].table.sourceColumnWidths', [], 'array'),
+    description: 'Per-column CSS widths the author declared on <col> (expanded by span). When every column declares a width, the InDesign writer builds the table columns from them instead of browser cell geometry; reverse export writes read-back items[].table.columnWidths as <col style="width">.',
+  },
   htmlSourceMetadataField(
     'items[].parentPageItem',
     ['parentPages[].items[].parentPageItem', 'sourceNode.attributes.data-id-parent-page-item'],

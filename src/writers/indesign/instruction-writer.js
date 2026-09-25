@@ -22,6 +22,7 @@ const {
   tableRowsForInstruction,
   tableColumnWidthsForInstruction,
   tableRowHeightsForInstruction,
+  tableFrameRowHeightsForInstruction,
   nativeTableBounds,
 } = require('./table-instructions');
 const {
@@ -494,7 +495,7 @@ function tableInstructionItemFor({
   return {
     ...base,
     type: 'TABLE',
-    bounds: nativeTableBounds(base.bounds, rowHeights || [], layout),
+    bounds: nativeTableBounds(base.bounds, tableFrameRowHeightsForInstruction(modelItem, rows, layout), layout),
     tableStyle: styleRefs.tableStyle,
     objectStyle: styleRefs.objectStyle,
     frameStyle: styleRefs.frameStyle,

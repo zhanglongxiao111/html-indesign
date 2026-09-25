@@ -168,13 +168,14 @@ test('observation vector containers keep their children as an HTML container ins
   assert.equal($('svg#legend-swatch').length, 1, 'childless vector children stay svg');
   assert.doesNotMatch(box.attr('style'), /left:|top:|transform/, 'baked source box and transform are stripped');
   // 容器子对象的源码定位、外边距会压过兜底几何，一并剥掉。
-  assert.equal($('#legend-label').attr('style'), undefined);
+  // 源码样式不随包时，读回 z 序仍要写上（否则会被兜底定位的对象压住）。
+  assert.equal($('#legend-label').attr('style'), 'z-index:46');
   assert.doesNotMatch($('svg#legend-swatch').attr('style'), /margin/);
 
   const label = $('div#entry-label');
   assert.equal(label.text().trim(), 'Public entry band');
   assert.equal($('#entry-label-text').length, 0, 'companion text folds into its shape');
-  assert.match(label.attr('style'), /font-size:9\.333px/);
+  assert.match(label.attr('style'), /font-size:9\.3333px/);
   assert.match(label.attr('style'), /padding:7\.56px 11\.34px 7\.56px 11\.34px/);
 });
 

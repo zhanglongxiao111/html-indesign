@@ -1,8 +1,10 @@
-const { isDegenerateInvisibleVector } = require('./vector-svg');
-const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-vector-renderer');
-const { safeAuthorClassToken } = require('../../shared/style-utils');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const { rendersBakedVectorSvg } = require('./author-vector-renderer');
+const { reverseBoxHeight, reverseGeometryPlanForPage } = require('./author-reverse-geometry');
+const { isIndesignBuiltinStyleName, safeAuthorClassToken } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
 const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
+const { deckPageBackground } = require('./author-page-background');
 
 function writeAuthorCssFiles(model, options = {}) {
   return {
@@ -17,7 +19,7 @@ function writeAuthorCssFiles(model, options = {}) {
 function tokensCss(model) {
   return [
     ':root {',
-    '  --id-page-bg: #ffffff;',
+    `  --id-page-bg: ${deckPageBackground(model)};`,
     '  --id-text: #14324a;',
     '}',
     '',
@@ -32,7 +34,14 @@ function layoutCss(model) {
     '.deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `.page { width: ${px(first.width || 0)}; height: ${px(first.height || 0)}; background: var(--id-page-bg); overflow: hidden; position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--id-grid-columns, 12), minmax(0, 1fr)); grid-template-rows: repeat(var(--id-grid-rows, 8), minmax(0, 1fr)); column-gap: var(--id-column-gutter, 0px); row-gap: var(--id-row-gutter, 0px); padding: var(--id-margin-top, 0px) var(--id-margin-right, 0px) var(--id-margin-bottom, 0px) var(--id-margin-left, 0px); }`,
     '.page :where(p, h1, h2, h3, h4, h5, h6, figure, figcaption, ul, ol) { margin: 0; }',
+    // InDesign 表格相邻单元格共用描边，对应 CSS 的合并边框模型。
+    '.page :where(table) { border-collapse: collapse; }',
     '.grid-item { grid-column: var(--grid-col) / span var(--grid-span, 1); grid-row: var(--grid-row) / span var(--grid-row-span, 1); min-width: 0; min-height: 0; }',
+    // 网格里的矢量 svg 是替换元素，默认按 viewBox 宽高比定尺寸、不拉伸：外框就会跟着上一代读回的路径尺寸走，
+    // 每代往返漂一点。让它撑满网格区域，与首代的 div 图框一样由网格决定外框。
+    '.page > svg.grid-item { width: 100%; height: 100%; }',
+    // 置入图的内容图按图框内偏移绝对定位，留在网格里的图框要成为它的定位参照（只含内容图、不含子对象）。
+    '.grid-item:has(> .placed-asset-content, > .placed-asset-preview) { position: relative; }',
     '.id-object { margin: 0; overflow: hidden; }',
     '.observed-text.id-object { overflow: visible; }',
     '.id-parent-page-object { pointer-events: none; }',
@@ -74,29 +83,36 @@ function reverseOverridesCss(model, options = {}) {
     '/* Generated fallback geometry for reverse-exported objects. */',
     '/* Vector svg paints only through its paths; class styles must not add a box frame, fill or inset. */',
     vectorSvgBoxPaintResetRule(),
+    // 置入图框写成 figure；带 sourceRoot 时 layout.css 换成源码包的，源码包没用过 figure 就不会清
+    // 浏览器默认外边距（16px 40px），图框整体错位。零特异度，源码 CSS 仍可覆盖（#32）。
+    '/* Reverse-written placed-asset frames are figures; neutralize the UA figure margin even when source CSS replaced layout.css. */',
+    '.page :where(figure) { margin: 0; }',
+    // 表格所在文本框比表格高时写成 data-id-ignore 包裹层（author-html-tree），外框在包裹层上，表格占满框宽、高度随行。
+    '/* A table whose text frame is taller than its rows sits in an ignored frame wrapper that carries the read-back bounds. */',
+    `.page [${HTML_DATA_ID_ATTRIBUTES.IGNORE}] > table { width: 100%; }`,
   ];
-  const itemIds = new Set();
-  for (const page of model.pages || []) {
-    for (const item of page.items || []) itemIds.add(item.id);
-  }
   for (const page of model.pages || []) {
     const itemById = new Map((page.items || []).map((item) => [item && item.id, item]));
-    const context = { itemIds, vectorContainerIds: vectorContainerIdsForPage(page, options) };
+    const plan = reverseGeometryPlanForPage(page, options);
     for (const item of page.items || []) {
-      if (shouldOmitAuthorOverride(item, context, options)) continue;
-      if (item.layout && item.layout.grid) continue;
-      if (!item.bounds) continue;
-      const position = authorPosition(item, itemById, context, options);
+      const box = item && plan.boxes.get(item.id);
+      if (!box) continue;
+      if (box.keepsGrid) {
+        // 留在网格里：左、上、宽由网格给出，高度按读回 bounds 钉住，不再被网格行拉高。
+        lines.push(`[id="${cssString(item.id)}"] { align-self:start; height:${px(reverseBoxHeight(item, options.unitMode))}; }`);
+        continue;
+      }
+      const position = authorPosition(item, itemById, plan);
       const declarations = [
         'position:absolute',
         `left:${px(position.x)}`,
         `top:${px(position.y)}`,
         `width:${px(item.bounds.width)}`,
-        `height:${px(item.bounds.height)}`,
+        `height:${px(reverseBoxHeight(item, options.unitMode))}`,
       ];
       for (const minDeclaration of vectorMinSizeDeclarations(item)) declarations.push(minDeclaration);
-      for (const reset of bakedVectorSourceResetDeclarations(item, context, options)) declarations.push(reset);
-      if (isVectorContainerChild(item, context) && !declarations.includes('margin:0')) declarations.push('margin:0');
+      for (const reset of bakedVectorSourceResetDeclarations(item, plan, options)) declarations.push(reset);
+      if (!declarations.includes('margin:0')) declarations.push('margin:0');
       lines.push(`[id="${cssString(item.id)}"] { ${declarations.join('; ')}; }`);
     }
   }
@@ -104,23 +120,36 @@ function reverseOverridesCss(model, options = {}) {
   return lines.join('\n');
 }
 
-function authorPosition(item, itemById, context, options) {
+function authorPosition(item, itemById, context) {
   const position = {
     x: Number(item && item.bounds && item.bounds.x) || 0,
     y: Number(item && item.bounds && item.bounds.y) || 0,
   };
   const parentId = item && item.structure && item.structure.parentId;
   const parent = parentId && itemById.get(parentId);
-  if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, context, options)) {
+  if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, context)) {
     return position;
   }
-  // 绝对定位以容器的内边距盒为参照；矢量容器的描边写成 CSS border，要扣掉，
-  // 子对象才能落回读回 bounds（正向构建累加祖先偏移时同样计入祖先 border）。
-  const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
+  // 绝对定位以容器的内边距盒为参照；矢量容器的描边、折回容器的边框对象都写成 CSS border，
+  // 要扣掉左、上边宽，子对象才能落回读回 bounds。
+  const inset = containerBorderInset(parent, context);
   return {
-    x: position.x - (Number(parent.bounds.x) || 0) - border,
-    y: position.y - (Number(parent.bounds.y) || 0) - border,
+    x: position.x - (Number(parent.bounds.x) || 0) - inset.left,
+    y: position.y - (Number(parent.bounds.y) || 0) - inset.top,
   };
+}
+
+// 折回的边框对象按各边宽写成 border（author-border-fold），其余矢量容器按读回描边写等宽 border。
+function containerBorderInset(parent, context) {
+  const folded = context.foldedBordersByContainer && context.foldedBordersByContainer.get(parent.id);
+  if (folded) {
+    return {
+      left: folded.left ? folded.left.width : 0,
+      top: folded.top ? folded.top.width : 0,
+    };
+  }
+  const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
+  return { left: border, top: border };
 }
 
 // 与 author-style-attrs.visualStyleCss 写出的 border 宽度一致。
@@ -131,46 +160,26 @@ function containerBorderWidth(item) {
   return Math.round(weight * 100) / 100;
 }
 
-function establishesAuthorPositioning(item, context, options) {
-  // 网格对象不是定位参照：它的子对象按页面坐标定位（正向构建只累加绝对定位祖先的偏移）。
-  // 非网格矢量容器走兜底绝对定位，下面按「写了兜底几何」成为参照。
-  if (!item || !item.bounds || item.layout && item.layout.grid) return false;
-  if (!shouldOmitAuthorOverride(item, context, options)) return true;
+// 子对象的定位参照：写了兜底绝对几何的对象，以及源码内联声明了定位的对象。
+// 网格对象（含留在网格里、只钉住高度的对象）不是定位参照：它的子对象按页面坐标定位
+// （正向构建对观察态对象只累加绝对定位祖先的 left/top，见 semantic-model/layout.observedAncestorOffset）。
+function establishesAuthorPositioning(item, context) {
+  if (!item || !item.bounds) return false;
+  const box = context.boxes.get(item.id);
+  if (box) return !box.keepsGrid;
+  if (item.layout && item.layout.grid) return false;
   const style = item.sourceNode && item.sourceNode.attributes && item.sourceNode.attributes.style || '';
   return /(?:^|;)\s*position\s*:\s*(?:absolute|relative|fixed|sticky)\b/i.test(style);
-}
-
-function isVectorContainerChild(item, context) {
-  const parentId = item && item.structure && item.structure.parentId;
-  return Boolean(parentId && context.vectorContainerIds.has(parentId));
-}
-
-function shouldOmitAuthorOverride(item, context, options = {}) {
-  if (!item) return true;
-  if (isDegenerateInvisibleVector(item)) return true;
-  // 有源码节点的对象沿用源码定位；但走已烘焙矢量写出路径（svg 或矢量容器）的对象只能用
-  // 读回 bounds 定外框，其源码定位、尺寸和变换已在写出时剥掉（见 author-vector-renderer）。
-  // 矢量容器的直接子对象同理：容器不再按源码排版，子对象按读回 bounds 定位。
-  if (item.sourceNode && !rendersBakedVectorSvg(item, options) && !isVectorContainerChild(item, context)) return true;
-  if (isGeneratedLabel(item)) return true;
-  const itemIds = context.itemIds;
-  const id = String(item.id || '');
-  if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
-  if (item.semantic == null && /-background$/i.test(id)) return true;
-  if (/-text$/i.test(id) && itemIds.has(id.replace(/-text$/i, ''))) return true;
-  return false;
-}
-
-function isGeneratedLabel(item) {
-  return (item.labels || []).some((label) => label && (label.generated === true || label.kind === 'generated'));
 }
 
 // 带 sourceRoot 时源码组件样式会被拷回；源码 class 上的变换、外边距描述的是旋转前的
 // 盒子，落在已烘焙的矢量 svg 上同样会二次旋转或挪位，兜底几何里一并归零。源码 class 上的
 // 边框、底色、内边距（如 .line 的 border-top）同理只属于旧盒子，描边已在 path 上；
 // 矢量容器（#27）的盒子画的正是读回的填充和描边，不归零这几项。
+// 没有来源节点的烘焙矢量（人工 INDD 第一代回读）同样写这组归零：第二代起对象带上构建标签就有来源节点，
+// 两代写法必须一致，否则往返作者包每代多出一串归零声明。
 function bakedVectorSourceResetDeclarations(item, context, options) {
-  if (!item || !item.sourceNode || !rendersBakedVectorSvg(item, options)) return [];
+  if (!item || !rendersBakedVectorSvg(item, options)) return [];
   const reset = ['margin:0', 'transform:none', 'rotate:none', 'translate:none', 'scale:none'];
   return context.vectorContainerIds.has(item.id) ? reset : [...reset, ...VECTOR_SVG_BOX_PAINT_RESET];
 }
@@ -192,10 +201,23 @@ function hasLineMarker(visualStyle) {
   return Boolean(visualStyle && (visualStyle.lineStartMarker || visualStyle.lineEndMarker));
 }
 
+// 样式类名与作者 HTML 上的样式类（author-style-attrs.authorClassesForItem）取同一个键：模型样式
+// token（有样式标签时是标签 token，否则是 InDesign 样式名）。按显示名写规则会对不上元素上的类，
+// 样式定义就落不到元素上（#34 往返：.ostyle-图纸图框 与 class="ostyle-drawing-frame-object"）。
+// 读回没有任何属性的用户样式也写一条空规则：正向构建据此知道该样式的定义就是“无属性”，
+// 不把元素自身的局部外观当成样式定义（style-synthesis 的 styleClassRules）。
+// InDesign 内置样式（[基本段落]、[基本图形框架] 等）一律不写：作者 HTML 不引用它们（内置名不生成样式类）。
 function styleCollectionCss(collection, prefix) {
-  return Object.values(collection || {}).filter((style) => style && style.css).map((style) => {
-    return `.${prefix}-${safeAuthorClassToken(style.safeName || style.token || style.name)} { ${String(style.css).replace(/pt\b/g, 'px')} }`;
-  }).join('\n');
+  return Object.values(collection || {})
+    .filter((style) => style && !isIndesignBuiltinStyleName(style.name))
+    .map((style) => {
+      const css = String(style.css || '').replace(/pt\b/g, 'px');
+      return `.${prefix}-${authorStyleClassToken(style)} { ${css} }`;
+    }).join('\n');
+}
+
+function authorStyleClassToken(style) {
+  return safeAuthorClassToken(style.token || style.safeName || style.name);
 }
 
 function px(value) {

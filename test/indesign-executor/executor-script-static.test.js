@@ -646,6 +646,39 @@ test('asset helper does not silently ignore advanced placement options', () => {
   }
 });
 
+test('asset helper matches placed graphic layer names verbatim, including "|" and commas (#33)', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
+  const messages = [];
+  const context = {
+    HI: {
+      addMessage: (report, level, code, message, details) => messages.push({ level, code, details }),
+    },
+  };
+  vm.runInNewContext(source, context);
+  const layer = (name, currentVisibility) => ({ name, currentVisibility });
+  const layers = [
+    layer('A_建筑_2D_区域.A', false),
+    layer('合并底图|PM-隔断', false),
+    layer('合并底图', true),
+    layer('PM-隔断', true),
+    layer('A, B', true),
+  ];
+  const frame = { allGraphics: [{ graphicLayerOptions: { graphicLayers: layers } }] };
+
+  context.HI.applyPlacedGraphicLayerOptions(frame, {
+    visibleLayers: ['A_建筑_2D_区域.A', '合并底图|PM-隔断'],
+    hiddenLayers: ['合并底图', 'PM-隔断', 'A, B', '不存在的图层'],
+  }, {}, { id: 'asset-drawing-pdf' });
+
+  assert.deepEqual(layers.map((entry) => entry.currentVisibility), [true, true, false, false, false]);
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].code, 'PLACED_ASSET_LAYER_NOT_FOUND');
+  assert.deepEqual(JSON.parse(JSON.stringify(messages[0].details.missingLayers)), ['不存在的图层']);
+  // 字符串不再被当成 `|` / `,` 拼接的图层名单拆开：图层名单只接受数组。
+  assert.equal(context.HI.layerNameSet('合并底图|PM-隔断'), null);
+  assert.equal(context.HI.layerNameSet([]), null);
+});
+
 test('executor reports structured counts for CLI result_json consumers', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_executor.jsxinc'), 'utf8');
   for (const token of [
@@ -666,6 +699,7 @@ test('reverse snapshot script loads reverse and label helpers', () => {
   assert.match(source, /hi_core\.jsxinc/);
   assert.match(source, /hi_labels\.jsxinc/);
   assert.match(source, /hi_reverse_styles\.jsxinc/);
+  assert.match(source, /hi_reverse_colors\.jsxinc/);
   assert.match(source, /hi_reverse_text\.jsxinc/);
   assert.match(source, /hi_reverse_effects\.jsxinc/);
   assert.match(source, /hi_reverse_tables\.jsxinc/);
@@ -679,6 +713,8 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   const textPath = path.resolve('_indesign_scripts/lib/hi_reverse_text.jsxinc');
   const effectPath = path.resolve('_indesign_scripts/lib/hi_reverse_effects.jsxinc');
   const tablePath = path.resolve('_indesign_scripts/lib/hi_reverse_tables.jsxinc');
+  const colorPath = path.resolve('_indesign_scripts/lib/hi_reverse_colors.jsxinc');
+  assert.equal(fs.existsSync(colorPath), true, 'hi_reverse_colors.jsxinc should exist');
   assert.equal(fs.existsSync(stylePath), true, 'hi_reverse_styles.jsxinc should exist');
   assert.equal(fs.existsSync(textPath), true, 'hi_reverse_text.jsxinc should exist');
   assert.equal(fs.existsSync(effectPath), true, 'hi_reverse_effects.jsxinc should exist');
@@ -687,7 +723,8 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   const textSource = fs.readFileSync(textPath, 'utf8');
   const effectSource = fs.readFileSync(effectPath, 'utf8');
   const tableSource = fs.readFileSync(tablePath, 'utf8');
-  const source = `${reverseSource}\n${styleSource}\n${textSource}\n${effectSource}\n${tableSource}`;
+  const colorSource = fs.readFileSync(colorPath, 'utf8');
+  const source = `${reverseSource}\n${styleSource}\n${colorSource}\n${textSource}\n${effectSource}\n${tableSource}`;
   assert.match(source, /HI\.readProtocolLabel/);
   assert.match(source, /snapshot\.pages/);
   assert.match(source, /snapshot\.styles/);
@@ -750,6 +787,7 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(textSource.split(/\r?\n/).length <= 180, 'hi_reverse_text.jsxinc should stay focused');
   assert.ok(effectSource.split(/\r?\n/).length <= 120, 'hi_reverse_effects.jsxinc should stay focused');
   assert.ok(tableSource.split(/\r?\n/).length <= 240, 'hi_reverse_tables.jsxinc should stay focused');
+  assert.ok(colorSource.split(/\r?\n/).length <= 170, 'hi_reverse_colors.jsxinc should stay focused');
 });
 
 test('reverse text helper restores InDesign special-character names to authored Unicode', () => {
@@ -765,7 +803,9 @@ test('reverse text helper restores InDesign special-character names to authored 
 });
 
 test('reverse visual style treats empty None stroke color as no stroke', () => {
-  const source = fs.readFileSync(path.join(libDir, 'hi_reverse_styles.jsxinc'), 'utf8');
+  const source = ['hi_reverse_styles.jsxinc', 'hi_reverse_colors.jsxinc']
+    .map((name) => fs.readFileSync(path.join(libDir, name), 'utf8'))
+    .join('\n');
 
   assert.match(source, /HI\.reverseStrokeColor/);
   assert.match(source, /String\(color\.name \|\| ""\) === ""/);
@@ -884,7 +924,7 @@ const NEGATED_MEMBER_GLOBAL_RECEIVERS = Object.freeze({
 const NEGATED_MEMBER_ALLOWED_RECEIVERS = Object.freeze({
   'build_from_instructions.jsx': { lib: 'ExtendScript File，exists 在所有 File 上都存在' },
   'export_to_html_snapshot.jsx': { lib: 'ExtendScript File，exists 在所有 File 上都存在' },
-  'hi_assets.jsxinc': { file: 'ExtendScript File', items: '图层名 JS 数组，已先做 typeof length 检查' },
+  'hi_assets.jsxinc': { file: 'ExtendScript File' },
   'hi_composite_fonts.jsxinc': { def: 'instruction 里的复合字体定义 JSON', familyFaces: 'JS 数组' },
   'hi_core.jsxinc': { file: 'ExtendScript File' },
   'hi_document.jsxinc': { ordered: 'JS 数组' },
@@ -1012,4 +1052,21 @@ test('JSX libs never negate DOM member expressions directly in conditions, retur
     .flatMap(([fileName, receivers]) => Object.keys(receivers).map((receiver) => `${fileName}:${receiver}`))
     .filter((key) => !usedAllowances.has(key));
   assert.deepEqual(staleAllowances, [], 'remove allowlist entries that no longer match any usage');
+});
+
+// InDesign 的 $.evalFile 对无 BOM 的文件按开头若干字节猜编码：第一个中文字符出现得晚（09-26 实测 12310 字节处）
+// 就会按本地编码读坏，整份脚本加载失败（INDESIGN_SNAPSHOT_FAILED: TypeError: Cannot convert）。
+// 单元测试不开 InDesign 抓不到，只能在这里静态守住：含非 ASCII 字节的生产 JSX 必须带 UTF-8 BOM。
+test('production JSX files with non-ASCII bytes start with a UTF-8 BOM', () => {
+  const scriptsDir = path.join(root, '_indesign_scripts');
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) return entry.name === '_debug' ? [] : walk(path.join(dir, entry.name));
+    return /\.(jsx|jsxinc)$/.test(entry.name) ? [path.join(dir, entry.name)] : [];
+  });
+  const missing = walk(scriptsDir).filter((file) => {
+    const bytes = fs.readFileSync(file);
+    const hasBom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+    return !hasBom && bytes.some((byte) => byte > 0x7f);
+  }).map((file) => path.relative(root, file));
+  assert.deepEqual(missing, [], `add a UTF-8 BOM (or keep the file ASCII-only): ${missing.join(', ')}`);
 });

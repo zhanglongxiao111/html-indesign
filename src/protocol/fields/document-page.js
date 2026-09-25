@@ -100,6 +100,32 @@ function pageHtmlCanonical(canonicalPath, currentPaths, htmlAttr, type = 'string
   };
 }
 
+// 页面底色：正向构建把 section.page 的 background-color 做成带填充矩形的背景母版
+// （background-instructions，母版标签 semantic=page-background、generated），反向从页面套用的
+// 这类背景母版读回填充色，作者 HTML 写回页面 background（--id-page-bg）。
+function pageVisualStyleField(canonicalPath, type, extra = {}) {
+  const fieldName = canonicalPath.slice('pages[].'.length);
+  return {
+    canonicalPath,
+    currentPaths: [`reverseModel.${canonicalPath}`],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'document-page',
+    type,
+    description: 'Page background paint. Forward builds it as a generated page-background parent page with a fill rectangle; reverse export reads that parent page fill back.',
+    // HTML 适配器不把页面底色读进这个字段：正向构建直接读 section 的计算样式（pages[].computedStyle）。
+    capabilities: {
+      html: { read: 'observe-only', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'lossless' },
+      pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
+    },
+    indesign: {
+      snapshotPaths: [`parentPages[].items[].${fieldName}`],
+    },
+    ...extra,
+  };
+}
+
 const HTML_AUTHORING_PAGE_CAPABILITIES = Object.freeze({
   html: { read: 'observe-only', write: 'native', persist: 'native' },
   indesign: { read: 'observe-only', write: 'observe-only', persist: 'lossless' },
@@ -289,6 +315,13 @@ module.exports = [
       labelKinds: ['page'],
     },
   },
+  pageVisualStyleField('pages[].visualStyle', 'object'),
+  pageVisualStyleField('pages[].visualStyle.fillColor', 'color', {
+    html: { styleProps: ['background-color'] },
+  }),
+  pageVisualStyleField('pages[].visualStyle.fillOpacity', 'number', {
+    html: { styleProps: ['background-color'] },
+  }),
   pageMarginSide('top', 'data-id-margin-top'),
   pageMarginSide('right', 'data-id-margin-right'),
   pageMarginSide('bottom', 'data-id-margin-bottom'),

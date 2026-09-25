@@ -82,6 +82,20 @@ function assetPlacementCanonical(canonicalPath, type, snapshotPath, extra = {}) 
   };
 }
 
+// 置入文件图层名单的 HTML 属性编码（#33）：图层名可以含 `|`、逗号，只有 JSON 字符串数组无歧义。
+function placedLayerListContract(visibility) {
+  return {
+    description: `Exact names of placed PDF/AI graphic layers that are ${visibility}, in the placed file's layer order. `
+      + 'The HTML attribute value is a JSON array of strings (names kept verbatim, may contain "|" or ","); '
+      + 'non-JSON "|"/"," delimited values from older packages are still split on read and reported by authoring lint as ASSET_LAYER_LIST_DELIMITED; '
+      + 'a value starting with "[" that is not a JSON string array is ignored and reported as ASSET_LAYER_LIST_INVALID.',
+    contract: {
+      htmlAttributeEncoding: 'json-string-array',
+      htmlDelimitedRead: 'split-on-pipe-or-comma-with-lint-warning',
+    },
+  };
+}
+
 module.exports = [
   {
     canonicalPath: 'assets[].kind',
@@ -238,12 +252,14 @@ module.exports = [
     'placedAsset.placement.transparentBackground',
   ),
   assetPlacementCanonical('items[].asset.placement.visibleLayers', 'array', 'placedAsset.placement.visibleLayers', {
+    ...placedLayerListContract('visible'),
     html: {
       readAttrs: ['data-id-visible-layers', 'data-id-pdf-visible-layers'],
       writeAttrs: ['data-id-visible-layers', 'data-id-pdf-visible-layers'],
     },
   }),
   assetPlacementCanonical('items[].asset.placement.hiddenLayers', 'array', 'placedAsset.placement.hiddenLayers', {
+    ...placedLayerListContract('hidden'),
     html: {
       readAttrs: ['data-id-hidden-layers', 'data-id-pdf-hidden-layers'],
       writeAttrs: ['data-id-hidden-layers', 'data-id-pdf-hidden-layers'],

@@ -288,9 +288,36 @@ test('observation vector svg drops baked source transform and box geometry in fa
   assert.match(css, /\[id="site-entry-line"\] \{ position:absolute; left:300px; top:100px; width:161\.2px; height:65\.129px; margin:0; transform:none; rotate:none; translate:none; scale:none; border:0; background:none; padding:0; box-shadow:none; \}/);
 });
 
-test('structured reverse export keeps sourced vectors on their source geometry', () => {
-  const css = writeAuthorCssFiles({ pages: [rotatedSourceLinePage()] }, { mode: 'structured' })['styles/reverse-overrides.css'];
+test('structured reverse export keeps sourced vectors on their source geometry when source styles are carried', () => {
+  const css = writeAuthorCssFiles({ pages: [rotatedSourceLinePage()] }, { mode: 'structured', sourceLayoutCarried: true })['styles/reverse-overrides.css'];
   assert.doesNotMatch(css, /site-entry-line/);
+});
+
+test('sourced objects fall back to read-back bounds when source styles are not carried', () => {
+  // 不带 sourceRoot 时源码 class 上的定位不在作者包里：满版图、靠 class 定位的页码都要按读回 bounds 兜底。
+  const css = writeAuthorCssFiles({
+    pages: [{
+      id: 'cover-page',
+      items: [
+        {
+          id: 'cover-hero-image',
+          role: 'graphic',
+          sourceNode: { tagName: 'figure', id: 'cover-hero-image', classList: ['hero-media'], attributes: {} },
+          structure: { parentId: 'cover-page', order: 1 },
+          bounds: { x: 0, y: 0, width: 1587.39, height: 892.91 },
+        },
+        {
+          id: 'cover-folio',
+          role: 'text',
+          sourceNode: { tagName: 'span', id: 'cover-folio', classList: ['page-number'], attributes: {} },
+          structure: { parentId: 'cover-page', order: 2 },
+          bounds: { x: 1515.06, y: 843.12, width: 17.61, height: 12.8 },
+        },
+      ],
+    }],
+  }, { mode: 'observation' })['styles/reverse-overrides.css'];
+  assert.ok(css.includes('[id="cover-hero-image"] { position:absolute; left:0px; top:0px; width:1587.39px; height:892.91px; margin:0; }'));
+  assert.ok(css.includes('[id="cover-folio"] { position:absolute; left:1515.06px; top:843.12px; width:17.61px; height:12.8px; margin:0; }'));
 });
 
 test('observation vector svg keeps grid placement but drops baked source transform', () => {
@@ -348,4 +375,9 @@ test('observation rotated line renders once-rotated inside its reverse bounds in
   } finally {
     await browser.close();
   }
+});
+
+test('reverse-overrides resets the UA figure margin even when source CSS replaces layout.css (#32)', () => {
+  const css = writeAuthorCssFiles({ pages: [] }, { mode: 'observation' })['styles/reverse-overrides.css'];
+  assert.match(css, /\.page :where\(figure\) \{ margin: 0; \}/);
 });

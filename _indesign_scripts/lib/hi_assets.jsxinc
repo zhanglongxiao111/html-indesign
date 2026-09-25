@@ -76,20 +76,30 @@ HI.configurePlacePreferences = function (asset, placed, report) {
 };
 
 HI.applyPlacedGraphicLayerOptions = function (frame, placed, report, asset) {
-    var visible = HI.layerNameSet(placed.visibleLayers || placed.pdfVisibleLayers);
-    var hidden = HI.layerNameSet(placed.hiddenLayers || placed.pdfHiddenLayers);
+    // visibleLayers / hiddenLayers arrive as arrays of exact layer names (compiled from the
+    // JSON-array HTML attribute). Names may contain "|" or ","; they are matched verbatim.
+    var visible = HI.layerNameSet(placed.visibleLayers);
+    var hidden = HI.layerNameSet(placed.hiddenLayers);
     if (!visible && !hidden) return;
     try {
-        var graphic = frame.allGraphics && frame.allGraphics.length ? frame.allGraphics[0] : null;
+        var graphics = frame.allGraphics;
+        var graphic = graphics && graphics.length ? graphics[0] : null;
         if (!graphic) return;
         var layerOptions = graphic.graphicLayerOptions;
         if (!layerOptions) return;
         var layers = layerOptions.graphicLayers;
+        var found = {};
         for (var i = 0; i < layers.length; i++) {
             var layer = layers[i];
-            var name = String(layer.name || "");
-            if (visible && visible[name]) layer.currentVisibility = true;
-            if (hidden && hidden[name]) layer.currentVisibility = false;
+            var layerName = layer.name;
+            var name = layerName === undefined || layerName === null ? "" : String(layerName);
+            found[name] = true;
+            if (visible && visible.names[name] === true) layer.currentVisibility = true;
+            if (hidden && hidden.names[name] === true) layer.currentVisibility = false;
+        }
+        var missing = HI.layerNamesMissing(visible, found).concat(HI.layerNamesMissing(hidden, found));
+        if (missing.length) {
+            HI.addMessage(report, "warning", "PLACED_ASSET_LAYER_NOT_FOUND", "Requested graphic layers were not found in the placed file", { assetId: asset && asset.id, missingLayers: missing });
         }
     } catch (error) {
         HI.addMessage(report, "warning", "PLACED_ASSET_LAYER_VISIBILITY_APPLY_FAILED", String(error), { assetId: asset && asset.id, visibleLayers: placed.visibleLayers, hiddenLayers: placed.hiddenLayers });
@@ -97,14 +107,26 @@ HI.applyPlacedGraphicLayerOptions = function (frame, placed, report, asset) {
 };
 
 HI.layerNameSet = function (value) {
-    if (!value) return null;
-    var items = value;
-    if (typeof value === "string") items = value.split(/[|,]/);
-    if (!items || typeof items.length !== "number" || !items.length) return null;
-    var out = {};
-    for (var i = 0; i < items.length; i++) {
-        var name = String(items[i] || "").replace(/^\s+|\s+$/g, "");
-        if (name) out[name] = true;
+    if (!value || typeof value === "string") return null;
+    var count = value.length;
+    if (typeof count !== "number" || count < 1) return null;
+    var out = { names: {}, order: [] };
+    for (var i = 0; i < count; i++) {
+        var item = value[i];
+        if (item === undefined || item === null) continue;
+        var name = String(item);
+        if (name === "" || out.names[name] === true) continue;
+        out.names[name] = true;
+        out.order.push(name);
+    }
+    return out.order.length ? out : null;
+};
+
+HI.layerNamesMissing = function (set, found) {
+    var out = [];
+    if (!set) return out;
+    for (var i = 0; i < set.order.length; i++) {
+        if (found[set.order[i]] !== true) out.push(set.order[i]);
     }
     return out;
 };

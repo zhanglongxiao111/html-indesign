@@ -70,7 +70,7 @@ test('pageItemsToAuthorHtml nests children under source parent items', () => {
   assert.match(html, /<div[^>]+id="card-1"[\s\S]*<p[^>]+id="card-1-value"[\s\S]*243\.75m[\s\S]*<\/p>[\s\S]*<p[^>]+id="card-1-label"[\s\S]*grid length[\s\S]*<\/p>[\s\S]*<\/div>/);
 });
 
-test('pageItemsToAuthorHtml omits generated paint fragments from editable author source', () => {
+test('pageItemsToAuthorHtml folds border fragments into the container border and omits generated paint fragments (#34)', () => {
   const page = {
     id: 'agenda-page',
     items: [
@@ -81,6 +81,8 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
         sourceNode: { tagName: 'div', id: 'chapter-1', classList: ['chapter', 'grid-item'], attributes: { 'data-id-object': '' } },
         structure: { parentId: 'agenda-page', order: 1 },
         layout: { cssVars: { '--grid-col': '5', '--grid-span': '3' } },
+        bounds: { x: 100, y: 50, width: 300, height: 180 },
+        visualStyle: { fillColor: '#ffffff', strokeColor: null, strokeWeight: null },
       },
       {
         id: 'chapter-1-background',
@@ -96,6 +98,17 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
         semantic: null,
         sourceNode: { tagName: 'div', id: 'chapter-1-border-left', classList: ['id-object'], attributes: {} },
         structure: { parentId: 'agenda-page', order: 3 },
+        bounds: { x: 100, y: 50, width: 11, height: 180 },
+        visualStyle: { fillColor: '#c8102e', strokeColor: null, strokeWeight: null },
+      },
+      {
+        id: 'chapter-1-border-top',
+        role: 'decoration',
+        semantic: null,
+        structure: { parentId: 'agenda-page', order: 4 },
+        bounds: { x: 100, y: 50, width: 300, height: 1 },
+        visualStyle: { fillColor: '#cfd6d2', strokeColor: null, strokeWeight: null },
+        labels: [{ kind: 'item', id: 'chapter-1-border-top', role: 'decoration', generated: true }],
       },
     ],
   };
@@ -105,6 +118,35 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
   assert.match(html, /id="chapter-1"/);
   assert.doesNotMatch(html, /chapter-1-background/);
   assert.doesNotMatch(html, /chapter-1-border-left/);
+  assert.doesNotMatch(html, /chapter-1-border-top/);
+  assert.match(html, /id="chapter-1"[^>]+style="[^"]*border-top:1px solid #cfd6d2;border-right:0 solid transparent;border-bottom:0 solid transparent;border-left:11px solid #c8102e/);
+});
+
+test('pageItemsToAuthorHtml keeps a border-named object that does not fit its container edge (#34)', () => {
+  const page = {
+    id: 'agenda-page',
+    items: [
+      {
+        id: 'chapter-1',
+        role: 'shape',
+        structure: { parentId: 'agenda-page', order: 1 },
+        bounds: { x: 100, y: 50, width: 300, height: 180 },
+        visualStyle: { fillColor: '#ffffff' },
+      },
+      {
+        id: 'chapter-1-border-left',
+        role: 'decoration',
+        structure: { parentId: 'agenda-page', order: 2 },
+        bounds: { x: 60, y: 50, width: 11, height: 180 },
+        visualStyle: { fillColor: '#c8102e' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.match(html, /id="chapter-1-border-left"/);
+  assert.doesNotMatch(html, /id="chapter-1"[^>]+border-left:11px/);
 });
 
 test('pageItemsToAuthorHtml writes vector point type metadata for stable roundtrip', () => {
@@ -208,7 +250,8 @@ test('pageItemsToAuthorHtml restores inline character runs as editable inline ta
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /本页用 <span class="accent" data-id-character-style="term-accent">PDF 置入<\/span> 校核。/);
+  // 字符样式类（cstyle-<token>）与段落的 pstyle 类同一规则写在 run 上。
+  assert.match(html, /本页用 <span class="accent cstyle-term-accent" data-id-character-style="term-accent">PDF 置入<\/span> 校核。/);
 });
 
 test('pageItemsToAuthorHtml restores original source inner html when text is unchanged', () => {
@@ -583,7 +626,7 @@ test('pageItemsToAuthorHtml restores InDesign character styles as inline charact
 
   const html = pageItemsToAuthorHtml(page, { mode: 'authoring' });
 
-  assert.match(html, /流线和 <span data-id-character-style="术语强调">PDF 置入<\/span> 校核。/);
+  assert.match(html, /流线和 <span class="cstyle-术语强调" data-id-character-style="术语强调">PDF 置入<\/span> 校核。/);
 });
 
 test('pageItemsToAuthorHtml adds style classes without inventing generic object classes', () => {
@@ -1213,7 +1256,7 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
           placement: {
             pageNumber: 3,
             crop: 'CROP_CONTENT_VISIBLE_LAYERS',
-            visibleLayers: ['结构', '标注'],
+            visibleLayers: ['结构', '合并底图|PM-隔断', 'A, "B"'],
             hiddenLayers: ['家具'],
           },
         },
@@ -1259,8 +1302,9 @@ test('pageItemsToAuthorHtml renders observed PDF AI and PSD through clean genera
   assert.match(html, /data-id-asset-kind="pdf"/);
   assert.match(html, /data-id-pdf-page="3"/);
   assert.match(html, /data-id-crop="content"/);
-  assert.match(html, /data-id-visible-layers="结构\|标注"/);
-  assert.match(html, /data-id-hidden-layers="家具"/);
+  // 图层名含 `|`、逗号、引号：属性值是 JSON 数组，HTML 转义后仍能逐字还原（#33）。
+  assert.ok(html.includes('data-id-visible-layers="[&quot;结构&quot;,&quot;合并底图|PM-隔断&quot;,&quot;A, \\&quot;B\\&quot;&quot;]"'), html);
+  assert.match(html, /data-id-hidden-layers="\[&quot;家具&quot;\]"/);
   assert.match(html, /<img id="layered-ai"[^>]+src="previews\/layered-ai\.png"/);
   assert.match(html, /data-id-asset-kind="ai"/);
   assert.match(html, /data-id-artboard="2"/);

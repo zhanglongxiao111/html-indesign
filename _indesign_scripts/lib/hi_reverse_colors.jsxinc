@@ -1,0 +1,155 @@
+if (typeof HI === "undefined") { HI = {}; }
+// Reverse color reading: swatches, tints, color spaces and text stroke. Split from hi_reverse_styles.jsxinc.
+// ExtendScript (#9): read DOM properties into a variable (HI.reverseSafeProperty) before negating them.
+// localTint: the owner's own tint (item.fillTint, character.fillTint, ...), read with HI.reverseTint.
+// Tint swatches report the base color in colorValue and the percentage in tintValue; the effective color is
+// the base color at that tint (CMYK/Lab components scaled, RGB blended toward white). A local tint on the owner
+// is absolute against the base color and wins over the swatch tint. CMYK and Lab values are converted to RGB by
+// InDesign's own color management (HI.reverseBeginColorConversion). Colors that cannot be converted report a
+// warning instead of silently falling back.
+HI.reverseColor = function (color, localTint) {
+    var swatchName = "";
+    try {
+        var valid = color ? HI.reverseSafeProperty(color, "isValid") : false;
+        if (!valid) return null;
+        var name = String(HI.reverseSafeProperty(color, "name") || "");
+        swatchName = name;
+        if (name === "None" || name === "[None]" || name === "Text Color") return null;
+        if (name === "Paper" || name === "[Paper]") return "#ffffff";
+        color = HI.reverseResolveSwatch ? HI.reverseResolveSwatch(color) : color;
+        if (HI.reverseIsGradient && HI.reverseIsGradient(color)) return HI.reverseGradientFallbackColor(color);
+        var tint = HI.reverseEffectiveTint(color, localTint);
+        var v = HI.reverseSafeProperty(color, "colorValue"), space = HI.reverseSafeProperty(color, "space");
+        var hasValue = false;
+        try { hasValue = v && v.length > 0; } catch (_) { hasValue = false; }
+        if (hasValue) {
+            var hex = HI.reverseTintedHex(v, HI.reverseColorSpaceKey(space), tint);
+            if (hex) return hex;
+        }
+        HI.reverseNoteColorIssue("REVERSE_COLOR_UNRESOLVED", "Swatch \"" + name + "\" (" + HI.reverseColorKind(color) + ") could not be converted to an RGB color; the color is dropped in author HTML.", { swatch: name, colorKind: HI.reverseColorKind(color) });
+    } catch (error) {
+        HI.reverseNoteColorIssue("REVERSE_COLOR_UNRESOLVED", "Swatch \"" + swatchName + "\" could not be read: " + String(error), { swatch: swatchName });
+    }
+    return null;
+};
+
+HI.reverseColorKind = function (color) { try { return String(color.constructor.name || ""); } catch (_) {} return ""; };
+
+// Effective tint percentage (0..100) or null for full strength.
+HI.reverseEffectiveTint = function (color, localTint) {
+    if (localTint !== null && typeof localTint !== "undefined") return Number(localTint);
+    if (!color || HI.reverseColorKind(color) !== "Tint") return null;
+    var tintValue = HI.numberOrNull(HI.reverseSafeProperty(color, "tintValue"));
+    if (tintValue !== null && tintValue >= 0 && tintValue <= 100) return tintValue < 100 ? tintValue : null;
+    var name = String(HI.reverseSafeProperty(color, "name") || "");
+    HI.reverseNoteColorIssue("REVERSE_TINT_UNREADABLE", "Tint swatch \"" + name + "\" has no readable tint value; its base color is written at full strength.", { swatch: name });
+    return null;
+};
+
+HI.reverseColorSpaceKey = function (space) {
+    try { if (space === ColorSpace.RGB) return "RGB"; } catch (_) {}
+    try { if (space === ColorSpace.CMYK) return "CMYK"; } catch (_) {}
+    try { if (space === ColorSpace.LAB) return "LAB"; } catch (_) {}
+    if (space === 1666336578) return "RGB";
+    if (space === 1129142603) return "CMYK";
+    if (space === 1665941826) return "LAB";
+    return "";
+};
+
+HI.reverseTintedHex = function (v, spaceKey, tint) {
+    var t = tint === null || typeof tint === "undefined" ? 1 : Math.max(0, Math.min(100, Number(tint))) / 100;
+    if (spaceKey === "RGB") {
+        return HI.rgbHex(255 - (255 - Number(v[0] || 0)) * t, 255 - (255 - Number(v[1] || 0)) * t, 255 - (255 - Number(v[2] || 0)) * t);
+    }
+    var values = null;
+    if (spaceKey === "CMYK") values = [Number(v[0] || 0) * t, Number(v[1] || 0) * t, Number(v[2] || 0) * t, Number(v[3] || 0) * t];
+    if (spaceKey === "LAB") values = [100 - (100 - Number(v[0] || 0)) * t, Number(v[1] || 0) * t, Number(v[2] || 0) * t];
+    if (!values) return null;
+    var rgb = HI.reverseConvertedRgb(spaceKey, values);
+    if (rgb) return HI.rgbHex(rgb[0], rgb[1], rgb[2]);
+    if (spaceKey === "LAB") return HI.labHex(values[0], values[1], values[2]);
+    var c = values[0] / 100, m = values[1] / 100, y = values[2] / 100, k = values[3] / 100;
+    return HI.rgbHex(255 * (1 - c) * (1 - k), 255 * (1 - m) * (1 - k), 255 * (1 - y) * (1 - k));
+};
+
+// InDesign color management for CMYK / Lab (the document's CMYK and RGB profiles, as InDesign converts for RGB
+// output). A naive device formula turns CMYK 0/100/100/0 into pure #ff0000 and its 40% tint into a pink #ff9999,
+// while the profile gives a warmer red / salmon. The converter exists only during one reverse export; outside it
+// (unit tests) the device formula is used. A failing conversion is reported and falls back to the formula.
+HI.reverseColorConverter = null;
+HI.reverseBeginColorConversion = function (doc) {
+    var cache = {};
+    HI.reverseColorConverter = function (spaceKey, values) {
+        var key = spaceKey + ":" + values.join(",");
+        if (!cache.hasOwnProperty(key)) cache[key] = HI.reverseProfileRgb(doc, spaceKey, values);
+        return cache[key];
+    };
+};
+HI.reverseEndColorConversion = function () { HI.reverseColorConverter = null; };
+HI.reverseConvertedRgb = function (spaceKey, values) {
+    var convert = HI.reverseColorConverter;
+    if (!convert) return null;
+    try {
+        return convert(spaceKey, values);
+    } catch (error) {
+        HI.reverseNoteColorIssue("REVERSE_COLOR_PROFILE_FAILED", spaceKey + " color " + values.join("/") + " could not be converted by InDesign color management (" + String(error) + "); a device formula approximates it.", { colorSpace: spaceKey, colorValue: values.join(",") });
+        return null;
+    }
+};
+// A temporary process color is added, switched to RGB (InDesign converts its values through the profiles), read
+// and removed inside one undo step that is undone right away: the document keeps no object and its modified state.
+HI.reverseProfileRgb = function (doc, spaceKey, values) {
+    var undoName = "html-indesign reverse color conversion";
+    var rgb = null;
+    app.doScript(function () {
+        var temp = doc.colors.add({ model: ColorModel.PROCESS, space: spaceKey === "CMYK" ? ColorSpace.CMYK : ColorSpace.LAB, colorValue: values });
+        try { temp.space = ColorSpace.RGB; rgb = temp.colorValue; } finally { temp.remove(); }
+    }, ScriptLanguage.JAVASCRIPT, undefined, UndoModes.ENTIRE_SCRIPT, undoName);
+    if (String(HI.reverseSafeProperty(doc, "undoName") || "") === undoName) doc.undo();
+    if (!rgb || rgb.length < 3) throw new Error("no RGB value");
+    return [Number(rgb[0]), Number(rgb[1]), Number(rgb[2])];
+};
+
+// CIE Lab (D65 reference white) to sRGB hex.
+HI.labHex = function (l, a, b) {
+    var fy = (l + 16) / 116, fx = fy + a / 500, fz = fy - b / 200;
+    var finv = function (f) { var f3 = f * f * f; return f3 > 0.008856 ? f3 : (f - 16 / 116) / 7.787; };
+    var x = 0.95047 * finv(fx), y = 1.0 * finv(fy), z = 1.08883 * finv(fz);
+    var lin = [3.2406 * x - 1.5372 * y - 0.4986 * z, -0.9689 * x + 1.8758 * y + 0.0415 * z, 0.0557 * x - 0.2040 * y + 1.0570 * z];
+    var out = [];
+    for (var i = 0; i < 3; i++) {
+        var c = Math.max(0, Math.min(1, lin[i]));
+        out.push(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055));
+    }
+    return HI.rgbHex(out[0], out[1], out[2]);
+};
+
+// Owner-local tint (fillTint / strokeTint / edge tints): 0..100 exclusive of 100; -1 (inherit) and 100 read as null.
+HI.reverseTint = function (owner, propertyName) {
+    var value = HI.numberOrNull(HI.reverseSafeProperty(owner, propertyName));
+    return value !== null && value >= 0 && value < 100 ? value : null;
+};
+
+
+HI.reverseStrokeColor = function (item) { var color = HI.reverseSafeProperty(item, "strokeColor"); try { if (color && color.isValid && String(color.name || "") === "") return null; } catch (_) {} return HI.reverseColor(color, HI.reverseTint(item, "strokeTint")); };
+// Text stroke (character / paragraph strokeColor + strokeWeight). Written only when a stroke color resolves; a gradient
+// stroke is approximated by its first stop like any other gradient color. CSS: -webkit-text-stroke (centered on the glyph outline).
+HI.reverseTextStroke = function (owner) {
+    var color = HI.reverseColor(HI.reverseSafeProperty(owner, "strokeColor"), HI.reverseTint(owner, "strokeTint"));
+    var weight = color ? HI.positiveNumberOrNull(HI.reverseSafeProperty(owner, "strokeWeight")) : null;
+    return weight ? { strokeColor: color, strokeWeight: weight } : { strokeColor: null, strokeWeight: null };
+};
+HI.pushTextStrokeCss = function (css, stroke, unit) { if (stroke && stroke.strokeColor && Number(stroke.strokeWeight) > 0) css.push("-webkit-text-stroke:" + Number(stroke.strokeWeight) + unit + " " + stroke.strokeColor); };
+HI.rgbHex = function (r, g, b) { return "#" + HI.hexByte(r) + HI.hexByte(g) + HI.hexByte(b); };
+HI.hexByte = function (value) { var n = Math.max(0, Math.min(255, Math.round(Number(value || 0)))); var h = n.toString(16); return h.length === 1 ? "0" + h : h; };
+// Colors the reverse reader cannot convert (unreadable tint, mixed ink, unknown color space): one warning per owner, code and swatch.
+HI.reverseNoteColorIssue = function (code, message, details) {
+    var state = HI.reverseGradientTracking;
+    if (!state) return;
+    var owner = state.owner, out = {};
+    HI.copyObject(out, details || {});
+    var key = [code, owner.itemId, owner.styleKind, owner.styleName, out.swatch].join("|");
+    if (state.seen[key]) return; state.seen[key] = true;
+    HI.copyObject(out, owner);
+    HI.addMessage(state.report, "warning", code, message, out);
+};

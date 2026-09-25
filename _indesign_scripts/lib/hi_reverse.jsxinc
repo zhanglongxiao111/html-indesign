@@ -8,6 +8,7 @@ HI.exportReverseSnapshot = function (appRef, outputPath) {
     var previewContext = HI.reversePreviewContext(outputPath, report);
     var snapshot = null;
     HI.reverseBeginGradientTracking(report);
+    HI.reverseBeginColorConversion(doc);
     try {
         snapshot = { metadata: { sourceDocument: HI.documentPath(doc), exportedAt: String(new Date()), mode: "structured", coordinateUnit: coordinateUnit, previewDirectory: previewContext.folder.fsName }, report: report };
         snapshot.document = HI.reverseDocument(doc);
@@ -19,6 +20,7 @@ HI.exportReverseSnapshot = function (appRef, outputPath) {
         HI.writeJsonFile(outputPath, snapshot);
         return { ok: report.ok !== false, outputPath: outputPath, counts: HI.reverseCounts(snapshot), errors: report.errors, warnings: report.warnings };
     } finally {
+        HI.reverseEndColorConversion();
         HI.reverseEndGradientTracking();
         HI.restoreReverseMeasurementUnits(appRef, doc, oldUnits);
     }
@@ -391,11 +393,6 @@ HI.reverseExtendedVisualStyle = function (item) {
     value = HI.reverseLineMarker(item, "rightLineEnd"); if (value) out.lineEndMarker = value;
     value = HI.reverseBlendMode(item); if (value) out.blendMode = value;
     return out;
-};
-
-HI.reverseTint = function (item, propertyName) {
-    var value = HI.numberOrNull(HI.reverseSafeProperty(item, propertyName));
-    return value !== null && value >= 0 && value < 100 ? value : null;
 };
 
 HI.reverseStrokeLineCap = function (item) {

@@ -345,6 +345,8 @@ function itemModelFor(item, page, layout) {
   const vectorFacts = vectorFactsFromSvgItem(item, bounds) || {};
   const visualStyle = mergeVisualStyleFacts(
     visualStyleFromComputedStyle(item),
+    // 观察页上不套对象样式的对象：CSS 盒子外观作为局部覆盖（style-synthesis local-formatting）。
+    item.localVisualStyle || null,
     item.visualStyle || vectorFacts.visualStyle || null,
     visualStyleFromProtocolAttrs(attrs),
   );
@@ -392,6 +394,7 @@ function itemModelFor(item, page, layout) {
     computedStyle: { ...(item.computedStyle || {}) },
     authoredStyle: { ...(item.authoredStyle || {}) },
     ruleStyle: { ...(item.ruleStyle || {}) },
+    styleClassRules: { ...(item.styleClassRules || {}) },
     sourceSelector: item.sourceSelector || null,
     bounds,
     boundsMm: item.boundsMm || null,
@@ -555,7 +558,8 @@ function pageGridFromAttributes(attrs = {}) {
 }
 
 function lengthNumber(value) {
-  const match = String(value || '').match(/^([+-]?(?:\d+|\d*\.\d+))/);
+  // Decimal alternative first: the pattern is not anchored at the end, so "\d+" first reads "4.5mm" as 4.
+  const match = String(value || '').match(/^([+-]?(?:\d*\.\d+|\d+))/);
   return match ? Number(match[1]) : null;
 }
 
@@ -586,10 +590,17 @@ function tableForItem(item) {
       }
     }
     if (Array.isArray(item.table)) table.sourceRows = item.table;
+    if (hasSourceColumnWidths(item)) table.sourceColumnWidths = item.tableColumnWidths;
     return Object.keys(table).length ? table : null;
   }
   if (item.table && !Array.isArray(item.table)) return item.table;
-  if (Array.isArray(item.table)) return { rows: item.table, sourceRows: item.table };
+  if (Array.isArray(item.table)) {
+    return {
+      rows: item.table,
+      sourceRows: item.table,
+      ...(hasSourceColumnWidths(item) ? { sourceColumnWidths: item.tableColumnWidths } : {}),
+    };
+  }
   if (!item.content) return null;
   const table = {};
   for (const key of ['rows', 'tableStyle', 'rowCount', 'columnCount', 'columnWidths', 'rowHeights']) {
@@ -598,6 +609,10 @@ function tableForItem(item) {
     }
   }
   return Object.keys(table).length ? table : null;
+}
+
+function hasSourceColumnWidths(item) {
+  return Array.isArray(item.tableColumnWidths) && item.tableColumnWidths.length > 0;
 }
 
 function sourceTextForItem(item) {

@@ -136,6 +136,7 @@
     const itemAuthoredStyle = styles.authoredStyleObject(el, styleRules);
     const frameAuthoredStyle = styles.authoredStyleObject(frameEl, styleRules);
     const itemRuleStyle = styles.ruleStyleObject(el, styleRules);
+    const itemStyleClassRules = styles.styleClassRuleObjects(el, styleRules);
     const itemAttrs = elements.attrs(el);
     const frameAttrs = elements.attrs(frameEl);
     const previewNode = elements.sourcePreviewNodeFor(el, frameEl, pageEl);
@@ -159,10 +160,14 @@
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),
       computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),
-      authoredStyle: styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle),
+      authoredStyle: frameEl === el
+        ? itemAuthoredStyle
+        : styles.withVisualFrameGeometry(styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle), frameAuthoredStyle),
       ruleStyle: itemRuleStyle,
-      runs: elements.textRunsFor(el, candidates),
+      styleClassRules: itemStyleClassRules,
+      runs: elements.textRunsFor(el, candidates, styleRules),
       table: elements.tableRowsFor(el, styleRules),
+      tableColumnWidths: elements.tableColumnWidthsFor(el, styleRules),
       unsupported: elements.unsupportedFor(el),
       candidateIndex: itemIndex,
       ancestorCandidateIndexes: elements.ancestorCandidateIndexes(el, candidates, pageEl),

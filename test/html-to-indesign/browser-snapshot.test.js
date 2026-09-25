@@ -980,3 +980,33 @@ test('renderSnapshot gives the grid-placed ancestor its own rectPx and boundsMm'
   assert.equal(body.rectPx, undefined);
   assert.equal(body.boundsMm, undefined);
 });
+
+test('renderSnapshot takes a table frame from its data-id-ignore wrapper and captures declared row heights', async () => {
+  // 反向导出把「比表格高的文本框」写成包着表格的 data-id-ignore 包裹层（#34）：外框取包裹层，行高取 <tr> 声明。
+  const outDir = path.resolve('test/workspace/browser-table-frame-wrapper');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { position: relative; width: 800px; height: 450px; }
+  td { padding: 1px; font-size: 12px; }
+</style>
+<section class="page" id="page-1">
+  <div id="frame-310" data-id-ignore style="position:absolute;left:40px;top:50px;width:170px;height:170px">
+    <table style="width:100%;border-collapse:collapse">
+      <tbody>
+        <tr style="height:14.83px"><td>A</td></tr>
+        <tr><td>B</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const table = snapshot.pages[0].items.find((item) => item.tagName === 'table');
+  assert.equal(table.id, 'frame-310');
+  assert.equal(Math.round(table.rectPx.height), 170);
+  assert.equal(table.table[0].authoredHeight, '14.83px');
+  assert.equal(Object.prototype.hasOwnProperty.call(table.table[1], 'authoredHeight'), false);
+});

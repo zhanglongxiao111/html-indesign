@@ -9,6 +9,9 @@ const {
   assetSourceFromElementLike,
   createAssetId,
   placementFromAttributes,
+  LAYER_LIST_ENCODING,
+  parseLayerListAttribute,
+  formatLayerListAttribute,
   normalizePathKey,
   sourceFileKey,
   sanitizeRelative,
@@ -78,7 +81,7 @@ test('placementFromAttributes preserves protocol placement fields', () => {
     'data-id-fit': 'manual',
     'data-id-pdf-page': '3',
     'data-id-crop': 'trim',
-    'data-id-visible-layers': 'Layer 1|Layer 2',
+    'data-id-visible-layers': '["Layer 1","Layer 2"]',
     'data-id-content-x': '10px',
     'data-id-content-y': '20px',
     'data-id-content-width': '300px',
@@ -139,4 +142,53 @@ test('resource identities treat UNC NAS URLs and hosted file URLs as the same or
 
   assert.equal(resourceReferenceIdentity(unc), resourceReferenceIdentity(nas));
   assert.equal(resourceReferenceIdentity(fileUrl), resourceReferenceIdentity(nas));
+});
+
+test('layer list attribute is a JSON array that keeps names with "|", commas, quotes and Chinese verbatim (#33)', () => {
+  const layers = ['A_建筑_2D_区域.A', '合并底图|PM-隔断', 'A, "B"', "it's", ' 前后空格 ', 'A_建筑_2D_线条\\圆弧.A'];
+  const encoded = formatLayerListAttribute(layers);
+  assert.equal(encoded, JSON.stringify(layers));
+  assert.deepEqual(parseLayerListAttribute(encoded), { encoding: LAYER_LIST_ENCODING.JSON, layers });
+  assert.deepEqual(placementFromAttributes({ 'data-id-visible-layers': encoded }).visibleLayers, layers);
+});
+
+test('layer list attribute survives HTML attribute escaping and a real HTML parser (#33)', () => {
+  const cheerio = require('cheerio');
+  const { attrsToHtml } = require('../../src/writers/html/author-attribute-writer');
+  const layers = ['合并底图|PM-隔断', 'A, "B"', '<标注> & 家具'];
+  const html = `<img ${attrsToHtml({ 'data-id-visible-layers': formatLayerListAttribute(layers) })}>`;
+  const value = cheerio.load(html)('img').attr('data-id-visible-layers');
+  assert.deepEqual(placementFromAttributes({ 'data-id-visible-layers': value }).visibleLayers, layers);
+});
+
+test('layer list attribute treats empty input and empty arrays as no layer directive (#33)', () => {
+  assert.equal(formatLayerListAttribute([]), '');
+  assert.equal(formatLayerListAttribute(['', null]), '');
+  assert.equal(formatLayerListAttribute(undefined), '');
+  assert.deepEqual(parseLayerListAttribute('[]'), { encoding: LAYER_LIST_ENCODING.JSON, layers: undefined });
+  assert.deepEqual(parseLayerListAttribute('  '), { encoding: LAYER_LIST_ENCODING.EMPTY, layers: undefined });
+  assert.deepEqual(parseLayerListAttribute(null), { encoding: LAYER_LIST_ENCODING.EMPTY, layers: undefined });
+  assert.equal(placementFromAttributes({ 'data-id-visible-layers': '[]' }).visibleLayers, undefined);
+});
+
+test('older "|" delimited layer lists are still split on read and marked delimited (#33)', () => {
+  assert.deepEqual(parseLayerListAttribute('base|annotations'), {
+    encoding: LAYER_LIST_ENCODING.DELIMITED,
+    layers: ['base', 'annotations'],
+  });
+  assert.deepEqual(parseLayerListAttribute('结构, 标注'), {
+    encoding: LAYER_LIST_ENCODING.DELIMITED,
+    layers: ['结构', '标注'],
+  });
+  assert.deepEqual(placementFromAttributes({ 'data-id-hidden-layers': 'old' }).hiddenLayers, ['old']);
+});
+
+test('layer list values that start with "[" but are not JSON string arrays are rejected, not split (#33)', () => {
+  for (const value of ['[草图]|标注', '["a",1]', '[{"name":"a"}]']) {
+    const parsed = parseLayerListAttribute(value);
+    assert.equal(parsed.encoding, LAYER_LIST_ENCODING.INVALID, value);
+    assert.equal(parsed.layers, undefined, value);
+    assert.ok(parsed.reason, value);
+  }
+  assert.equal(placementFromAttributes({ 'data-id-visible-layers': '[草图]|标注' }).visibleLayers, undefined);
 });

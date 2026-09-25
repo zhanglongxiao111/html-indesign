@@ -156,7 +156,7 @@ test('compareVisualGeometry accepts generated visual fragments only from structu
     candidate: {
       pages: [{ index: 0, id: 'cover', width: 1000, height: 600 }],
       elements: [
-        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 200, height: 100 },
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 200, height: 100, borderWidths: { top: 0, right: 0, bottom: 0, left: 2 } },
         { key: '0:label', id: 'label', pageIndex: 0, tagName: 'svg', role: 'shape', objectStyle: 'annotation-label', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-object-style', 'data-id-vector'], x: 40, y: 40, width: 120, height: 32 },
       ],
     },
@@ -172,6 +172,35 @@ test('compareVisualGeometry accepts generated visual fragments only from structu
     'AUTHOR_VISUAL_GENERATED_TEXT_ACCEPTED',
   ]);
   assert.equal(report.stats.accepted, 3);
+});
+
+test('compareVisualGeometry rejects a border fragment the author container does not draw (#34)', () => {
+  const compare = (borderWidths) => compareVisualGeometry({
+    reference: {
+      pages: [{ index: 0, id: 'agenda', width: 1000, height: 600 }],
+      elements: [
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'svg', role: 'shape', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 200, height: 100 },
+        { key: '0:card-border-left', id: 'card-border-left', pageIndex: 0, tagName: 'svg', role: 'decoration', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 11, height: 100 },
+      ],
+    },
+    candidate: {
+      pages: [{ index: 0, id: 'agenda', width: 1000, height: 600 }],
+      elements: [
+        { key: '0:card', id: 'card', pageIndex: 0, tagName: 'div', role: 'shape', vector: 'rectangle', dataIdAttrs: ['data-id-role', 'data-id-vector'], x: 20, y: 20, width: 200, height: 100, ...(borderWidths ? { borderWidths } : {}) },
+      ],
+    },
+    tolerance: 2,
+  });
+
+  const folded = compare({ top: 1, right: 1, bottom: 1, left: 11 });
+  assert.equal(folded.ok, true);
+  assert.deepEqual(folded.warnings.map((issue) => issue.code), ['AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED']);
+
+  for (const widths of [{ top: 0, right: 0, bottom: 0, left: 0 }, null]) {
+    const dropped = compare(widths);
+    assert.equal(dropped.ok, false);
+    assert.deepEqual(dropped.errors.map((issue) => issue.code), ['AUTHOR_VISUAL_ELEMENT_MISSING']);
+  }
 });
 
 test('compareVisualGeometry expects folded companion text on its annotation base', () => {
@@ -520,4 +549,18 @@ test('compareVisualGeometry invalid-input 必须 fail', () => {
 
 test('loadReverseHtmlEvidence invalid-input 必须 fail', () => {
   assert.throws(() => loadReverseHtmlEvidence({}));
+});
+
+test('compareVisualGeometry compares whole text when inline run spans carry part of it (#34)', () => {
+  const element = (ownTextContent) => ({
+    key: '0:286', id: '286', pageIndex: 0, tagName: 'p', dataIdAttrs: [], hasIdChildren: false,
+    textContent: 'Gradient textSecond para', ownTextContent, x: 10, y: 10, width: 100, height: 40,
+  });
+  const report = compareVisualGeometry({
+    reference: { pages: [{ index: 0, id: 'p', width: 600, height: 800 }], elements: [element('Gradient textecond para')] },
+    candidate: { pages: [{ index: 0, id: 'p', width: 600, height: 800 }], elements: [element('Gradient text')] },
+    tolerance: 2,
+  });
+  assert.equal(report.ok, true);
+  assert.equal(report.stats.textMismatches, 0);
 });

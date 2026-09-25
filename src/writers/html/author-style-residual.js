@@ -1,4 +1,5 @@
 const { blendModeCss } = require('./css-blend-mode');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, typeSizePx } = require('./css-values');
 
 function inlineResidualForSynth({ inlineCss, token, synthesizedStyles }) {
   const inline = parseCssDeclarations(inlineCss);
@@ -30,9 +31,10 @@ function synthesizedStyleDeclarations(style) {
   const properties = style && style.properties || {};
   if (style && style.kind === 'text') return synthesizedTextStyleDeclarations(properties);
   const declarations = [];
-  if (properties.fillColor) declarations.push(`background-color:${properties.fillColor}`);
+  if (properties.fillColor) declarations.push(`background-color:${colorWithOpacity(properties.fillColor, properties.fillOpacity)}`);
   if (properties.strokeColor && Number(properties.strokeWeight) > 0) {
-    declarations.push(`border:${px(properties.strokeWeight)} solid ${properties.strokeColor}`);
+    const strokeColor = colorWithOpacity(properties.strokeColor, properties.strokeOpacity);
+    declarations.push(`border:${px(properties.strokeWeight)} ${cssBorderStyle(properties.strokeStyle)} ${strokeColor}`);
   }
   if (Number(properties.cornerRadius) > 0) declarations.push(`border-radius:${px(properties.cornerRadius)}`);
   const blendMode = blendModeCss(properties.blendMode);
@@ -47,13 +49,15 @@ function synthesizedTextStyleDeclarations(properties) {
   if (properties.fontFamily) declarations.push(`font-family:"${properties.fontFamily}", Arial, sans-serif`);
   if (properties.fontWeight) declarations.push(`font-weight:${properties.fontWeight}`);
   if (properties.fontStyle) declarations.push(`font-style:${properties.fontStyle}`);
-  if (properties.pointSize != null) declarations.push(`font-size:${px(properties.pointSize)}`);
-  if (properties.leading != null) declarations.push(`line-height:${px(properties.leading)}`);
+  if (properties.pointSize != null) declarations.push(`font-size:${typeSizePx(properties.pointSize)}`);
+  if (properties.leading != null) declarations.push(`line-height:${typeSizePx(properties.leading)}`);
   if (properties.fillColor) declarations.push(`color:${properties.fillColor}`);
   if (properties.tracking != null && Number(properties.tracking) !== 0) {
     declarations.push(`letter-spacing:${formatNumber(Number(properties.tracking) / 1000)}em`);
   }
-  if (properties.justification) declarations.push(`text-align:${properties.justification}`);
+  if (properties.justification) declarations.push(justificationCss(properties.justification).replace(';', '; '));
+  const capitalization = capitalizationCss(properties.capitalization);
+  if (capitalization) declarations.push(capitalization);
   return declarations.join('; ');
 }
 

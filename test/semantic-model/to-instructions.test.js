@@ -1485,8 +1485,8 @@ test('semanticModelToInstructions carries placed PDF page crop and layer visibil
               'data-id-asset-kind': 'pdf',
               'data-id-pdf-page': '5',
               'data-id-crop': 'trim',
-              'data-id-visible-layers': '结构|标注',
-              'data-id-hidden-layers': '家具',
+              'data-id-visible-layers': '["结构","合并底图|标注"]',
+              'data-id-hidden-layers': '["家具"]',
             },
             computedStyle: { objectFit: 'contain', objectPosition: '50% 50%' },
           },
@@ -1516,7 +1516,7 @@ test('semanticModelToInstructions carries placed PDF page crop and layer visibil
   assert.equal(placed.assetId, 'asset-layered-pdf');
   assert.equal(placed.pageNumber, 5);
   assert.equal(placed.crop, 'trim');
-  assert.deepEqual(placed.visibleLayers, ['结构', '标注']);
+  assert.deepEqual(placed.visibleLayers, ['结构', '合并底图|标注']);
   assert.deepEqual(placed.hiddenLayers, ['家具']);
 });
 

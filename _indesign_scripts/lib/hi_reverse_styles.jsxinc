@@ -1,7 +1,7 @@
-if (typeof HI === "undefined") { HI = {}; }
+﻿if (typeof HI === "undefined") { HI = {}; }
 HI.reverseVisualStyle = function (item) {
     var out = {
-        fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor")),
+        fillColor: HI.reverseColor(HI.reverseSafeProperty(item, "fillColor"), HI.reverseTint(item, "fillTint")),
         strokeColor: HI.reverseStrokeColor(item),
         strokeWeight: null,
         fillOpacity: HI.reverseFillOpacity(item),
@@ -32,11 +32,13 @@ HI.reverseTextStyle = function (item) {
             fontStyle: font ? font.fontStyle : null,
             pointSize: HI.numberOrNull(p.pointSize),
             leading: HI.leadingOrNull(p.leading),
-            fillColor: HI.reverseColor(p.fillColor),
+            fillColor: HI.reverseColor(p.fillColor, HI.reverseTint(p, "fillTint")),
             tracking: HI.numberOrNull(p.tracking),
             justification: HI.reverseJustification(p.justification),
-            composer: HI.reverseComposer(p.composer)
+            composer: HI.reverseComposer(p.composer),
+            capitalization: HI.reverseCapitalization(HI.reverseSafeProperty(p, "capitalization"))
         };
+        HI.copyObject(style, HI.reverseTextStroke(p));
         style.css = HI.textStyleCss(style);
         return style;
     } catch (_) {}
@@ -193,14 +195,16 @@ HI.paragraphStyleCss = function (style) {
     HI.pushCssNumber(css, "font-size", style.pointSize, "pt");
     HI.pushCssNumber(css, "line-height", HI.leadingOrNull(style.leading), "pt");
     if (HI.numberOrNull(style.tracking)) css.push("letter-spacing:" + (Number(style.tracking) / 1000) + "em");
-    css.push("text-align:" + HI.reverseJustification(style.justification));
-    var color = HI.reverseColor(style.fillColor);
+    css.push(HI.justificationCss(HI.reverseJustification(style.justification)));
+    var color = HI.reverseColor(style.fillColor, HI.reverseTint(style, "fillTint"));
     if (color) css.push("color:" + color);
     HI.pushCssNumber(css, "margin-top", style.spaceBefore, "pt");
     HI.pushCssNumber(css, "margin-bottom", style.spaceAfter, "pt");
     HI.pushCssNumber(css, "text-indent", style.firstLineIndent, "pt");
     HI.pushCssNumber(css, "padding-left", style.leftIndent, "pt");
     HI.pushCssNumber(css, "padding-right", style.rightIndent, "pt");
+    HI.pushCapitalizationCss(css, HI.reverseCapitalization(HI.reverseSafeProperty(style, "capitalization")));
+    HI.pushTextStrokeCss(css, HI.reverseTextStroke(style), "pt");
     return css.join("; ");
 };
 
@@ -210,17 +214,19 @@ HI.characterStyleCss = function (style) {
     if (font && font.fontWeight) css.push("font-weight:" + font.fontWeight);
     if (font && font.fontStyle) css.push("font-style:" + font.fontStyle);
     HI.pushCssNumber(css, "font-size", style.pointSize, "pt");
-    var color = HI.reverseColor(style.fillColor);
+    var color = HI.reverseColor(style.fillColor, HI.reverseTint(style, "fillTint"));
     if (color) css.push("color:" + color);
+    HI.pushCapitalizationCss(css, HI.reverseCapitalization(HI.reverseSafeProperty(style, "capitalization")));
+    HI.pushTextStrokeCss(css, HI.reverseTextStroke(style), "pt");
     return css.join("; ");
 };
 
 HI.objectStyleCss = function (style) {
     var css = [];
     try {
-        if (style.enableFill) { var fill = HI.reverseColor(style.fillColor); if (fill) css.push("background-color:" + fill); }
+        if (style.enableFill) { var fill = HI.reverseColor(style.fillColor, HI.reverseTint(style, "fillTint")); if (fill) css.push("background-color:" + fill); }
         if (style.enableStroke && Number(style.strokeWeight || 0) > 0) {
-            var stroke = HI.reverseColor(style.strokeColor);
+            var stroke = HI.reverseColor(style.strokeColor, HI.reverseTint(style, "strokeTint"));
             if (stroke) css.push("border:" + Number(style.strokeWeight) + "pt solid " + stroke);
         }
         var radius = HI.reverseCornerRadius(style);
@@ -244,9 +250,15 @@ HI.textStyleCss = function (style) {
     if (style.leading !== null) css.push("line-height:" + style.leading + "px");
     if (style.fillColor) css.push("color:" + style.fillColor);
     if (style.tracking !== null && Number(style.tracking) !== 0) css.push("letter-spacing:" + (Number(style.tracking) / 1000) + "em");
-    if (style.justification) css.push("text-align:" + style.justification);
+    if (style.justification) css.push(HI.justificationCss(style.justification));
+    HI.pushCapitalizationCss(css, style.capitalization);
+    HI.pushTextStrokeCss(css, style, "px");
     return css.join("; ");
 };
+
+// InDesign 大小写（#34）：ALL_CAPS / SMALL_CAPS 读成 allCaps / smallCaps（与正向 hi_styles 写入的取值互逆），其余为 null。
+HI.reverseCapitalization = function (value) { try { if (value === null || typeof value === "undefined" || typeof Capitalization === "undefined") return null; if (value === Capitalization.ALL_CAPS) return "allCaps"; if (value === Capitalization.SMALL_CAPS) return "smallCaps"; } catch (_) {} return null; };
+HI.pushCapitalizationCss = function (css, capitalization) { if (capitalization === "allCaps") css.push("text-transform:uppercase"); if (capitalization === "smallCaps") css.push("font-variant-caps:small-caps"); };
 
 HI.textFrameStyleCss = function (style) {
     var css = [], i = style.inset || {};
@@ -271,29 +283,6 @@ HI.reverseFontInfo = function (font) {
     return null;
 };
 
-HI.reverseColor = function (color) {
-    try {
-        var valid = color ? HI.reverseSafeProperty(color, "isValid") : false;
-        if (!valid) return null;
-        var name = String(HI.reverseSafeProperty(color, "name") || "");
-        if (name === "None" || name === "[None]" || name === "Text Color") return null;
-        if (name === "Paper" || name === "[Paper]") return "#ffffff";
-        color = HI.reverseResolveSwatch ? HI.reverseResolveSwatch(color) : color;
-        if (HI.reverseIsGradient && HI.reverseIsGradient(color)) return HI.reverseGradientFallbackColor(color);
-        // Tint.colorValue reports the base color; objects without colorValue (MixedInk) fall through to null here.
-        var v = HI.reverseSafeProperty(color, "colorValue"), space = HI.reverseSafeProperty(color, "space");
-        if (!v || !(v.length > 0)) return null;
-        if (space === ColorSpace.RGB) return HI.rgbHex(v[0], v[1], v[2]);
-        if (space === ColorSpace.CMYK || space === 1129142603) {
-            var k = Number(v[3] || 0) / 100;
-            return HI.rgbHex(255 * (1 - Number(v[0] || 0) / 100) * (1 - k), 255 * (1 - Number(v[1] || 0) / 100) * (1 - k), 255 * (1 - Number(v[2] || 0) / 100) * (1 - k));
-        }
-    } catch (_) {}
-    return null;
-};
-
-HI.reverseStrokeColor = function (item) { var color = HI.reverseSafeProperty(item, "strokeColor"); try { if (color && color.isValid && String(color.name || "") === "") return null; } catch (_) {} return HI.reverseColor(color); };
-
 HI.fontWeightFor = function (styleName) {
     var s = String(styleName || "").toLowerCase();
     if (s.indexOf("black") >= 0) return "900";
@@ -306,7 +295,10 @@ HI.fontWeightFor = function (styleName) {
 };
 
 HI.fontStyleFor = function (styleName) { var s = String(styleName || "").toLowerCase(); return s.indexOf("italic") >= 0 || s.indexOf("oblique") >= 0 ? "italic" : null; };
-HI.reverseJustification = function (j) { if (j === Justification.CENTER_ALIGN) return "center"; if (j === Justification.RIGHT_ALIGN) return "right"; if (j === Justification.LEFT_ALIGN) return "left"; return "justify"; };
+// Mirror of HI.justificationFor (hi_styles): LEFT_JUSTIFIED = CSS text-align:justify (last line at the start edge); the other
+// justified variants differ only in the last line: justify-all / justify-center / justify-right, written with text-align-last.
+HI.reverseJustification = function (j) { if (j === Justification.CENTER_ALIGN) return "center"; if (j === Justification.RIGHT_ALIGN) return "right"; if (j === Justification.LEFT_ALIGN) return "left"; if (j === Justification.FULLY_JUSTIFIED) return "justify-all"; if (j === Justification.CENTER_JUSTIFIED) return "justify-center"; if (j === Justification.RIGHT_JUSTIFIED) return "justify-right"; return "justify"; };
+HI.justificationCss = function (value) { var key = String(value || ""), last = { "justify-all": "justify", "justify-center": "center", "justify-right": "right" }[key]; if (!key) return ""; return last ? "text-align:justify; text-align-last:" + last : "text-align:" + key; };
 HI.reverseVerticalJustification = function (v) { if (v === VerticalJustification.CENTER_ALIGN) return "center"; if (v === VerticalJustification.BOTTOM_ALIGN) return "flex-end"; if (v === VerticalJustification.TOP_ALIGN) return "flex-start"; return "space-between"; };
 HI.reverseListType = function (t) { if (t === 1280598644) return "bullet"; if (t === 1280601709) return "numbered"; return "none"; };
 HI.numberOrNull = function (value) { var n = Number(value); return Number(n) === n && Math.abs(n) < 1000000 ? n : null; };
@@ -315,8 +307,6 @@ HI.positiveNumberOrNull = function (value) { var n = Number(value || 0); return 
 HI.reverseOpacity = function (item) { try { var o = Number(item.transparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; };
 HI.reverseFillOpacity = function (item) { try { var o = Number(item.fillTransparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; }; HI.reverseStrokeOpacity = function (item) { try { var o = Number(item.strokeTransparencySettings.blendingSettings.opacity); return o >= 0 && o <= 100 ? o : null; } catch (_) {} return null; }; HI.reverseStrokeStyle = function (item) { try { if (item.strokeType && item.strokeType.isValid) return String(item.strokeType.name || ""); } catch (_) {} return null; };
 HI.reverseCornerRadius = function (item) { try { var r = Number(item.topLeftCornerRadius || 0); return r > 0 && item.topLeftCornerOption !== 1852796517 ? r : null; } catch (_) {} return null; };
-HI.rgbHex = function (r, g, b) { return "#" + HI.hexByte(r) + HI.hexByte(g) + HI.hexByte(b); };
-HI.hexByte = function (value) { var n = Math.max(0, Math.min(255, Math.round(Number(value || 0)))); var h = n.toString(16); return h.length === 1 ? "0" + h : h; };
 HI.insetArray = function (value) { try { if (value && value.length === 4) return [Number(value[0] || 0), Number(value[1] || 0), Number(value[2] || 0), Number(value[3] || 0)]; } catch (_) {} var n = Number(value || 0); return [n, n, n, n]; };
 HI.pushCssNumber = function (css, name, value, unit) { var n = HI.numberOrNull(value); if (n !== null && n !== 0) css.push(name + ":" + n + unit); };
 HI.safeStyleName = function (name) { return String(name || "").replace(/[\[\]]/g, "").replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, "-"); };

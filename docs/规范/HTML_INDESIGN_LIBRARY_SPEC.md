@@ -317,6 +317,8 @@ ExtendScript 不负责 HTML 解析、CSS cascade、浏览器 layout 或语义推
 | `SEMANTIC_TOKEN_MISSING` | warning | 可映射元素缺少稳定语义 token |
 | `GRAPHIC_ASSET_REFERENCE_MISSING` | error | 图形角色没有写在持有资源路径的元素上 |
 | `TEXT_CONTAINER_HAS_CHILD_OBJECTS` | error | 复合布局容器被错误声明为文本对象，会与子文字重复 |
+| `ASSET_LAYER_LIST_DELIMITED` | warning | `data-id-visible-layers` / `data-id-hidden-layers` 用了旧的 `\|`、`,` 拼接写法；按旧规则拆分读取，含 `\|` 或 `,` 的图层名会被拆错，`suggestedFix` 给出拆分结果的 JSON 数组供核对改写 |
+| `ASSET_LAYER_LIST_INVALID` | error | 图层名单以 `[` 开头但不是 JSON 字符串数组；该名单不参与编译 |
 | `ITEM_ID_DUPLICATED` | error | 同一页两个及以上对象 id 相同；由 lint 对同一快照跑 compile 的 `snapshotToSemanticModel` 得出，判重范围与 compile 一致（同页，跨页不报） |
 
 | `ASSET_FILE_NOT_FOUND` 等构建指令校验码 | error | 作者包 lint 对同一快照跑 compile 的 `compileDocument` + `validateInstructions`，资源文件缺失等在 lint 报出，条目带 `pageId`、`itemId`、`sourceFile`、`src`、`path`、`usages[]` |
@@ -382,6 +384,7 @@ lint 还接受 `lintProfile`（与 `deck.config.json` 的语义 `profile` 无关
 | `data-id-crop` | PDF crop box：`media`、`crop`、`bleed`、`trim`、`art` |
 | `data-id-artboard` | AI/SVG 画板或导入区域 |
 | `data-id-layer-comp` | PSD layer comp |
+| `data-id-visible-layers` / `data-id-hidden-layers` | PDF/AI 置入文件里要显示 / 隐藏的图层，值是 JSON 字符串数组，逐字写图层名，例如 `data-id-visible-layers='["合并底图\|PM-隔断","标注"]'`（反向导出写成 `"[&quot;…&quot;]"`，两种写法等价）。图层名本身可以含 `\|`、逗号、引号，所以不能用分隔符拼接；旧包里 `a\|b` 这种拼接值仍按 `\|`、`,` 拆开读取，但 lint 报 `ASSET_LAYER_LIST_DELIMITED` 要求改写 |
 | `data-id-fit` | `cover`、`contain`、`fill`、`none`、`manual`；`manual` 表示使用已登记的内容 bounds、缩放和偏移精确保留手工裁切，不再由通用 fitting 重新计算 |
 | `data-id-preserve-vector` | 是否优先保留矢量 |
 

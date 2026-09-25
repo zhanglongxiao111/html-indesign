@@ -4,6 +4,7 @@ const {
   safeAuthorInlineHtmlTag,
 } = require('./safe-tags');
 const { isIndesignBuiltinStyleName } = require('../../shared/style-utils');
+const { roundPresentationLength } = require('../../shared/geometry');
 
 function normalizeCropToken(value) {
   const text = String(value || '').trim();
@@ -12,11 +13,6 @@ function normalizeCropToken(value) {
     if (key === token || key.includes(token)) return token;
   }
   return text;
-}
-
-function layerListAttr(value) {
-  if (!Array.isArray(value)) return '';
-  return value.map((item) => String(item || '').trim()).filter(Boolean).join('|');
 }
 
 function fileExtension(value) {
@@ -101,10 +97,11 @@ function formatNumber(value) {
   return String(Math.round(number * 10000) / 10000);
 }
 
+// 作者长度（内容图几何等）按 presentation 长度精度写，与正向读回精度一致。
 function px(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '0px';
-  return `${Math.round(number * 100) / 100}px`;
+  return `${roundPresentationLength(number)}px`;
 }
 
 function numberOrZero(value) {
@@ -128,7 +125,6 @@ function fileStem(filePath) {
 
 module.exports = {
   normalizeCropToken,
-  layerListAttr,
   fileExtension,
   safeInlineTag,
   hasSourceNode,

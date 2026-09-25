@@ -53,7 +53,47 @@
 
   const HARD_BREAK_TOKEN = '\u0000';
 
+  // 多段文本框：带 data-id-role="text" 的容器，子元素全是只含内联内容的段落（p、h1-h6）。
+  // 整个容器是一个文本框，每个子段落是框里的一段；段落之间用 PARAGRAPH_SEPARATOR 分隔，
+  // 与 InDesign 段落结束符 \r 一致（<br> 仍是段内强制换行 \n）。子段落不再单独成为候选对象。
+  const PARAGRAPH_SEPARATOR = '\r';
+  const FRAME_PARAGRAPH_TAGS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
+  function isParagraphTextFrame(el) {
+    if (!el || el.nodeType !== 1) return false;
+    const dataId = dataIdAttributes();
+    if (String(el.getAttribute(dataId.ROLE) || '').trim().toLowerCase() !== 'text') return false;
+    if (directText(el)) return false;
+    const children = Array.from(el.children || []).filter((child) => !child.hasAttribute(dataId.IGNORE));
+    if (!children.length) return false;
+    return children.every((child) => FRAME_PARAGRAPH_TAGS.includes(String(child.tagName || '').toLowerCase())
+      && !hasDataIdAttribute(child)
+      && Array.from(child.children || []).every(isInlineSourceElement));
+  }
+
+  // 子段落带自己的对象声明（段落样式、对象、角色、语义）时它是独立文字对象，外层应是 container，不按多段文本框合并。
+  function hasDataIdAttribute(el) {
+    const dataId = dataIdAttributes();
+    return [dataId.PARAGRAPH_STYLE, dataId.OBJECT, dataId.ROLE, dataId.SEMANTIC, dataId.PLACEMENT]
+      .some((name) => name && el.hasAttribute(name));
+  }
+
+  function isTextFrameParagraph(el) {
+    return FRAME_PARAGRAPH_TAGS.includes(String(el && el.tagName || '').toLowerCase())
+      && isParagraphTextFrame(el.parentElement);
+  }
+
+  function textFrameParagraphs(el) {
+    const dataId = dataIdAttributes();
+    return Array.from(el.children || []).filter((child) => !child.hasAttribute(dataId.IGNORE));
+  }
+
   function trimmedTextWithHardBreaks(el, candidates) {
+    if (isParagraphTextFrame(el)) {
+      return textFrameParagraphs(el)
+        .map((paragraph) => trimmedTextWithHardBreaks(paragraph, candidates))
+        .join(PARAGRAPH_SEPARATOR);
+    }
     const excludedElements = new Set(candidateDescendantsFor(el, candidates));
     return textWithHardBreaks(el, HARD_BREAK_TOKEN, excludedElements, el)
       .trim()
@@ -474,6 +514,11 @@
   function visualFrameFor(el) {
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
+    // 表格所在的文本框比表格高时，作者 HTML 用 data-id-ignore 包裹层表达文本框：外框取包裹层。
+    if (tagName === 'table') {
+      const frame = el.parentElement;
+      return frame && frame.hasAttribute(dataId.IGNORE) ? frame : el;
+    }
     if (!['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return el;
     const parent = el.parentElement;
     if (!parent) return el;
@@ -592,7 +637,8 @@
           .filter((child) => !child.hasAttribute(dataId.IGNORE));
         return contentChildren.length !== 1 || !isNaturalSingleAssetFrame(el, contentChildren[0]);
       })
-      .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'));
+      .filter((el) => el.tagName.toLowerCase() === 'table' || !el.closest('table'))
+      .filter((el) => !isTextFrameParagraph(el));
     return candidates.filter((el) => !isRedundantTextContainer(el, candidates));
   }
 
@@ -644,10 +690,10 @@
     return trimmedTextWithHardBreaks(el, candidates) === '';
   }
 
-  function textRunsFor(el, candidates) {
+  function textRunsFor(el, candidates, styleRules) {
     const tagName = el.tagName.toLowerCase();
-    if (!isTextTag(tagName) && !isNaturalTextElement(el)) return [];
-    const inlineRuns = inlineRunsFor(el, candidates);
+    if (!isTextTag(tagName) && !isNaturalTextElement(el) && !isParagraphTextFrame(el)) return [];
+    const inlineRuns = inlineRunsFor(el, candidates, styleRules);
     if (inlineRuns.length) return inlineRuns;
     return [{
       text: trimmedTextWithHardBreaks(el, candidates),
@@ -662,9 +708,12 @@
     if (el.tagName.toLowerCase() !== 'table') return [];
     return Array.from(el.rows || []).map((row, rowIndex) => {
       const isHeaderRow = row.parentElement && row.parentElement.tagName.toLowerCase() === 'thead';
+      // 作者在 <tr> 上声明的行高（CSS 行高是「至少」这么高，与 InDesign 行高同义），编译时作行高。
+      const authoredHeight = styleApi().authoredStyleObject(row, styleRules).height || '';
       return {
         index: rowIndex,
         header: isHeaderRow,
+        ...(authoredHeight ? { authoredHeight } : {}),
         cells: Array.from(row.cells || []).map((cell, cellIndex) => ({
           index: cellIndex,
           text: trimmedTextWithHardBreaks(cell),
@@ -681,6 +730,20 @@
         })),
       };
     });
+  }
+
+  // 作者在 <col> 上声明的列宽（按 span 展开成逐列）。任何一列没声明时返回空数组，编译时回退到单元格几何。
+  function tableColumnWidthsFor(el, styleRules) {
+    if (String(el && el.tagName || '').toLowerCase() !== 'table') return [];
+    const cols = Array.from(el.querySelectorAll('col')).filter((col) => col.closest('table') === el);
+    const widths = [];
+    for (const col of cols) {
+      const width = String(styleApi().authoredStyleObject(col, styleRules).width || '').trim();
+      if (!width || width === 'auto') return [];
+      const span = Math.max(1, Number(col.span || 1));
+      for (let index = 0; index < span; index += 1) widths.push(width);
+    }
+    return widths;
   }
 
   function ancestorCandidateIndexes(el, candidates, pageEl) {
@@ -735,18 +798,31 @@
     return parts.join('>');
   }
 
-  function inlineRunsFor(el, candidates) {
+  // styleRules（文本框的 run 才传）：run 的字符样式定义取 .cstyle-<token> 单类规则（styleClassRules.character），
+  // token 取 run 的 class 或 data-id-character-style；字符样式只定义这条规则写了的属性，其余是局部格式。
+  function inlineRunsFor(el, candidates, styleRules) {
     const dataId = dataIdAttributes();
     const inlineSelector = `span,strong,b,em,i,mark,sup,sub,[${dataId.CHARACTER_STYLE}]`;
     const inlineEls = Array.from(el.querySelectorAll(inlineSelector))
       .filter((runEl) => !Array.isArray(candidates) || !candidates.includes(runEl));
-    return inlineEls.map((runEl) => ({
-      text: trimmedTextWithHardBreaks(runEl),
-      tagName: runEl.tagName.toLowerCase(),
-      classList: classList(runEl),
-      attributes: attrs(runEl),
-      computedStyle: styleApi().styleObject(runEl),
-    })).filter((run) => run.text);
+    return inlineEls.map((runEl) => {
+      const run = {
+        text: trimmedTextWithHardBreaks(runEl),
+        tagName: runEl.tagName.toLowerCase(),
+        classList: classList(runEl),
+        attributes: attrs(runEl),
+        computedStyle: styleApi().styleObject(runEl),
+      };
+      const characterRule = styleRules ? characterStyleClassRule(runEl, styleRules) : null;
+      if (characterRule) run.styleClassRules = { character: characterRule };
+      return run;
+    }).filter((run) => run.text);
+  }
+
+  function characterStyleClassRule(runEl, styleRules) {
+    const token = runEl.getAttribute(dataIdAttributes().CHARACTER_STYLE);
+    const implied = token ? [`cstyle-${styleApi().styleClassToken(token)}`] : [];
+    return styleApi().styleClassRuleObjects(runEl, styleRules, implied).character || null;
   }
 
   function isCandidateElement(el) {
@@ -758,6 +834,7 @@
     const tagName = el.tagName.toLowerCase();
     return isTextTag(tagName)
       || isNaturalTextElement(el)
+      || isParagraphTextFrame(el)
       || ['hr', 'img', 'object', 'embed', 'svg', 'canvas', 'table'].includes(tagName)
       || el.hasAttribute(dataId.OBJECT)
       || el.hasAttribute(dataId.PARAGRAPH_STYLE);
@@ -866,6 +943,7 @@
     isNaturalTextElement,
     textRunsFor,
     tableRowsFor,
+    tableColumnWidthsFor,
     ancestorCandidateIndexes,
     ancestorCandidateIds,
     sourceAncestorNodes,

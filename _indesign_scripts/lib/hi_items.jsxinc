@@ -57,11 +57,16 @@ HI.textFromRuns = function (item) {
     return text;
 };
 
+// A run may carry textOverride: local character formatting of an unstyled run of a human INDD, or the look of a
+// styled run beyond what its character style defines. It is applied after the character style so it wins.
 HI.applyRuns = function (doc, frame, runs, report) {
     var index = 0;
     for (var i = 0; i < runs.length; i++) {
         var text = runs[i].text || "";
         HI.applyCharacterStyleToRange(doc, frame, index, text.length, runs[i].characterStyle, report);
+        if (runs[i].textOverride && text.length > 0) {
+            HI.applyCharacterLevelOverride(doc, HI.textRangeFor(frame, index, index + text.length - 1), runs[i].textOverride, report);
+        }
         index += text.length;
     }
 };

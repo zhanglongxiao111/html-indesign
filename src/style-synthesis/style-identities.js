@@ -44,7 +44,9 @@ function styleIdentityForKind(item, kind, name, options) {
   const attributes = item && item.attributes || {};
   const explicitDisplay = explicitDisplayName(attributes, kind);
   const explicitToken = styleTokenForKind(attributes, kind);
-  const synthesizedToken = explicitName(attributes, [HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN]);
+  const synthesizedToken = synthesizedTokenFitsKind(attributes, kind)
+    ? explicitName(attributes, [HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN])
+    : null;
   const className = styleClassNameForKind(item, kind);
   const token = explicitToken || synthesizedToken || className || name;
   const displayName = explicitDisplay || mappedStyleName(token, kind, options) || name;
@@ -59,7 +61,22 @@ function styleIdentityForKind(item, kind, name, options) {
 // “基本文本框架”），一并按“没声明”处理，否则仍会被当成用户样式新建（#21）。
 function explicitDisplayName(attributes, kind) {
   if (declaresBuiltinStyle(attributes, kind)) return null;
-  return explicitName(attributes, styleDisplayAttributes(kind));
+  const displayAttributes = synthesizedTokenFitsKind(attributes, kind)
+    ? styleDisplayAttributes(kind)
+    : styleDisplayAttributes(kind).filter((attr) => attr !== HTML_DATA_ID_ATTRIBUTES.STYLE_NAME);
+  return explicitName(attributes, displayAttributes);
+}
+
+// data-id-style-token / data-id-style-name 是合成样式的 token 与显示名（synth_<kind>_NNN）。合成文字样式
+// 可以兜底段落、字符样式，也兜底文本框的对象样式；合成对象、线条、图框、置入样式不是文字外观，
+// 不能兜底段落、字符样式：形状带伴生文字时，形状上合成对象样式的名字不能被当成伴生文字的段落样式名
+// （#34 往返：标注文字 → 对象样式-09）。
+const TEXT_STYLE_KINDS = new Set(['paragraphStyles', 'characterStyles']);
+
+function synthesizedTokenFitsKind(attributes, kind) {
+  const match = /^synth_([a-z]+)_\d+$/.exec(String(attributes && attributes[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] || ''));
+  if (!match) return true;
+  return match[1] === 'text' || !TEXT_STYLE_KINDS.has(kind);
 }
 
 function declaresBuiltinStyle(attributes, kind) {
