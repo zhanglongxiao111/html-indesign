@@ -128,7 +128,7 @@ HI.reverseCharacterRun = function (character) {
 };
 
 HI.reverseCharacterTextStyle = function (character) {
-    var font = HI.reverseFontInfo(character.appliedFont);
+    var font = HI.reverseFontInfo(character.appliedFont), stroke = HI.reverseTextStroke(character);
     return {
         appliedFont: font ? font.appliedFont : null,
         fontFamily: font ? font.fontFamily : null,
@@ -137,10 +137,12 @@ HI.reverseCharacterTextStyle = function (character) {
         fontStyle: font ? font.fontStyle : null,
         pointSize: HI.numberOrNull(character.pointSize),
         leading: HI.leadingOrNull(character.leading),
-        fillColor: HI.reverseColor(character.fillColor),
+        fillColor: HI.reverseColor(character.fillColor, HI.reverseTint(character, "fillTint")),
         tracking: HI.numberOrNull(character.tracking),
         justification: null,
-        capitalization: HI.reverseCapitalization(HI.reverseSafeProperty(character, "capitalization"))
+        capitalization: HI.reverseCapitalization(HI.reverseSafeProperty(character, "capitalization")),
+        strokeColor: stroke.strokeColor,
+        strokeWeight: stroke.strokeWeight
     };
 };
 
@@ -167,6 +169,8 @@ HI.reverseCharacterRunSignature = function (run) {
         s.leading || "",
         s.fillColor || "",
         s.tracking || "",
-        s.capitalization || ""
+        s.capitalization || "",
+        s.strokeColor || "",
+        s.strokeWeight || ""
     ].join("|");
 };

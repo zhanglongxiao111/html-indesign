@@ -5,7 +5,7 @@ const { blendModeCss } = require('./css-blend-mode');
 const { safeAuthorClassToken, isIndesignBuiltinStyleName } = require('../../shared/style-utils');
 const { inlineResidualForSynth } = require('./author-style-residual');
 const { foldedBorderCss } = require('./author-border-fold');
-const { capitalizationCss, colorWithOpacity, cssBorderStyle } = require('./css-values');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle, justificationCss, textStrokeCss } = require('./css-values');
 
 function authorInlineStyleForItem(item, sourceStyle, options = {}) {
   const indesign = item && item.extensions && item.extensions.indesign || {};
@@ -107,9 +107,11 @@ function textStyleCss(textStyle) {
   if (textStyle.tracking != null && Number(textStyle.tracking) !== 0) {
     styles.push(`letter-spacing:${formatNumber(Number(textStyle.tracking) / 1000)}em`);
   }
-  if (textStyle.justification) styles.push(`text-align:${textStyle.justification}`);
+  if (textStyle.justification) styles.push(justificationCss(textStyle.justification));
   const capitalization = capitalizationCss(textStyle.capitalization);
   if (capitalization) styles.push(capitalization);
+  const stroke = textStrokeCss(textStyle);
+  if (stroke) styles.push(stroke);
   return styles.join(';');
 }
 

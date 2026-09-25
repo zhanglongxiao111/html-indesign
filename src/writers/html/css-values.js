@@ -26,6 +26,24 @@ function capitalizationCss(capitalization) {
   return '';
 }
 
+// 段落对齐（textStyle.justification）-> CSS。与正向 style-synthesis justificationFor 互逆：
+// justify 是 InDesign「左对齐两端」（末行靠起始边，CSS 默认）；justify-all / justify-center / justify-right
+// 只在末行不同，写成 text-align:justify 加 text-align-last。
+function justificationCss(justification) {
+  const value = String(justification || '').trim();
+  if (!value) return '';
+  const last = { 'justify-all': 'justify', 'justify-center': 'center', 'justify-right': 'right' }[value];
+  return last ? `text-align:justify;text-align-last:${last}` : `text-align:${value}`;
+}
+
+// 文字描边（textStyle.strokeColor / strokeWeight，InDesign 字符描边）-> CSS -webkit-text-stroke（描边居中于字形轮廓）。
+// 正向从 -webkit-text-stroke-width / -color 读回成段落、字符样式或局部覆盖的描边。
+function textStrokeCss(textStyle) {
+  const weight = Number(textStyle && textStyle.strokeWeight);
+  if (!textStyle || !textStyle.strokeColor || !Number.isFinite(weight) || weight <= 0) return '';
+  return `-webkit-text-stroke:${formatNumber(weight)}px ${textStyle.strokeColor}`;
+}
+
 function hexToRgb(value) {
   const match = String(value || '').trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
   if (!match) return null;
@@ -47,4 +65,6 @@ module.exports = {
   capitalizationCss,
   colorWithOpacity,
   cssBorderStyle,
+  justificationCss,
+  textStrokeCss,
 };

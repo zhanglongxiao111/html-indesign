@@ -66,7 +66,7 @@ HI.overrideOutsideCharacterStyle = function (override, styleName) {
     var defs = HI.characterStyleDefs || {};
     var def = defs.hasOwnProperty(styleName) ? defs[styleName] : null;
     if (!def) return null;
-    var keys = ["pointSize", "leading", "fillColor", "tracking", "appliedFont", "fontStyleName", "capitalization"];
+    var keys = ["pointSize", "leading", "fillColor", "tracking", "appliedFont", "fontStyleName", "capitalization", "strokeColor", "strokeWeight"];
     var out = {};
     var any = false;
     for (var i = 0; i < keys.length; i++) {
@@ -96,6 +96,7 @@ HI.applyCharacterLevelOverride = function (doc, range, override, report) {
     try { if (override.leading !== null && typeof override.leading !== "undefined") range.leading = HI.ptValue(override.leading); } catch (_) {}
     try { if (override.fillColor) range.fillColor = doc.swatches.itemByName(override.fillColor); } catch (_) {}
     try { if (override.tracking !== null && typeof override.tracking !== "undefined") range.tracking = Number(override.tracking); } catch (_) {}
+    HI.assignTextStroke(doc, range, override);
     try {
         if (override.appliedFont) {
             var font = HI.resolveFont(override, report);
@@ -111,4 +112,12 @@ HI.applyCharacterLevelOverride = function (doc, range, override, report) {
         if (capitalization === "allcaps") range.capitalization = Capitalization.ALL_CAPS;
         if (capitalization === "smallcaps") range.capitalization = Capitalization.SMALL_CAPS;
     } catch (_) {}
+};
+
+// Text stroke (paragraph / character style or local override): strokeColor is a swatch name, strokeWeight in pt.
+HI.assignTextStroke = function (doc, target, def) {
+    var strokeColor = def ? def.strokeColor : null;
+    if (!strokeColor) return;
+    try { target.strokeColor = doc.swatches.itemByName(strokeColor); } catch (_) {}
+    try { if (def.strokeWeight !== null && typeof def.strokeWeight !== "undefined") target.strokeWeight = HI.ptValue(def.strokeWeight); } catch (_) {}
 };

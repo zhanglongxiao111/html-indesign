@@ -393,11 +393,6 @@ HI.reverseExtendedVisualStyle = function (item) {
     return out;
 };
 
-HI.reverseTint = function (item, propertyName) {
-    var value = HI.numberOrNull(HI.reverseSafeProperty(item, propertyName));
-    return value !== null && value >= 0 && value < 100 ? value : null;
-};
-
 HI.reverseStrokeLineCap = function (item) {
     var value = HI.reverseSafeProperty(item, "endCap"), text = String(value || "").toLowerCase();
     try { if (value === EndCap.ROUND_END_CAP) return "round"; } catch (_) {}

@@ -31,6 +31,8 @@ function tableCellSnapshot(item, rowIndex, cellIndex) {
 
 function tableColumnWidthsForInstruction(item, rows, layout) {
   const table = tablePayload(item);
+  const declared = declaredTableColumnWidths(table, rows, layout);
+  if (declared) return declared;
   if (layout.unitMode !== 'presentation') return table.columnWidths || [];
   const sourceRow = (rows || []).find((row) => (row.cells || []).every((cell) => cell.bounds && Number(cell.bounds.width) > 0));
   if (!sourceRow) return [];
@@ -41,6 +43,22 @@ function tableColumnWidthsForInstruction(item, rows, layout) {
     for (let index = 0; index < span; index += 1) widths.push(round(width, 2));
   }
   return normalizeTableWidths(widths, item.bounds && item.bounds.width);
+}
+
+// 作者在 <col> 上逐列声明了宽度（反向导出写出的读回列宽）时，按声明建列，不再从浏览器单元格几何推算：
+// 浏览器按内容和外框分配列宽，会把等宽列算成不等宽。列数对不上或有列宽无效时回退几何推算。
+function declaredTableColumnWidths(table, rows, layout) {
+  const values = Array.isArray(table.sourceColumnWidths) ? table.sourceColumnWidths : [];
+  if (!values.length) return null;
+  const columnCount = tableColumnCountFor(rows);
+  if (columnCount && values.length !== columnCount) return null;
+  const widths = values.map((value) => cssLengthToTarget(value, layout));
+  return widths.every((width) => Number.isFinite(width) && width > 0) ? widths.map((width) => round(width, 2)) : null;
+}
+
+function tableColumnCountFor(rows) {
+  return (rows || []).reduce((max, row) => Math.max(max, (row.cells || [])
+    .reduce((sum, cell) => sum + Math.max(1, Number(cell.colSpan || 1)), 0)), 0);
 }
 
 // 作者在 <tr> 上声明了行高时按声明写 InDesign 行高：两边的行高都是「至少」这么高，

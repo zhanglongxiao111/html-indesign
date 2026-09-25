@@ -15,7 +15,7 @@ const {
   tableFrameWrapperFor,
 } = require('./author-node-attrs');
 const { isPdfObjectItem, renderPdfObjectNode } = require('./author-pdf-renderer');
-const { ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
+const { isParagraphFrameItem, ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
 const { indent, orderAttrs, safeTag, tagForRole } = require('./author-render-utils');
 const { AUTHOR_HTML_SAFE_INLINE_TAGS } = require('./safe-tags');
 const {
@@ -140,9 +140,12 @@ function tableFrameAttrs(item) {
   return attrsToHtml(orderAttrs(attrs));
 }
 
-function renderElementNode(node, sourceNode, tag, options, depth) {
+function renderElementNode(node, sourceNode, inputTag, options, depth) {
   const item = node.item;
-  const attrs = attrsForItem(item, sourceNode, options);
+  // 多段文本框写成 data-id-role="text" 的 div 容器、每段一个 <p>（段落不能嵌在 p/h*/span 里）。
+  const paragraphFrame = isParagraphFrameItem(item, node.children.length > 0);
+  const tag = paragraphFrame && inputTag !== 'div' ? 'div' : inputTag;
+  const attrs = attrsForItem(item, sourceNode, paragraphFrame ? { ...options, paragraphTextFrame: true } : options);
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
   if (isVoidTag(tag)) return `${indent(depth)}${open}`;
   markRendered(options, item, { companion: true });
@@ -154,6 +157,7 @@ function renderElementNode(node, sourceNode, tag, options, depth) {
   }
   const own = ownContent(item, depth, {
     ignoreSourceHtml: node.children.length > 0,
+    paragraphFrame,
     // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
     writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
   });

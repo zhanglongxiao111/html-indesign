@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function loadReverseStylesContext({ withEffects = false } = {}) {
-  const libs = ['hi_reverse_styles.jsxinc', ...(withEffects ? ['hi_reverse_effects.jsxinc'] : [])];
+  const libs = ['hi_reverse_styles.jsxinc', 'hi_reverse_colors.jsxinc', ...(withEffects ? ['hi_reverse_effects.jsxinc'] : [])];
   const context = {
     HI: {},
     ColorSpace: {
@@ -210,10 +210,59 @@ test('reverseVisualStyle leaves solid fills without gradient fields', () => {
 
 test('reverseColor reads tints and mixed inks without escaping try/catch', () => {
   const context = loadReverseStylesContext({ withEffects: true });
+  const messages = trackGradientWarnings(context);
+  context.HI.reverseSetGradientOwner({ itemId: '257' });
 
-  assert.equal(context.HI.reverseColor(new Tint('Red 40%', 'CMYK', [0, 100, 100, 0], 40)), '#ff0000');
+  // 探针实测：Tint.colorValue 是基色，tintValue 是色调百分比；等效色 = 基色按色调缩放（09-26 gradient-sample 的 G-Red 40%）。
+  assert.equal(context.HI.reverseColor(new Tint('Red 40%', 'CMYK', [0, 100, 100, 0], 40)), '#ff9999');
+  assert.equal(context.HI.reverseColor(new Tint('Blue 50%', 'RGB', [0, 0, 255], 50)), '#8080ff');
   assert.equal(context.HI.reverseColor(new MixedInk('Mixed')), null);
   assert.equal(context.HI.reverseColor(new Swatch(new MixedInk('Mixed'))), null);
+  assert.deepEqual(messages.map((entry) => [entry.code, entry.details.swatch, entry.details.itemId]), [
+    ['REVERSE_COLOR_UNRESOLVED', 'Mixed', '257'],
+  ]);
+});
+
+test('reverseColor applies the owner local tint over the base color and warns on unreadable tints', () => {
+  const context = loadReverseStylesContext({ withEffects: true });
+  const messages = trackGradientWarnings(context);
+  context.HI.reverseSetGradientOwner({ itemId: '9' });
+  const red = new Color('Red', 'CMYK', [0, 100, 100, 0]);
+
+  assert.equal(context.HI.reverseVisualStyle({ fillColor: red, fillTint: 40 }).fillColor, '#ff9999');
+  assert.equal(context.HI.reverseVisualStyle({ fillColor: red, fillTint: -1 }).fillColor, '#ff0000');
+  assert.equal(context.HI.reverseVisualStyle({ fillColor: red, fillTint: 100 }).fillColor, '#ff0000');
+  assert.equal(context.HI.reverseColor(new Tint('Red ?', 'CMYK', [0, 100, 100, 0], undefined)), '#ff0000');
+  assert.deepEqual(messages.map((entry) => entry.code), ['REVERSE_TINT_UNREADABLE']);
+  assert.equal(context.HI.labHex(100, 0, 0), '#ffffff');
+});
+
+test('reverse text stroke reads character stroke color and weight and writes -webkit-text-stroke', () => {
+  const context = loadReverseStylesContext({ withEffects: true });
+  trackGradientWarnings(context);
+  const { HI } = context;
+  const stroke = HI.reverseTextStroke({ strokeColor: new Color('Black', 'CMYK', [0, 0, 0, 100]), strokeWeight: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(stroke)), { strokeColor: '#000000', strokeWeight: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(HI.reverseTextStroke({ strokeColor: new Color('None', 'RGB', [0, 0, 0]), strokeWeight: 1 }))), { strokeColor: null, strokeWeight: null });
+  // 渐变描边按首个色标近似（REVERSE_GRADIENT_APPROXIMATED 由渐变路径记账）。
+  assert.equal(HI.reverseTextStroke({ strokeColor: sampleGradient(), strokeWeight: 0.5 }).strokeColor, '#ff0000');
+  assert.match(HI.textStyleCss({ pointSize: 12, leading: null, tracking: null, strokeColor: '#000000', strokeWeight: 1 }), /-webkit-text-stroke:1px #000000/);
+  assert.match(HI.characterStyleCss({ strokeColor: new Color('Black', 'RGB', [0, 0, 0]), strokeWeight: 2 }), /-webkit-text-stroke:2pt #000000/);
+});
+
+test('reverse justification separates LEFT_JUSTIFIED from FULLY_JUSTIFIED and writes text-align-last', () => {
+  const context = loadReverseStylesContext();
+  context.Justification = {
+    LEFT_ALIGN: 1, CENTER_ALIGN: 2, RIGHT_ALIGN: 3, LEFT_JUSTIFIED: 4, FULLY_JUSTIFIED: 5, CENTER_JUSTIFIED: 6, RIGHT_JUSTIFIED: 7,
+  };
+  const { HI, Justification } = context;
+  assert.equal(HI.reverseJustification(Justification.LEFT_JUSTIFIED), 'justify');
+  assert.equal(HI.reverseJustification(Justification.FULLY_JUSTIFIED), 'justify-all');
+  assert.equal(HI.reverseJustification(Justification.CENTER_JUSTIFIED), 'justify-center');
+  assert.equal(HI.reverseJustification(Justification.RIGHT_JUSTIFIED), 'justify-right');
+  assert.equal(HI.justificationCss('justify'), 'text-align:justify');
+  assert.equal(HI.justificationCss('justify-all'), 'text-align:justify; text-align-last:justify');
+  assert.match(HI.paragraphStyleCss({ justification: Justification.FULLY_JUSTIFIED }), /text-align:justify; text-align-last:justify/);
 });
 
 test('real InDesign gradient probe fixture matches the reverse gradient assumptions (#9)', () => {

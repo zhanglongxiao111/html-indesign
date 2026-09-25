@@ -108,6 +108,9 @@ const TEXT_STYLE_RESOURCE_FIELDS = Object.freeze([
   ['fillColor', 'string'],
   ['tracking', 'number'],
   ['capitalization', 'string'],
+  // 文字描边：只在 CSS -webkit-text-stroke 宽度大于 0 时写出（swatch 名 + pt）。
+  ['strokeColor', 'string'],
+  ['strokeWeight', 'number'],
 ]);
 
 const SYNTHESIZED_STYLE_KIND_VALUES = Object.freeze(['text', 'line', 'object', 'asset']);
@@ -293,6 +296,23 @@ module.exports = [
     },
     indesign: {
       instructionPaths: ['textOverride'],
+    },
+  },
+  {
+    canonicalPath: 'items[].content.runs[].textOverride',
+    currentPaths: [],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'style-refs',
+    type: 'object',
+    description: 'Run-level local character formatting (appliedFont, fontStyleName, pointSize, fontWeight, fontStyle, fillColor, tracking, capitalization, strokeColor, strokeWeight) for a run without a character style on an observed reverse-export page, where the original InDesign text carried local overrides instead of a named character style. Applied after the run character style, so it wins.',
+    capabilities: {
+      html: { read: 'native', write: 'unsupported', persist: 'native' },
+      indesign: { read: 'unsupported', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'unsupported', persist: 'lossless' },
+    },
+    indesign: {
+      instructionPaths: ['runs[].textOverride'],
     },
   },
   {

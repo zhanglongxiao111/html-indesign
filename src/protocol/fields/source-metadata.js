@@ -98,6 +98,7 @@ module.exports = [
     lifecycle: 'active',
     owner: 'source-metadata',
     type: 'array',
+    description: 'Declared document layer list (deck.config.json layers; reverse export writes the source INDD layers). When declared, the InDesign writer builds exactly these layers plus any layer an item uses, and no longer adds the preset standard layers; packages without it keep the preset standard layers.',
     capabilities: {
       html: { read: 'native', write: 'native', persist: 'native' },
       indesign: { read: 'lossless', write: 'lossless', persist: 'lossless' },
@@ -148,6 +149,10 @@ module.exports = [
   htmlModelSourceMetadataField('items[].boundsMm', [], 'object'),
   htmlModelSourceMetadataField('items[].box', [], 'object'),
   htmlModelSourceMetadataField('items[].table.sourceRows', [], 'array'),
+  {
+    ...htmlModelSourceMetadataField('items[].table.sourceColumnWidths', [], 'array'),
+    description: 'Per-column CSS widths the author declared on <col> (expanded by span). When every column declares a width, the InDesign writer builds the table columns from them instead of browser cell geometry; reverse export writes read-back items[].table.columnWidths as <col style="width">.',
+  },
   htmlSourceMetadataField(
     'items[].parentPageItem',
     ['parentPages[].items[].parentPageItem', 'sourceNode.attributes.data-id-parent-page-item'],

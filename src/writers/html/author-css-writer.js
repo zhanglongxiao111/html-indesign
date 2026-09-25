@@ -1,7 +1,7 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { rendersBakedVectorSvg } = require('./author-vector-renderer');
 const { reverseBoxHeight, reverseGeometryPlanForPage } = require('./author-reverse-geometry');
-const { safeAuthorClassToken } = require('../../shared/style-utils');
+const { isIndesignBuiltinStyleName, safeAuthorClassToken } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
 const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
 const { deckPageBackground } = require('./author-page-background');
@@ -196,8 +196,10 @@ function hasLineMarker(visualStyle) {
   return Boolean(visualStyle && (visualStyle.lineStartMarker || visualStyle.lineEndMarker));
 }
 
+// InDesign 内置样式（[基本段落]、[无段落样式]、[基本图形框架] 等）不写样式类规则：作者 HTML 不会引用它们
+// （内置名不生成样式类，见 author-style-attrs），规则只会是无人使用的死代码。
 function styleCollectionCss(collection, prefix) {
-  return Object.values(collection || {}).filter((style) => style && style.css).map((style) => {
+  return Object.values(collection || {}).filter((style) => style && style.css && !isIndesignBuiltinStyleName(style.name)).map((style) => {
     return `.${prefix}-${safeAuthorClassToken(style.safeName || style.token || style.name)} { ${String(style.css).replace(/pt\b/g, 'px')} }`;
   }).join('\n');
 }

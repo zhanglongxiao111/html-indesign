@@ -62,7 +62,7 @@ HI.reverseTableCell = function (cell, rowIndex, cellIndex, headerRows) {
             colSpan: HI.tableSpanNumber(cell.columnSpan),
             cellStyle: HI.reverseCellStyleName(cell),
             paragraphStyle: paragraphStyle,
-            fillColor: HI.reverseColor(cell.fillColor),
+            fillColor: HI.reverseColor(cell.fillColor, HI.reverseTint(cell, "fillTint")),
             fillOpacity: HI.reverseCellFillOpacity(cell),
             textColor: style.fillColor,
             pointSize: style.pointSize,
@@ -90,7 +90,7 @@ HI.reverseTableCellTextStyle = function (cell) {
             fontStyle: font ? font.fontStyle : null,
             pointSize: HI.numberOrNull(text.pointSize),
             leading: HI.leadingOrNull(text.leading),
-            fillColor: HI.reverseColor(text.fillColor),
+            fillColor: HI.reverseColor(text.fillColor, HI.reverseTint(text, "fillTint")),
             tracking: HI.numberOrNull(text.tracking),
             justification: HI.reverseJustification(text.justification),
             capitalization: HI.reverseCapitalization(HI.reverseSafeProperty(text, "capitalization"))
@@ -141,15 +141,15 @@ HI.reverseTableCellPadding = function (cell) {
 
 HI.reverseTableCellBorders = function (cell) {
     return {
-        top: HI.reverseTableCellBorder(cell.topEdgeStrokeColor, cell.topEdgeStrokeWeight),
-        right: HI.reverseTableCellBorder(cell.rightEdgeStrokeColor, cell.rightEdgeStrokeWeight),
-        bottom: HI.reverseTableCellBorder(cell.bottomEdgeStrokeColor, cell.bottomEdgeStrokeWeight),
-        left: HI.reverseTableCellBorder(cell.leftEdgeStrokeColor, cell.leftEdgeStrokeWeight)
+        top: HI.reverseTableCellBorder(cell.topEdgeStrokeColor, cell.topEdgeStrokeWeight, HI.reverseTint(cell, "topEdgeStrokeTint")),
+        right: HI.reverseTableCellBorder(cell.rightEdgeStrokeColor, cell.rightEdgeStrokeWeight, HI.reverseTint(cell, "rightEdgeStrokeTint")),
+        bottom: HI.reverseTableCellBorder(cell.bottomEdgeStrokeColor, cell.bottomEdgeStrokeWeight, HI.reverseTint(cell, "bottomEdgeStrokeTint")),
+        left: HI.reverseTableCellBorder(cell.leftEdgeStrokeColor, cell.leftEdgeStrokeWeight, HI.reverseTint(cell, "leftEdgeStrokeTint"))
     };
 };
 
-HI.reverseTableCellBorder = function (color, weight) {
-    return { color: HI.reverseColor(color), borderWeight: HI.numberOrNull(weight) };
+HI.reverseTableCellBorder = function (color, weight, tint) {
+    return { color: HI.reverseColor(color, tint), borderWeight: HI.numberOrNull(weight) };
 };
 
 HI.reverseCellFillOpacity = function (cell) {

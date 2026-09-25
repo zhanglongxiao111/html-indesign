@@ -163,6 +163,7 @@
       ruleStyle: itemRuleStyle,
       runs: elements.textRunsFor(el, candidates),
       table: elements.tableRowsFor(el, styleRules),
+      tableColumnWidths: elements.tableColumnWidthsFor(el, styleRules),
       unsupported: elements.unsupportedFor(el),
       candidateIndex: itemIndex,
       ancestorCandidateIndexes: elements.ancestorCandidateIndexes(el, candidates, pageEl),

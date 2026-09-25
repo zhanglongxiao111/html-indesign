@@ -699,6 +699,7 @@ test('reverse snapshot script loads reverse and label helpers', () => {
   assert.match(source, /hi_core\.jsxinc/);
   assert.match(source, /hi_labels\.jsxinc/);
   assert.match(source, /hi_reverse_styles\.jsxinc/);
+  assert.match(source, /hi_reverse_colors\.jsxinc/);
   assert.match(source, /hi_reverse_text\.jsxinc/);
   assert.match(source, /hi_reverse_effects\.jsxinc/);
   assert.match(source, /hi_reverse_tables\.jsxinc/);
@@ -712,6 +713,8 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   const textPath = path.resolve('_indesign_scripts/lib/hi_reverse_text.jsxinc');
   const effectPath = path.resolve('_indesign_scripts/lib/hi_reverse_effects.jsxinc');
   const tablePath = path.resolve('_indesign_scripts/lib/hi_reverse_tables.jsxinc');
+  const colorPath = path.resolve('_indesign_scripts/lib/hi_reverse_colors.jsxinc');
+  assert.equal(fs.existsSync(colorPath), true, 'hi_reverse_colors.jsxinc should exist');
   assert.equal(fs.existsSync(stylePath), true, 'hi_reverse_styles.jsxinc should exist');
   assert.equal(fs.existsSync(textPath), true, 'hi_reverse_text.jsxinc should exist');
   assert.equal(fs.existsSync(effectPath), true, 'hi_reverse_effects.jsxinc should exist');
@@ -720,7 +723,8 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   const textSource = fs.readFileSync(textPath, 'utf8');
   const effectSource = fs.readFileSync(effectPath, 'utf8');
   const tableSource = fs.readFileSync(tablePath, 'utf8');
-  const source = `${reverseSource}\n${styleSource}\n${textSource}\n${effectSource}\n${tableSource}`;
+  const colorSource = fs.readFileSync(colorPath, 'utf8');
+  const source = `${reverseSource}\n${styleSource}\n${colorSource}\n${textSource}\n${effectSource}\n${tableSource}`;
   assert.match(source, /HI\.readProtocolLabel/);
   assert.match(source, /snapshot\.pages/);
   assert.match(source, /snapshot\.styles/);
@@ -783,6 +787,7 @@ test('reverse snapshot helper extracts labels, pages, styles, layers and assets'
   assert.ok(textSource.split(/\r?\n/).length <= 180, 'hi_reverse_text.jsxinc should stay focused');
   assert.ok(effectSource.split(/\r?\n/).length <= 120, 'hi_reverse_effects.jsxinc should stay focused');
   assert.ok(tableSource.split(/\r?\n/).length <= 240, 'hi_reverse_tables.jsxinc should stay focused');
+  assert.ok(colorSource.split(/\r?\n/).length <= 140, 'hi_reverse_colors.jsxinc should stay focused');
 });
 
 test('reverse text helper restores InDesign special-character names to authored Unicode', () => {
@@ -798,7 +803,9 @@ test('reverse text helper restores InDesign special-character names to authored 
 });
 
 test('reverse visual style treats empty None stroke color as no stroke', () => {
-  const source = fs.readFileSync(path.join(libDir, 'hi_reverse_styles.jsxinc'), 'utf8');
+  const source = ['hi_reverse_styles.jsxinc', 'hi_reverse_colors.jsxinc']
+    .map((name) => fs.readFileSync(path.join(libDir, name), 'utf8'))
+    .join('\n');
 
   assert.match(source, /HI\.reverseStrokeColor/);
   assert.match(source, /String\(color\.name \|\| ""\) === ""/);

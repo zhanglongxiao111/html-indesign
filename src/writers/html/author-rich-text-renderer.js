@@ -34,6 +34,7 @@ function ownContent(item, depth, options = {}) {
   if (item.authorTextCompanion && item.authorTextCompanion.content) {
     return plainTextContent(item.authorTextCompanion.content.text || '');
   }
+  if (options.paragraphFrame) return paragraphFrameContent(item, depth, baseTextStyle);
   const rich = richTextContent(item, baseTextStyle);
   if (rich != null) return rich;
   return plainTextContent((item.content && item.content.text) || '');
@@ -139,6 +140,71 @@ function hasRichRunMarkup(run) {
   return tag !== 'span';
 }
 
+// 多段文本框（InDesign 段落结束符 \r 分隔的多段）：文本框写成 data-id-role="text" 容器，每段一个 <p>，
+// 段内强制换行（\n）仍写 <br>。正向把这种容器读回成一个文本框、段间用 \r 分隔（browser-element-capture）。
+// 只处理由读回 run 重新渲染的文本；保留来源 HTML 的对象、有子对象的对象不走这里。
+const PARAGRAPH_BREAK = '\r';
+
+function frameParagraphTexts(item) {
+  const text = String(item && item.content && item.content.text != null ? item.content.text : '');
+  const paragraphs = text.split(PARAGRAPH_BREAK);
+  if (paragraphs.length > 1 && paragraphs[paragraphs.length - 1] === '') paragraphs.pop();
+  return paragraphs;
+}
+
+function isParagraphFrameItem(item, hasChildren) {
+  if (!item || item.role !== 'text' || hasChildren || item.authorTextCompanion) return false;
+  const content = item.content || {};
+  if (typeof content.sourceHtml === 'string' && content.sourceHtml !== '') return false;
+  return frameParagraphTexts(item).length > 1;
+}
+
+function paragraphFrameContent(item, depth, baseTextStyle) {
+  const paragraphs = splitParagraphRuns(item);
+  const pad = ' '.repeat(depth + 2);
+  const body = paragraphs.map((paragraph) => {
+    const rich = richTextContent({ content: paragraph }, baseTextStyle);
+    return `${pad}<p>${rich != null ? rich : plainTextContent(paragraph.text)}</p>`;
+  }).join('\n');
+  return `\n${body}\n${' '.repeat(depth)}`;
+}
+
+// 读回 run 按段落切开：跨段的 run 在 \r 处拆成几段各自带同样外观；run 定位不上全文时只按文字分段。
+function splitParagraphRuns(item) {
+  const content = item.content || {};
+  const text = String(content.text == null ? '' : content.text);
+  const texts = frameParagraphTexts(item);
+  const paragraphs = texts.map((paragraphText) => ({ text: paragraphText, runs: [] }));
+  const starts = [];
+  let offset = 0;
+  for (const paragraphText of texts) {
+    starts.push(offset);
+    offset += paragraphText.length + PARAGRAPH_BREAK.length;
+  }
+  const paragraphAt = (position) => {
+    let index = 0;
+    while (index + 1 < starts.length && starts[index + 1] <= position) index += 1;
+    return index;
+  };
+  const runs = Array.isArray(content.runs) ? content.runs.filter((run) => run && run.text != null && String(run.text) !== '') : [];
+  let cursor = 0;
+  for (const run of runs) {
+    const runText = String(run.text);
+    const index = text.indexOf(runText, cursor);
+    if (index < cursor) return texts.map((paragraphText) => ({ text: paragraphText, runs: [] }));
+    let position = index;
+    for (const piece of runText.split(PARAGRAPH_BREAK)) {
+      if (piece) {
+        const target = paragraphs[paragraphAt(position)];
+        if (target) target.runs.push({ ...run, text: piece });
+      }
+      position += piece.length + PARAGRAPH_BREAK.length;
+    }
+    cursor = index + runText.length;
+  }
+  return paragraphs;
+}
+
 function plainTextContent(value) {
   return escapeHtml(value)
     .replace(/\u00a0/g, '&nbsp;')
@@ -147,6 +213,7 @@ function plainTextContent(value) {
 }
 
 module.exports = {
+  isParagraphFrameItem,
   ownContent,
   sourceHtmlContent,
   richTextContent,

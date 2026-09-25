@@ -63,6 +63,7 @@ function attrsForItem(item, sourceNode, options) {
   if (!hasDataIdObject(attrs) && item.role !== 'text' && !item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
     attrs[HTML_DATA_ID_ATTRIBUTES.OBJECT] = '';
   }
+  if (options.paragraphTextFrame) attrs[HTML_DATA_ID_ATTRIBUTES.ROLE] = 'text';
   if (isUsefulSemantic(item.semantic)) attrs[HTML_DATA_ID_ATTRIBUTES.SEMANTIC] = item.semantic;
   if (!preserveTrustedSource) addObservedLabelAttrs(attrs, item);
   return attrsToHtml(orderAttrs(attrs));

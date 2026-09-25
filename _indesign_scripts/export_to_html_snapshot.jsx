@@ -10,6 +10,7 @@
     includeLib("hi_labels.jsxinc");
     includeLib("hi_composite_fonts.jsxinc");
     includeLib("hi_reverse_styles.jsxinc");
+    includeLib("hi_reverse_colors.jsxinc");
     includeLib("hi_reverse_text.jsxinc");
     includeLib("hi_reverse_effects.jsxinc");
     includeLib("hi_reverse_tables.jsxinc");

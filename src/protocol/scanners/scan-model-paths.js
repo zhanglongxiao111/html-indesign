@@ -345,6 +345,7 @@ const ITEM_TABLE_FIELD_PATHS = Object.freeze({
   columnWidths: 'items[].table.columnWidths',
   rowHeights: 'items[].table.rowHeights',
   sourceRows: 'items[].table.sourceRows',
+  sourceColumnWidths: 'items[].table.sourceColumnWidths',
 });
 
 const ITEM_TABLE_ROW_FIELD_PATHS = Object.freeze({

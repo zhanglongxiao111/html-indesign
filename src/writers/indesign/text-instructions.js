@@ -129,7 +129,30 @@ function observedSourceHtml(item) {
   return null;
 }
 
+// 多段文本框的来源 HTML 是若干 <p>/<h*> 段落：段间写 InDesign 段落结束符 \r（与快照读取一致），段内 <br> 仍是 \n。
 function htmlTextWithBreaks(html) {
+  const source = String(html || '');
+  const paragraphs = paragraphHtmlSegments(source);
+  if (paragraphs) return paragraphs.map((segment) => inlineHtmlTextWithBreaks(segment).trim()).join('\r');
+  return inlineHtmlTextWithBreaks(source);
+}
+
+function paragraphHtmlSegments(html) {
+  const pattern = /<(p|h[1-6])\b[^>]*>([\s\S]*?)<\/\1\s*>/gi;
+  const segments = [];
+  let outside = '';
+  let cursor = 0;
+  let match;
+  while ((match = pattern.exec(html))) {
+    outside += html.slice(cursor, match.index);
+    segments.push(match[2]);
+    cursor = match.index + match[0].length;
+  }
+  outside += html.slice(cursor);
+  return segments.length && outside.trim() === '' ? segments : null;
+}
+
+function inlineHtmlTextWithBreaks(html) {
   return decodeBasicEntities(String(html || '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, ''))
