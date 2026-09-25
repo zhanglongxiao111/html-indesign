@@ -183,6 +183,13 @@ reverse-export-<timestamp>/
 
 写成 `<svg>` 的矢量对象只由 `path` 的 `fill`、`stroke`、`stroke-width` 等表达填充和描边，`<svg>` 盒子本身不得再画边框、底色、内边距或投影：合成样式 `synth-*`、对象样式 class 和源码 class 里的 `border`、`background`、`padding`、`box-shadow` 落到 svg 上会在外围多画一个矩形框或底色，`border`/`padding` 还会把 `viewBox` 内容区往里缩，斜线端点和角度随之偏移。写出侧因此在源码 inline style 里剥掉这些属性（`border-radius` 不画东西，保留作对象样式圆角），作者包 `reverse-overrides.css` 与视觉参照页 `deck.visual.html` 都固定写一条 `svg.id-object[data-id-vector] { border:0; background:none; padding:0; box-shadow:none; }`，已烘焙的源码矢量在自身兜底几何里再附同样的归零声明。`synth-*` 和对象样式规则本身保持完整，因为同一 token 可能还被非 svg 对象共用。正向回编时，描边仍由 svg 上的 `data-id-stroke-*` 协议属性和 `path` 的描边读回；带同一标记（`id-object` class + `data-id-vector`）的 svg 盒子没有底色时，对象样式填充取 `path` 的填充（多个 path 填充不一致时不归纳，只保留逐 path 的局部填充）。作者手写、不带该标记的 svg 不走这条路，对象样式只看盒子本身。上述归零只针对写成 `<svg>` 的对象；前面所述的矢量容器画的正是读回的填充和描边，不做归零。属性判定、归零规则和标记判定集中在 `src/shared/vector-svg-box-paint.js`。
 
+正向构建为 CSS 生成的辅助对象，反向写作者 HTML 时按正向规则的反函数折回，不能只跳过（#34）：
+
+- 边框对象：容器 CSS 四边 border 不等宽时，正向把每条可见边做成贴在容器内侧、以该边颜色填充的 `<容器 id>-border-<side>` 矩形。反向只在容器存在、边框条贴齐容器对应边、自身无描边且不透明时折回，容器写 `border-<side>:<宽>px solid <色>`（无边框对象的边写 0），再次正向构建会生成同样的边框对象；对不上、又不带正向生成标记的同名对象按普通对象写出。判定集中在 `src/writers/html/author-border-fold.js`，外框规划 `author-reverse-geometry.js` 与容器子对象扣边宽都用同一份折回结果。视觉审计只在作者 HTML 容器这一边的计算 border 与边框条厚度一致时，才把边框条记为 `AUTHOR_VISUAL_GENERATED_BORDER_ACCEPTED`。
+- 页面底色：正向把 `section.page` 的 `background-color` 做成生成的背景母版（标签 `semantic: "page-background"`、`generated: true`，内含 `<母版 id>-fill` 满版填充）。反向从页面套用的这类母版读回 `pages[].visualStyle.fillColor`（及不透明度），作者包多数页面共用的底色写进 `tokens.css` 的 `--id-page-bg`，其余页面在 `section` 上覆盖 `--id-page-bg`。页面仍按页面标签写回基础母版。
+
+读回外观在没有源码 CSS 可拷时（`observation` 模式不保留可信源码）也要写回作者 HTML：对象填充不透明度写成 `rgba()` 背景，描边类型「虚线」「点线」写成 `dashed`/`dotted`；字符级 run 外观与所在段落（`textStyle`）不同的部分（字体、字重、字形、字号、颜色、字距、大小写）写在 run 元素的内联 `style` 上，来源 HTML 片段按 run 的 `id` 合并 `style`，定位不到时改由 run 重新渲染；表格单元格的填充、文字外观、内边距和各边描边写在单元格内联 `style` 上（来源 HTML 表格按单元格顺序合并），作者包 `layout.css` 让表格使用合并边框模型。大小写读回为 `textStyle.capitalization`（`allCaps`/`smallCaps`），写成 `text-transform:uppercase`/`font-variant-caps:small-caps`；正向只把 `uppercase` 读回为全部大写。渐变色板按首个色标近似成纯色写出（`REVERSE_GRADIENT_APPROXIMATED`），渐变本身不保留。
+
 作者包的 synth 样式去重必须按属性计算残差，不能看到 `synth-*` class 就整段删除 inline：声明式 paragraph/character/object 规则先输出，synth 规则后输出；只有 token 对应规则真实存在、属性存在且规范化后的值等价时，才删除该 item 的对应生成属性。source style、grid 变量、不同值 override、文本框属性、z-index 和未覆盖属性必须保留。accepted source node、rich-text run、table cell、vector 和 PDF wrapper 不参与本轮 item 级去重；缺失 synth rule 必须保留 inline 并写入作者报告。
 
 需要把对象图证据直接落实到作者 HTML 时，反向导出可启用：

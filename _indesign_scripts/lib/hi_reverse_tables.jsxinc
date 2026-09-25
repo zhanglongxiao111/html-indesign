@@ -92,7 +92,8 @@ HI.reverseTableCellTextStyle = function (cell) {
             leading: HI.leadingOrNull(text.leading),
             fillColor: HI.reverseColor(text.fillColor),
             tracking: HI.numberOrNull(text.tracking),
-            justification: HI.reverseJustification(text.justification)
+            justification: HI.reverseJustification(text.justification),
+            capitalization: HI.reverseCapitalization(HI.reverseSafeProperty(text, "capitalization"))
         };
     } catch (_) {}
     return { pointSize: null, leading: null, fillColor: null, tracking: null, justification: null };

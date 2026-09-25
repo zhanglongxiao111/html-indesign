@@ -53,6 +53,7 @@ function attrsForItem(item, sourceNode, options) {
     mergedStyle = authorInlineStyleForItem(item, sourceStyle, {
       synthesizedStyles: options.synthesizedStyles,
       styleResidualReport: options.styleResidualReport,
+      foldedBordersByContainer: options.foldedBordersByContainer,
     });
   }
   if (mergedStyle) attrs.style = mergedStyle;

@@ -115,5 +115,5 @@ HI.reverseNoteGradient = function (gradient, color) {
     var key = [owner.itemId, owner.styleKind, owner.styleName, name].join("|");
     if (state.seen[key]) return; state.seen[key] = true;
     HI.copyObject(details, owner);
-    HI.addMessage(state.report, "warning", "REVERSE_GRADIENT_APPROXIMATED", "Gradient swatch \"" + name + "\" is approximated by its first stop color; HTML keeps a solid color.", details);
+    HI.addMessage(state.report, "warning", "REVERSE_GRADIENT_APPROXIMATED", "Gradient swatch \"" + name + "\" is approximated by its first stop color: the gradient is not kept, author HTML writes that stop as a solid color (fills, strokes, text and table cells).", details);
 };

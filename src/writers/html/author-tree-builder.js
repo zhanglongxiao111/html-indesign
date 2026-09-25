@@ -1,4 +1,5 @@
 const { isDegenerateInvisibleVector } = require('./vector-svg');
+const { foldedBordersForPage } = require('./author-border-fold');
 
 function buildAuthorTree(page) {
   const rootId = page.id;
@@ -7,6 +8,7 @@ function buildAuthorTree(page) {
   const sourceIndexes = new Map((page.items || []).map((item, index) => [item && item.id, index]));
   const items = sortedItems(page.items || []);
   const itemIds = new Set(items.map((item) => item.id));
+  const { foldedItemIds } = foldedBordersForPage(page);
   const companionTextByBase = new Map();
   for (const item of items) {
     const baseId = companionTextBaseId(item, itemIds);
@@ -14,7 +16,7 @@ function buildAuthorTree(page) {
   }
   for (const item of items) {
     if (companionTextBaseId(item, itemIds)) continue;
-    if (shouldOmitAuthorItem(item)) continue;
+    if (shouldOmitAuthorItem(item, foldedItemIds)) continue;
     const companion = companionTextByBase.get(item.id);
     nodes.set(item.id, {
       item: companion ? Object.assign({}, item, { authorTextCompanion: companion }) : item,
@@ -128,12 +130,13 @@ function companionTextBaseId(item, itemIds) {
   return itemIds.has(baseId) ? baseId : '';
 }
 
-function shouldOmitAuthorItem(item) {
+// 折回容器 CSS border 的边框对象（author-border-fold）不再单独写出。
+function shouldOmitAuthorItem(item, foldedItemIds = new Set()) {
   if (!item) return true;
   if (isDegenerateInvisibleVector(item)) return true;
+  if (foldedItemIds.has(item.id)) return true;
   if (isGeneratedLabel(item)) return true;
   const id = String(item.id || '');
-  if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
   if (item.semantic == null && /-background$/i.test(id)) return true;
   return false;
 }

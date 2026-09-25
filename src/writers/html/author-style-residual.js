@@ -1,4 +1,5 @@
 const { blendModeCss } = require('./css-blend-mode');
+const { capitalizationCss, colorWithOpacity, cssBorderStyle } = require('./css-values');
 
 function inlineResidualForSynth({ inlineCss, token, synthesizedStyles }) {
   const inline = parseCssDeclarations(inlineCss);
@@ -30,9 +31,10 @@ function synthesizedStyleDeclarations(style) {
   const properties = style && style.properties || {};
   if (style && style.kind === 'text') return synthesizedTextStyleDeclarations(properties);
   const declarations = [];
-  if (properties.fillColor) declarations.push(`background-color:${properties.fillColor}`);
+  if (properties.fillColor) declarations.push(`background-color:${colorWithOpacity(properties.fillColor, properties.fillOpacity)}`);
   if (properties.strokeColor && Number(properties.strokeWeight) > 0) {
-    declarations.push(`border:${px(properties.strokeWeight)} solid ${properties.strokeColor}`);
+    const strokeColor = colorWithOpacity(properties.strokeColor, properties.strokeOpacity);
+    declarations.push(`border:${px(properties.strokeWeight)} ${cssBorderStyle(properties.strokeStyle)} ${strokeColor}`);
   }
   if (Number(properties.cornerRadius) > 0) declarations.push(`border-radius:${px(properties.cornerRadius)}`);
   const blendMode = blendModeCss(properties.blendMode);
@@ -54,6 +56,8 @@ function synthesizedTextStyleDeclarations(properties) {
     declarations.push(`letter-spacing:${formatNumber(Number(properties.tracking) / 1000)}em`);
   }
   if (properties.justification) declarations.push(`text-align:${properties.justification}`);
+  const capitalization = capitalizationCss(properties.capitalization);
+  if (capitalization) declarations.push(capitalization);
   return declarations.join('; ');
 }
 

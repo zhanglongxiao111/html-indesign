@@ -70,7 +70,7 @@ test('pageItemsToAuthorHtml nests children under source parent items', () => {
   assert.match(html, /<div[^>]+id="card-1"[\s\S]*<p[^>]+id="card-1-value"[\s\S]*243\.75m[\s\S]*<\/p>[\s\S]*<p[^>]+id="card-1-label"[\s\S]*grid length[\s\S]*<\/p>[\s\S]*<\/div>/);
 });
 
-test('pageItemsToAuthorHtml omits generated paint fragments from editable author source', () => {
+test('pageItemsToAuthorHtml folds border fragments into the container border and omits generated paint fragments (#34)', () => {
   const page = {
     id: 'agenda-page',
     items: [
@@ -81,6 +81,8 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
         sourceNode: { tagName: 'div', id: 'chapter-1', classList: ['chapter', 'grid-item'], attributes: { 'data-id-object': '' } },
         structure: { parentId: 'agenda-page', order: 1 },
         layout: { cssVars: { '--grid-col': '5', '--grid-span': '3' } },
+        bounds: { x: 100, y: 50, width: 300, height: 180 },
+        visualStyle: { fillColor: '#ffffff', strokeColor: null, strokeWeight: null },
       },
       {
         id: 'chapter-1-background',
@@ -96,6 +98,17 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
         semantic: null,
         sourceNode: { tagName: 'div', id: 'chapter-1-border-left', classList: ['id-object'], attributes: {} },
         structure: { parentId: 'agenda-page', order: 3 },
+        bounds: { x: 100, y: 50, width: 11, height: 180 },
+        visualStyle: { fillColor: '#c8102e', strokeColor: null, strokeWeight: null },
+      },
+      {
+        id: 'chapter-1-border-top',
+        role: 'decoration',
+        semantic: null,
+        structure: { parentId: 'agenda-page', order: 4 },
+        bounds: { x: 100, y: 50, width: 300, height: 1 },
+        visualStyle: { fillColor: '#cfd6d2', strokeColor: null, strokeWeight: null },
+        labels: [{ kind: 'item', id: 'chapter-1-border-top', role: 'decoration', generated: true }],
       },
     ],
   };
@@ -105,6 +118,35 @@ test('pageItemsToAuthorHtml omits generated paint fragments from editable author
   assert.match(html, /id="chapter-1"/);
   assert.doesNotMatch(html, /chapter-1-background/);
   assert.doesNotMatch(html, /chapter-1-border-left/);
+  assert.doesNotMatch(html, /chapter-1-border-top/);
+  assert.match(html, /id="chapter-1"[^>]+style="[^"]*border-top:1px solid #cfd6d2;border-right:0 solid transparent;border-bottom:0 solid transparent;border-left:11px solid #c8102e/);
+});
+
+test('pageItemsToAuthorHtml keeps a border-named object that does not fit its container edge (#34)', () => {
+  const page = {
+    id: 'agenda-page',
+    items: [
+      {
+        id: 'chapter-1',
+        role: 'shape',
+        structure: { parentId: 'agenda-page', order: 1 },
+        bounds: { x: 100, y: 50, width: 300, height: 180 },
+        visualStyle: { fillColor: '#ffffff' },
+      },
+      {
+        id: 'chapter-1-border-left',
+        role: 'decoration',
+        structure: { parentId: 'agenda-page', order: 2 },
+        bounds: { x: 60, y: 50, width: 11, height: 180 },
+        visualStyle: { fillColor: '#c8102e' },
+      },
+    ],
+  };
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation' });
+
+  assert.match(html, /id="chapter-1-border-left"/);
+  assert.doesNotMatch(html, /id="chapter-1"[^>]+border-left:11px/);
 });
 
 test('pageItemsToAuthorHtml writes vector point type metadata for stable roundtrip', () => {

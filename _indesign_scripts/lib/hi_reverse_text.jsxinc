@@ -139,7 +139,8 @@ HI.reverseCharacterTextStyle = function (character) {
         leading: HI.leadingOrNull(character.leading),
         fillColor: HI.reverseColor(character.fillColor),
         tracking: HI.numberOrNull(character.tracking),
-        justification: null
+        justification: null,
+        capitalization: HI.reverseCapitalization(HI.reverseSafeProperty(character, "capitalization"))
     };
 };
 
@@ -165,6 +166,7 @@ HI.reverseCharacterRunSignature = function (run) {
         s.pointSize || "",
         s.leading || "",
         s.fillColor || "",
-        s.tracking || ""
+        s.tracking || "",
+        s.capitalization || ""
     ].join("|");
 };

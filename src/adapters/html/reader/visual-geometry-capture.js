@@ -38,11 +38,17 @@ async function captureHtmlGeometry(htmlFile, options = {}) {
           .map((node) => node.nodeValue || '')
           .join(''));
       }
+      function borderWidthsFor(element) {
+        const style = getComputedStyle(element);
+        const width = (side) => (style[`border${side}Style`] === 'none' ? 0 : round(parseFloat(style[`border${side}Width`]) || 0));
+        return { top: width('Top'), right: width('Right'), bottom: width('Bottom'), left: width('Left') };
+      }
       function metadataFor(element, pageElement) {
         const dataIdAttrs = Array.from(element.attributes || [])
           .map((attribute) => attribute.name)
           .filter((name) => dataIdAttributeNameSet.has(name));
         return {
+          borderWidths: borderWidthsFor(element),
           pageId: pageElement.id || '',
           role: element.getAttribute(dataId.ROLE) || '',
           vector: element.getAttribute(dataId.VECTOR) || '',

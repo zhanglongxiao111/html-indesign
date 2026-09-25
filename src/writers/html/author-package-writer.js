@@ -6,6 +6,7 @@ const {
   HTML_DATA_ID_ATTRIBUTES,
 } = require('../../protocol');
 const { writeAuthorCssFiles } = require('./author-css-writer');
+const { deckPageBackground, pageBackgroundOverride } = require('./author-page-background');
 const { prepareAuthorAssets } = require('./asset-reference-policy');
 const { authorStyleFiles, copySourceCssFiles, planSourceCss } = require('./author-source-css');
 const { attrsToHtml, mergeAttributes } = require('./author-attribute-writer');
@@ -100,6 +101,7 @@ function writeReverseAuthorPackage(model, options = {}) {
     styleResidualReport,
     authorWarnings,
     layerTokenByName: layerTokensByDisplayName(vocabulary.preset),
+    deckPageBackground: deckPageBackground({ pages: pages.map((page) => page.authorPage) }),
   };
 
   for (const [relativePath, css] of Object.entries(generatedCss)) {
@@ -678,7 +680,7 @@ function sourcePageAttrs(page, sourceFile, options) {
   }
   const style = preserveTrustedSource
     ? attrs.style || ''
-    : pageStyleVars(page);
+    : pageStyleVars(page, options);
   if (style) attrs.style = style;
   return attrsToHtml(orderPageAttrs(attrs));
 }
@@ -712,8 +714,12 @@ function shouldWritePageParentAttrs(page, options = {}) {
   return pageHasEffectiveParentPage(page, options.effectiveParentPageKeys);
 }
 
-function pageStyleVars(page) {
-  return authorPageStyleVarPairs(page).map(([name, value]) => `${name}:${value}`).join(';');
+function pageStyleVars(page, options = {}) {
+  const pairs = [];
+  const background = pageBackgroundOverride(page, options.deckPageBackground);
+  if (background) pairs.push(['--id-page-bg', background]);
+  for (const pair of authorPageStyleVarPairs(page)) pairs.push(pair);
+  return pairs.map(([name, value]) => `${name}:${value}`).join(';');
 }
 
 function pageMarginAttrValue(margins) {

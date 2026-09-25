@@ -7,7 +7,7 @@ const {
   shouldRenderAssetFigureNode,
   shouldRenderPlacedAssetFrame,
 } = require('./author-asset-renderer');
-const { attrsForItem, sourceNodeForItem } = require('./author-node-attrs');
+const { attrsForItem, shouldPreserveTrustedSource, sourceNodeForItem } = require('./author-node-attrs');
 const { isPdfObjectItem, renderPdfObjectNode } = require('./author-pdf-renderer');
 const { ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
 const { indent, safeTag, tagForRole } = require('./author-render-utils');
@@ -24,6 +24,10 @@ const { normalizeLineEndings } = require('../../shared/text');
 
 const AUTHOR_ITEM_DROPPED = 'REVERSE_AUTHOR_ITEM_DROPPED';
 
+function reverseGeometryPageOptions(plan) {
+  return { reverseBoxes: plan.boxes, foldedBordersByContainer: plan.foldedBordersByContainer };
+}
+
 // options.authorWarnings 为数组时收集写出 warning（带 pageId），由作者包写出器汇总进 report.json。
 function pageItemsToAuthorHtml(page, options = {}) {
   const tree = buildAuthorTree(page);
@@ -32,8 +36,8 @@ function pageItemsToAuthorHtml(page, options = {}) {
   const pageOptions = {
     ...options,
     vectorContainerIds,
-    // 与 reverse-overrides.css 同一份外框规划：哪些对象按读回 bounds 兜底、哪些退出网格。
-    reverseBoxes: reverseGeometryPlanForPage(page, { ...options, vectorContainerIds }).boxes,
+    // 与 reverse-overrides.css 同一份外框规划：哪些对象按读回 bounds 兜底、哪些退出网格、哪些边框对象折回容器。
+    ...reverseGeometryPageOptions(reverseGeometryPlanForPage(page, { ...options, vectorContainerIds })),
     authorRenderState: state,
   };
   const html = tree.map((node) => renderNode(node, pageOptions, 0)).join('\n');
@@ -124,7 +128,11 @@ function renderNode(node, options, depth) {
     node.children.forEach((child) => markSubtreeRendered(options, child));
     return `${indent(depth)}${open}${preservedInlineSourceHtml}</${tag}>`;
   }
-  const own = ownContent(item, depth, { ignoreSourceHtml: node.children.length > 0 });
+  const own = ownContent(item, depth, {
+    ignoreSourceHtml: node.children.length > 0,
+    // 字符级、单元格读回外观：源码 CSS 未随包保留时，来源 class 不再带样式，只能写内联。
+    writeRunStyles: !shouldPreserveTrustedSource(item, sourceNode, options),
+  });
   if (node.children.length && node.children.every(isInlineNode)) {
     const children = node.children.map((child) => renderNode(child, options, 0)).join('');
     return `${indent(depth)}${open}${own}${children}</${tag}>`;

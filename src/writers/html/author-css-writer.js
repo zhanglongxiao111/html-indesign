@@ -3,6 +3,7 @@ const { reverseBoxHeight, reverseGeometryPlanForPage } = require('./author-rever
 const { safeAuthorClassToken } = require('../../shared/style-utils');
 const { synthesizedStyleDeclarations } = require('./author-style-residual');
 const { VECTOR_SVG_BOX_PAINT_RESET, vectorSvgBoxPaintResetRule } = require('../../shared/vector-svg-box-paint');
+const { deckPageBackground } = require('./author-page-background');
 
 function writeAuthorCssFiles(model, options = {}) {
   return {
@@ -17,7 +18,7 @@ function writeAuthorCssFiles(model, options = {}) {
 function tokensCss(model) {
   return [
     ':root {',
-    '  --id-page-bg: #ffffff;',
+    `  --id-page-bg: ${deckPageBackground(model)};`,
     '  --id-text: #14324a;',
     '}',
     '',
@@ -32,6 +33,8 @@ function layoutCss(model) {
     '.deck { display: flex; flex-direction: column; gap: 40px; padding: 40px; }',
     `.page { width: ${px(first.width || 0)}; height: ${px(first.height || 0)}; background: var(--id-page-bg); overflow: hidden; position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--id-grid-columns, 12), minmax(0, 1fr)); grid-template-rows: repeat(var(--id-grid-rows, 8), minmax(0, 1fr)); column-gap: var(--id-column-gutter, 0px); row-gap: var(--id-row-gutter, 0px); padding: var(--id-margin-top, 0px) var(--id-margin-right, 0px) var(--id-margin-bottom, 0px) var(--id-margin-left, 0px); }`,
     '.page :where(p, h1, h2, h3, h4, h5, h6, figure, figcaption, ul, ol) { margin: 0; }',
+    // InDesign 表格相邻单元格共用描边，对应 CSS 的合并边框模型。
+    '.page :where(table) { border-collapse: collapse; }',
     '.grid-item { grid-column: var(--grid-col) / span var(--grid-span, 1); grid-row: var(--grid-row) / span var(--grid-row-span, 1); min-width: 0; min-height: 0; }',
     // 置入图的内容图按图框内偏移绝对定位，留在网格里的图框要成为它的定位参照（只含内容图、不含子对象）。
     '.grid-item:has(> .placed-asset-content, > .placed-asset-preview) { position: relative; }',
@@ -120,13 +123,26 @@ function authorPosition(item, itemById, context) {
   if (!parent || parent.virtual === true || !parent.bounds || !establishesAuthorPositioning(parent, context)) {
     return position;
   }
-  // 绝对定位以容器的内边距盒为参照；矢量容器的描边写成 CSS border，要扣掉，
-  // 子对象才能落回读回 bounds。
-  const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
+  // 绝对定位以容器的内边距盒为参照；矢量容器的描边、折回容器的边框对象都写成 CSS border，
+  // 要扣掉左、上边宽，子对象才能落回读回 bounds。
+  const inset = containerBorderInset(parent, context);
   return {
-    x: position.x - (Number(parent.bounds.x) || 0) - border,
-    y: position.y - (Number(parent.bounds.y) || 0) - border,
+    x: position.x - (Number(parent.bounds.x) || 0) - inset.left,
+    y: position.y - (Number(parent.bounds.y) || 0) - inset.top,
   };
+}
+
+// 折回的边框对象按各边宽写成 border（author-border-fold），其余矢量容器按读回描边写等宽 border。
+function containerBorderInset(parent, context) {
+  const folded = context.foldedBordersByContainer && context.foldedBordersByContainer.get(parent.id);
+  if (folded) {
+    return {
+      left: folded.left ? folded.left.width : 0,
+      top: folded.top ? folded.top.width : 0,
+    };
+  }
+  const border = context.vectorContainerIds.has(parent.id) ? containerBorderWidth(parent) : 0;
+  return { left: border, top: border };
 }
 
 // 与 author-style-attrs.visualStyleCss 写出的 border 宽度一致。

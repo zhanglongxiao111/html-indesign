@@ -3,6 +3,7 @@ const { isDegenerateInvisibleVector } = require('./vector-svg');
 const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-vector-renderer');
 const { tableBoxHeight } = require('./table-html');
 const { cssLengthStringToPx } = require('../../shared/geometry');
+const { foldedBordersForPage } = require('./author-border-fold');
 
 // 反向作者包的外框规划：每个对象的外框落在哪里，由这里统一决定，
 // reverse-overrides.css（author-css-writer）与页面 HTML（author-node-attrs / author-vector-renderer）共用同一份结果。
@@ -18,15 +19,18 @@ const { cssLengthStringToPx } = require('../../shared/geometry');
 const GRID_FIT_TOLERANCE_PX = 0.5;
 
 
-// 返回 { boxes, vectorContainerIds }：boxes 按对象 id 记外框写法——
+// 返回 { boxes, vectorContainerIds, foldedBordersByContainer }：boxes 按对象 id 记外框写法——
 // { keepsGrid: true } 留在网格、钉住读回高度；{ keepsGrid: false, exitsGrid } 按读回 bounds 绝对定位。
-// 不在 boxes 里的对象不写兜底几何。
+// 不在 boxes 里的对象不写兜底几何。折回容器 CSS border 的边框对象（author-border-fold）不写外框，
+// 容器按各边宽扣子对象偏移（author-css-writer.authorPosition）。
 function reverseGeometryPlanForPage(page, options = {}) {
   const items = (page && page.items || []).filter(Boolean);
   const vectorContainerIds = options.vectorContainerIds || vectorContainerIdsForPage(page, options);
+  const folded = foldedBordersForPage(page);
   const context = {
     itemIds: new Set(items.map((item) => item.id)),
     vectorContainerIds,
+    foldedBorderItemIds: folded.foldedItemIds,
     sourceLayoutCarried: options.sourceLayoutCarried === true,
   };
   const grid = authorPageGridGeometry(page);
@@ -37,7 +41,7 @@ function reverseGeometryPlanForPage(page, options = {}) {
     const box = reverseBoxForItem(item, grid, options.unitMode);
     if (box) boxes.set(item.id, box);
   }
-  return { boxes, vectorContainerIds };
+  return { boxes, vectorContainerIds, foldedBordersByContainer: folded.byContainer };
 }
 
 function reverseBoxForItem(item, grid, unitMode) {
@@ -100,9 +104,9 @@ function shouldOmitReverseBox(item, context, options = {}) {
     && context.sourceLayoutCarried
     && !rendersBakedVectorSvg(item, options)
     && !isVectorContainerChild(item, context)) return true;
+  if (context.foldedBorderItemIds.has(item.id)) return true;
   if (isGeneratedLabel(item)) return true;
   const id = String(item.id || '');
-  if (/-border-(top|right|bottom|left)$/i.test(id)) return true;
   if (item.semantic == null && /-background$/i.test(id)) return true;
   if (/-text$/i.test(id) && context.itemIds.has(id.replace(/-text$/i, ''))) return true;
   return false;

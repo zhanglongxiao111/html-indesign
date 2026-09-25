@@ -50,6 +50,7 @@ const PAGE_FIELD_PATHS = Object.freeze({
   rejectedFields: 'pages[].rejectedFields',
   rejectionReasons: 'pages[].rejectionReasons',
   migration: 'pages[].migration',
+  visualStyle: 'pages[].visualStyle',
 });
 
 const ASSET_FIELD_PATHS = Object.freeze({
@@ -204,6 +205,11 @@ const ITEM_EXTENSION_FIELD_PATHS = Object.freeze({
     effects: 'items[].extensions.indesign.effects',
     textFrameStyle: 'items[].extensions.indesign.textFrameStyle',
   }),
+});
+
+const PAGE_VISUAL_STYLE_FIELD_PATHS = Object.freeze({
+  fillColor: 'pages[].visualStyle.fillColor',
+  fillOpacity: 'pages[].visualStyle.fillOpacity',
 });
 
 const PAGE_MIGRATION_FIELD_PATHS = Object.freeze({
@@ -451,6 +457,9 @@ function scanPages(paths, seen, pages) {
       } else if (key === 'migration') {
         addPath(paths, seen, PAGE_FIELD_PATHS.migration);
         scanObjectSurface(paths, seen, value, PAGE_MIGRATION_FIELD_PATHS, 'pages[].migration');
+      } else if (key === 'visualStyle') {
+        addPath(paths, seen, PAGE_FIELD_PATHS.visualStyle);
+        scanObjectSurface(paths, seen, value, PAGE_VISUAL_STYLE_FIELD_PATHS, 'pages[].visualStyle');
       } else if (hasOwn.call(PAGE_FIELD_PATHS, key)) {
         addPath(paths, seen, PAGE_FIELD_PATHS[key]);
       } else if (!STRUCTURAL_KEYS.has(key)) {

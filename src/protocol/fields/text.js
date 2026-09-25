@@ -73,6 +73,29 @@ module.exports = [
     },
   },
   {
+    canonicalPath: 'items[].textStyle.capitalization',
+    currentPaths: [
+      'reverseModel.pages[].items[].textStyle.capitalization',
+      'reverseModel.pages[].items[].content.runs[].textStyle.capitalization',
+    ],
+    fieldClass: 'canonical',
+    lifecycle: 'active',
+    owner: 'text-content',
+    type: 'string',
+    description: 'InDesign capitalization read back as allCaps / smallCaps (null = normal). HTML writes text-transform:uppercase / font-variant-caps:small-caps; forward compile maps text-transform:uppercase back to allCaps.',
+    capabilities: {
+      html: { read: 'observe-only', write: 'native', persist: 'native' },
+      indesign: { read: 'native', write: 'native', persist: 'native' },
+      pptx: { read: 'unsupported', write: 'approximate', persist: 'lossless' },
+    },
+    html: {
+      styleProps: ['text-transform', 'font-variant-caps'],
+    },
+    indesign: {
+      snapshotPaths: ['textStyle.capitalization', 'textRuns[].textStyle.capitalization'],
+    },
+  },
+  {
     canonicalPath: 'styles.paragraphStyles[].composer',
     currentPaths: ['styles.paragraphStyles[].composer'],
     fieldClass: 'canonical',
