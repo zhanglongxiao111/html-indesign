@@ -201,7 +201,8 @@ function pageStructureNodes($, packageRoot) {
   for (const element of structureElements) {
     const node = $(element);
     const key = nodeKey($, element);
-    const resource = node.attr('src') || node.attr('data') || null;
+    // 置入图框容器的资源写在 data-id-asset-path 上（框内预览 img 带 data-id-ignore，不参与签名）。
+    const resource = node.attr('src') || node.attr('data') || node.attr(HTML_DATA_ID_ATTRIBUTES.ASSET_PATH) || null;
     nodes.push({
       key,
       id: node.attr('id') || null,

@@ -60,3 +60,16 @@ test('SEMANTIC_TOKEN_UNKNOWN says so when nothing of that kind is registered', (
   assert.deepEqual(issue.knownTokens, []);
   assert.equal(issue.totalKnown, 0);
 });
+
+test('a data-id-* value with spaces is one token, not one per word (#32)', () => {
+  const html = '<section class="page"><div data-id-layer="图层 1">x</div><p data-id-paragraph-style="[Basic Paragraph]">y</p></section>';
+  const known = auditAuthoringSemanticTokens({
+    preset: { styleNameMap: { layers: { '图层 1': '图层 1' }, paragraphStyles: { '[Basic Paragraph]': '[Basic Paragraph]' } } },
+    pageFiles: [pageFile(html)],
+    strict: true,
+  });
+  assert.deepEqual(known.errors, []);
+
+  const unknown = auditAuthoringSemanticTokens({ preset: {}, pageFiles: [pageFile(html)], strict: true });
+  assert.deepEqual(unknown.errors.map((entry) => entry.token), ['[Basic Paragraph]', '图层 1']);
+});

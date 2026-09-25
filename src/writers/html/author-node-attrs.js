@@ -133,7 +133,7 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
     ['layer', HTML_DATA_ID_ATTRIBUTES.LAYER],
   ];
   for (const [key, attr] of pairs) {
-    if (!attrs[attr] && refs[key]) attrs[attr] = refs[key];
+    if (!attrs[attr] && refs[key]) attrs[attr] = key === 'layer' ? layerToken(refs.layer, options) : refs[key];
   }
   addVisualStyleProtocolAttrs(attrs, item && item.visualStyle);
   if (!attrs[HTML_DATA_ID_ATTRIBUTES.STYLE_TOKEN] && refs.synthesizedToken) {
@@ -156,6 +156,14 @@ function addStyleProtocolAttrs(attrs, item, options = {}) {
   if (!attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] && textStyle.composer) {
     attrs[HTML_DATA_ID_ATTRIBUTES.PARAGRAPH_COMPOSER] = textStyle.composer;
   }
+}
+
+// 读回的是 InDesign 图层名（文字），作者 HTML 写语义键（text）：按作者包语义库
+// styleNameMap.layers 反查。反查不到的人做图层名（图层 1）原样写，由包内语义库登记（#32）。
+function layerToken(layerName, options = {}) {
+  const map = options.layerTokenByName;
+  const name = String(layerName).trim();
+  return map && map.has(name) ? map.get(name) : name;
 }
 
 function addVisualStyleProtocolAttrs(attrs, visualStyle) {

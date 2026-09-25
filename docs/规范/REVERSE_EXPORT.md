@@ -157,6 +157,16 @@ reverse-export-<timestamp>/
 
 作者源码包的目标不是像素对照，而是可继续编辑。`author/pages/*.html` 必须优先恢复原始作者标签、class、稳定属性、资源引用和可表达的父子结构。图片、PDF、SVG、AI/PSD 预览等资源元素不得退化为带 `src` 或 `data` 属性的 `div`。有网格信息的对象应保留为 CSS Grid 约束；绝对定位只用于缺少网格或无法映射的观察对象。
 
+#### 4.1.0 作者包必须直接通过 strict lint（#32）
+
+「反向导出 → 改作者包 → 正向构建」要求反向写出的作者包不经人工修改就能通过 `html.build_indesign` 固定使用的 strict lint。写出器按以下规则收口：
+
+- **包内语义库。** 作者包的词表就是 lint / compile 将要解析的那一份：源码包带项目语义库时用它，否则用 `config.profile` 的标准库（缺省 `architecture-report`）。写完页面后，把页面上所有不在词表里的样式与图层 token（`data-id-paragraph-style`、`-character-style`、`-object-style`、`-frame-style`、`-table-style`、`-cell-style`、`-layer`）按「token → 同元素上 `*-style-name` 读回的 InDesign 名（没有时即 token 本身）」登记进包内语义库，`deck.config.json` 的 `semanticPreset` 指向它（源码包有项目语义库时沿用其相对路径，否则为 `semantic-preset.json`）。这些都是 INDD 里真实存在的资源名（正向按样式签名派生的变体如 `色块-08371558`、作者未登记的自动对象样式、人做 INDD 的 `渐变段落`、`图层 1`），登记不改变语义；正向构建再按同一张表写回同名样式和图层。没有任何新登记且没有源码项目语义库时不写包内语义库。
+- **不自动登记的。** `data-id-semantic` 是语义白名单，绝不自动登记；`data-id-asset-kind`、`data-id-fit`、`data-id-crop` 三类枚举只接受标准语义库里已有的值（旧版标准库拷贝出的项目语义库缺 `none`、`manual` 时补上）。无法登记的 token 记进 `reports/authoring-report.json` 的 `semanticPreset.unresolved`，由 lint 以 `SEMANTIC_TOKEN_UNKNOWN` 报出。
+- **图层写语义键。** InDesign 图层名按词表 `styleNameMap.layers` 反查成语义键（`文字` → `text`）；反查不到的人做图层名原样写，并由上一条登记为「图层名 → 同名图层」，往返后对象仍落在同名图层上。`data-id-layer` 等 `data-id-*` 都是单值字段，带空格的图层名（`图层 1`）是一个 token，不得按空白拆开。
+- **观察页面契约。** `observation` / `inferred` 模式下页面根缺 `data-id-layout` 或 `data-id-grid` 时，补一份明确的中性契约，不从视觉推断：`data-id-layout` 取页面标签读回的布局 token，没有时写 `observed`（尚未语义化的自由版面，Agent 语义化时替换成真正的页面结构模板）；`data-id-grid="1x1"`（只有版心一格，边距已由 `data-id-margin` 读回，快照不含 InDesign 分栏）；同时固定写出 `data-id-guides`（没有参考线时写 `[]`），声明网格后正向构建不会额外生成网格参考线。人做 INDD 的观察对象不会压在这份网格上，应以 `lintProfile: "reverse-export"` 跑 lint / build，观察对象的 `GRID_ALIGNMENT_OFF` 降为提示。
+- 置入图框写成 `figure` 时，`reverse-overrides.css` 用零特异度规则清掉浏览器默认的 figure 外边距，带 `sourceRoot` 换成源码 `layout.css` 时图框也不会错位。
+
 `observation` 模式把带源码节点的矢量对象写成 `<svg>` 时，InDesign 读回的路径点已经是页面坐标下的最终几何（CSS 旋转、平移都已烘焙进 `path`），`viewBox` 取自读回 bounds。此时源码 style 里描述「旋转前盒子 + CSS 变换」的声明不得搬到 `<svg>` 上：`transform`、`transform-origin`、`transform-box`、`rotate`、`translate`、`scale` 一律剥掉；非网格对象的 `position`、`left/top/right/bottom/inset*`、`width/height`（含 min/max 与逻辑尺寸）和 `margin*` 也剥掉，外框改由 `reverse-overrides.css` 按读回 bounds 写出，并附 `margin:0; transform:none; rotate:none; translate:none; scale:none`，防止带 `sourceRoot` 拷回的源码组件样式再次变换。网格对象保留网格变量，只剥变换。文本框、图片/PDF 框等非矢量写出路径仍沿用源码几何与变换，不会叠加读回 bounds，不存在二次变换。
 
 `<svg>` 里只能放路径。读回带矢量路径、同时挂着作者内容（子对象、折回的伴生文字 `<id>-text` 或自身文字）的对象不得写成 `<svg>`，改写成普通 HTML 容器（源码标签，`svg`/空元素退回 `div`）：id、class、`data-id-object` 等观察态标记和对象样式属性落在容器上，不带 `data-id-vector`；外框沿用上段已烘焙矢量的剥离与兜底规则；填充、描边、圆角、透明度按读回 `visualStyle` 内联成 CSS 盒子，正向构建读的也是它。容器的直接子对象一律按读回 bounds 写兜底几何并附 `margin:0`，源码 style 里的定位、尺寸和外边距剥掉：非网格容器相对容器内边距盒定位（扣掉描边写成的 border 宽），网格容器不是定位参照，子对象按页面坐标定位。折回的伴生文字相对容器的偏移写成 `padding`，字号、行距等按伴生文字读回写出。路径不是贴合读回 bounds 的直角矩形时（椭圆、多边形、烘焙了旋转的矩形等），CSS 盒子只能近似，记 `REVERSE_VECTOR_CONTAINER_SHAPE_APPROXIMATED`。
@@ -558,7 +568,7 @@ read blueprint.json
 - `data-id-layout` 对应页面结构模板。
 - 不因为 `data-id-layout="左文右图"`、`data-id-layout="四图矩阵"` 等页面结构模板自动创建同名 InDesign 母版。
 - 页面结构模板应记录到页面标签和 `reverse-model.json`。
-- 反向导出不根据视觉自动创建 `data-id-layout`，除非 Agent 语义化阶段明确补写。
+- 反向导出不根据视觉自动创建 `data-id-layout`，除非 Agent 语义化阶段明确补写。观察页面缺布局 token 时写的是固定中性值 `observed`（见 4.1.0），它不表示任何页面结构模板。
 
 ## 7. Agent 语义化流程
 
@@ -626,6 +636,8 @@ HTML -> InDesign -> HTML
 - 表格结构。
 
 视觉比较已进入反向作者包审核链路。交付前或作为规范样例时，应运行 `npm run audit:reverse-visual`；允许的 accepted 差异必须有结构化证据和报告说明，missing、mismatched 和 errors 必须为 0。
+
+带 `sourceRoot` 反向导出时，作者包会和源码包做源码回环、内容库存与结构签名三项审计。`observation` / `inferred` 模式不保留可信源码结构，而是按 INDD 里观察到的对象写（裁切置入写成 `figure` 图框、矢量写成 `svg`、定位写成内联几何、资源写成读回的绝对路径），所以以下「写法」差异在这两种模式下降为 warning（带 `demotedBy`）：`ROUNDTRIP_TAG_SEQUENCE_CHANGED`、`ROUNDTRIP_INLINE_STYLE_CHANGED`、`ROUNDTRIP_RESOURCE_CHANGED`、`STRUCTURE_NODE_TAG_CHANGED`、`STRUCTURE_NODE_ORDER_CHANGED`、`STRUCTURE_NODE_PARENT_CHANGED`。内容类差异仍是 error：页面缺失、文本变化、字符样式、表格单元格样式、节点缺失、class 被删、节点资源身份变化，以及内容库存的全部检查（文本、资源身份与内容哈希、角色计数、母版家具）。`structured` 模式不降级。内容库存与结构签名把带 `data-id-asset-path` 的图框容器认作资源本身（框内预览 `img` 带 `data-id-ignore`，不参与比较）。
 
 回环验证的门禁口径以 `src/writers/html/audit/` 为准。CLI、plugin 和 E2E 可以选择不同输入、输出目录或严格度参数，但不能绕过内容库存、结构签名和反向视觉证据这些共享审核语义；否则同一作者包会在不同入口产生相互矛盾的通过/失败结论。
 

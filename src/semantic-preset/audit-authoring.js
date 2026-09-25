@@ -37,22 +37,22 @@ function auditAuthoringSemanticTokens(options = {}) {
     ATTRIBUTE_RULES.forEach(([attrName, kind, code]) => {
       $(`[${attrName}]`).each((index, element) => {
         const raw = $(element).attr(attrName);
-        splitTokens(raw).forEach((token) => {
-          if (known[kind] && known[kind].has(token)) return;
-          const enumError = code !== 'SEMANTIC_TOKEN_UNKNOWN';
-          const level = enumError || strict ? 'error' : 'warning';
-          const knownTokens = suggestedTokens(token, known[kind]);
-          messages.push({
-            level,
-            code,
-            message: unknownTokenMessage(token, attrName, kind, known[kind], knownTokens),
-            file,
-            attr: attrName,
-            token,
-            kind,
-            knownTokens,
-            totalKnown: known[kind] ? known[kind].size : 0,
-          });
+        const token = attributeToken(raw);
+        if (!token) return;
+        if (known[kind] && known[kind].has(token)) return;
+        const enumError = code !== 'SEMANTIC_TOKEN_UNKNOWN';
+        const level = enumError || strict ? 'error' : 'warning';
+        const knownTokens = suggestedTokens(token, known[kind]);
+        messages.push({
+          level,
+          code,
+          message: unknownTokenMessage(token, attrName, kind, known[kind], knownTokens),
+          file,
+          attr: attrName,
+          token,
+          kind,
+          knownTokens,
+          totalKnown: known[kind] ? known[kind].size : 0,
         });
       });
     });
@@ -108,11 +108,15 @@ function levenshtein(left, right) {
   return previous[b.length];
 }
 
-function splitTokens(value) {
-  return String(value || '')
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
+// 这些 data-id-* 在协议注册表里都是单值 string 字段，整段属性值就是一个 token。
+// InDesign 默认图层「图层 1」、内置样式「[Basic Paragraph]」都带空格，按空白拆开
+// 会把一个名字拆成两个不存在的 token（#32）。
+function attributeToken(value) {
+  return String(value == null ? '' : value).trim();
 }
 
-module.exports = { auditAuthoringSemanticTokens };
+module.exports = {
+  ATTRIBUTE_RULES,
+  attributeToken,
+  auditAuthoringSemanticTokens,
+};

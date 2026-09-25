@@ -11,9 +11,11 @@ const { validateSemanticPreset } = require('./schema');
 const {
   presetToStyleNameMap,
   collectKnownSemanticTokens,
+  layerTokensByDisplayName,
 } = require('./maps');
 const { initProjectSemanticPreset } = require('./init');
 const { auditAuthoringSemanticTokens } = require('./audit-authoring');
+const { registerObservedSemanticTokens } = require('./register-observed');
 
 module.exports = {
   SemanticPresetError,
@@ -26,4 +28,6 @@ module.exports = {
   validateSemanticPreset,
   presetToStyleNameMap,
   collectKnownSemanticTokens,
+  layerTokensByDisplayName,
+  registerObservedSemanticTokens,
 };
