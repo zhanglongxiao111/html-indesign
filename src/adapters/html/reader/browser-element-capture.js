@@ -474,6 +474,11 @@
   function visualFrameFor(el) {
     const dataId = dataIdAttributes();
     const tagName = el.tagName.toLowerCase();
+    // 表格所在的文本框比表格高时，作者 HTML 用 data-id-ignore 包裹层表达文本框：外框取包裹层。
+    if (tagName === 'table') {
+      const frame = el.parentElement;
+      return frame && frame.hasAttribute(dataId.IGNORE) ? frame : el;
+    }
     if (!['img', 'object', 'embed', 'svg', 'canvas'].includes(tagName)) return el;
     const parent = el.parentElement;
     if (!parent) return el;
@@ -662,9 +667,12 @@
     if (el.tagName.toLowerCase() !== 'table') return [];
     return Array.from(el.rows || []).map((row, rowIndex) => {
       const isHeaderRow = row.parentElement && row.parentElement.tagName.toLowerCase() === 'thead';
+      // 作者在 <tr> 上声明的行高（CSS 行高是「至少」这么高，与 InDesign 行高同义），编译时作行高。
+      const authoredHeight = styleApi().authoredStyleObject(row, styleRules).height || '';
       return {
         index: rowIndex,
         header: isHeaderRow,
+        ...(authoredHeight ? { authoredHeight } : {}),
         cells: Array.from(row.cells || []).map((cell, cellIndex) => ({
           index: cellIndex,
           text: trimmedTextWithHardBreaks(cell),

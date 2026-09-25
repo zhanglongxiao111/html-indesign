@@ -104,24 +104,37 @@ function cleanTableCellText(value) {
     .replace(/\n+$/g, '');
 }
 
-// 读回的表格外框是表格所在的文本框。正向构建建的表格，外框高 = 各行高之和 + 余量（shared/geometry.tableFrameSlack），
-// HTML 里的表格盒子只含各行：读回行高齐全且外框正好是「行高之和 + 余量」时，盒子高取行高之和，
-// 再次正向构建会把余量加回来；否则（如人工 INDD 里文本框比表格高）只能以外框为准。
-function tableBoxHeight(item, unitMode) {
+// 读回的表格外框是表格所在的文本框，表格本身的高度是各行读回行高之和。
+// 读回行高齐全（每行一个正数）时返回行高数组，否则 null。
+function readBackRowHeights(table) {
+  const heights = Array.isArray(table && table.rowHeights) ? table.rowHeights.map(Number) : [];
+  const rows = Array.isArray(table && table.rows) ? table.rows : [];
+  if (!heights.length || (rows.length && heights.length !== rows.length)) return null;
+  if (!heights.every((height) => Number.isFinite(height) && height > 0)) return null;
+  return heights.map((height) => Math.round(height * 1000) / 1000);
+}
+
+// HTML 里表格盒子只含各行：读回行高齐全时取行高之和，文本框多出的高度不分摊到行上；否则只能用外框高。
+function tableBoxHeight(item) {
+  const heights = readBackRowHeights(item && item.table);
+  if (!heights) return Number(item && item.bounds && item.bounds.height) || 0;
+  return Math.round(heights.reduce((sum, height) => sum + height, 0) * 1000) / 1000;
+}
+
+// 表格所在文本框比「行高之和 + 正向构建余量」（shared/geometry.tableFrameSlack）还高出的部分。
+// 正向构建建出的表格外框正好等于行高之和 + 余量，返回 0；人工 INDD 里文本框常比表格高得多。
+function tableFrameOverflow(item, unitMode) {
+  const heights = readBackRowHeights(item && item.table);
+  if (!heights) return 0;
   const frameHeight = Number(item && item.bounds && item.bounds.height) || 0;
-  const table = item && item.table || {};
-  const heights = Array.isArray(table.rowHeights) ? table.rowHeights.map(Number) : [];
-  const rows = Array.isArray(table.rows) ? table.rows : [];
-  if (!heights.length || (rows.length && heights.length !== rows.length)) return frameHeight;
-  if (!heights.every((height) => Number.isFinite(height) && height > 0)) return frameHeight;
-  const rowsHeight = heights.reduce((sum, height) => sum + height, 0);
-  const slack = tableFrameSlack(heights.length, unitMode);
-  if (Math.abs(rowsHeight + slack - frameHeight) > 0.5) return frameHeight;
-  return Math.round(rowsHeight * 1000) / 1000;
+  const overflow = frameHeight - tableBoxHeight(item) - tableFrameSlack(heights.length, unitMode);
+  return overflow > 0.5 ? Math.round(overflow * 1000) / 1000 : 0;
 }
 
 module.exports = {
+  readBackRowHeights,
   renderTableContent,
   tableBoxHeight,
+  tableFrameOverflow,
   tableStyleName,
 };

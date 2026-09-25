@@ -33,6 +33,8 @@ function attrsForItem(item, sourceNode, options) {
   } else if (!item.virtual && (!hasSourceNode(sourceNode) || options.mode === 'observation')) {
     attrs.id = item.id;
   }
+  // 对象 id 落在表格外的文本框包裹层上（读回对象就是那个文本框），表格本身不再带同一个 id。
+  if (tableFrameWrapperFor(item, options)) delete attrs.id;
   const classes = new Set(preserveTrustedSource
     ? (sourceNode.classList || [])
     : authorClassesForItem(item, sourceNode.classList || [], attrs));
@@ -78,6 +80,19 @@ function reverseBoxSourceStyle(item, classes, sourceStyle, options = {}) {
   }
   return filterDeclarations(sourceStyle, (property) => !SOURCE_BOX_PROPERTY_RE.test(property)
     && !(box.exitsGrid && GRID_PLACEMENT_VAR_RE.test(property)));
+}
+
+// 表格所在文本框的包裹层：'write' 由作者 HTML 写出器新写一层（外框规划标了 tableFrame）；
+// 'source' 源码里已有同 id 的 data-id-ignore 包裹层（上一轮反向写出的），作为虚拟节点原样写出。
+function tableFrameWrapperFor(item, options = {}) {
+  if (!item || item.virtual || item.role !== 'table') return null;
+  const inSourceWrapper = (item.sourceAncestorNodes || []).some((node) => node
+    && node.id != null
+    && String(node.id) === String(item.id)
+    && Object.prototype.hasOwnProperty.call(node.attributes || {}, HTML_DATA_ID_ATTRIBUTES.IGNORE));
+  if (inSourceWrapper) return 'source';
+  const box = reverseBoxFor(item, options);
+  return box && box.tableFrame ? 'write' : null;
 }
 
 // 源码包裹层写出为虚拟节点（id 形如 source:…），它的元素 id 取源码 id；
@@ -230,6 +245,7 @@ function formatAttrValue(value) {
 module.exports = {
   attrsForItem,
   reverseBoxSourceStyle,
+  tableFrameWrapperFor,
   sourceNodeForItem,
   shouldPreserveTrustedSource,
   sourceStyleForItem,

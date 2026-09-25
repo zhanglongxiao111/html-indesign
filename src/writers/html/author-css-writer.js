@@ -1,3 +1,4 @@
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { rendersBakedVectorSvg } = require('./author-vector-renderer');
 const { reverseBoxHeight, reverseGeometryPlanForPage } = require('./author-reverse-geometry');
 const { safeAuthorClassToken } = require('../../shared/style-utils');
@@ -83,6 +84,9 @@ function reverseOverridesCss(model, options = {}) {
     // 浏览器默认外边距（16px 40px），图框整体错位。零特异度，源码 CSS 仍可覆盖（#32）。
     '/* Reverse-written placed-asset frames are figures; neutralize the UA figure margin even when source CSS replaced layout.css. */',
     '.page :where(figure) { margin: 0; }',
+    // 表格所在文本框比表格高时写成 data-id-ignore 包裹层（author-html-tree），外框在包裹层上，表格占满框宽、高度随行。
+    '/* A table whose text frame is taller than its rows sits in an ignored frame wrapper that carries the read-back bounds. */',
+    `.page [${HTML_DATA_ID_ATTRIBUTES.IGNORE}] > table { width: 100%; }`,
   ];
   for (const page of model.pages || []) {
     const itemById = new Map((page.items || []).map((item) => [item && item.id, item]));

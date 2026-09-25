@@ -1,7 +1,7 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { isDegenerateInvisibleVector } = require('./vector-svg');
 const { rendersBakedVectorSvg, vectorContainerIdsForPage } = require('./author-vector-renderer');
-const { tableBoxHeight } = require('./table-html');
+const { tableBoxHeight, tableFrameOverflow } = require('./table-html');
 const { cssLengthStringToPx } = require('../../shared/geometry');
 const { foldedBordersForPage } = require('./author-border-fold');
 
@@ -20,7 +20,8 @@ const GRID_FIT_TOLERANCE_PX = 0.5;
 
 
 // 返回 { boxes, vectorContainerIds, foldedBordersByContainer }：boxes 按对象 id 记外框写法——
-// { keepsGrid: true } 留在网格、钉住读回高度；{ keepsGrid: false, exitsGrid } 按读回 bounds 绝对定位。
+// { keepsGrid: true } 留在网格、钉住读回高度；{ keepsGrid: false, exitsGrid } 按读回 bounds 绝对定位；
+// tableFrame 为 true 时外框写在表格外的文本框包裹层上（author-html-tree）。
 // 不在 boxes 里的对象不写兜底几何。折回容器 CSS border 的边框对象（author-border-fold）不写外框，
 // 容器按各边宽扣子对象偏移（author-css-writer.authorPosition）。
 function reverseGeometryPlanForPage(page, options = {}) {
@@ -46,6 +47,11 @@ function reverseGeometryPlanForPage(page, options = {}) {
 
 function reverseBoxForItem(item, grid, unitMode) {
   const placement = gridPlacementForItem(item);
+  // 表格所在文本框比表格高（人工 INDD 常见）：文本框写成包着表格的 data-id-ignore 包裹层，外框落在包裹层上，
+  // 表格只按读回行高排。网格放置描述不了「框比表格高」，这类表格一律按读回 bounds 绝对定位。
+  if (item.role === 'table' && tableFrameOverflow(item, unitMode) > 0) {
+    return { keepsGrid: false, exitsGrid: Boolean(placement), tableFrame: true };
+  }
   if (!placement) return { keepsGrid: false, exitsGrid: false };
   const area = gridArea(grid, placement);
   // 页面网格读不出来（缺网格声明或长度单位不认识）时无从核对，保留作者网格放置。
@@ -89,9 +95,10 @@ function cssCustomProperties(style) {
   return vars;
 }
 
-// 作者 HTML 里对象盒子的高度：一般就是读回高度；表格见 table-html.tableBoxHeight。
+// 作者 HTML 里对象盒子的高度：一般就是读回高度；表格取读回行高之和（table-html.tableBoxHeight），
+// 带文本框包裹层的表格，盒子是包裹层，取文本框高。
 function reverseBoxHeight(item, unitMode) {
-  if (item && item.role === 'table') return tableBoxHeight(item, unitMode);
+  if (item && item.role === 'table' && tableFrameOverflow(item, unitMode) === 0) return tableBoxHeight(item);
   return Number(item && item.bounds && item.bounds.height) || 0;
 }
 

@@ -1,6 +1,6 @@
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
 const { mergeAttributes, attrsToHtml, escapeHtml } = require('./author-attribute-writer');
-const { patchTableSourceHtmlCells, tableContent } = require('./author-table-renderer');
+const { patchTableSourceHtmlCells, patchTableSourceHtmlRows, tableContent } = require('./author-table-renderer');
 const { patchSourceHtmlStyles, runStyleCss } = require('./author-run-style');
 const {
   isUsefulCharacterStyle,
@@ -17,7 +17,7 @@ function ownContent(item, depth, options = {}) {
   const baseTextStyle = options.writeRunStyles ? item.textStyle || null : null;
   if (item.role === 'table' && sourceHtml) {
     const cellStyled = options.writeRunStyles && item.table
-      ? patchTableSourceHtmlCells(sourceHtml, item.table, item.textStyle || null)
+      ? patchTableSourceHtmlRows(patchTableSourceHtmlCells(sourceHtml, item.table, item.textStyle || null), item.table)
       : sourceHtml;
     return tableSourceHtmlContent(cellStyled, depth);
   }

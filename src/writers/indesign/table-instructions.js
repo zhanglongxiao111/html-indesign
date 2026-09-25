@@ -1,5 +1,5 @@
 const { round, tableFrameSlack } = require('../../shared/geometry');
-const { itemBounds } = require('../../semantic-model/layout');
+const { cssLengthToTarget, itemBounds } = require('../../semantic-model/layout');
 const { normalizeTableWidths } = require('../../style-synthesis/box-model');
 
 // Native InDesign table rows need a small per-row reserve beyond browser
@@ -24,11 +24,7 @@ function tableRowsForInstruction(item, page, layout) {
 }
 
 function tableCellSnapshot(item, rowIndex, cellIndex) {
-  const table = tablePayload(item);
-  const sourceRows = Array.isArray(table.sourceRows)
-    ? table.sourceRows
-    : Array.isArray(item.table) ? item.table : [];
-  const row = sourceRows.find((candidate) => Number(candidate.index) === Number(rowIndex));
+  const row = tableRowSnapshot(item, rowIndex);
   if (!row) return null;
   return (row.cells || []).find((candidate) => Number(candidate.index) === Number(cellIndex)) || null;
 }
@@ -47,13 +43,47 @@ function tableColumnWidthsForInstruction(item, rows, layout) {
   return normalizeTableWidths(widths, item.bounds && item.bounds.width);
 }
 
+// 作者在 <tr> 上声明了行高时按声明写 InDesign 行高：两边的行高都是「至少」这么高，
+// InDesign 内容放不下会自动撑高。未声明时按单元格几何与内容估算（含原生行余量）取保底值。
 function tableRowHeightsForInstruction(item, rows, layout) {
   const table = tablePayload(item);
   if (layout.unitMode !== 'presentation') return table.rowHeights || [];
   return (rows || []).map((row) => {
-    const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell, layout)), 0);
-    return round(height, 2);
+    const declared = declaredTableRowHeight(item, row.index, layout);
+    return declared != null ? round(declared, 2) : estimatedTableRowHeight(row, layout);
   });
+}
+
+// 表格外框（所在文本框）按保底估算留足高度：声明行高低于内容估算时，InDesign 行会撑高，
+// 外框不能按声明行高算小，否则表格溢出。
+function tableFrameRowHeightsForInstruction(item, rows, layout) {
+  const table = tablePayload(item);
+  if (layout.unitMode !== 'presentation') return table.rowHeights || [];
+  return (rows || []).map((row) => {
+    const declared = declaredTableRowHeight(item, row.index, layout);
+    return round(Math.max(declared || 0, estimatedTableRowHeight(row, layout)), 2);
+  });
+}
+
+function estimatedTableRowHeight(row, layout) {
+  const height = (row.cells || []).reduce((max, cell) => Math.max(max, Number(cell.bounds && cell.bounds.height || 0), minimumTableCellHeight(cell, layout)), 0);
+  return round(height, 2);
+}
+
+function tableRowSnapshot(item, rowIndex) {
+  const table = tablePayload(item);
+  const sourceRows = Array.isArray(table.sourceRows)
+    ? table.sourceRows
+    : Array.isArray(item.table) ? item.table : [];
+  return sourceRows.find((candidate) => Number(candidate.index) === Number(rowIndex)) || null;
+}
+
+function declaredTableRowHeight(item, rowIndex, layout) {
+  const row = tableRowSnapshot(item, rowIndex);
+  const value = row && String(row.authoredHeight || '').trim();
+  if (!value) return null;
+  const height = cssLengthToTarget(value, layout);
+  return Number.isFinite(height) && height > 0 ? height : null;
 }
 
 function tablePayload(item) {
@@ -125,5 +155,6 @@ module.exports = {
   tableRowsForInstruction,
   tableColumnWidthsForInstruction,
   tableRowHeightsForInstruction,
+  tableFrameRowHeightsForInstruction,
   nativeTableBounds,
 };

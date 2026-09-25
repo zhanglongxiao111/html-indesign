@@ -9,6 +9,7 @@ const {
 } = require('./author-render-utils');
 const { colorWithOpacity } = require('./css-values');
 const { mergeDeclarations, runStyleCss, tagWithMergedStyle } = require('./author-run-style');
+const { readBackRowHeights } = require('./table-html');
 
 // options.writeRunStyles 时（读回样式写进作者 HTML），单元格的读回外观（填充、文字颜色与字形、
 // 内边距、各边描边）写成单元格内联 style，基准是表格对象自身的文字样式 options.baseTextStyle。
@@ -16,9 +17,13 @@ function tableContent(table, depth, options = {}) {
   const rows = table.rows || [];
   const headRows = rows.filter((row) => row.header || (row.cells || []).some((cell) => cell.header));
   const bodyRows = rows.filter((row) => !headRows.includes(row));
+  const rowHeights = options.writeRunStyles ? readBackRowHeights(table) : null;
+  const rowOptions = rowHeights
+    ? { ...options, rowHeightByRow: new Map(rows.map((row, index) => [row, rowHeights[index]])) }
+    : options;
   const sections = [];
-  if (headRows.length) sections.push(tableSection('thead', headRows, depth, options));
-  if (bodyRows.length) sections.push(tableSection('tbody', bodyRows, depth, options));
+  if (headRows.length) sections.push(tableSection('thead', headRows, depth, rowOptions));
+  if (bodyRows.length) sections.push(tableSection('tbody', bodyRows, depth, rowOptions));
   return sections.join('\n');
 }
 
@@ -29,7 +34,29 @@ function tableSection(tag, rows, depth, options = {}) {
 
 function tableRow(row, depth, options = {}) {
   const cells = (row.cells || []).map((cell) => tableCell(cell, depth + 2, options)).join('\n');
-  return `${indent(depth)}<tr>\n${cells}\n${indent(depth)}</tr>`;
+  const height = options.rowHeightByRow && options.rowHeightByRow.get(row);
+  const open = height ? `<tr style="${rowHeightCss(height)}">` : '<tr>';
+  return `${indent(depth)}${open}\n${cells}\n${indent(depth)}</tr>`;
+}
+
+// 读回行高写成 <tr> 的 height：CSS 表格行高是「至少」这么高，与 InDesign 行高语义一致，
+// 再次正向构建按单元格高度读回同样的行高；表格总高由各行决定，不另钉高度。
+function rowHeightCss(height) {
+  return `height:${formatNumber(height)}px`;
+}
+
+// 来源 HTML 表格片段原样保留，按行出现顺序写入读回行高；行数对不上时不改。
+function patchTableSourceHtmlRows(sourceHtml, table) {
+  const heights = readBackRowHeights(table);
+  const pattern = /<tr(?=[\s>])[^<>]*>/gi;
+  const tags = String(sourceHtml).match(pattern) || [];
+  if (!heights || tags.length !== heights.length) return sourceHtml;
+  let index = 0;
+  return String(sourceHtml).replace(pattern, (tag) => {
+    const css = rowHeightCss(heights[index]);
+    index += 1;
+    return tagWithMergedStyle(tag, css);
+  });
 }
 
 function tableCell(cell, depth, options = {}) {
@@ -198,4 +225,5 @@ module.exports = {
   tableCell,
   tableCellContent,
   patchTableSourceHtmlCells,
+  patchTableSourceHtmlRows,
 };

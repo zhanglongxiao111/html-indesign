@@ -1,4 +1,4 @@
-const { isVoidTag } = require('./author-attribute-writer');
+const { attrsToHtml, isVoidTag } = require('./author-attribute-writer');
 const { buildAuthorTree } = require('./author-tree-builder');
 const { tagForAsset } = require('./author-asset-attrs');
 const {
@@ -7,10 +7,16 @@ const {
   shouldRenderAssetFigureNode,
   shouldRenderPlacedAssetFrame,
 } = require('./author-asset-renderer');
-const { attrsForItem, shouldPreserveTrustedSource, sourceNodeForItem } = require('./author-node-attrs');
+const { HTML_DATA_ID_ATTRIBUTES } = require('../../protocol');
+const {
+  attrsForItem,
+  shouldPreserveTrustedSource,
+  sourceNodeForItem,
+  tableFrameWrapperFor,
+} = require('./author-node-attrs');
 const { isPdfObjectItem, renderPdfObjectNode } = require('./author-pdf-renderer');
 const { ownContent, sourceHtmlContent } = require('./author-rich-text-renderer');
-const { indent, safeTag, tagForRole } = require('./author-render-utils');
+const { indent, orderAttrs, safeTag, tagForRole } = require('./author-render-utils');
 const { AUTHOR_HTML_SAFE_INLINE_TAGS } = require('./safe-tags');
 const {
   renderVectorContainerNode,
@@ -118,6 +124,24 @@ function renderNode(node, options, depth) {
   if (isPdfObjectItem(item, sourceNode, tag)) {
     return renderPdfObjectNode(node, options, depth, renderNode);
   }
+  if (tableFrameWrapperFor(item, options) === 'write') {
+    // 表格所在文本框比表格高：文本框写成 data-id-ignore 包裹层，带对象 id 与读回外框（reverse-overrides.css）；
+    // 表格在框内按读回行高排，文本框多出的高度不分摊到行上。
+    const inner = renderElementNode(node, sourceNode, tag, options, depth + 2);
+    return `${indent(depth)}<div ${tableFrameAttrs(item)}>\n${inner}\n${indent(depth)}</div>`;
+  }
+  return renderElementNode(node, sourceNode, tag, options, depth);
+}
+
+function tableFrameAttrs(item) {
+  const attrs = { id: item.id, [HTML_DATA_ID_ATTRIBUTES.IGNORE]: '' };
+  const zIndex = Number(item.zIndex);
+  if (Number.isFinite(zIndex)) attrs.style = `z-index:${Math.round(zIndex * 1000) / 1000}`;
+  return attrsToHtml(orderAttrs(attrs));
+}
+
+function renderElementNode(node, sourceNode, tag, options, depth) {
+  const item = node.item;
   const attrs = attrsForItem(item, sourceNode, options);
   const open = `<${tag}${attrs ? ` ${attrs}` : ''}>`;
   if (isVoidTag(tag)) return `${indent(depth)}${open}`;

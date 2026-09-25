@@ -12,9 +12,13 @@ const {
   gridArea,
   reverseGeometryPlanForPage,
 } = require('../../src/writers/html/author-reverse-geometry');
-const { tableBoxHeight } = require('../../src/writers/html/table-html');
+const { tableBoxHeight, tableFrameOverflow } = require('../../src/writers/html/table-html');
 const { semanticModelToHtml } = require('../../src/writers/html/visual-html-writer');
-const { nativeTableBounds } = require('../../src/writers/indesign/table-instructions');
+const {
+  nativeTableBounds,
+  tableFrameRowHeightsForInstruction,
+  tableRowHeightsForInstruction,
+} = require('../../src/writers/indesign/table-instructions');
 
 // #34：observation 反向导出、不带 sourceRoot 的作者包，满版图缩进网格格子、页码跑到左上、
 // 文字框被网格行拉高、标题被主图盖住。外框一律以读回 bounds 为准，层级以读回 z 序为准。
@@ -189,15 +193,82 @@ test('a same-id grid wrapper carries the grid placement of the read-back frame',
   assert.equal(boxes.has('drawing-pdf-frame'), false, 'wrapper fits its grid area, stays grid-placed');
 });
 
-test('table boxes hold only the rows when the read-back frame is rows plus the forward slack', () => {
+test('table boxes hold only the read-back rows; a taller text frame is reported as overflow', () => {
   const rows = [{ cells: [] }, { cells: [] }, { cells: [] }];
   const forward = { bounds: { height: 174.72 }, table: { rowHeights: [50.24, 50.24, 50.24], rows } };
-  assert.equal(tableBoxHeight(forward, 'presentation'), 150.72);
+  assert.equal(tableBoxHeight(forward), 150.72);
+  assert.equal(tableFrameOverflow(forward, 'presentation'), 0);
   // 与正向构建的外框算法互逆。
-  assert.equal(nativeTableBounds({ height: tableBoxHeight(forward, 'presentation') }, [50.24, 50.24, 50.24], { unitMode: 'presentation' }).height, 174.72);
-  // 人工文本框比表格高：只能以外框为准。
-  const human = { bounds: { height: 170.08 }, table: { rowHeights: [9.89, 9.89, 9.89], rows } };
-  assert.equal(tableBoxHeight(human, 'presentation'), 170.08);
+  assert.equal(nativeTableBounds({ height: tableBoxHeight(forward) }, [50.24, 50.24, 50.24], { unitMode: 'presentation' }).height, 174.72);
+  // 人工文本框比表格高：表格仍只按行高排，多出的高度记为文本框溢出，不分摊到行上。
+  const human = { bounds: { height: 170.08 }, table: { rowHeights: [14.83, 14.83], rows: rows.slice(0, 2) } };
+  assert.equal(tableBoxHeight(human), 29.66);
+  assert.equal(tableFrameOverflow(human, 'presentation'), 116.42);
+});
+
+function humanTablePage() {
+  return {
+    id: 'page-1',
+    width: 595.28,
+    height: 841.89,
+    items: [{
+      id: '310',
+      role: 'table',
+      bounds: { x: 396.85, y: 255.12, width: 170.08, height: 170.08 },
+      structure: { parentId: 'page-1', order: 1 },
+      table: {
+        rowHeights: [14.83, 14.83],
+        rows: [
+          { index: 0, cells: [{ index: 0, text: 'A', padding: { top: 1.417, right: 1.417, bottom: 1.417, left: 1.417 } }] },
+          { index: 1, cells: [{ index: 0, text: 'C', padding: { top: 1.417, right: 1.417, bottom: 1.417, left: 1.417 } }] },
+        ],
+      },
+      zIndex: 5,
+    }],
+  };
+}
+
+test('a table in a taller text frame is written inside a frame wrapper that carries the read-back bounds', () => {
+  const page = humanTablePage();
+  const { boxes } = reverseGeometryPlanForPage(page, { mode: 'observation', unitMode: 'presentation' });
+  assert.deepEqual(boxes.get('310'), { keepsGrid: false, exitsGrid: false, tableFrame: true });
+
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', unitMode: 'presentation' });
+  assert.match(html, /^<div id="310" style="z-index:5" data-id-ignore>\n {2}<table /);
+  assert.doesNotMatch(html.match(/<table[^>]*>/)[0], /\bid=/, 'the object id sits on the frame wrapper only');
+  assert.equal((html.match(/<tr style="height:14\.83px">/g) || []).length, 2);
+
+  const css = writeAuthorCssFiles({ pages: [page] }, { mode: 'observation', unitMode: 'presentation' })['styles/reverse-overrides.css'];
+  assert.ok(css.includes('[id="310"] { position:absolute; left:396.85px; top:255.12px; width:170.08px; height:170.08px; margin:0; }'));
+  assert.ok(css.includes('.page [data-id-ignore] > table { width: 100%; }'));
+});
+
+test('a table already wrapped by its read-back frame is not wrapped twice', () => {
+  const page = humanTablePage();
+  const item = page.items[0];
+  item.sourceNode = { tagName: 'table', id: null, classList: ['id-object'], attributes: {} };
+  item.sourceAncestorNodes = [{ tagName: 'div', id: '310', classList: [], attributes: { id: '310', 'data-id-ignore': '', style: 'z-index:5' }, sourcePath: 'div:nth-of-type(1)' }];
+  item.sourceNode.sourcePath = 'div:nth-of-type(1)>table:nth-of-type(1)';
+  const html = pageItemsToAuthorHtml(page, { mode: 'observation', unitMode: 'presentation' });
+  assert.equal((html.match(/<div /g) || []).length, 1);
+  assert.equal((html.match(/id="310"/g) || []).length, 1);
+  assert.match(html, /<div[^>]+id="310"[^>]*data-id-ignore/);
+});
+
+test('forward compile uses declared row heights and keeps the frame big enough for the estimated rows', () => {
+  const item = {
+    table: {
+      rows: [{ index: 0, cells: [{ index: 0 }] }],
+      sourceRows: [{ index: 0, authoredHeight: '14.83px', cells: [] }],
+    },
+  };
+  const layout = { unitMode: 'presentation', scale: 1 };
+  const rows = [{ index: 0, cells: [{ bounds: { height: 18.31 }, padding: { top: 1.417, bottom: 1.417 }, pointSize: 12 }] }];
+  assert.deepEqual(tableRowHeightsForInstruction(item, rows, layout), [14.83]);
+  // 保底估算：内边距 + 1.2 倍字号 + 原生行余量。
+  assert.deepEqual(tableFrameRowHeightsForInstruction(item, rows, layout), [19.23]);
+  const undeclared = { table: { rows: item.table.rows, sourceRows: [{ index: 0, cells: [] }] } };
+  assert.deepEqual(tableRowHeightsForInstruction(undeclared, rows, layout), [19.23]);
 });
 
 test('reference page keeps paragraph space-before from moving an object frame off its bounds', async () => {

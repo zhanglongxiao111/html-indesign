@@ -171,7 +171,8 @@ reverse-export-<timestamp>/
 
 - 源码样式随包（带 `sourceRoot` 且源码 CSS 已拷回）时，有源码节点的对象沿用源码 class 定位，不写兜底几何。否则源码 class 上的定位、尺寸和 z-index 都不在包里（满版图、靠 class 绝对定位的页码等），这些对象一律按读回 bounds 写兜底绝对几何并附 `margin:0`，源码 inline style 里的定位、尺寸、外边距剥掉；保留源码 inline style 的对象另按读回 z 序补写 `z-index`（`preserveTrustedSource` 的可信源码不补）。
 - 网格对象先按页面网格变量（与作者 `.page` 规则同构）算出网格区域。区域的左、上、宽与读回 bounds 一致（容差 0.5px）时保留网格放置，Agent 改 `--grid-*` 即可挪动；只是高度不同（文字框、表格按内容高）时写 `align-self:start` 并钉住读回高度，不再被网格行拉高。左、上、宽对不上时对象退出网格：去掉 `grid-item` 类和 `--grid-*` 变量，按读回 bounds 绝对定位——不改写网格变量，因为凑到另一组格子上同样对不上读回 bounds。源码把读回对象包在同 id 的网格包裹层里时（如 PDF 图框 `div.drawing-frame.grid-item > object`），网格放置取包裹层上的变量。
-- 表格外框是表格所在的文本框，正向构建建的表格外框高 = 行高之和 + 余量（`src/shared/geometry.js` 的 `tableFrameSlack`）。读回行高齐全且外框正好等于「行高之和 + 余量」时，表格盒子高取行高之和，再次正向构建把余量加回；否则以外框为准。视觉参照页 `deck.visual.html` 同样只画各行。
+- 表格外框是表格所在的文本框，表格本身的高度是读回行高之和。读回行高齐全时逐行写成 `<tr style="height:…">`（CSS 行高与 InDesign 行高都是「至少」这么高），表格盒子高取行高之和，文本框多出的高度不分摊到行上。正向构建建的表格外框高 = 行高之和 + 余量（`src/shared/geometry.js` 的 `tableFrameSlack`），再次正向构建会把余量加回；文本框比「行高之和 + 余量」还高时（人工 INDD 常见），文本框写成包着表格的 `data-id-ignore` 包裹层：包裹层带对象 id、读回外框和 z-index，表格不带 id、占满框宽；这类表格一律按读回 bounds 绝对定位（网格放置表达不了「框比表格高」）。上一轮已写出同 id 包裹层的表格原样沿用，不再套第二层。视觉参照页 `deck.visual.html` 的表格盒子按同一规则取行高之和或文本框外框。
+- 正向构建对应两条规则：表格放在 `data-id-ignore` 包裹层里时，外框取包裹层（与置入图框同一机制，`browser-element-capture.visualFrameFor`）；`<tr>` 声明了高度时按声明写 InDesign 行高，外框仍按单元格几何与内容估算（含原生行余量）留足高度，防止 InDesign 行撑高后表格溢出。
 - 网格对象不是子对象的定位参照（正向构建对观察态对象只累加绝对定位祖先的 `left/top`），子对象按页面坐标定位；只含置入内容图的网格图框另由 `layout.css` 设为 `position:relative`，让内容图在框内偏移。
 - 段落样式 class 上的段前距（`margin-top` 等）描述框内段落间距，InDesign 在框顶不加段前距，不能把对象外框挪离读回 bounds：作者包兜底几何附 `margin:0`，视觉参照页用 `.page .id-object { margin: 0; }` 压过 `.pstyle-*`。
 
