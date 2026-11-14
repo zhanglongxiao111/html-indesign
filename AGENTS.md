@@ -122,13 +122,13 @@ PPTX -> src/adapters/pptx contracts / capabilities -> src/semantic-model（预�
 
 长期规则写入当前规范文档；过程材料进入对应子目录。`AGENTS.md` 只保留项目边界和硬规则，不重复工具手册、执行流程和长篇协议。
 
-### 6.1 统一 Skill 发布源
+### 6.1 统一 Skill 发布源（已归口 SA_skillhub）
 
-- 公司对外发布的 InDesign/HTML 统一 Skill 唯一发布源位于 `D:\AI\mcp-indesign\skills\indesign-cli\`。
+- **自 2026-11-14 起，`indesign-cli` 画廊技能唯一维护与发布真源已迁至 `D:\AI\SA_skillhub\操作InDesign\skill\indesign-cli\`**；以后修改 Agent 技能文案与参考文档一律去 `SA_skillhub` 改，`D:\AI\mcp-indesign\skills\indesign-cli\` 仅作其本地单测夹具保留、不再直接发画廊。
 - 本仓库不再维护 `.codex/skills/html-indesign-authoring/` 或其他可发布 Skill 副本。
-- 本仓库继续维护 HTML 协议、作者规范、转换代码和测试；当这些变化影响 Agent 工作方法时，必须到 `mcp-indesign` 仓库同步更新统一 Skill 的 `references/html-authoring.md`。
-- 面向 Agent 分发的模板目录和模板说明也归统一 Skill 源维护；本仓库中的 fixture、preset 和测试模板仍只服务代码与验证，不作为 Skill 发布副本。
-- 公司内网发布命令、NAS 当前池和成功标准以 `D:\AI\mcp-indesign\AGENTS.md` 的“统一 Skill 内网发布”为唯一项目上下文；本仓库只保留此入口，不复制发布流程。
+- 本仓库继续维护 HTML 协议、作者规范、转换代码和测试；当这些变化影响 Agent 工作方法时，必须到 `D:\AI\SA_skillhub\操作InDesign\skill\indesign-cli\` 同步更新统一 Skill 的 `references/html-authoring.md`（若涉及建筑汇报风格包规程，同步核对 `D:\AI\SA_skillhub\制作汇报文本\`）。
+- 面向 Agent 分发的模板目录和模板说明也归 `SA_skillhub` 统一 Skill 源维护；本仓库中的 fixture、preset 和测试模板仍只服务代码与验证，不作为 Skill 发布副本。
+- 公司内网发布命令、NAS 当前池和成功标准以 `D:\AI\SA_skillhub\AGENTS.md` 与 `D:\AI\SA_skillhub\操作InDesign\AGENTS.md` 为唯一项目上下文；本仓库只保留此指路入口，不复制发布流程。
 
 ## 7. 文档索引
 
