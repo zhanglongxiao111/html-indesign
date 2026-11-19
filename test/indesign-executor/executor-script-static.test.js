@@ -144,7 +144,7 @@ test('executor fails closed for non-current instruction schemas', () => {
   assert.equal(report.errors[0].code, 'INSTRUCTIONS_SCHEMA_UNSUPPORTED');
 });
 
-test('executor builds windowless, disables redraw/preflight/reflow with FAST_ENTIRE_SCRIPT, and restores state in finally', () => {
+test('executor builds windowless, disables redraw/preflight/reflow with ENTIRE_SCRIPT, and restores state in finally', () => {
   const docSource = fs.readFileSync(path.join(libDir, 'hi_document.jsxinc'), 'utf8');
   const execSource = fs.readFileSync(path.join(libDir, 'hi_executor.jsxinc'), 'utf8');
 
@@ -153,7 +153,8 @@ test('executor builds windowless, disables redraw/preflight/reflow with FAST_ENT
   assert.match(execSource, /enableRedraw\s*=\s*false/);
   assert.match(execSource, /preflightOff\s*=\s*true/);
   assert.match(execSource, /smartTextReflow\s*=\s*false/);
-  assert.match(execSource, /UndoModes\.FAST_ENTIRE_SCRIPT/);
+  assert.match(execSource, /UndoModes\.ENTIRE_SCRIPT/);
+  assert.doesNotMatch(execSource, /UndoModes\.FAST_ENTIRE_SCRIPT/);
 
   function runSandbox({ throwDuringBuild }) {
     const events = [];
@@ -180,7 +181,7 @@ test('executor builds windowless, disables redraw/preflight/reflow with FAST_ENT
     };
     const context = {
       ScriptLanguage: { JAVASCRIPT: 'JS' },
-      UndoModes: { FAST_ENTIRE_SCRIPT: 'FAST_ENTIRE_SCRIPT' },
+      UndoModes: { ENTIRE_SCRIPT: 'ENTIRE_SCRIPT' },
       HI: {
         makeReport: () => ({ ok: true, messages: [], errors: [], warnings: [], counts: { textFrames: 0, graphicFrames: 0, placedAssets: 0, missingAssets: 0 } }),
         addMessage(report, level, code, message, details) {
@@ -213,7 +214,7 @@ test('executor builds windowless, disables redraw/preflight/reflow with FAST_ENT
   const okRun = runSandbox({ throwDuringBuild: false });
   assert.equal(okRun.report.ok, true);
   assert.equal(okRun.events[0].type, 'doScript');
-  assert.equal(okRun.events[0].undoMode, 'FAST_ENTIRE_SCRIPT');
+  assert.equal(okRun.events[0].undoMode, 'ENTIRE_SCRIPT');
   assert.equal(okRun.events[0].redrawDuring, false);
   assert.equal(okRun.events[0].preflightDuring, true);
   assert.equal(okRun.events[0].reflowDuring, false);

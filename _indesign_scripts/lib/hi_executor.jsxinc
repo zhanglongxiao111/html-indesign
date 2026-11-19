@@ -108,8 +108,11 @@ HI.runBuildInstructions = function (appRef, instructions, baseFolder, targetDoc)
             HI.insertJsonLabel(context.doc, "build_last_result", report);
         };
 
+        // Use UndoModes.ENTIRE_SCRIPT instead of FAST_ENTIRE_SCRIPT:
+        // Adobe InDesign 2025 (20.0.1.32) crashes natively on FAST_ENTIRE_SCRIPT
+        // when combined with headless documents, placed PDFs, or master overrides.
         if (appRef && typeof appRef.doScript === "function" && typeof ScriptLanguage !== "undefined" && typeof UndoModes !== "undefined") {
-            appRef.doScript(executeBody, ScriptLanguage.JAVASCRIPT, undefined, UndoModes.FAST_ENTIRE_SCRIPT, "html-indesign build");
+            appRef.doScript(executeBody, ScriptLanguage.JAVASCRIPT, undefined, UndoModes.ENTIRE_SCRIPT, "html-indesign build");
         } else {
             executeBody();
         }
