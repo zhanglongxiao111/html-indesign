@@ -235,12 +235,25 @@ async function startBuild(args, context, mode, run) {
   const exportPdf = args.exportPdf !== false;
   const exportIdml = args.exportIdml !== false;
 
+  const combinedBuildSnapshot = mode === 'final';
+  const combinedBuildExport = mode === 'draft';
   fs.writeFileSync(semanticPresetPath, JSON.stringify(resolvedPreset.preset, null, 2), 'utf8');
   fs.writeFileSync(buildScriptPath, buildBuildJsx({
     repoRoot: pluginRoot,
     instructionsPath: compile.instructionsPath,
     marker: runMarker,
     targetInddPath: path.join(compile.outDir, `${outputBaseName}.indd`),
+    inlineLibs: true,
+    ...(combinedBuildSnapshot ? { snapshotPath, skipPreviews: true } : {}),
+    ...(combinedBuildExport ? {
+      exportOptions: {
+        runDir: compile.outDir,
+        outputBaseName,
+        exportPdf,
+        exportIdml,
+        closeDocument: true,
+      },
+    } : {}),
   }), 'utf8');
   fs.writeFileSync(snapshotScriptPath, buildReverseSnapshotJsx({
     repoRoot: pluginRoot,
@@ -266,6 +279,8 @@ async function startBuild(args, context, mode, run) {
     runId,
     stage: 'build',
     mode,
+    combinedBuildSnapshot,
+    combinedBuildExport,
     runDir: compile.outDir,
     outputBaseName,
     exportPdf,
@@ -318,10 +333,22 @@ function resumeStage(state, hostResults) {
   // 每个阶段的宿主脚本都会报自己的 warning（构建阶段的 PREVIOUS_OUTPUT_CLOSED、快照阶段的
   // PLACED_ASSET_PREVIEW_EXPORT_FAILED、导出阶段的 IDML_EXPORT_FAILED……）。按分支各收一次
   // 就会漏掉没写到的分支（快照阶段此前就是这么丢的），所以在这里统一收一次，四个阶段共用。
-  const nextState = withHostWarnings(finishStageTiming(state), hostResults);
+  const nextState = applyCombinedBuildTimings(
+    withHostWarnings(finishStageTiming(state), hostResults),
+    hostResults,
+  );
   if (state.stage === 'build') {
     if (state.mode === 'draft') {
+      if (state.combinedBuildExport) {
+        if (state.exportPdf) {
+          return hostActionResponse(startStage(nextState, 'verify'), verifyAction(state));
+        }
+        return completeResult(nextState);
+      }
       return hostActionResponse(startStage(nextState, 'export'), exportAction(state));
+    }
+    if (state.combinedBuildSnapshot) {
+      return resumeAfterSnapshot(nextState);
     }
     return hostActionResponse(startStage(nextState, 'snapshot'), snapshotAction(state));
   }
@@ -551,7 +578,13 @@ function completeResult(state) {
 // OUTPUT_TARGET_OPEN 是构建前预检：什么都没写，原因也不是作者源码，单独映射并标记可重试。
 function hostFailureResponse(state, failed) {
   const detail = underlyingHostFailure(failed);
-  const stage = state.stage || 'build';
+  const subStage = state.stage === 'build'
+    && detail.hostResult
+    && typeof detail.hostResult === 'object'
+    && (detail.hostResult.stage === 'snapshot' || detail.hostResult.stage === 'export')
+    ? detail.hostResult.stage
+    : null;
+  const stage = subStage || state.stage || 'build';
   const finished = finishStageTiming(state);
   // resume() 在顶部收割前就把失败结果转给这里，本阶段自己报的 warning（例如导出失败前
   // 那条 PDF_PAGE_APPLY_FAILED）还没进 state.hostWarnings，得在这里单独补收一次；
@@ -760,6 +793,22 @@ function finishStageTiming(state) {
       [`${state.stage}Ms`]: Math.max(0, Date.now() - Number(state.stageStartedAt)),
     },
   };
+}
+
+function applyCombinedBuildTimings(state, hostResults) {
+  if (state.stage !== 'build' || (!state.combinedBuildSnapshot && !state.combinedBuildExport)) return state;
+  const first = (hostResults || [])[0];
+  const data = first && first.data;
+  const payload = (data && data.parsed && typeof data.parsed === 'object') ? data.parsed : (data && typeof data === 'object' ? data : {});
+  const timings = { ...(state.timings || {}) };
+  if (Number.isFinite(Number(payload.buildMs))) timings.buildMs = Math.max(0, Number(payload.buildMs));
+  if (state.combinedBuildSnapshot) {
+    timings.snapshotMs = Number.isFinite(Number(payload.snapshotMs)) ? Math.max(0, Number(payload.snapshotMs)) : 0;
+  }
+  if (state.combinedBuildExport) {
+    timings.exportMs = Number.isFinite(Number(payload.exportMs)) ? Math.max(0, Number(payload.exportMs)) : 0;
+  }
+  return { ...state, timings };
 }
 
 function readJsonRequired(file, label) {

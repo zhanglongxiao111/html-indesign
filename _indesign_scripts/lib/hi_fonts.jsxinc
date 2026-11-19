@@ -84,16 +84,21 @@ HI.findFontResolution = function (family, requestedStyle) {
 };
 
 HI.buildInstalledFontIndex = function () {
-    var index = { byFamilyStyle: {}, byFamily: {} };
+    var index = { byFamilyStyle: {}, byFamily: {}, facesByFamily: {} };
     var names = [];
     try {
         names = app.fonts.everyItem().name;
-        if (!(names instanceof Array)) names = [names];
+        if (typeof names === "string") names = [names];
+        else if (!names || typeof names.length !== "number") names = names ? [names] : [];
     } catch (_) {}
     for (var i = 0; i < names.length; i++) {
         var fullName = String(names[i] || "");
         if (!fullName) continue;
         var parts = fullName.split("\t");
+        if (parts.length >= 2) {
+            if (!index.facesByFamily[parts[0]]) index.facesByFamily[parts[0]] = [];
+            index.facesByFamily[parts[0]].push(parts[1]);
+        }
         var familyKey = HI.normalizeFontName(parts[0]);
         var styleKey = HI.normalizeFontName(parts.length > 1 ? parts.slice(1).join("\t") : "Regular");
         if (!familyKey) continue;

@@ -155,3 +155,41 @@ test('buildReverseSnapshotJsx passes skipPreviews label when requested and defau
   assert.match(withSkip, /app\.insertLabel\("html_indesign_reverse_skip_previews",\s*""\)/);
   assert.doesNotMatch(defaultReverse, /html_indesign_reverse_skip_previews",\s*"1"/);
 });
+
+test('buildBuildJsx supports bundled inline libs and merged build+snapshot or build+export in one script', () => {
+  const path = require('node:path');
+  const realRoot = path.resolve(__dirname, '../..');
+
+  const finalMerged = buildBuildJsx({
+    repoRoot: realRoot,
+    instructionsPath: 'D:/run/instructions.json',
+    marker: 'run-final',
+    inlineLibs: true,
+    snapshotPath: 'D:/run/fidelity-snapshot.json',
+  });
+  assert.equal(finalMerged.charCodeAt(0), 0xfeff, 'bundled script must start with UTF-8 BOM');
+  assert.equal((finalMerged.match(/\$\.evalFile\(/g) || []).length, 0, 'bundled script must eliminate $.evalFile calls');
+  assert.match(finalMerged, /HI\.runBuildFromInstructions\(app,\s*"D:\/run\/instructions\.json",\s*doc\)/);
+  assert.match(finalMerged, /HI\.exportReverseSnapshot\(app,\s*"D:\/run\/fidelity-snapshot\.json",\s*\{\s*targetDoc:\s*doc,\s*skipPreviews:\s*true\s*\}\)/);
+  assert.match(finalMerged, /var base = /);
+
+  const draftMerged = buildBuildJsx({
+    repoRoot: realRoot,
+    instructionsPath: 'D:/run/instructions.json',
+    marker: 'run-draft',
+    inlineLibs: true,
+    exportOptions: {
+      runDir: 'D:/run',
+      outputBaseName: 'deck',
+      exportPdf: true,
+      exportIdml: false,
+      closeDocument: true,
+    },
+  });
+  assert.equal((draftMerged.match(/\$\.evalFile\(/g) || []).length, 0, 'bundled draft script must eliminate $.evalFile calls');
+  assert.match(draftMerged, /HI\.runBuildFromInstructions/);
+  assert.match(draftMerged, /doc\.save\(indd\)/);
+  assert.match(draftMerged, /ExportFormat\.PDF_TYPE/);
+  assert.doesNotMatch(draftMerged, /ExportFormat\.INDESIGN_MARKUP/);
+  assert.match(draftMerged, /auditPanelNames\(\)/);
+});

@@ -710,6 +710,202 @@ test('text fit helper expands bounded overset frames and reports unresolved case
   assert.match(items, /HI\.resolveTextFrameOverflow\(report,\s*frame,\s*item\)/);
 });
 
+test('text fit binary search converges to minimal 0.5mm step in <= 8 iterations instead of 272', () => {
+  const source = fs.readFileSync(path.join(libDir, 'hi_text_fit.jsxinc'), 'utf8');
+  const context = {
+    HI: {
+      addMessage(report, level, code, message, details) {
+        report.messages.push({ level, code, message, details });
+      },
+    },
+  };
+  vm.runInNewContext(source, context);
+
+  // 1) Width-first binary search: maxGrowX = 8mm, minimum non-overflowing growX = 3.5mm
+  let widthWrites = 0;
+  let curBounds = [10, 20, 30, 120];
+  const widthFrame = {
+    get geometricBounds() { return curBounds; },
+    set geometricBounds(b) { widthWrites += 1; curBounds = b; },
+    get overflows() { return (curBounds[3] - curBounds[1]) < 103.5 - 1e-6; },
+  };
+  const widthReport = { messages: [] };
+  const widthOk = context.HI.applyTextFitWidthFirst(
+    widthReport,
+    widthFrame,
+    { id: 't1', textFit: { horizontalAnchor: 'start' } },
+    [10, 20, 30, 120],
+    8,
+    0.25,
+  );
+  assert.equal(widthOk, true);
+  assert.ok(widthWrites <= 8, `expected <= 8 width writes, got ${widthWrites}`);
+  assert.equal(widthReport.messages[0].code, 'TEXT_FIT_WIDTH_APPLIED');
+  assert.equal(widthReport.messages[0].details.growX, 3.5);
+  assert.equal(curBounds[3] - curBounds[1], 103.5);
+
+  // 2) Nudge binary search (height-only sufficient): maxGrowX = 8mm, maxGrowY = 8mm, min growY = 4.5mm
+  let nudgeWrites = 0;
+  let nudgeBounds = [10, 20, 30, 120];
+  const nudgeFrame = {
+    get geometricBounds() { return nudgeBounds; },
+    set geometricBounds(b) { nudgeWrites += 1; nudgeBounds = b; },
+    get overflows() { return (nudgeBounds[2] - nudgeBounds[0]) < 24.5 - 1e-6; },
+  };
+  const nudgeReport = { messages: [] };
+  const nudgeOk = context.HI.applyTextFitNudge(
+    nudgeReport,
+    nudgeFrame,
+    { id: 't2', textFit: {} },
+    [10, 20, 30, 120],
+    8,
+    8,
+    0.25,
+  );
+  assert.equal(nudgeOk, true);
+  assert.ok(nudgeWrites <= 8, `expected <= 8 nudge writes, got ${nudgeWrites}`);
+  assert.equal(nudgeReport.messages[0].code, 'TEXT_FIT_NUDGE_APPLIED');
+  assert.equal(nudgeReport.messages[0].details.growY, 4.5);
+  assert.equal(nudgeReport.messages[0].details.growX, 0);
+
+  // 3) Unresolvable nudge fails fast (<= 3 writes including restore) instead of 272
+  let failWrites = 0;
+  let failBounds = [10, 20, 30, 120];
+  const failFrame = {
+    get geometricBounds() { return failBounds; },
+    set geometricBounds(b) { failWrites += 1; failBounds = b; },
+    get overflows() { return true; },
+  };
+  const failReport = { messages: [] };
+  const failOk = context.HI.applyTextFitNudge(
+    failReport,
+    failFrame,
+    { id: 't3', textFit: {} },
+    [10, 20, 30, 120],
+    8,
+    8,
+    0.25,
+  );
+  assert.equal(failOk, false);
+  assert.ok(failWrites <= 3, `unresolvable nudge must fail fast, got ${failWrites} writes`);
+  assert.deepEqual(JSON.parse(JSON.stringify(failBounds)), [10, 20, 30, 120]);
+});
+
+test('executor caches style/swatch/parent lookups, skips redundant zIndex reorder and reuses installedFontIndex', () => {
+  const coreSource = fs.readFileSync(path.join(libDir, 'hi_core.jsxinc'), 'utf8');
+  const fontsSource = fs.readFileSync(path.join(libDir, 'hi_fonts.jsxinc'), 'utf8');
+  const compSource = fs.readFileSync(path.join(libDir, 'hi_composite_fonts.jsxinc'), 'utf8');
+  const itemsSource = fs.readFileSync(path.join(libDir, 'hi_items.jsxinc'), 'utf8');
+  const parentSource = fs.readFileSync(path.join(libDir, 'hi_parent_pages.jsxinc'), 'utf8');
+  const tablesSource = fs.readFileSync(path.join(libDir, 'hi_tables.jsxinc'), 'utf8');
+
+  // 1) hi_items: fresh page skips applyZIndex; createGraphicFrame calls applyStyleOverride only once
+  const graphicBody = itemsSource.slice(
+    itemsSource.indexOf('HI.createGraphicFrame = function'),
+    itemsSource.indexOf('HI.createShapeFrame = function'),
+  );
+  assert.equal((graphicBody.match(/HI\.applyStyleOverride\(/g) || []).length, 1, 'createGraphicFrame must not apply styleOverride twice');
+
+  let zCalls = 0;
+  const itemsCtx = { HI: {} };
+  vm.runInNewContext(itemsSource, itemsCtx);
+  itemsCtx.HI.createShapeFrame = (_d, _p, item) => ({ id: item.id });
+  itemsCtx.HI.applyZIndex = () => { zCalls += 1; };
+  itemsCtx.HI.buildInstructionItems(
+    {},
+    { pageItems: { length: 0 } },
+    { items: [{ id: 'a', type: 'SHAPE', zIndex: 1 }, { id: 'b', type: 'SHAPE', zIndex: 5 }] },
+    {},
+    { counts: { shapes: 0 } },
+  );
+  assert.equal(zCalls, 0, 'fresh page with sorted items must skip redundant HI.applyZIndex');
+
+  // 2) hi_core: swatchByName and noneSwatch cache lookups per document
+  let swatchLookups = 0;
+  let translateCalls = 0;
+  const noneObj = { isValid: true, name: '[None]' };
+  const redObj = { isValid: true, name: 'Red' };
+  const doc = {
+    swatches: {
+      itemByName(name) {
+        swatchLookups += 1;
+        if (name === '[None]') return noneObj;
+        if (name === 'Red') return redObj;
+        return { isValid: false };
+      },
+    },
+  };
+  const coreCtx = {
+    HI: {},
+    app: {
+      translateKeyString() {
+        translateCalls += 1;
+        return '[None]';
+      },
+    },
+  };
+  vm.runInNewContext(coreSource, coreCtx);
+  coreCtx.HI.beginStyleCache(doc, { swatches: { Red: redObj } });
+  assert.equal(coreCtx.HI.swatchByName(doc, 'Red'), redObj);
+  assert.equal(coreCtx.HI.swatchByName(doc, 'Red'), redObj);
+  assert.equal(swatchLookups, 0, 'pre-seeded swatch must hit cache with 0 itemByName calls');
+  assert.equal(coreCtx.HI.noneSwatch(doc), noneObj);
+  assert.equal(coreCtx.HI.noneSwatch(doc), noneObj);
+  assert.equal(swatchLookups, 1, 'noneSwatch must cache after first resolution');
+  assert.equal(translateCalls, 1, 'translateKeyString must be cached');
+
+  // 3) hi_parent_pages: master item lookup builds label index once per master
+  let masterScans = 0;
+  const masterItemA = { id: 10, label: 'a' };
+  const masterItemB = { id: 11, label: 'b' };
+  const master = {
+    id: 99,
+    name: 'A-Master',
+    pageItems: {
+      everyItem() {
+        return {
+          getElements() {
+            masterScans += 1;
+            return [masterItemA, masterItemB];
+          },
+        };
+      },
+    },
+  };
+  const parentCtx = {
+    HI: {
+      readProtocolLabel: (it) => ({ id: it.label }),
+    },
+  };
+  vm.runInNewContext(parentSource, parentCtx);
+  const ctxObj = {};
+  assert.equal(parentCtx.HI.findParentPageItemByLabelId(master, 'a', ctxObj), masterItemA);
+  assert.equal(parentCtx.HI.findParentPageItemByLabelId(master, 'b', ctxObj), masterItemB);
+  assert.equal(masterScans, 1, 'parent page items must be scanned only once per master');
+
+  // 4) hi_composite_fonts: reuses HI.installedFontIndex without re-enumerating app.fonts
+  let fontEnumCalls = 0;
+  const fontCtx = {
+    HI: {},
+    app: {
+      fonts: {
+        everyItem() {
+          fontEnumCalls += 1;
+          return { name: ['Inter\tRegular', 'Inter\tBold'] };
+        },
+      },
+    },
+  };
+  vm.runInNewContext(`${fontsSource}\n${compSource}`, fontCtx);
+  fontCtx.HI.configureFonts({});
+  const faces = fontCtx.HI.fontFacesByFamily();
+  assert.equal(fontEnumCalls, 1, 'fontFacesByFamily must reuse HI.installedFontIndex');
+  assert.deepEqual(JSON.parse(JSON.stringify(faces.Inter)), ['Regular', 'Bold']);
+
+  // 5) hi_tables: batches cell properties into cell.properties assignment
+  assert.match(tablesSource, /cell\.properties\s*=/);
+});
+
 test('asset helper does not silently ignore advanced placement options', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_assets.jsxinc'), 'utf8');
   for (const token of [

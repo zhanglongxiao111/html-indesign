@@ -1,6 +1,8 @@
 if (typeof HI === "undefined") { HI = {}; }
 
 HI.buildInstructionItems = function (doc, page, pageInstruction, context, report) {
+    var initialCount = 0;
+    try { initialCount = Number(page.pageItems.length || 0); } catch (_) {}
     var items = (pageInstruction.items || []).slice(0).sort(function (a, b) {
         return Number(a.zIndex || 0) - Number(b.zIndex || 0);
     });
@@ -17,7 +19,8 @@ HI.buildInstructionItems = function (doc, page, pageInstruction, context, report
             created.push({ item: pageItem, zIndex: Number(item.zIndex || 0) });
         }
     }
-    HI.applyZIndex(created);
+    var hasOverrides = Boolean(pageInstruction.parentPageItemOverrides && pageInstruction.parentPageItemOverrides.length > 0);
+    if (initialCount > 0 || hasOverrides) HI.applyZIndex(created);
     return created;
 };
 
@@ -102,7 +105,6 @@ HI.createGraphicFrame = function (doc, page, item, context, report) {
     HI.assignLayer(rect, context, item.layer);
     HI.applyObjectStyle(doc, rect, item.objectStyle, report);
     HI.applyFrameStyle(doc, rect, item.frameStyle, report);
-    HI.applyStyleOverride(doc, rect, item.styleOverride, report);
     HI.applyItemEffects(rect, item.effects, item.bounds, report);
     try { rect.label = HI.itemLabel(item); } catch (_) {}
     HI.writeProtocolLabels(rect, item.labels || [], report, { itemId: item.id, critical: true });

@@ -96,7 +96,7 @@ HI.applyParentPageItemOverrides = function (doc, page, pageInstruction, context,
     var overrides = pageInstruction.parentPageItemOverrides || [];
     for (var i = 0; i < overrides.length; i++) {
         var spec = overrides[i];
-        var masterItem = HI.findAppliedParentPageItem(page, spec.parentPageSourceId);
+        var masterItem = HI.findAppliedParentPageItem(page, spec.parentPageSourceId, context);
         if (!masterItem) {
             HI.addMessage(report, "error", "PARENT_PAGE_ITEM_OVERRIDE_MISSING", "Parent-page item for per-page override was not found on the applied parent page", { pageId: pageInstruction.id, itemId: spec.id, parentPageSourceId: spec.parentPageSourceId });
             continue;
@@ -128,13 +128,13 @@ HI.applyParentPageItemOverrides = function (doc, page, pageInstruction, context,
     }
 };
 
-HI.findAppliedParentPageItem = function (page, sourceId) {
+HI.findAppliedParentPageItem = function (page, sourceId, context) {
     if (!sourceId) return null;
     var master = null;
     try { master = page.appliedMaster; } catch (_) { master = null; }
     var guard = 0;
     while (master && guard < 8) {
-        var found = HI.findParentPageItemByLabelId(master, sourceId);
+        var found = HI.findParentPageItemByLabelId(master, sourceId, context);
         if (found) return found;
         var next = null;
         try { next = master.appliedMaster; } catch (_) { next = null; }
@@ -144,14 +144,33 @@ HI.findAppliedParentPageItem = function (page, sourceId) {
     return null;
 };
 
-HI.findParentPageItemByLabelId = function (master, sourceId) {
+HI.parentPageItemIndexFor = function (master, context) {
+    var key = "";
+    try { key = String(master.id || master.name || ""); } catch (_) {}
+    if (context && key && context.parentPageItemIndex && context.parentPageItemIndex[key]) {
+        return context.parentPageItemIndex[key];
+    }
+    var map = {};
     var items = [];
     try { items = master.pageItems.everyItem().getElements(); } catch (_) { items = []; }
     for (var i = 0; i < items.length; i++) {
         var label = HI.readProtocolLabel(items[i]);
-        if (label && String(label.id || "") === String(sourceId)) return items[i];
+        if (label && label.id) {
+            var idKey = String(label.id);
+            if (!map.hasOwnProperty(idKey)) map[idKey] = items[i];
+        }
     }
-    return null;
+    if (context && key) {
+        if (!context.parentPageItemIndex) context.parentPageItemIndex = {};
+        context.parentPageItemIndex[key] = map;
+    }
+    return map;
+};
+
+HI.findParentPageItemByLabelId = function (master, sourceId, context) {
+    var map = HI.parentPageItemIndexFor(master, context);
+    var key = String(sourceId);
+    return map.hasOwnProperty(key) ? map[key] : null;
 };
 
 HI.applyParentPage = function (page, pageInstruction, context, report) {

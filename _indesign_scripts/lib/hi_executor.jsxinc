@@ -116,6 +116,7 @@ HI.runBuildInstructions = function (appRef, instructions, baseFolder, targetDoc)
     } catch (error) {
         HI.addMessage(report, "error", "EXECUTOR_ERROR", String(error), {});
     } finally {
+        if (HI.clearStyleCache) HI.clearStyleCache();
         var restoreDoc = (context && context.doc) || doc;
         if (restoreDoc) {
             if (hasPrevPreflight) {

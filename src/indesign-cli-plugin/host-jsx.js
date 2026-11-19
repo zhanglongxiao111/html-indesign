@@ -1,141 +1,78 @@
+const fs = require('node:fs');
 const path = require('node:path');
 
-// 每个宿主脚本都用它收尾：脚本失败时把 errors[0] 抬到顶层 code/message。
-// CLI 的 script.run 只认顶层 message，没有就把整段 JSON 当文案给 Agent。
-const FINISH_FUNCTION = `
-    function finish(payload) {
-        if (payload && payload.ok === false && payload.errors && payload.errors.length && !payload.message) {
-            var first = payload.errors[0];
-            var text = first && typeof first === "object" ? first.message : (first ? String(first) : "");
-            if (text) {
-                payload.code = (first && first.code) || payload.code;
-                payload.message = text;
-            }
-        }
-        return JSON.stringify(payload);
-    }
-`;
+const EXECUTOR_LIB_NAMES = Object.freeze([
+  'hi_core.jsxinc',
+  'hi_labels.jsxinc',
+  'hi_document.jsxinc',
+  'hi_parent_pages.jsxinc',
+  'hi_fonts.jsxinc',
+  'hi_composite_fonts.jsxinc',
+  'hi_styles.jsxinc',
+  'hi_text_overrides.jsxinc',
+  'hi_blend_modes.jsxinc',
+  'hi_vector_styles.jsxinc',
+  'hi_assets.jsxinc',
+  'hi_tables.jsxinc',
+  'hi_text_fit.jsxinc',
+  'hi_items.jsxinc',
+  'hi_executor.jsxinc',
+]);
 
-const FIND_MARKED_DOCUMENT_FUNCTION = `
-    function findMarkedDocument(marker) {
-        if (!marker) return app.documents.length > 0 ? app.activeDocument : null;
-        for (var i = 0; i < app.documents.length; i++) {
-            var candidate = app.documents[i];
-            try {
-                if (candidate.extractLabel("html_indesign_e2e_marker") === marker) return candidate;
-            } catch (_) {}
-        }
-        return null;
-    }
-`;
+const REVERSE_ONLY_LIB_NAMES = Object.freeze([
+  'hi_reverse_styles.jsxinc',
+  'hi_reverse_colors.jsxinc',
+  'hi_reverse_text.jsxinc',
+  'hi_reverse_effects.jsxinc',
+  'hi_reverse_tables.jsxinc',
+  'hi_reverse.jsxinc',
+]);
 
-function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-indesign-e2e', targetInddPath = null }) {
-  const base = toJsxPath(repoRoot);
-  const instructions = toJsxPath(instructionsPath);
-  const targetIndd = targetInddPath ? JSON.stringify(toJsxPath(targetInddPath)) : 'null';
-  return `(function () {${FINISH_FUNCTION}
-    var base = ${JSON.stringify(base)};
+const bundledLibCache = new Map();
+
+function loadBundledLibs(repoRoot, libNames) {
+  const libDir = path.join(path.resolve(repoRoot), '_indesign_scripts', 'lib');
+  const paths = libNames.map((name) => path.join(libDir, name));
+  if (!paths.every((filePath) => fs.existsSync(filePath))) return null;
+  const stats = paths.map((filePath) => `${filePath}:${fs.statSync(filePath).mtimeMs}`);
+  const cacheKey = stats.join('|');
+  if (bundledLibCache.has(cacheKey)) return bundledLibCache.get(cacheKey);
+  const combined = paths
+    .map((filePath, index) => {
+      const content = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
+      return `// --- bundled: ${libNames[index]} ---\n${content}`;
+    })
+    .join('\n\n');
+  bundledLibCache.set(cacheKey, combined);
+  return combined;
+}
+
+function renderLibLoader(repoRoot, base, libNames, inlineLibs) {
+  if (inlineLibs) {
+    const bundled = loadBundledLibs(repoRoot, libNames);
+    if (bundled !== null) {
+      return {
+        bom: '\uFEFF',
+        body: `    var base = ${JSON.stringify(base)};\n${bundled}\n`,
+      };
+    }
+  }
+  const includes = libNames.map((name) => `    includeLib(${JSON.stringify(name)});`).join('\n');
+  return {
+    bom: '',
+    body: `    var base = ${JSON.stringify(base)};
     function includeLib(name) {
         var lib = File(base + "/_indesign_scripts/lib/" + name);
         if (!lib.exists) throw new Error("Missing executor lib: " + lib.fsName);
         $.evalFile(lib);
     }
 
-    includeLib("hi_core.jsxinc");
-    includeLib("hi_labels.jsxinc");
-    includeLib("hi_document.jsxinc");
-    includeLib("hi_parent_pages.jsxinc");
-    includeLib("hi_fonts.jsxinc");
-    includeLib("hi_composite_fonts.jsxinc");
-    includeLib("hi_styles.jsxinc");
-    includeLib("hi_text_overrides.jsxinc");
-    includeLib("hi_blend_modes.jsxinc");
-    includeLib("hi_vector_styles.jsxinc");
-    includeLib("hi_assets.jsxinc");
-    includeLib("hi_tables.jsxinc");
-    includeLib("hi_text_fit.jsxinc");
-    includeLib("hi_items.jsxinc");
-    includeLib("hi_executor.jsxinc");
-
-    var marker = ${JSON.stringify(String(marker))};
-    var targetIndd = ${targetIndd};
-    var doc = null;
-    var result = { ok: false, marker: marker, pageCount: 0, counts: {}, errors: [], warnings: [], closedOnFailure: false };
-
-    // Saving over an INDD that is open in InDesign fails only at the very end
-    // of the run. Look for it up front: our own unmodified previous output can
-    // be closed; anything else is the user's and the build stops here.
-    // Limits: only documents in this InDesign instance are visible, and a UNC path vs a mapped-drive path do not compare equal; those cases still fail later at save time.
-    function findOpenDocumentAt(fsPath) {
-        var wanted = String(File(fsPath).fsName).toLowerCase();
-        for (var i = 0; i < app.documents.length; i++) {
-            var candidate = app.documents[i];
-            try {
-                if (candidate.saved && String(candidate.fullName.fsName).toLowerCase() === wanted) return candidate;
-            } catch (_) {}
-        }
-        return null;
-    }
-
-    var openTarget = targetIndd ? findOpenDocumentAt(targetIndd) : null;
-    if (openTarget) {
-        var ownOutput = false;
-        try { ownOutput = !!openTarget.extractLabel("html_indesign_e2e_marker") && openTarget.modified === false; } catch (_) {}
-        if (ownOutput) {
-            try {
-                openTarget.close(SaveOptions.NO);
-                result.warnings.push({ code: "PREVIOUS_OUTPUT_CLOSED", message: "Closed the unmodified previous build output that was still open: " + targetIndd });
-            } catch (closeError) {
-                result.errors.push({ code: "OUTPUT_TARGET_OPEN", message: "Target INDD is open in InDesign and could not be closed: " + targetIndd + " (" + String(closeError) + ")" });
-                return finish(result);
-            }
-        } else {
-            result.errors.push({ code: "OUTPUT_TARGET_OPEN", message: "Target INDD is open in InDesign; close it (or choose another outputBaseName) before building: " + targetIndd });
-            return finish(result);
-        }
-    }
-
-    try {
-        doc = app.documents.add(false);
-        doc.insertLabel("html_indesign_e2e_marker", marker);
-        var report = HI.runBuildFromInstructions(app, ${JSON.stringify(instructions)}, doc);
-        doc.insertLabel("html_indesign_e2e_report", JSON.stringify(report));
-        result.ok = report.ok !== false;
-        result.pageCount = doc.pages.length;
-        result.counts = report.counts || {};
-        result.errors = report.errors || [];
-        result.warnings = result.warnings.concat(report.warnings || []);
-    } catch (error) {
-        result.ok = false;
-        result.errors.push({ code: "INDESIGN_BUILD_EXCEPTION", message: String(error) });
-    } finally {
-        if (!result.ok && doc) {
-            try {
-                if (doc.isValid !== false && doc.extractLabel("html_indesign_e2e_marker") === marker) {
-                    doc.close(SaveOptions.NO);
-                    result.closedOnFailure = true;
-                }
-            } catch (closeError) {
-                result.warnings.push({ code: "FAILED_BUILD_DOC_CLOSE_FAILED", message: String(closeError) });
-            }
-        }
-    }
-
-    return finish(result);
-})();`;
+${includes}
+`,
+  };
 }
 
-// 默认 basename 曾是 E2E 冒烟用的 architecture-report-indesign，任何忘记传 outputBaseName 的
-// 调用方都会静默写出那个名字的产物。两个生产调用方（build-indesign、scripts/indesign-e2e）现在
-// 都显式传入，默认值收成和下面同一个中性回落值。
-function buildExportJsx({
-  runDir,
-  outputBaseName = 'html-indesign-output',
-  exportPdf = true,
-  exportIdml = true,
-  closeDocument = true,
-  expectedMarker = null,
-}) {
+function renderExportBody({ runDir, outputBaseName = 'html-indesign-output', exportPdf = true, exportIdml = true, closeDocument = true }) {
   const outDir = toJsxPath(runDir);
   const baseName = String(outputBaseName || 'html-indesign-output');
   const pdfDeclaration = exportPdf
@@ -175,26 +112,9 @@ function buildExportJsx({
 ` : `
     result.closed = false;
 `;
-  return `(function () {${FINISH_FUNCTION}${FIND_MARKED_DOCUMENT_FUNCTION}
-    var runDir = ${JSON.stringify(outDir)};
-    var result = { ok: true, outputs: {}, counts: {}, errors: [], warnings: [] };
-
-    function add(level, code, message) {
-        result[level === "error" ? "errors" : "warnings"].push({ code: code, message: message });
-        if (level === "error") result.ok = false;
-    }
-
-    if (app.documents.length < 1) {
-        add("error", "NO_ACTIVE_DOCUMENT", "No active document to export.");
-        return finish(result);
-    }
-
-    var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
-    var doc = findMarkedDocument(expectedMarker);
-    if (!doc || (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker)) {
-        add("error", "ACTIVE_DOCUMENT_MISMATCH", "The active InDesign document does not belong to this build run.");
-        return finish(result);
-    }
+  return `    var runDir = ${JSON.stringify(outDir)};
+    if (!result.outputs) result.outputs = {};
+    if (!result.counts) result.counts = {};
     var indd = File(runDir + "/${escapeJsxString(baseName)}.indd");
 ${pdfDeclaration}
 ${idmlDeclaration}
@@ -267,7 +187,197 @@ ${idmlExportBlock}
 
     auditPanelNames();
 
-${closeBlock}
+${closeBlock}`;
+}
+
+// 每个宿主脚本都用它收尾：脚本失败时把 errors[0] 抬到顶层 code/message。
+// CLI 的 script.run 只认顶层 message，没有就把整段 JSON 当文案给 Agent。
+const FINISH_FUNCTION = `
+    function finish(payload) {
+        if (payload && payload.ok === false && payload.errors && payload.errors.length && !payload.message) {
+            var first = payload.errors[0];
+            var text = first && typeof first === "object" ? first.message : (first ? String(first) : "");
+            if (text) {
+                payload.code = (first && first.code) || payload.code;
+                payload.message = text;
+            }
+        }
+        return JSON.stringify(payload);
+    }
+`;
+
+const FIND_MARKED_DOCUMENT_FUNCTION = `
+    function findMarkedDocument(marker) {
+        if (!marker) return app.documents.length > 0 ? app.activeDocument : null;
+        for (var i = 0; i < app.documents.length; i++) {
+            var candidate = app.documents[i];
+            try {
+                if (candidate.extractLabel("html_indesign_e2e_marker") === marker) return candidate;
+            } catch (_) {}
+        }
+        return null;
+    }
+`;
+
+function buildBuildJsx({
+  repoRoot,
+  instructionsPath,
+  marker = 'html-indesign-indesign-e2e',
+  targetInddPath = null,
+  inlineLibs = false,
+  snapshotPath = null,
+  skipPreviews = true,
+  exportOptions = null,
+}) {
+  const base = toJsxPath(repoRoot);
+  const instructions = toJsxPath(instructionsPath);
+  const targetIndd = targetInddPath ? JSON.stringify(toJsxPath(targetInddPath)) : 'null';
+  const libNames = snapshotPath ? [...EXECUTOR_LIB_NAMES, ...REVERSE_ONLY_LIB_NAMES] : [...EXECUTOR_LIB_NAMES];
+  const loader = renderLibLoader(repoRoot, base, libNames, inlineLibs);
+  const snapshotBlock = snapshotPath ? `
+        if (result.ok) {
+            var __snapStart = new Date().getTime();
+            try {
+                var snap = HI.exportReverseSnapshot(app, ${JSON.stringify(toJsxPath(snapshotPath))}, { targetDoc: doc, skipPreviews: ${skipPreviews ? 'true' : 'false'} });
+                result.snapshotMs = new Date().getTime() - __snapStart;
+                if (snap && snap.warnings && snap.warnings.length) {
+                    result.warnings = result.warnings.concat(snap.warnings);
+                }
+                if (!snap || snap.ok === false) {
+                    result.ok = false;
+                    result.stage = "snapshot";
+                    result.errors = (snap && snap.errors && snap.errors.length)
+                        ? snap.errors
+                        : [{ code: "REVERSE_SNAPSHOT_FAILED", message: "Reverse snapshot failed." }];
+                } else {
+                    result.snapshotOk = true;
+                    result.snapshotCounts = snap.counts || {};
+                }
+            } catch (snapError) {
+                result.snapshotMs = new Date().getTime() - __snapStart;
+                result.ok = false;
+                result.stage = "snapshot";
+                result.errors.push({ code: "REVERSE_SNAPSHOT_FAILED", message: String(snapError) });
+            }
+        }
+` : '';
+  const exportBlock = (!snapshotPath && exportOptions) ? `
+        if (result.ok) {
+            var __exportStart = new Date().getTime();
+            function add(level, code, message) {
+                result[level === "error" ? "errors" : "warnings"].push({ code: code, message: message });
+                if (level === "error") {
+                    result.ok = false;
+                    result.stage = "export";
+                }
+            }
+${renderExportBody(exportOptions)}
+            result.exportMs = new Date().getTime() - __exportStart;
+        }
+` : '';
+  return `${loader.bom}(function () {${FINISH_FUNCTION}
+${loader.body}
+    var marker = ${JSON.stringify(String(marker))};
+    var targetIndd = ${targetIndd};
+    var doc = null;
+    var result = { ok: false, stage: "build", marker: marker, pageCount: 0, counts: {}, errors: [], warnings: [], closedOnFailure: false };
+
+    // Saving over an INDD that is open in InDesign fails only at the very end
+    // of the run. Look for it up front: our own unmodified previous output can
+    // be closed; anything else is the user's and the build stops here.
+    // Limits: only documents in this InDesign instance are visible, and a UNC path vs a mapped-drive path do not compare equal; those cases still fail later at save time.
+    function findOpenDocumentAt(fsPath) {
+        var wanted = String(File(fsPath).fsName).toLowerCase();
+        for (var i = 0; i < app.documents.length; i++) {
+            var candidate = app.documents[i];
+            try {
+                if (candidate.saved && String(candidate.fullName.fsName).toLowerCase() === wanted) return candidate;
+            } catch (_) {}
+        }
+        return null;
+    }
+
+    var openTarget = targetIndd ? findOpenDocumentAt(targetIndd) : null;
+    if (openTarget) {
+        var ownOutput = false;
+        try { ownOutput = !!openTarget.extractLabel("html_indesign_e2e_marker") && openTarget.modified === false; } catch (_) {}
+        if (ownOutput) {
+            try {
+                openTarget.close(SaveOptions.NO);
+                result.warnings.push({ code: "PREVIOUS_OUTPUT_CLOSED", message: "Closed the unmodified previous build output that was still open: " + targetIndd });
+            } catch (closeError) {
+                result.errors.push({ code: "OUTPUT_TARGET_OPEN", message: "Target INDD is open in InDesign and could not be closed: " + targetIndd + " (" + String(closeError) + ")" });
+                return finish(result);
+            }
+        } else {
+            result.errors.push({ code: "OUTPUT_TARGET_OPEN", message: "Target INDD is open in InDesign; close it (or choose another outputBaseName) before building: " + targetIndd });
+            return finish(result);
+        }
+    }
+
+    try {
+        var __buildStart = new Date().getTime();
+        doc = app.documents.add(false);
+        doc.insertLabel("html_indesign_e2e_marker", marker);
+        var report = HI.runBuildFromInstructions(app, ${JSON.stringify(instructions)}, doc);
+        doc.insertLabel("html_indesign_e2e_report", JSON.stringify(report));
+        result.buildMs = new Date().getTime() - __buildStart;
+        result.ok = report.ok !== false;
+        result.pageCount = doc.pages.length;
+        result.counts = report.counts || {};
+        result.errors = report.errors || [];
+        result.warnings = result.warnings.concat(report.warnings || []);
+${snapshotBlock}${exportBlock}    } catch (error) {
+        result.ok = false;
+        result.errors.push({ code: "INDESIGN_BUILD_EXCEPTION", message: String(error) });
+    } finally {
+        if (!result.ok && doc) {
+            try {
+                if (doc.isValid !== false && doc.extractLabel("html_indesign_e2e_marker") === marker) {
+                    doc.close(SaveOptions.NO);
+                    result.closedOnFailure = true;
+                }
+            } catch (closeError) {
+                result.warnings.push({ code: "FAILED_BUILD_DOC_CLOSE_FAILED", message: String(closeError) });
+            }
+        }
+    }
+
+    return finish(result);
+})();`;
+}
+
+// 默认 basename 曾是 E2E 冒烟用的 architecture-report-indesign，任何忘记传 outputBaseName 的
+// 调用方都会静默写出那个名字的产物。两个生产调用方（build-indesign、scripts/indesign-e2e）现在
+// 都显式传入，默认值收成和下面同一个中性回落值。
+function buildExportJsx({
+  runDir,
+  outputBaseName = 'html-indesign-output',
+  exportPdf = true,
+  exportIdml = true,
+  closeDocument = true,
+  expectedMarker = null,
+}) {
+  return `(function () {${FINISH_FUNCTION}${FIND_MARKED_DOCUMENT_FUNCTION}
+    var result = { ok: true, outputs: {}, counts: {}, errors: [], warnings: [] };
+
+    function add(level, code, message) {
+        result[level === "error" ? "errors" : "warnings"].push({ code: code, message: message });
+        if (level === "error") result.ok = false;
+    }
+
+    if (app.documents.length < 1) {
+        add("error", "NO_ACTIVE_DOCUMENT", "No active document to export.");
+        return finish(result);
+    }
+
+    var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
+    var doc = findMarkedDocument(expectedMarker);
+    if (!doc || (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker)) {
+        add("error", "ACTIVE_DOCUMENT_MISMATCH", "The active InDesign document does not belong to this build run.");
+        return finish(result);
+    }
+${renderExportBody({ runDir, outputBaseName, exportPdf, exportIdml, closeDocument })}
 
     return finish(result);
 })();`;

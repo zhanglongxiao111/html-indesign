@@ -331,16 +331,12 @@ function buildWithStaleFallback(packageDir, blocked) {
     },
   });
   assert.equal(started.status, 'requires_host_actions');
+  assert.equal(started.state.combinedBuildExport, true);
 
-  const afterBuild = callPlugin('tools/resume', {
-    state: started.state,
-    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
-  });
-  assert.equal(afterBuild.state.stage, 'export');
   fs.writeFileSync(path.join(outDir, 'stale-fallback.indd'), 'fake');
   const complete = callPlugin('tools/resume', {
-    state: afterBuild.state,
-    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    state: started.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
   });
 
   assert.equal(complete.status, 'complete', JSON.stringify(complete.error || null));

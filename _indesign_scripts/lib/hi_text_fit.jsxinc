@@ -67,25 +67,42 @@ HI.resolveTextFrameOverflow = function (report, frame, item) {
 HI.applyTextFitWidthFirst = function (report, frame, item, original, maxGrowX, tolerance) {
     var limitX = Math.max(0, Number(maxGrowX || 0));
     var step = 0.5;
+    var maxSteps = Math.floor((limitX + tolerance + 1e-9) / step);
+    if (maxSteps < 1) return false;
     var anchor = String(item.textFit.horizontalAnchor || "start").toLowerCase();
-    for (var growX = step; growX <= limitX + tolerance; growX += step) {
-        var bounds = HI.textFitWidthBounds(original, growX, anchor);
-        try { frame.geometricBounds = bounds; } catch (_) {}
+    var hiBounds = HI.textFitWidthBounds(original, maxSteps * step, anchor);
+    try { frame.geometricBounds = hiBounds; } catch (_) {}
+    if (HI.textFrameOverflows(frame)) {
+        try { frame.geometricBounds = original; } catch (_) {}
+        return false;
+    }
+    var lo = 1, hi = maxSteps, bestK = maxSteps, bestBounds = hiBounds, lastK = maxSteps;
+    while (lo < hi) {
+        var mid = Math.floor((lo + hi) / 2);
+        var midBounds = HI.textFitWidthBounds(original, mid * step, anchor);
+        lastK = mid;
+        try { frame.geometricBounds = midBounds; } catch (_) {}
         if (!HI.textFrameOverflows(frame)) {
-            HI.addMessage(report, "info", "TEXT_FIT_WIDTH_APPLIED", "Single-line text frame width expanded to avoid overset", {
-                itemId: item.id || null,
-                originalBounds: HI.boundsArray(original),
-                fittedBounds: HI.boundsArray(bounds),
-                growX: growX,
-                growY: 0,
-                horizontalAnchor: anchor,
-                tolerance: tolerance
-            });
-            return true;
+            bestK = mid;
+            bestBounds = midBounds;
+            hi = mid;
+        } else {
+            lo = mid + 1;
         }
     }
-    try { frame.geometricBounds = original; } catch (_) {}
-    return false;
+    if (lastK !== bestK) {
+        try { frame.geometricBounds = bestBounds; } catch (_) {}
+    }
+    HI.addMessage(report, "info", "TEXT_FIT_WIDTH_APPLIED", "Single-line text frame width expanded to avoid overset", {
+        itemId: item.id || null,
+        originalBounds: HI.boundsArray(original),
+        fittedBounds: HI.boundsArray(bestBounds),
+        growX: bestK * step,
+        growY: 0,
+        horizontalAnchor: anchor,
+        tolerance: tolerance
+    });
+    return true;
 };
 
 HI.textFitWidthBounds = function (original, growX, anchor) {
@@ -102,34 +119,77 @@ HI.textFitWidthBounds = function (original, growX, anchor) {
     return [Number(original[0]), left, Number(original[2]), right];
 };
 
+HI.textFitNudgeBounds = function (original, growX, growY) {
+    return [Number(original[0]), Number(original[1]), Number(original[2]) + growY, Number(original[3]) + growX];
+};
+
 HI.applyTextFitNudge = function (report, frame, item, original, maxGrowX, maxGrowY, tolerance) {
     var limitX = Math.min(Number(maxGrowX || 0), 8);
     var limitY = Math.min(Number(maxGrowY || 0), 8);
     var step = 0.5;
+    var maxStepsY = Math.floor((limitY + tolerance + 1e-9) / step);
+    var maxStepsX = Math.floor((limitX + tolerance + 1e-9) / step);
     var lastBounds = original;
-    for (var growY = step; growY <= limitY + tolerance; growY += step) {
-        for (var growX = 0; growX <= limitX + tolerance; growX += step) {
-            var bounds = [
-                Number(original[0]),
-                Number(original[1]),
-                Number(original[2]) + growY,
-                Number(original[3]) + growX
-            ];
-            lastBounds = bounds;
-            try { frame.geometricBounds = bounds; } catch (_) {}
-            if (!HI.textFrameOverflows(frame)) {
-                HI.addMessage(report, "info", "TEXT_FIT_NUDGE_APPLIED", "Text frame expanded by a small bounded nudge to avoid overset", {
-                    itemId: item.id || null,
-                    originalBounds: HI.boundsArray(original),
-                    fittedBounds: HI.boundsArray(bounds),
-                    growX: growX,
-                    growY: growY,
-                    tolerance: tolerance
-                });
-                return true;
+    var resolved = false;
+    var bestX = 0, bestY = 0, bestBounds = original;
+    var lastX = -1, lastY = -1;
+
+    function testNudge(kx, ky) {
+        var bounds = HI.textFitNudgeBounds(original, kx * step, ky * step);
+        lastBounds = bounds;
+        lastX = kx;
+        lastY = ky;
+        try { frame.geometricBounds = bounds; } catch (_) {}
+        return !HI.textFrameOverflows(frame);
+    }
+
+    if (maxStepsY >= 1) {
+        if (testNudge(0, maxStepsY)) {
+            var loY = 1, hiY = maxStepsY;
+            bestY = maxStepsY;
+            bestX = 0;
+            bestBounds = lastBounds;
+            while (loY < hiY) {
+                var midY = Math.floor((loY + hiY) / 2);
+                if (testNudge(0, midY)) { bestY = midY; bestBounds = lastBounds; hiY = midY; }
+                else { loY = midY + 1; }
             }
+            resolved = true;
+        } else if (maxStepsX >= 1 && testNudge(maxStepsX, maxStepsY)) {
+            var loY2 = 1, hiY2 = maxStepsY;
+            bestY = maxStepsY;
+            bestX = maxStepsX;
+            bestBounds = lastBounds;
+            while (loY2 < hiY2) {
+                var midY2 = Math.floor((loY2 + hiY2) / 2);
+                if (testNudge(maxStepsX, midY2)) { bestY = midY2; bestBounds = lastBounds; hiY2 = midY2; }
+                else { loY2 = midY2 + 1; }
+            }
+            var loX = 1, hiX = maxStepsX;
+            while (loX < hiX) {
+                var midX = Math.floor((loX + hiX) / 2);
+                if (testNudge(midX, bestY)) { bestX = midX; bestBounds = lastBounds; hiX = midX; }
+                else { loX = midX + 1; }
+            }
+            resolved = true;
         }
     }
+
+    if (resolved) {
+        if (lastX !== bestX || lastY !== bestY) {
+            try { frame.geometricBounds = bestBounds; } catch (_) {}
+        }
+        HI.addMessage(report, "info", "TEXT_FIT_NUDGE_APPLIED", "Text frame expanded by a small bounded nudge to avoid overset", {
+            itemId: item.id || null,
+            originalBounds: HI.boundsArray(original),
+            fittedBounds: HI.boundsArray(bestBounds),
+            growX: bestX * step,
+            growY: bestY * step,
+            tolerance: tolerance
+        });
+        return true;
+    }
+
     try { frame.geometricBounds = original; } catch (_) {}
     HI.addMessage(report, "warning", "TEXT_FIT_NUDGE_UNRESOLVED", "Text frame small nudge did not resolve overset", {
         itemId: item.id || null,
