@@ -4,12 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
+  DEFAULT_HEADLESS_EDGE_ARGS,
   EDGE_NOT_AVAILABLE,
   EdgeNotAvailableError,
   launchEdgeBrowser,
 } = require('../../src/shared/edge-browser');
 
-test('launchEdgeBrowser uses the system Edge channel by default', async () => {
+test('launchEdgeBrowser uses the system Edge channel and lightweight headless args by default', async () => {
   const calls = [];
   const browser = { close() {} };
   const result = await launchEdgeBrowser({
@@ -26,7 +27,7 @@ test('launchEdgeBrowser uses the system Edge channel by default', async () => {
   });
 
   assert.equal(result, browser);
-  assert.deepEqual(calls, [{ channel: 'msedge', headless: true }]);
+  assert.deepEqual(calls, [{ channel: 'msedge', headless: true, args: [...DEFAULT_HEADLESS_EDGE_ARGS] }]);
 });
 
 test('launchEdgeBrowser honors HTML_INDESIGN_BROWSER_EXECUTABLE without selecting a channel', async () => {
@@ -43,10 +44,10 @@ test('launchEdgeBrowser honors HTML_INDESIGN_BROWSER_EXECUTABLE without selectin
     env: { HTML_INDESIGN_BROWSER_EXECUTABLE: 'C:\\Managed\\msedge.exe' },
   });
 
-  assert.deepEqual(calls, [{ executablePath: 'C:\\Managed\\msedge.exe' }]);
+  assert.deepEqual(calls, [{ executablePath: 'C:\\Managed\\msedge.exe', args: [...DEFAULT_HEADLESS_EDGE_ARGS] }]);
 });
 
-test('launchEdgeBrowser does not allow generic launch options to bypass the Edge selection', async () => {
+test('launchEdgeBrowser does not allow generic launch options to bypass the Edge selection and skips headless args when headed', async () => {
   const calls = [];
   await launchEdgeBrowser({
     playwright: {
@@ -58,10 +59,25 @@ test('launchEdgeBrowser does not allow generic launch options to bypass the Edge
       },
     },
     env: {},
-    launchOptions: { channel: 'chromium', executablePath: 'chromium.exe' },
+    launchOptions: { channel: 'chromium', executablePath: 'chromium.exe', args: ['--custom-flag', '--disable-gpu'] },
+  });
+  await launchEdgeBrowser({
+    playwright: {
+      chromium: {
+        launch: async (options) => {
+          calls.push(options);
+          return {};
+        },
+      },
+    },
+    env: {},
+    launchOptions: { headless: false },
   });
 
-  assert.deepEqual(calls, [{ channel: 'msedge' }]);
+  assert.deepEqual(calls, [
+    { channel: 'msedge', args: [...DEFAULT_HEADLESS_EDGE_ARGS, '--custom-flag'] },
+    { channel: 'msedge', headless: false },
+  ]);
 });
 
 test('launchEdgeBrowser exposes stable EDGE_NOT_AVAILABLE errors and does not retry Chromium', async () => {

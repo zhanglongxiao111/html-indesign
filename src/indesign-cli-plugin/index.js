@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+const readline = require('node:readline');
 const { dispatch } = require('./dispatcher');
 
 function isJsonRpcRequest(request) {
@@ -57,16 +58,38 @@ async function readStdin() {
   });
 }
 
-async function main() {
+async function handleRawRequest(raw) {
   let request;
   try {
-    const raw = await readStdin();
     request = raw.trim() ? JSON.parse(raw) : {};
     const response = await dispatch(request);
-    process.stdout.write(JSON.stringify(isJsonRpcRequest(request) ? wrapJsonRpcResponse(request, response) : response));
+    return JSON.stringify(isJsonRpcRequest(request) ? wrapJsonRpcResponse(request, response) : response);
   } catch (err) {
-    process.stdout.write(JSON.stringify(formatProcessError(err, request)));
+    return JSON.stringify(formatProcessError(err, request));
   }
+}
+
+async function runStdioSession() {
+  process.stdin.setEncoding('utf8');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    crlfDelay: Infinity,
+  });
+  for await (const line of rl) {
+    if (!line || !line.trim()) continue;
+    const out = await handleRawRequest(line);
+    process.stdout.write(`${out}\n`);
+  }
+}
+
+async function main() {
+  if (process.argv.includes('--stdio-session')) {
+    await runStdioSession();
+    return;
+  }
+  const raw = await readStdin();
+  const out = await handleRawRequest(raw);
+  process.stdout.write(out);
 }
 
 main();

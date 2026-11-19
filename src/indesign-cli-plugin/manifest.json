@@ -17,7 +17,8 @@
   },
   "capabilities": {
     "tools": true,
-    "host_actions": ["script.run", "export.verify", "session.show"]
+    "host_actions": ["script.run", "export.verify", "session.show"],
+    "stdio_session": true
   },
   "permissions": {
     "filesystem": ["read_project", "write_project"],

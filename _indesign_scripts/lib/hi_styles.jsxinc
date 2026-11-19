@@ -18,23 +18,12 @@ HI.ensureSwatches = function (doc, swatches, report) {
     var out = {};
     for (var name in swatches) {
         if (!swatches.hasOwnProperty(name)) continue;
-        var def = swatches[name];
-        var color = doc.colors.itemByName(def.name || name);
-        try {
-            color.name;
-        } catch (_) {
-            color = doc.colors.add({ name: def.name || name });
-            report.counts.swatches += 1;
-        }
+        var def = swatches[name], color = doc.colors.itemByName(def.name || name);
+        try { color.name; } catch (_) { color = doc.colors.add({ name: def.name || name }); report.counts.swatches += 1; }
         var rgb = HI.hexToRgb(def.value);
         if (rgb) {
-            try {
-                color.model = ColorModel.PROCESS;
-                color.space = ColorSpace.RGB;
-                color.colorValue = rgb;
-            } catch (error) {
-                HI.addMessage(report, "warning", "SWATCH_SET_FAILED", String(error), { name: name });
-            }
+            try { color.model = ColorModel.PROCESS; color.space = ColorSpace.RGB; color.colorValue = rgb; }
+            catch (error) { HI.addMessage(report, "warning", "SWATCH_SET_FAILED", String(error), { name: name }); }
         }
         out[name] = color;
     }
@@ -45,24 +34,14 @@ HI.hexToRgb = function (value) {
     var match = String(value || "").match(/^#?([0-9a-fA-F]{6})$/);
     if (!match) return null;
     var hex = match[1];
-    return [
-        parseInt(hex.substr(0, 2), 16),
-        parseInt(hex.substr(2, 2), 16),
-        parseInt(hex.substr(4, 2), 16)
-    ];
+    return [parseInt(hex.substr(0, 2), 16), parseInt(hex.substr(2, 2), 16), parseInt(hex.substr(4, 2), 16)];
 };
 HI.ensureParagraphStyles = function (doc, paragraphStyles, report) {
     var out = {};
     for (var name in paragraphStyles) {
         if (!paragraphStyles.hasOwnProperty(name)) continue;
-        var def = paragraphStyles[name];
-        var style = doc.paragraphStyles.itemByName(def.name || name);
-        try {
-            style.name;
-        } catch (_) {
-            style = doc.paragraphStyles.add({ name: def.name || name });
-            report.counts.paragraphStyles += 1;
-        }
+        var def = paragraphStyles[name], style = doc.paragraphStyles.itemByName(def.name || name);
+        try { style.name; } catch (_) { style = doc.paragraphStyles.add({ name: def.name || name }); report.counts.paragraphStyles += 1; }
         HI.assignTextStyleProperties(doc, style, def, report);
         HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "paragraph", critical: false });
         out[name] = style;
@@ -74,14 +53,8 @@ HI.ensureCharacterStyles = function (doc, characterStyles, report) {
     HI.characterStyleDefs = characterStyles || {};
     for (var name in characterStyles) {
         if (!characterStyles.hasOwnProperty(name)) continue;
-        var def = characterStyles[name];
-        var style = doc.characterStyles.itemByName(def.name || name);
-        try {
-            style.name;
-        } catch (_) {
-            style = doc.characterStyles.add({ name: def.name || name });
-            report.counts.characterStyles += 1;
-        }
+        var def = characterStyles[name], style = doc.characterStyles.itemByName(def.name || name);
+        try { style.name; } catch (_) { style = doc.characterStyles.add({ name: def.name || name }); report.counts.characterStyles += 1; }
         HI.assignTextStyleProperties(doc, style, def, report);
         HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "character", critical: false });
         out[name] = style;
@@ -123,26 +96,59 @@ HI.justificationFor = function (value) { // mirror of HI.reverseJustification: j
     if (key === "justify-all") return Justification.FULLY_JUSTIFIED; if (key === "justify-center") return Justification.CENTER_JUSTIFIED; if (key === "justify-right") return Justification.RIGHT_JUSTIFIED;
     return Justification.LEFT_ALIGN;
 };
+HI.objectStyleBatchProps = function (doc, def, styleName) {
+    var props = styleName ? { name: styleName } : {};
+    try { if (def.fillColor) { var fc = HI.swatchByName(doc, def.fillColor) || doc.swatches.itemByName(def.fillColor); if (fc) props.fillColor = fc; } } catch (_) {}
+    try {
+        var sw = HI.strokeSwatchFor ? HI.strokeSwatchFor(doc, def.strokeColor, def.strokeWeight) : null;
+        if (sw) props.strokeColor = sw;
+        if (def.strokeWeight !== null && typeof def.strokeWeight !== "undefined") props.strokeWeight = Number(def.strokeWeight);
+    } catch (_) {}
+    var strokeKey = String(def.strokeStyle || "").toLowerCase().replace(/^\s+|\s+$/g, "");
+    if (strokeKey && !(strokeKey === "none" && Number(def.strokeWeight || 0) <= 0)) {
+        try { var st = doc.strokeStyles.itemByName(HI.strokeStyleName(def.strokeStyle)); if (st) props.strokeType = st; } catch (_) {}
+    }
+    var alignKey = String(def.strokeAlignment || "").toLowerCase();
+    try {
+        if (alignKey === "inside") props.strokeAlignment = StrokeAlignment.INSIDE_ALIGNMENT;
+        else if (alignKey === "outside") props.strokeAlignment = StrokeAlignment.OUTSIDE_ALIGNMENT;
+        else if (alignKey === "center") props.strokeAlignment = StrokeAlignment.CENTER_ALIGNMENT;
+    } catch (_) {}
+    var radius = HI.cssLengthToMm(def.cornerRadius);
+    if (radius !== null && isFinite(radius) && radius > 0) {
+        try {
+            var rVal = String(radius) + "mm";
+            props.topLeftCornerOption = props.topRightCornerOption = props.bottomRightCornerOption = props.bottomLeftCornerOption = CornerOptions.ROUNDED_CORNER;
+            props.topLeftCornerRadius = props.topRightCornerRadius = props.bottomRightCornerRadius = props.bottomLeftCornerRadius = rVal;
+        } catch (_) {}
+    }
+    return props;
+};
 HI.ensureObjectStyles = function (doc, objectStyles, report) {
     var out = {};
     for (var name in objectStyles) {
         if (!objectStyles.hasOwnProperty(name)) continue;
-        var def = objectStyles[name];
-        var style = doc.objectStyles.itemByName(def.name || name);
-        try {
-            style.name;
-        } catch (_) {
-            style = doc.objectStyles.add({ name: def.name || name });
-            report.counts.objectStyles += 1;
+        var def = objectStyles[name], styleName = def.name || name, isNew = false, batched = false;
+        var style = doc.objectStyles.itemByName(styleName);
+        try { style.name; } catch (_) { isNew = true; }
+        var props = HI.objectStyleBatchProps(doc, def, isNew ? styleName : null);
+        if (isNew) {
+            try { style = doc.objectStyles.add(props); report.counts.objectStyles += 1; batched = true; }
+            catch (_) { style = doc.objectStyles.add({ name: styleName }); report.counts.objectStyles += 1; }
+        } else {
+            try { style.properties = props; batched = true; } catch (_) {}
         }
-        try { if (def.fillColor) style.fillColor = HI.swatchByName(doc, def.fillColor) || doc.swatches.itemByName(def.fillColor); } catch (_) {}
+        if (!batched) {
+            try { if (def.fillColor) style.fillColor = HI.swatchByName(doc, def.fillColor) || doc.swatches.itemByName(def.fillColor); } catch (_) {}
+            HI.applyStrokePaint(doc, style, def.strokeColor, def.strokeWeight);
+            try { if (def.strokeStyle) style.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(def.strokeStyle)); } catch (_) {}
+            HI.applyStrokeAlignment(style, def.strokeAlignment);
+            HI.applyCornerRadius(style, def.cornerRadius);
+        }
         HI.applyFillOpacity(style, def.fillOpacity);
-        HI.applyStrokePaint(doc, style, def.strokeColor, def.strokeWeight);
-        try { if (def.strokeStyle) style.strokeType = doc.strokeStyles.itemByName(HI.strokeStyleName(def.strokeStyle)); } catch (_) {}
-        HI.applyStrokeAlignment(style, def.strokeAlignment);
-        HI.applyCornerRadius(style, def.cornerRadius);
-        HI.applyOpacity(style, def.opacity); HI.applyBlendMode(style, def.blendMode, report);
-        HI.writeProtocolLabels(style, def.labels || [], report, { styleName: def.name || name, styleKind: "object", critical: false });
+        if (!isNew || (def.opacity !== null && typeof def.opacity !== "undefined" && HI.opacityPercent(def.opacity) < 100)) HI.applyOpacity(style, def.opacity);
+        HI.applyBlendMode(style, def.blendMode, report);
+        HI.writeProtocolLabels(style, def.labels || [], report, { styleName: styleName, styleKind: "object", critical: false });
         out[name] = style;
     }
     return out;
@@ -177,14 +183,23 @@ HI.cssLengthToMm = function (value) {
 HI.applyCornerRadius = function (target, value) {
     var radius = HI.cssLengthToMm(value);
     if (radius === null || !isFinite(radius) || radius <= 0) return;
+    var rVal = String(radius) + "mm";
+    try {
+        target.properties = {
+            topLeftCornerOption: CornerOptions.ROUNDED_CORNER, topRightCornerOption: CornerOptions.ROUNDED_CORNER,
+            bottomRightCornerOption: CornerOptions.ROUNDED_CORNER, bottomLeftCornerOption: CornerOptions.ROUNDED_CORNER,
+            topLeftCornerRadius: rVal, topRightCornerRadius: rVal, bottomRightCornerRadius: rVal, bottomLeftCornerRadius: rVal
+        };
+        return;
+    } catch (_) {}
     try { target.topLeftCornerOption = CornerOptions.ROUNDED_CORNER; } catch (_) {}
     try { target.topRightCornerOption = CornerOptions.ROUNDED_CORNER; } catch (_) {}
     try { target.bottomRightCornerOption = CornerOptions.ROUNDED_CORNER; } catch (_) {}
     try { target.bottomLeftCornerOption = CornerOptions.ROUNDED_CORNER; } catch (_) {}
-    try { target.topLeftCornerRadius = String(radius) + "mm"; } catch (_) {}
-    try { target.topRightCornerRadius = String(radius) + "mm"; } catch (_) {}
-    try { target.bottomRightCornerRadius = String(radius) + "mm"; } catch (_) {}
-    try { target.bottomLeftCornerRadius = String(radius) + "mm"; } catch (_) {}
+    try { target.topLeftCornerRadius = rVal; } catch (_) {}
+    try { target.topRightCornerRadius = rVal; } catch (_) {}
+    try { target.bottomRightCornerRadius = rVal; } catch (_) {}
+    try { target.bottomLeftCornerRadius = rVal; } catch (_) {}
 };
 HI.ensureTableStyles = function (doc, tableStyles, report) {
     var out = {};

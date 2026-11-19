@@ -1703,3 +1703,26 @@ function fidelityItemLabel(id, role, order, sourceText) {
     layout: null,
   };
 }
+
+test('plugin entry --stdio-session serves multiple JSON-RPC requests in one process and exits on EOF', () => {
+  const { spawnSync } = require('node:child_process');
+  const manifest = JSON.parse(fs.readFileSync(path.resolve('src/indesign-cli-plugin/manifest.json'), 'utf8'));
+  assert.equal(manifest.capabilities.stdio_session, true);
+
+  const req1 = JSON.stringify({ jsonrpc: '2.0', id: 'req-1', method: 'plugin/handshake', params: { host: { version: '0.5.2' } } });
+  const req2 = JSON.stringify({ jsonrpc: '2.0', id: 'req-2', method: 'tools/schema', params: { tool_id: 'html.build_indesign' } });
+  const run = spawnSync(process.execPath, [path.resolve('src/indesign-cli-plugin/index.js'), '--stdio-session'], {
+    input: `${req1}\n${req2}\n`,
+    encoding: 'utf8',
+    timeout: 15000,
+  });
+  assert.equal(run.status, 0, run.stderr);
+  const lines = run.stdout.trim().split(/\r?\n/);
+  assert.equal(lines.length, 2);
+  const res1 = JSON.parse(lines[0]);
+  const res2 = JSON.parse(lines[1]);
+  assert.equal(res1.id, 'req-1');
+  assert.equal(res1.result.plugin.id, 'html-indesign');
+  assert.equal(res2.id, 'req-2');
+  assert.equal(res2.result.inputSchema.properties.exportIdml.default, false);
+});
