@@ -1,8 +1,25 @@
 if (typeof HI === "undefined") { HI = {}; }
 
-HI.exportReverseSnapshot = function (appRef, outputPath) {
+HI.findMarkedDocument = function (appRef, marker) {
+    if (!marker) return appRef.documents.length > 0 ? appRef.activeDocument : null;
+    for (var i = 0; i < appRef.documents.length; i++) {
+        var candidate = appRef.documents[i];
+        try {
+            if (candidate.extractLabel("html_indesign_e2e_marker") === marker) return candidate;
+        } catch (_) {}
+    }
+    return null;
+};
+
+HI.exportReverseSnapshot = function (appRef, outputPath, options) {
     var report = HI.makeReport();
-    var doc = appRef.activeDocument;
+    var opts = options || {};
+    var marker = opts.marker || "";
+    if (!marker) {
+        try { marker = String(appRef.extractLabel("html_indesign_reverse_marker") || ""); } catch (_) {}
+    }
+    var doc = opts.targetDoc || (marker ? HI.findMarkedDocument(appRef, marker) : appRef.activeDocument);
+    if (!doc) throw new Error(marker ? "ACTIVE_DOCUMENT_MISMATCH" : "NO_ACTIVE_DOCUMENT");
     var coordinateUnit = HI.reverseCoordinateUnit(doc);
     var oldUnits = HI.applyReverseMeasurementUnits(appRef, doc, coordinateUnit);
     var previewContext = HI.reversePreviewContext(outputPath, report);

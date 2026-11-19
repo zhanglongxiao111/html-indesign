@@ -144,6 +144,90 @@ test('executor fails closed for non-current instruction schemas', () => {
   assert.equal(report.errors[0].code, 'INSTRUCTIONS_SCHEMA_UNSUPPORTED');
 });
 
+test('executor builds windowless, disables redraw/preflight/reflow with FAST_ENTIRE_SCRIPT, and restores state in finally', () => {
+  const docSource = fs.readFileSync(path.join(libDir, 'hi_document.jsxinc'), 'utf8');
+  const execSource = fs.readFileSync(path.join(libDir, 'hi_executor.jsxinc'), 'utf8');
+
+  assert.match(docSource, /appRef\.documents\.add\(false\)/);
+  assert.doesNotMatch(docSource, /appRef\.documents\.add\(\)/);
+  assert.match(execSource, /enableRedraw\s*=\s*false/);
+  assert.match(execSource, /preflightOff\s*=\s*true/);
+  assert.match(execSource, /smartTextReflow\s*=\s*false/);
+  assert.match(execSource, /UndoModes\.FAST_ENTIRE_SCRIPT/);
+
+  function runSandbox({ throwDuringBuild }) {
+    const events = [];
+    const doc = {
+      pages: [{ name: '1' }],
+      preflightOptions: { preflightOff: false },
+      textPreferences: { smartTextReflow: true },
+    };
+    const appRef = {
+      documents: [doc],
+      scriptPreferences: { enableRedraw: true },
+      doScript(fn, lang, args, undoMode, undoName) {
+        events.push({
+          type: 'doScript',
+          lang,
+          undoMode,
+          undoName,
+          redrawDuring: appRef.scriptPreferences.enableRedraw,
+          preflightDuring: doc.preflightOptions.preflightOff,
+          reflowDuring: doc.textPreferences.smartTextReflow,
+        });
+        return fn();
+      },
+    };
+    const context = {
+      ScriptLanguage: { JAVASCRIPT: 'JS' },
+      UndoModes: { FAST_ENTIRE_SCRIPT: 'FAST_ENTIRE_SCRIPT' },
+      HI: {
+        makeReport: () => ({ ok: true, messages: [], errors: [], warnings: [], counts: { textFrames: 0, graphicFrames: 0, placedAssets: 0, missingAssets: 0 } }),
+        addMessage(report, level, code, message, details) {
+          const entry = { level, code, message, details: details || {} };
+          report.messages.push(entry);
+          if (level === 'error') {
+            report.ok = false;
+            report.errors.push(entry);
+          }
+          return entry;
+        },
+        prepareDocument: (_app, _ins, _rep, targetDoc) => ({ doc: targetDoc || doc, parentPages: {}, layers: {} }),
+        ensureStyles: () => ({}),
+        buildParentPageItems: () => {},
+        getPageForInstruction: () => ({ name: '1' }),
+        buildInstructionItems: () => {
+          if (throwDuringBuild) throw new Error('boom');
+        },
+        applyParentPageItemOverrides: () => {},
+        removeUnusedDefaultParentPages: () => {},
+        insertJsonLabel: () => {},
+        restoreDocumentPreferences: () => events.push({ type: 'restorePrefs' }),
+      },
+    };
+    vm.runInNewContext(execSource, context);
+    const report = context.HI.runBuildInstructions(appRef, { document: {}, styles: {}, pages: [{}] }, 'base', doc);
+    return { appRef, doc, events, report };
+  }
+
+  const okRun = runSandbox({ throwDuringBuild: false });
+  assert.equal(okRun.report.ok, true);
+  assert.equal(okRun.events[0].type, 'doScript');
+  assert.equal(okRun.events[0].undoMode, 'FAST_ENTIRE_SCRIPT');
+  assert.equal(okRun.events[0].redrawDuring, false);
+  assert.equal(okRun.events[0].preflightDuring, true);
+  assert.equal(okRun.events[0].reflowDuring, false);
+  assert.equal(okRun.appRef.scriptPreferences.enableRedraw, true);
+  assert.equal(okRun.doc.preflightOptions.preflightOff, false);
+  assert.equal(okRun.doc.textPreferences.smartTextReflow, true);
+
+  const errRun = runSandbox({ throwDuringBuild: true });
+  assert.equal(errRun.report.ok, false);
+  assert.equal(errRun.appRef.scriptPreferences.enableRedraw, true);
+  assert.equal(errRun.doc.preflightOptions.preflightOff, false);
+  assert.equal(errRun.doc.textPreferences.smartTextReflow, true);
+});
+
 test('document helper configures page geometry layers and unit restoration', () => {
   const source = fs.readFileSync(path.join(libDir, 'hi_document.jsxinc'), 'utf8');
   for (const token of [

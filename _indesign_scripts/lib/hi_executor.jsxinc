@@ -1,11 +1,11 @@
 if (typeof HI === "undefined") { HI = {}; }
 
-HI.runBuildFromInstructions = function (appRef, jsonPath) {
+HI.runBuildFromInstructions = function (appRef, jsonPath, targetDoc) {
     var input = HI.readJsonFile(jsonPath);
     if (!HI.isCurrentBuildInstructions(input.data)) {
         return HI.unsupportedBuildInstructionsReport(input.data);
     }
-    return HI.runBuildInstructions(appRef, input.data, input.baseFolder);
+    return HI.runBuildInstructions(appRef, input.data, input.baseFolder, targetDoc);
 };
 
 HI.isCurrentBuildInstructions = function (instructions) {
@@ -26,40 +26,110 @@ HI.unsupportedBuildInstructionsReport = function (instructions) {
     return report;
 };
 
-HI.runBuildInstructions = function (appRef, instructions, baseFolder) {
+HI.runBuildInstructions = function (appRef, instructions, baseFolder, targetDoc) {
     var report = HI.makeReport();
     var context = null;
+    var doc = null;
+    var hasPrevRedraw = false;
+    var prevRedraw = true;
+    var hasPrevPreflight = false;
+    var prevPreflight = false;
+    var hasPrevReflow = false;
+    var prevReflow = true;
     try {
-        context = HI.prepareDocument(appRef, instructions, report);
-        context.baseFolder = baseFolder;
-        context.assets = instructions.assets || [];
-        context.styleContext = HI.ensureStyles(context.doc, instructions.styles || {}, report);
-        HI.buildParentPageItems(instructions.document && instructions.document.parentPages || [], context, report);
+        try {
+            if (appRef && appRef.scriptPreferences) {
+                prevRedraw = appRef.scriptPreferences.enableRedraw;
+                hasPrevRedraw = true;
+                appRef.scriptPreferences.enableRedraw = false;
+            }
+        } catch (_) {}
 
-        var pages = instructions.pages || [];
-        for (var i = 0; i < pages.length; i++) {
-            var page = HI.getPageForInstruction(context.doc, pages[i], i, context, report);
-            HI.buildInstructionItems(context.doc, page, pages[i], context, report);
-            HI.applyParentPageItemOverrides(context.doc, page, pages[i], context, report);
+        doc = targetDoc || (HI.resolveTargetDocument ? HI.resolveTargetDocument(appRef, null) : null);
+        if (doc) {
+            try {
+                if (doc.preflightOptions) {
+                    prevPreflight = doc.preflightOptions.preflightOff;
+                    hasPrevPreflight = true;
+                    doc.preflightOptions.preflightOff = true;
+                }
+            } catch (_) {}
+            try {
+                if (doc.textPreferences) {
+                    prevReflow = doc.textPreferences.smartTextReflow;
+                    hasPrevReflow = true;
+                    doc.textPreferences.smartTextReflow = false;
+                }
+            } catch (_) {}
         }
-        HI.removeUnusedDefaultParentPages(context.doc, context.parentPages, report);
 
-        report.pagesRequested = pages.length;
-        report.pageCount = context.doc.pages.length;
-        HI.addMessage(report, "info", "BUILD_DONE", "Build instructions executed", {
-            pagesRequested: report.pagesRequested,
-            pageCount: report.pageCount,
-            textFrames: report.counts.textFrames,
-            graphicFrames: report.counts.graphicFrames,
-            placedAssets: report.counts.placedAssets,
-            missingAssets: report.counts.missingAssets
-        });
-        HI.insertJsonLabel(context.doc, "build_last_result", report);
+        var executeBody = function () {
+            context = HI.prepareDocument(appRef, instructions, report, doc);
+            if (!doc && context && context.doc) {
+                doc = context.doc;
+                try {
+                    if (doc.preflightOptions) {
+                        prevPreflight = doc.preflightOptions.preflightOff;
+                        hasPrevPreflight = true;
+                        doc.preflightOptions.preflightOff = true;
+                    }
+                } catch (_) {}
+                try {
+                    if (doc.textPreferences) {
+                        prevReflow = doc.textPreferences.smartTextReflow;
+                        hasPrevReflow = true;
+                        doc.textPreferences.smartTextReflow = false;
+                    }
+                } catch (_) {}
+            }
+            context.baseFolder = baseFolder;
+            context.assets = instructions.assets || [];
+            context.styleContext = HI.ensureStyles(context.doc, instructions.styles || {}, report);
+            HI.buildParentPageItems(instructions.document && instructions.document.parentPages || [], context, report);
+
+            var pages = instructions.pages || [];
+            for (var i = 0; i < pages.length; i++) {
+                var page = HI.getPageForInstruction(context.doc, pages[i], i, context, report);
+                HI.buildInstructionItems(context.doc, page, pages[i], context, report);
+                HI.applyParentPageItemOverrides(context.doc, page, pages[i], context, report);
+            }
+            HI.removeUnusedDefaultParentPages(context.doc, context.parentPages, report);
+
+            report.pagesRequested = pages.length;
+            report.pageCount = context.doc.pages.length;
+            HI.addMessage(report, "info", "BUILD_DONE", "Build instructions executed", {
+                pagesRequested: report.pagesRequested,
+                pageCount: report.pageCount,
+                textFrames: report.counts.textFrames,
+                graphicFrames: report.counts.graphicFrames,
+                placedAssets: report.counts.placedAssets,
+                missingAssets: report.counts.missingAssets
+            });
+            HI.insertJsonLabel(context.doc, "build_last_result", report);
+        };
+
+        if (appRef && typeof appRef.doScript === "function" && typeof ScriptLanguage !== "undefined" && typeof UndoModes !== "undefined") {
+            appRef.doScript(executeBody, ScriptLanguage.JAVASCRIPT, undefined, UndoModes.FAST_ENTIRE_SCRIPT, "html-indesign build");
+        } else {
+            executeBody();
+        }
     } catch (error) {
         HI.addMessage(report, "error", "EXECUTOR_ERROR", String(error), {});
     } finally {
-        if (context && context.doc) {
-            HI.restoreDocumentPreferences(context.doc, context);
+        var restoreDoc = (context && context.doc) || doc;
+        if (restoreDoc) {
+            if (hasPrevPreflight) {
+                try { restoreDoc.preflightOptions.preflightOff = prevPreflight; } catch (_) {}
+            }
+            if (hasPrevReflow) {
+                try { restoreDoc.textPreferences.smartTextReflow = prevReflow; } catch (_) {}
+            }
+            if (context && context.doc) {
+                HI.restoreDocumentPreferences(context.doc, context);
+            }
+        }
+        if (hasPrevRedraw) {
+            try { appRef.scriptPreferences.enableRedraw = prevRedraw; } catch (_) {}
         }
     }
     return report;

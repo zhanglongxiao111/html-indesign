@@ -16,6 +16,19 @@ const FINISH_FUNCTION = `
     }
 `;
 
+const FIND_MARKED_DOCUMENT_FUNCTION = `
+    function findMarkedDocument(marker) {
+        if (!marker) return app.documents.length > 0 ? app.activeDocument : null;
+        for (var i = 0; i < app.documents.length; i++) {
+            var candidate = app.documents[i];
+            try {
+                if (candidate.extractLabel("html_indesign_e2e_marker") === marker) return candidate;
+            } catch (_) {}
+        }
+        return null;
+    }
+`;
+
 function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-indesign-e2e', targetInddPath = null }) {
   const base = toJsxPath(repoRoot);
   const instructions = toJsxPath(instructionsPath);
@@ -83,9 +96,9 @@ function buildBuildJsx({ repoRoot, instructionsPath, marker = 'html-indesign-ind
     }
 
     try {
-        doc = app.documents.add();
+        doc = app.documents.add(false);
         doc.insertLabel("html_indesign_e2e_marker", marker);
-        var report = HI.runBuildFromInstructions(app, ${JSON.stringify(instructions)});
+        var report = HI.runBuildFromInstructions(app, ${JSON.stringify(instructions)}, doc);
         doc.insertLabel("html_indesign_e2e_report", JSON.stringify(report));
         result.ok = report.ok !== false;
         result.pageCount = doc.pages.length;
@@ -162,7 +175,7 @@ function buildExportJsx({
 ` : `
     result.closed = false;
 `;
-  return `(function () {${FINISH_FUNCTION}
+  return `(function () {${FINISH_FUNCTION}${FIND_MARKED_DOCUMENT_FUNCTION}
     var runDir = ${JSON.stringify(outDir)};
     var result = { ok: true, outputs: {}, counts: {}, errors: [], warnings: [] };
 
@@ -176,9 +189,9 @@ function buildExportJsx({
         return finish(result);
     }
 
-    var doc = app.activeDocument;
     var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
-    if (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker) {
+    var doc = findMarkedDocument(expectedMarker);
+    if (!doc || (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker)) {
         add("error", "ACTIVE_DOCUMENT_MISMATCH", "The active InDesign document does not belong to this build run.");
         return finish(result);
     }
@@ -277,24 +290,26 @@ function buildReverseSnapshotJsx({
 ` : '';
   const closeBlock = closeDocument ? `
     try {
-        if (app.documents.length > 0) app.activeDocument.close(SaveOptions.NO);
+        if (ownedDocument && ownedDocument.isValid !== false) ownedDocument.close(SaveOptions.NO);
+        else if (!expectedMarker && app.documents.length > 0) app.activeDocument.close(SaveOptions.NO);
         result.closed = true;
     } catch (closeError) {
         result.warnings.push({ code: "DOC_CLOSE_FAILED", message: String(closeError) });
         if (result.ok !== false) result.ok = true;
     }
 ` : '';
-  return `(function () {${FINISH_FUNCTION}
+  return `(function () {${FINISH_FUNCTION}${FIND_MARKED_DOCUMENT_FUNCTION}
     var result = { ok: false, outputPath: ${JSON.stringify(output)}, errors: [], warnings: [] };
     var expectedMarker = ${JSON.stringify(expectedMarker ? String(expectedMarker) : '')};
     var ownedDocument = null;
     try {${openBlock}
         if (app.documents.length < 1) throw new Error("NO_ACTIVE_DOCUMENT");
-        ownedDocument = app.activeDocument;
-        if (expectedMarker && ownedDocument.extractLabel("html_indesign_e2e_marker") !== expectedMarker) {
+        ownedDocument = findMarkedDocument(expectedMarker);
+        if (!ownedDocument || (expectedMarker && ownedDocument.extractLabel("html_indesign_e2e_marker") !== expectedMarker)) {
             throw new Error("ACTIVE_DOCUMENT_MISMATCH: The active document does not belong to this build run.");
         }
         app.insertLabel("html_indesign_reverse_output", ${JSON.stringify(output)});
+        app.insertLabel("html_indesign_reverse_marker", expectedMarker);
         var raw = $.evalFile(File(${JSON.stringify(base + "/_indesign_scripts/export_to_html_snapshot.jsx")}));
         if (!raw) throw new Error("Reverse snapshot script returned an empty result.");
         result = JSON.parse(String(raw));
@@ -308,6 +323,7 @@ function buildReverseSnapshotJsx({
         result.errors.push({ code: "REVERSE_SNAPSHOT_FAILED", message: String(error) });
     } finally {
         app.insertLabel("html_indesign_reverse_output", "");
+        app.insertLabel("html_indesign_reverse_marker", "");
         if (result.ok === false && ${closeOnFailure ? 'true' : 'false'} && ownedDocument && expectedMarker) {
             try {
                 if (ownedDocument.isValid !== false && ownedDocument.extractLabel("html_indesign_e2e_marker") === expectedMarker) {
@@ -326,14 +342,15 @@ ${closeBlock}
 
 function buildCloseJsx({ expectedMarker }) {
   const marker = String(expectedMarker || '');
-  return `(function () {${FINISH_FUNCTION}
+  return `(function () {${FINISH_FUNCTION}${FIND_MARKED_DOCUMENT_FUNCTION}
     var result = { ok: false, closed: false, errors: [], warnings: [] };
     if (app.documents.length < 1) {
         result.ok = true;
         return finish(result);
     }
-    var doc = app.activeDocument;
-    if (${JSON.stringify(marker)} && doc.extractLabel("html_indesign_e2e_marker") !== ${JSON.stringify(marker)}) {
+    var expectedMarker = ${JSON.stringify(marker)};
+    var doc = findMarkedDocument(expectedMarker);
+    if (!doc || (expectedMarker && doc.extractLabel("html_indesign_e2e_marker") !== expectedMarker)) {
         result.errors.push({ code: "ACTIVE_DOCUMENT_MISMATCH", message: "Refusing to close a document not created by this build run." });
         return finish(result);
     }
