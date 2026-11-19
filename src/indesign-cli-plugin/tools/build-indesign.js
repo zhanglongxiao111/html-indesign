@@ -232,8 +232,8 @@ async function startBuild(args, context, mode, run) {
   const cleanupScriptPath = path.join(compile.outDir, 'cleanup.jsx');
   const fidelityReportPath = path.join(compile.outDir, FIDELITY_REPORT_NAME);
   const semanticPresetPath = path.join(compile.outDir, 'expected-semantic-preset.json');
-  const exportPdf = args.exportPdf !== false;
-  const exportIdml = args.exportIdml !== false;
+  const exportPdf = args.exportPdf === true;
+  const exportIdml = args.exportIdml === true;
 
   const combinedBuildSnapshot = mode === 'final';
   const combinedBuildExport = mode === 'draft';

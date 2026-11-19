@@ -289,8 +289,8 @@ const schemas = {
         default: 'final',
         description: 'final 会核对真实 InDesign 内容后才导出；draft 跳过该核对，结果明确标记为未验证，不能作为交付成品。',
       },
-      exportPdf: { type: 'boolean', default: true },
-      exportIdml: { type: 'boolean', default: true },
+      exportPdf: { type: 'boolean', default: false },
+      exportIdml: { type: 'boolean', default: false },
       timeout: { type: 'integer', default: 300, minimum: 1 },
       gridTolerance: {
         type: 'number',
