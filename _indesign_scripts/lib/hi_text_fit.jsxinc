@@ -143,36 +143,36 @@ HI.applyTextFitNudge = function (report, frame, item, original, maxGrowX, maxGro
         return !HI.textFrameOverflows(frame);
     }
 
-    if (maxStepsY >= 1) {
-        if (testNudge(0, maxStepsY)) {
-            var loY = 1, hiY = maxStepsY;
-            bestY = maxStepsY;
-            bestX = 0;
-            bestBounds = lastBounds;
-            while (loY < hiY) {
-                var midY = Math.floor((loY + hiY) / 2);
-                if (testNudge(0, midY)) { bestY = midY; bestBounds = lastBounds; hiY = midY; }
-                else { loY = midY + 1; }
-            }
-            resolved = true;
-        } else if (maxStepsX >= 1 && testNudge(maxStepsX, maxStepsY)) {
-            var loY2 = 1, hiY2 = maxStepsY;
-            bestY = maxStepsY;
-            bestX = maxStepsX;
-            bestBounds = lastBounds;
-            while (loY2 < hiY2) {
-                var midY2 = Math.floor((loY2 + hiY2) / 2);
-                if (testNudge(maxStepsX, midY2)) { bestY = midY2; bestBounds = lastBounds; hiY2 = midY2; }
-                else { loY2 = midY2 + 1; }
-            }
-            var loX = 1, hiX = maxStepsX;
-            while (loX < hiX) {
-                var midX = Math.floor((loX + hiX) / 2);
-                if (testNudge(midX, bestY)) { bestX = midX; bestBounds = lastBounds; hiX = midX; }
-                else { loX = midX + 1; }
-            }
-            resolved = true;
+    if (maxStepsY >= 1 && testNudge(maxStepsX, maxStepsY)) {
+        // Preserve minimum-height-first ordering (same lexicographic minimum (growY, growX)
+        // as the nested growY-outer / growX-inner loop):
+        // 1) Binary search minimum feasible growY in [1..maxStepsY] using full allowed width maxStepsX.
+        var loY = 1, hiY = maxStepsY;
+        bestY = maxStepsY;
+        bestX = maxStepsX;
+        while (loY < hiY) {
+            var midY = Math.floor((loY + hiY) / 2);
+            if (testNudge(maxStepsX, midY)) { bestY = midY; hiY = midY; }
+            else { loY = midY + 1; }
         }
+        // 2) At that minimum feasible bestY, binary search minimum feasible growX in [0..maxStepsX].
+        if (maxStepsX >= 1) {
+            if (testNudge(0, bestY)) {
+                bestX = 0;
+            } else {
+                var loX = 1, hiX = maxStepsX;
+                bestX = maxStepsX;
+                while (loX < hiX) {
+                    var midX = Math.floor((loX + hiX) / 2);
+                    if (testNudge(midX, bestY)) { bestX = midX; hiX = midX; }
+                    else { loX = midX + 1; }
+                }
+            }
+        } else {
+            bestX = 0;
+        }
+        bestBounds = HI.textFitNudgeBounds(original, bestX * step, bestY * step);
+        resolved = true;
     }
 
     if (resolved) {

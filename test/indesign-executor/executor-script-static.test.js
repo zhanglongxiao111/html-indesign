@@ -764,10 +764,42 @@ test('text fit binary search converges to minimal 0.5mm step in <= 8 iterations 
     0.25,
   );
   assert.equal(nudgeOk, true);
-  assert.ok(nudgeWrites <= 8, `expected <= 8 nudge writes, got ${nudgeWrites}`);
+  assert.ok(nudgeWrites <= 10, `expected <= 10 nudge writes, got ${nudgeWrites}`);
   assert.equal(nudgeReport.messages[0].code, 'TEXT_FIT_NUDGE_APPLIED');
   assert.equal(nudgeReport.messages[0].details.growY, 4.5);
   assert.equal(nudgeReport.messages[0].details.growX, 0);
+
+  // 2b) Mixed width+height candidate beats taller height-only candidate (minimum-height-first ordering)
+  let mixedWrites = 0;
+  let mixedBounds = [10, 20, 30, 120];
+  const mixedFrame = {
+    get geometricBounds() { return mixedBounds; },
+    set geometricBounds(b) { mixedWrites += 1; mixedBounds = b; },
+    get overflows() {
+      const growX = (mixedBounds[3] - mixedBounds[1]) - 100;
+      const growY = (mixedBounds[2] - mixedBounds[0]) - 20;
+      // Height-only resolves at growY >= 5, whereas adding 0.5mm width eliminates a wrapped line so growY = 0.5 suffices.
+      const heightOnlyFits = growY >= 5 - 1e-6;
+      const mixedFits = growX >= 0.5 - 1e-6 && growY >= 0.5 - 1e-6;
+      return !(heightOnlyFits || mixedFits);
+    },
+  };
+  const mixedReport = { messages: [] };
+  const mixedOk = context.HI.applyTextFitNudge(
+    mixedReport,
+    mixedFrame,
+    { id: 't2b', textFit: {} },
+    [10, 20, 30, 120],
+    8,
+    8,
+    0.25,
+  );
+  assert.equal(mixedOk, true);
+  assert.ok(mixedWrites <= 12, `expected <= 12 mixed nudge writes, got ${mixedWrites}`);
+  assert.equal(mixedReport.messages[0].code, 'TEXT_FIT_NUDGE_APPLIED');
+  assert.equal(mixedReport.messages[0].details.growX, 0.5);
+  assert.equal(mixedReport.messages[0].details.growY, 0.5);
+  assert.deepEqual(JSON.parse(JSON.stringify(mixedBounds)), [10, 20, 30.5, 120.5]);
 
   // 3) Unresolvable nudge fails fast (<= 3 writes including restore) instead of 272
   let failWrites = 0;

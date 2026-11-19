@@ -486,6 +486,42 @@ test('reverseTextRuns and reverseTableCellRuns via textStyleRanges match charact
   assert.deepEqual(cellRunsFromRanges, cellRunsFromChars);
 });
 
+test('reverseTextRuns and reverseTableCellRuns preserve literal enum-like text in textStyleRanges while decoding single special-character enumerators', () => {
+  const context = loadFullReverseContext();
+  const { HI } = context;
+  const styleA = { font: 'Inter\tRegular', pointSize: 12, leading: 16, color: [20, 20, 20], tracking: 0 };
+
+  const literalSentence = makeStyledSegment('Use EM_DASH and COPYRIGHT_SYMBOL here', styleA);
+  const literalIdentifier = {
+    ...makeStyledSegment('EM_DASH', styleA),
+    characters: { length: 7 },
+  };
+  const enumSpecialChar = {
+    ...makeStyledSegment('', styleA),
+    contents: { toString: () => 'EM_DASH' },
+  };
+  const singleCharEnumString = {
+    ...makeStyledSegment('COPYRIGHT_SYMBOL', styleA),
+    characters: { length: 1 },
+  };
+
+  const textFrame = {
+    paragraphs: [{}],
+    contents: 'Use EM_DASH and COPYRIGHT_SYMBOL here',
+    textStyleRanges: [literalSentence, literalIdentifier, enumSpecialChar, singleCharEnumString],
+  };
+  const textRuns = JSON.parse(JSON.stringify(HI.reverseTextRuns(textFrame)));
+  assert.equal(textRuns.length, 1);
+  assert.equal(textRuns[0].text, 'Use EM_DASH and COPYRIGHT_SYMBOL hereEM_DASH—©');
+
+  const cell = {
+    textStyleRanges: [literalSentence, literalIdentifier, enumSpecialChar, singleCharEnumString],
+  };
+  const cellRuns = JSON.parse(JSON.stringify(HI.reverseTableCellRuns(cell)));
+  assert.equal(cellRuns.length, 1);
+  assert.equal(cellRuns[0].text, 'Use EM_DASH and COPYRIGHT_SYMBOL hereEM_DASH—©');
+});
+
 test('reversePage serializes each item.id once, reuses styles in reverseInlineStyle, and preserves items/auditItems zIndex', () => {
   const context = loadFullReverseContext();
   const { HI } = context;
