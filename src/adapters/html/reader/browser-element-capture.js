@@ -88,13 +88,45 @@
     return Array.from(el.children || []).filter((child) => !child.hasAttribute(dataId.IGNORE));
   }
 
+  const candidateLookupCache = new WeakMap();
+
+  function getCandidateLookup(candidates) {
+    if (!Array.isArray(candidates)) return null;
+    const cached = candidateLookupCache.get(candidates);
+    if (cached && cached.length === candidates.length) return cached;
+    const indexMap = new Map();
+    const descendantsMap = new Map();
+    for (let i = 0; i < candidates.length; i += 1) {
+      const candidate = candidates[i];
+      if (!indexMap.has(candidate)) indexMap.set(candidate, i);
+      let parent = candidate && candidate.parentElement;
+      while (parent) {
+        let list = descendantsMap.get(parent);
+        if (!list) {
+          list = [];
+          descendantsMap.set(parent, list);
+        }
+        list.push(candidate);
+        parent = parent.parentElement;
+      }
+    }
+    const lookup = {
+      length: candidates.length,
+      indexMap,
+      descendantsMap,
+    };
+    candidateLookupCache.set(candidates, lookup);
+    return lookup;
+  }
+
   function trimmedTextWithHardBreaks(el, candidates) {
     if (isParagraphTextFrame(el)) {
       return textFrameParagraphs(el)
         .map((paragraph) => trimmedTextWithHardBreaks(paragraph, candidates))
         .join(PARAGRAPH_SEPARATOR);
     }
-    const excludedElements = new Set(candidateDescendantsFor(el, candidates));
+    const lookup = getCandidateLookup(candidates);
+    const excludedElements = lookup ? lookup.indexMap : null;
     return textWithHardBreaks(el, HARD_BREAK_TOKEN, excludedElements, el)
       .trim()
       .replace(/[ \t]*\u0000[ \t]*/g, '\n');
@@ -163,7 +195,8 @@
     if (descendants.length) {
       if (!descendants.every(isInlineSourceCandidate)) return null;
       if (!Array.from(el.querySelectorAll('*')).every(isInlineSourceElement)) return null;
-      if (!candidates.includes(el) && trimmedTextWithHardBreaks(el, candidates) !== '') return null;
+      const lookup = getCandidateLookup(candidates);
+      if ((!lookup || !lookup.indexMap.has(el)) && trimmedTextWithHardBreaks(el, candidates) !== '') return null;
     }
     const html = String(el.innerHTML || '');
     if (!html) return null;
@@ -644,17 +677,30 @@
 
   function collectUncapturedTextElements(pageEl, candidates) {
     const dataId = dataIdAttributes();
+    const lookup = getCandidateLookup(candidates);
+    const textCoveringCandidates = new Set();
+    if (Array.isArray(candidates)) {
+      const candidateMembership = lookup ? lookup.indexMap : candidates;
+      for (let i = 0; i < candidates.length; i += 1) {
+        const candidate = candidates[i];
+        if (candidateCoversText(candidate, candidateMembership, dataId)) {
+          textCoveringCandidates.add(candidate);
+        }
+      }
+    }
     return Array.from(pageEl.querySelectorAll('*')).filter((el) => {
       const tagName = String(el.tagName || '').toLowerCase();
       if (['script', 'style', 'template', 'noscript'].includes(tagName)) return false;
       if (el.closest(`[${dataId.IGNORE}]`)) return false;
       if (!directText(el)) return false;
-      if (candidateCoversText(el, candidates, dataId)) return false;
-      return !candidates.some((candidate) => (
-        candidate !== el
-          && candidate.contains(el)
-          && candidateCoversText(candidate, candidates, dataId)
-      ));
+      if (textCoveringCandidates.has(el)) return false;
+      let parent = el.parentElement;
+      while (parent) {
+        if (textCoveringCandidates.has(parent)) return false;
+        if (parent === pageEl) break;
+        parent = parent.parentElement;
+      }
+      return true;
     }).map((el) => ({
       id: el.id || el.getAttribute('data-id') || null,
       tagName: el.tagName.toLowerCase(),
@@ -663,8 +709,11 @@
     }));
   }
 
-  function candidateCoversText(el, candidates, dataId) {
-    if (!candidates.includes(el)) return false;
+  function candidateCoversText(el, candidatesOrCollection, dataId) {
+    const isCandidate = candidatesOrCollection && typeof candidatesOrCollection.has === 'function'
+      ? candidatesOrCollection.has(el)
+      : Array.isArray(candidatesOrCollection) && candidatesOrCollection.includes(el);
+    if (!isCandidate) return false;
     const tagName = String(el.tagName || '').toLowerCase();
     if (isTextTag(tagName) || isNaturalTextElement(el) || tagName === 'table' || tagName === 'svg') return true;
     if (el.hasAttribute(dataId.PARAGRAPH_STYLE)) return true;
@@ -681,7 +730,8 @@
 
   function candidateDescendantsFor(el, candidates) {
     if (!el || !Array.isArray(candidates)) return [];
-    return candidates.filter((candidate) => candidate !== el && el.contains(candidate));
+    const lookup = getCandidateLookup(candidates);
+    return lookup ? (lookup.descendantsMap.get(el) || []) : [];
   }
 
   function isRedundantTextContainer(el, candidates) {
@@ -748,10 +798,12 @@
 
   function ancestorCandidateIndexes(el, candidates, pageEl) {
     const out = [];
+    const lookup = getCandidateLookup(candidates);
+    const indexMap = lookup ? lookup.indexMap : null;
     let parent = el.parentElement;
     while (parent && parent !== pageEl) {
-      const index = candidates.indexOf(parent);
-      if (index >= 0) out.push(index);
+      const index = indexMap ? indexMap.get(parent) : undefined;
+      if (index !== undefined) out.push(index);
       parent = parent.parentElement;
     }
     return out;
@@ -759,10 +811,12 @@
 
   function ancestorCandidateIds(el, candidates, pageIndex, pageEl) {
     const out = [];
+    const lookup = getCandidateLookup(candidates);
+    const indexMap = lookup ? lookup.indexMap : null;
     let parent = el.parentElement;
     while (parent && parent !== pageEl) {
-      const index = candidates.indexOf(parent);
-      if (index >= 0) out.push(itemIdFor(parent, visualFrameFor(parent), pageIndex, index));
+      const index = indexMap ? indexMap.get(parent) : undefined;
+      if (index !== undefined) out.push(itemIdFor(parent, visualFrameFor(parent), pageIndex, index));
       parent = parent.parentElement;
     }
     return out;
@@ -770,9 +824,11 @@
 
   function sourceAncestorNodes(el, pageEl, candidates) {
     const out = [];
+    const lookup = getCandidateLookup(candidates);
+    const indexMap = lookup ? lookup.indexMap : null;
     let parent = el.parentElement;
     while (parent && parent !== pageEl) {
-      if (!candidates.includes(parent)) {
+      if (!indexMap || !indexMap.has(parent)) {
         const sourceHtml = sourceHtmlFor(parent, candidates);
         out.unshift(sourceNodeFor(parent, pageEl, sourceHtml == null ? null : { sourceHtml }));
       }
@@ -802,9 +858,11 @@
   // token 取 run 的 class 或 data-id-character-style；字符样式只定义这条规则写了的属性，其余是局部格式。
   function inlineRunsFor(el, candidates, styleRules) {
     const dataId = dataIdAttributes();
+    const lookup = getCandidateLookup(candidates);
+    const indexMap = lookup ? lookup.indexMap : null;
     const inlineSelector = `span,strong,b,em,i,mark,sup,sub,[${dataId.CHARACTER_STYLE}]`;
     const inlineEls = Array.from(el.querySelectorAll(inlineSelector))
-      .filter((runEl) => !Array.isArray(candidates) || !candidates.includes(runEl));
+      .filter((runEl) => !indexMap || !indexMap.has(runEl));
     return inlineEls.map((runEl) => {
       const run = {
         text: trimmedTextWithHardBreaks(runEl),

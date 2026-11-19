@@ -11,19 +11,25 @@ const DEFAULT_PRESENTATION_SIZE = Object.freeze({ width: 1600, height: 900 });
 
 // options.width/height：显式页面尺寸（优先）；否则取 deck.config.json 的 presentation.width/height；
 // 再否则用 DEFAULT_PRESENTATION_SIZE。options.writeOptions 透传给原子写（测试注入 fs/sleep）。
+// options.sourcePackage / options.stylesHtml / options.pagesHtml：复用内存中的组装结果，避免重复读盘。
 function writeRevealPresentation(configPath, options = {}) {
-  const sourcePackage = readAuthorPackage(configPath);
-  copyRevealAssets(sourcePackage.rootDir);
+  const fileSystem = (options.writeOptions && options.writeOptions.fs) || fs;
+  const sourcePackage = options.sourcePackage || readAuthorPackage(configPath);
+  copyRevealAssets(sourcePackage.rootDir, fileSystem);
 
-  const styles = sourcePackage.styleFiles
-    .map((file) => {
-      const css = fs.readFileSync(file.filePath, 'utf8');
-      return `<style data-source-file="${attr(file.relativePath)}">\n${css.trimEnd()}\n</style>`;
-    })
-    .join('\n');
-  const pages = sourcePackage.pageFiles
-    .map((file) => addSourceFileAttribute(fs.readFileSync(file.filePath, 'utf8'), file.relativePath))
-    .join('\n\n');
+  const styles = typeof options.stylesHtml === 'string'
+    ? options.stylesHtml
+    : sourcePackage.styleFiles
+      .map((file) => {
+        const css = fileSystem.readFileSync(file.filePath, 'utf8');
+        return `<style data-source-file="${attr(file.relativePath)}">\n${css.trimEnd()}\n</style>`;
+      })
+      .join('\n');
+  const pages = typeof options.pagesHtml === 'string'
+    ? options.pagesHtml
+    : sourcePackage.pageFiles
+      .map((file) => addSourceFileAttribute(fileSystem.readFileSync(file.filePath, 'utf8'), file.relativePath))
+      .join('\n\n');
   const title = sourcePackage.config.title || sourcePackage.config.id;
   const size = resolveWriterSize(sourcePackage.config, options);
   const { width, height } = size;
@@ -67,8 +73,28 @@ function writeRevealPresentation(configPath, options = {}) {
     '',
   ].join('\n');
 
-  writeFileAtomicSync(presentationPath, html, authorEntryWriteOptions(options.writeOptions));
-  return { path: presentationPath, width, height, sizeSource: size.source };
+  const unchanged = hasIdenticalPresentationContent(presentationPath, html, options.existingHtmlBuffer, fileSystem);
+  if (!unchanged) {
+    writeFileAtomicSync(presentationPath, html, authorEntryWriteOptions(options.writeOptions));
+  }
+  return { path: presentationPath, width, height, sizeSource: size.source, unchanged };
+}
+
+function hasIdenticalPresentationContent(presentationPath, html, existingHtmlBuffer, fileSystem) {
+  const expected = Buffer.from(html, 'utf8');
+  if (existingHtmlBuffer != null) {
+    const existing = Buffer.isBuffer(existingHtmlBuffer)
+      ? existingHtmlBuffer
+      : Buffer.from(String(existingHtmlBuffer), 'utf8');
+    return existing.equals(expected);
+  }
+  try {
+    const existing = fileSystem.readFileSync(presentationPath);
+    const existingBuf = Buffer.isBuffer(existing) ? existing : Buffer.from(String(existing), 'utf8');
+    return existingBuf.equals(expected);
+  } catch (_error) {
+    return false;
+  }
 }
 
 function presentationPathFor(rootDir) {
@@ -107,12 +133,28 @@ function sizeFrom(value) {
   return width && height ? { width, height } : null;
 }
 
-function copyRevealAssets(rootDir) {
+function copyRevealAssets(rootDir, fileSystem = fs) {
   const distDir = path.dirname(require.resolve('reveal.js'));
   const targetDir = path.join(rootDir, 'vendor', 'reveal');
-  fs.mkdirSync(targetDir, { recursive: true });
+  if (!fileSystem.existsSync(targetDir)) {
+    fileSystem.mkdirSync(targetDir, { recursive: true });
+  }
   for (const file of ['reset.css', 'reveal.css', 'reveal.js']) {
-    fs.copyFileSync(path.join(distDir, file), path.join(targetDir, file));
+    const sourcePath = path.join(distDir, file);
+    const targetPath = path.join(targetDir, file);
+    if (isSameFileSize(sourcePath, targetPath, fileSystem)) continue;
+    fileSystem.copyFileSync(sourcePath, targetPath);
+  }
+}
+
+function isSameFileSize(sourcePath, targetPath, fileSystem) {
+  try {
+    const targetStat = fileSystem.statSync(targetPath);
+    if (!targetStat.isFile()) return false;
+    const sourceStat = fileSystem.statSync(sourcePath);
+    return targetStat.size === sourceStat.size;
+  } catch (_error) {
+    return false;
   }
 }
 

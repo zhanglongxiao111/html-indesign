@@ -118,6 +118,11 @@ test('assembly removes presentation.html and says so when the rewrite fails', ()
   const root = makePackageFixture();
   const configPath = path.join(root, 'deck.config.json');
   writeRevealPresentation(configPath, { width: 1920, height: 1080 });
+  fs.writeFileSync(
+    path.join(root, 'pages/01-agenda.html'),
+    '<section class="page" data-page="agenda" id="agenda-page"><h2 data-id-object>Stale trigger</h2></section>\n',
+    'utf8'
+  );
   const failing = renameFailingFor('presentation.html', 'ENOSPC');
 
   const result = writeAuthorPackageEntry(configPath, { writeOptions: { fs: failing.fs, ...NO_WAIT } });
@@ -134,6 +139,11 @@ test('assembly fails loudly when a stale presentation.html can be neither rewrit
   const root = makePackageFixture();
   const configPath = path.join(root, 'deck.config.json');
   writeRevealPresentation(configPath, { width: 1920, height: 1080 });
+  fs.writeFileSync(
+    path.join(root, 'pages/01-agenda.html'),
+    '<section class="page" data-page="agenda" id="agenda-page"><h2 data-id-object>Stale locked</h2></section>\n',
+    'utf8'
+  );
   const presentationPath = path.join(root, 'presentation.html');
   const locked = renameFailingFor('presentation.html', 'EBUSY');
   const lockedFs = {
@@ -202,6 +212,106 @@ test('assembly reports AUTHOR_ENTRY_WRITE_BUSY with hint when deck.html stays lo
   assert.equal(locked.calls.rename, 6);
   assert.equal(fs.readFileSync(path.join(root, 'deck.html'), 'utf8'), before);
   assert.deepEqual(tempLeftovers(root), []);
+});
+
+test('second assembly without changes skips rewriting deck.html, presentation.html and unchanged vendor/reveal assets', () => {
+  const root = makePackageFixture();
+  const configPath = path.join(root, 'deck.config.json');
+  writeAuthorPackageEntry(configPath);
+  writeRevealPresentation(configPath, { width: 1920, height: 1080 });
+
+  const calls = {
+    write: [],
+    rename: [],
+    copy: [],
+    readDuringSync: [],
+  };
+  const spyFs = {
+    ...fs,
+    readFileSync(filePath, encoding) {
+      calls.readDuringSync.push(path.resolve(filePath));
+      return fs.readFileSync(filePath, encoding);
+    },
+    writeFileSync(filePath, data, encoding) {
+      calls.write.push(path.resolve(filePath));
+      return fs.writeFileSync(filePath, data, encoding);
+    },
+    renameSync(from, to) {
+      calls.rename.push(path.resolve(to));
+      return fs.renameSync(from, to);
+    },
+    copyFileSync(src, dest) {
+      calls.copy.push(path.resolve(dest));
+      return fs.copyFileSync(src, dest);
+    },
+  };
+
+  const result = writeAuthorPackageEntry(configPath, { writeOptions: { fs: spyFs, ...NO_WAIT } });
+
+  assert.equal(result.entryPath, path.join(root, 'deck.html'));
+  assert.equal(result.presentation.status, 'unchanged');
+  assert.equal(result.presentation.width, 1920);
+  assert.equal(result.presentation.height, 1080);
+  assert.equal(result.presentation.sizeSource, 'existing-presentation');
+  assert.deepEqual(calls.write, []);
+  assert.deepEqual(calls.rename, []);
+  assert.deepEqual(calls.copy, []);
+  // writeRevealPresentation should reuse in-memory sourcePackage/styles/pages, never re-reading styles or pages via spyFs
+  assert.equal(calls.readDuringSync.some((p) => p.endsWith('tokens.css') || p.endsWith('00-cover.html') || p.endsWith('01-agenda.html')), false);
+  assert.equal(checkAuthorPackageEntry(configPath).ok, true);
+  assert.deepEqual(tempLeftovers(root), []);
+});
+
+test('assembly only recopies vendor/reveal assets whose size changed or are missing', () => {
+  const root = makePackageFixture();
+  const configPath = path.join(root, 'deck.config.json');
+  writeRevealPresentation(configPath, { width: 1920, height: 1080 });
+  const resetCssPath = path.join(root, 'vendor/reveal/reset.css');
+  fs.writeFileSync(resetCssPath, '/* truncated */', 'utf8');
+
+  const copied = [];
+  const spyFs = {
+    ...fs,
+    copyFileSync(src, dest) {
+      copied.push(path.basename(dest));
+      return fs.copyFileSync(src, dest);
+    },
+  };
+
+  writeAuthorPackageEntry(configPath, { writeOptions: { fs: spyFs, ...NO_WAIT } });
+
+  assert.deepEqual(copied, ['reset.css']);
+  const distResetSize = fs.statSync(path.join(path.dirname(require.resolve('reveal.js')), 'reset.css')).size;
+  assert.equal(fs.statSync(resetCssPath).size, distResetSize);
+});
+
+test('in-memory reveal presentation sync produces byte-identical HTML to disk-read writeRevealPresentation', () => {
+  const rootA = makePackageFixture();
+  const rootB = makePackageFixture();
+  const configA = path.join(rootA, 'deck.config.json');
+  const configB = path.join(rootB, 'deck.config.json');
+
+  writeRevealPresentation(configA, { width: 1920, height: 1080 });
+  fs.writeFileSync(
+    path.join(rootA, 'pages/01-agenda.html'),
+    '<section class="page" data-page="agenda" id="agenda-page"><h2 data-id-object>Updated</h2></section>\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(rootB, 'pages/01-agenda.html'),
+    '<section class="page" data-page="agenda" id="agenda-page"><h2 data-id-object>Updated</h2></section>\n',
+    'utf8'
+  );
+
+  // rootA rewrites presentation.html via writeAuthorPackageEntry (reusing in-memory sourcePackage/fragments)
+  writeAuthorPackageEntry(configA);
+  // rootB writes presentation.html directly from disk
+  writeRevealPresentation(configB, { width: 1920, height: 1080 });
+
+  assert.equal(
+    fs.readFileSync(path.join(rootA, 'presentation.html'), 'utf8'),
+    fs.readFileSync(path.join(rootB, 'presentation.html'), 'utf8'),
+  );
 });
 
 function makePackageFixture(extraConfig = {}) {

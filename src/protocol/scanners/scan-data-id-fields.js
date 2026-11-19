@@ -3,6 +3,7 @@ function scanDataIdFields(html) {
     return [];
   }
 
+  const lowerHtml = html.toLowerCase();
   const attrs = [];
   const seen = new Set();
   let index = 0;
@@ -31,7 +32,7 @@ function scanDataIdFields(html) {
 
     const tag = scanStartTag(html, tagStart + 1, attrs, seen);
     index = isRawTextElement(tag.name)
-      ? skipRawTextElement(html, tag.index, tag.name)
+      ? skipRawTextElement(html, lowerHtml, tag.index, tag.name)
       : tag.index;
   }
 
@@ -163,9 +164,8 @@ function isRawTextElement(tagName) {
     || tagName === 'title';
 }
 
-function skipRawTextElement(html, index, tagName) {
+function skipRawTextElement(html, lowerHtml, index, tagName) {
   const closePattern = `</${tagName}`;
-  const lowerHtml = html.toLowerCase();
   let searchFrom = index;
 
   while (searchFrom < html.length) {
