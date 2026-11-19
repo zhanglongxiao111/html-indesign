@@ -1724,5 +1724,6 @@ test('plugin entry --stdio-session serves multiple JSON-RPC requests in one proc
   assert.equal(res1.id, 'req-1');
   assert.equal(res1.result.plugin.id, 'html-indesign');
   assert.equal(res2.id, 'req-2');
+  assert.equal(res2.result.inputSchema.properties.exportPdf.default, false);
   assert.equal(res2.result.inputSchema.properties.exportIdml.default, false);
 });
