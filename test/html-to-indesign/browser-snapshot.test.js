@@ -1010,3 +1010,117 @@ test('renderSnapshot takes a table frame from its data-id-ignore wrapper and cap
   assert.equal(table.table[0].authoredHeight, '14.83px');
   assert.equal(Object.prototype.hasOwnProperty.call(table.table[1], 'authoredHeight'), false);
 });
+
+test('renderSnapshot navigates local file:// with waitUntil load and injects snapshot scripts in one addScriptTag call', async () => {
+  const htmlPath = path.resolve(__dirname, '../fixtures/fixed-html/basic-deck.html');
+  const gotoCalls = [];
+  const addScriptTagCalls = [];
+  let closed = false;
+
+  const fakePage = {
+    async goto(url, opts) {
+      gotoCalls.push({ url, opts });
+    },
+    async addScriptTag(opts) {
+      addScriptTagCalls.push(opts);
+    },
+    async evaluate(fn, arg) {
+      if (arg !== undefined) {
+        return {
+          sourcePackageInput: {
+            attributes: {},
+            title: 'Mock',
+            styleFiles: [],
+            pageFiles: [],
+            parentPages: [],
+            layers: [],
+            compositeFonts: [],
+            assetRoot: 'assets',
+          },
+          pages: [{
+            id: 'page-1',
+            index: 0,
+            classList: ['page'],
+            attributes: {},
+            rectPx: { x: 0, y: 0, width: 800, height: 450 },
+            computedStyle: {},
+            authoredStyle: {},
+            items: [],
+          }],
+        };
+      }
+      return undefined;
+    },
+  };
+
+  const snapshot = await renderSnapshot({
+    htmlPath,
+    launchBrowser: async () => ({
+      async newPage() {
+        return fakePage;
+      },
+      async close() {
+        closed = true;
+      },
+    }),
+  });
+
+  assert.equal(closed, true);
+  assert.equal(gotoCalls.length, 1);
+  assert.equal(gotoCalls[0].url.startsWith('file:///'), true);
+  assert.deepEqual(gotoCalls[0].opts, { waitUntil: 'load' });
+  assert.equal(addScriptTagCalls.length, 1);
+  assert.equal(typeof addScriptTagCalls[0].content, 'string');
+  assert.match(addScriptTagCalls[0].content, /htmlIndesignDataIdAttributes/);
+  assert.match(addScriptTagCalls[0].content, /htmlIndesignBrowserStyleCapture/);
+  assert.match(addScriptTagCalls[0].content, /htmlIndesignBrowserPseudoMaterialize/);
+  assert.match(addScriptTagCalls[0].content, /htmlIndesignBrowserElementCapture/);
+  assert.match(addScriptTagCalls[0].content, /htmlIndesignBrowserSnapshotCapture/);
+  assert.equal(snapshot.pages.length, 1);
+});
+
+test('renderSnapshot bucketed style rules preserve stylesheet order, ruleStyle reuse and styleClassRules', async () => {
+  const outDir = path.resolve('test/workspace/browser-bucketed-style-rules');
+  fs.rmSync(outDir, { recursive: true, force: true });
+  fs.mkdirSync(outDir, { recursive: true });
+  const htmlPath = path.join(outDir, 'deck.html');
+  fs.writeFileSync(htmlPath, `<!doctype html>
+<style>
+  .page { position: relative; width: 800px; height: 450px; }
+  * { letter-spacing: 0.5px; }
+  p { color: #111111; font-size: 14px; }
+  .pstyle-body { font-size: 16px; line-height: 24px; }
+  section.page > div.box .pstyle-body { color: #222222; }
+  [data-id-paragraph-style="body"] { opacity: 0.9; }
+  #hero-copy, .other { margin-top: 8px; }
+  .cstyle-accent { color: #cc0000; font-weight: 700; }
+</style>
+<section class="page" id="page-1">
+  <div class="box">
+    <p id="hero-copy" class="pstyle-body" data-id-paragraph-style="body" style="color: #333333; left: 20px;">正文<span class="cstyle-accent" data-id-character-style="accent">强调</span></p>
+  </div>
+</section>`, 'utf8');
+
+  const snapshot = await renderSnapshot({ htmlPath });
+  const item = snapshot.pages[0].items.find((entry) => entry.id === 'hero-copy');
+
+  assert.ok(item);
+  // ruleStyle keeps stylesheet declarations without inline overrides
+  assert.equal(item.ruleStyle.letterSpacing, '0.5px');
+  assert.equal(item.ruleStyle.fontSize, '16px');
+  assert.equal(item.ruleStyle.lineHeight, '24px');
+  assert.equal(item.ruleStyle.color, 'rgb(34, 34, 34)');
+  assert.equal(item.ruleStyle.opacity, '0.9');
+  assert.equal(item.ruleStyle.marginTop, '8px');
+  assert.equal(item.ruleStyle.left, '');
+  // authoredStyle layers inline overrides on top of ruleStyle without mutating ruleStyle
+  assert.equal(item.authoredStyle.color, 'rgb(51, 51, 51)');
+  assert.equal(item.authoredStyle.left, '20px');
+  assert.equal(item.authoredStyle.fontSize, '16px');
+  assert.equal(item.authoredStyle.marginTop, '8px');
+  // styleClassRules reads single-class pstyle-/cstyle- rules accurately
+  assert.equal(item.styleClassRules.paragraph.fontSize, '16px');
+  assert.equal(item.styleClassRules.paragraph.lineHeight, '24px');
+  assert.equal(item.runs.length, 1);
+  assert.equal(item.runs[0].styleClassRules.character.fontWeight, '700');
+});

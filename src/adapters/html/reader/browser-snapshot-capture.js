@@ -131,23 +131,25 @@
     const elements = elementApi();
     const styles = styleApi();
     const frameEl = elements.visualFrameFor(el);
+    const sameFrame = frameEl === el;
     const itemStyle = styles.styleObject(el);
-    const frameStyle = styles.styleObject(frameEl);
-    const itemAuthoredStyle = styles.authoredStyleObject(el, styleRules);
-    const frameAuthoredStyle = styles.authoredStyleObject(frameEl, styleRules);
+    const frameStyle = sameFrame ? itemStyle : styles.styleObject(frameEl);
     const itemRuleStyle = styles.ruleStyleObject(el, styleRules);
+    const itemAuthoredStyle = styles.authoredStyleObject(el, styleRules, itemRuleStyle);
+    const frameAuthoredStyle = sameFrame ? itemAuthoredStyle : styles.authoredStyleObject(frameEl, styleRules);
     const itemStyleClassRules = styles.styleClassRuleObjects(el, styleRules);
     const itemAttrs = elements.attrs(el);
-    const frameAttrs = elements.attrs(frameEl);
+    const frameAttrs = sameFrame ? itemAttrs : elements.attrs(frameEl);
+    const itemClassList = elements.classList(el);
     const previewNode = elements.sourcePreviewNodeFor(el, frameEl, pageEl);
     return {
       id: elements.itemIdFor(el, frameEl, pageIndex, itemIndex),
       tagName: el.tagName.toLowerCase(),
       naturalTextElement: elements.isNaturalTextElement(el),
-      classList: elements.mergeClassList(elements.classList(el), elements.classList(frameEl)),
+      classList: sameFrame ? itemClassList : elements.mergeClassList(itemClassList, elements.classList(frameEl)),
       attributes: elements.mergeFrameAttributes(itemAttrs, frameAttrs),
       sourceNode: elements.sourceNodeFor(el, pageEl, {
-        classList: elements.classList(el),
+        classList: itemClassList,
         attributes: itemAttrs,
         previewNode,
         sourceHtml: elements.sourceHtmlFor(el, candidates),
@@ -159,8 +161,8 @@
       vectorElements: elements.vectorElementsFor(el),
       rectPx: elements.rectObject(frameEl.getBoundingClientRect()),
       text: elements.trimmedTextWithHardBreaks(el, candidates),
-      computedStyle: styles.mergeVisualFrameStyle(itemStyle, frameStyle),
-      authoredStyle: frameEl === el
+      computedStyle: sameFrame ? itemStyle : styles.mergeVisualFrameStyle(itemStyle, frameStyle),
+      authoredStyle: sameFrame
         ? itemAuthoredStyle
         : styles.withVisualFrameGeometry(styles.mergeVisualFrameStyle(itemAuthoredStyle, frameAuthoredStyle), frameAuthoredStyle),
       ruleStyle: itemRuleStyle,

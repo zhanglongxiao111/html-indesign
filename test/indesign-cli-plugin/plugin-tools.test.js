@@ -1035,27 +1035,24 @@ test('html.build_indesign draft mode success reports staged timing and task-size
   });
   assert.equal(callResponse.status, 'requires_host_actions');
   assert.equal(callResponse.state.stage, 'build');
-
-  const afterBuild = callPlugin('tools/resume', {
-    state: callResponse.state,
-    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
-  });
-  assert.equal(afterBuild.status, 'requires_host_actions');
-  assert.equal(afterBuild.state.stage, 'export');
-
-  const afterExport = callPlugin('tools/resume', {
-    state: afterBuild.state,
-    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
-  });
-  assert.equal(afterExport.status, 'requires_host_actions');
-  assert.equal(afterExport.state.stage, 'verify');
+  assert.equal(callResponse.state.combinedBuildExport, true);
+  assert.deepEqual(callResponse.actions.map((action) => action.id), ['html-build-script']);
 
   fs.writeFileSync(path.join(absoluteOutDir, 'metrics-draft.indd'), 'fake');
   fs.writeFileSync(path.join(absoluteOutDir, 'metrics-draft.pdf'), 'fake');
   fs.writeFileSync(path.join(absoluteOutDir, 'metrics-draft.idml'), 'fake');
 
+  // draft mode merges build + export into one script.run and jumps directly to verify.
+  const afterBuild = callPlugin('tools/resume', {
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true, buildMs: 120, exportMs: 35 } }],
+  });
+  assert.equal(afterBuild.status, 'requires_host_actions');
+  assert.equal(afterBuild.state.stage, 'verify');
+  assert.deepEqual(afterBuild.actions.map((action) => action.id), ['html-export-verify']);
+
   const response = callPlugin('tools/resume', {
-    state: afterExport.state,
+    state: afterBuild.state,
     host_results: [{ id: 'html-export-verify', status: 'complete', data: { ok: true } }],
   });
 
@@ -1096,14 +1093,9 @@ test('html.build_indesign final mode fidelity-gate failure reports failed stage 
   });
   assert.equal(callResponse.status, 'requires_host_actions');
   assert.equal(callResponse.state.stage, 'build');
+  assert.equal(callResponse.state.combinedBuildSnapshot, true);
 
-  const afterBuild = callPlugin('tools/resume', {
-    state: callResponse.state,
-    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
-  });
-  assert.equal(afterBuild.status, 'requires_host_actions');
-  assert.equal(afterBuild.state.stage, 'snapshot');
-
+  // final mode merges build + fidelity-snapshot into one script.run.
   // The real InDesign host never ran in this test, so fabricate an "actual" snapshot that
   // cannot match the real compiled instructions/expected model: a single near-empty page
   // instead of the real 7-page deck. This drives auditForwardFidelity down its real
@@ -1125,11 +1117,11 @@ test('html.build_indesign final mode fidelity-gate failure reports failed stage 
       items: [],
     }],
   };
-  fs.writeFileSync(afterBuild.state.snapshotPath, JSON.stringify(fakeActualSnapshot, null, 2), 'utf8');
+  fs.writeFileSync(callResponse.state.snapshotPath, JSON.stringify(fakeActualSnapshot, null, 2), 'utf8');
 
   const afterSnapshot = callPlugin('tools/resume', {
-    state: afterBuild.state,
-    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true, buildMs: 200, snapshotMs: 40 } }],
   });
 
   // The fidelity gate failed, so build-indesign requests cleanup of its owned document
@@ -1177,24 +1169,18 @@ test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异
     },
   });
   assert.equal(callResponse.status, 'requires_host_actions');
-
-  const afterBuild = callPlugin('tools/resume', {
-    state: callResponse.state,
-    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
-  });
-  assert.equal(afterBuild.status, 'requires_host_actions');
-  assert.equal(afterBuild.state.stage, 'snapshot');
+  assert.equal(callResponse.state.combinedBuildSnapshot, true);
 
   // 真实 InDesign 没跑过，所以把 instructions / expected model / snapshot 一起换成受控的两项差异：
   // 页面内第一项是被挪走的矩形（几何差异不带 hint），第二项文本读回是源文本的严格前缀（溢出，带 hint）。
   const fixture = oversetBehindGeometryFixture();
-  fs.writeFileSync(afterBuild.state.instructionsPath, JSON.stringify(fixture.instructions, null, 2), 'utf8');
-  fs.writeFileSync(afterBuild.state.expectedModelPath, JSON.stringify(fixture.expectedModel, null, 2), 'utf8');
-  fs.writeFileSync(afterBuild.state.snapshotPath, JSON.stringify(fixture.actualSnapshot, null, 2), 'utf8');
+  fs.writeFileSync(callResponse.state.instructionsPath, JSON.stringify(fixture.instructions, null, 2), 'utf8');
+  fs.writeFileSync(callResponse.state.expectedModelPath, JSON.stringify(fixture.expectedModel, null, 2), 'utf8');
+  fs.writeFileSync(callResponse.state.snapshotPath, JSON.stringify(fixture.actualSnapshot, null, 2), 'utf8');
 
   const afterSnapshot = callPlugin('tools/resume', {
-    state: afterBuild.state,
-    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+    state: callResponse.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
   });
   assert.equal(afterSnapshot.status, 'requires_host_actions');
   assert.equal(afterSnapshot.state.stage, 'cleanup');
@@ -1207,7 +1193,7 @@ test('html.build_indesign 保真失败的 hint 越过不带 hint 的首条差异
   assert.equal(response.status, 'error');
   assert.equal(response.error.code, 'FIDELITY_GATE_FAILED');
 
-  const report = JSON.parse(fs.readFileSync(afterBuild.state.fidelityReportPath, 'utf8'));
+  const report = JSON.parse(fs.readFileSync(callResponse.state.fidelityReportPath, 'utf8'));
   // 保真报告与首次调用、resume 返回体是同一个 runId（#13 P1-2）。
   assert.match(callResponse.state.runId, /^build-\d{8}T\d{6}-[0-9a-f]{6}$/);
   assert.equal(report.runId, callResponse.state.runId);

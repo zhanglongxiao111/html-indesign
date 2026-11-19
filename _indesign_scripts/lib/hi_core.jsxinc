@@ -109,23 +109,72 @@ HI.measurementString = function (value, unit) {
     return String(Number(value || 0)) + HI.measurementUnitName(unit);
 };
 
+HI.shallowCopyMap = function (source) {
+    var out = {};
+    if (!source) return out;
+    for (var key in source) {
+        if (source.hasOwnProperty(key)) out[key] = source[key];
+    }
+    return out;
+};
+
+HI.beginStyleCache = function (doc, styleContext) {
+    HI._styleCacheDoc = doc || null;
+    HI._styleCache = {
+        swatches: HI.shallowCopyMap(styleContext && styleContext.swatches),
+        paragraphStyles: HI.shallowCopyMap(styleContext && styleContext.paragraphStyles),
+        characterStyles: HI.shallowCopyMap(styleContext && styleContext.characterStyles),
+        objectStyles: HI.shallowCopyMap(styleContext && styleContext.objectStyles),
+        tableStyles: HI.shallowCopyMap(styleContext && styleContext.tableStyles),
+        noneSwatch: null,
+        hasNoneSwatch: false
+    };
+    return HI._styleCache;
+};
+
+HI.clearStyleCache = function () {
+    HI._styleCacheDoc = null;
+    HI._styleCache = null;
+};
+
+HI.cachedStyleByName = function (doc, bucket, collectionName, name) {
+    if (!name) return null;
+    var cache = (HI._styleCache && HI._styleCacheDoc === doc) ? HI._styleCache[bucket] : null;
+    if (cache && cache.hasOwnProperty(name)) return cache[name];
+    var resolved = doc[collectionName].itemByName(name);
+    if (cache) cache[name] = resolved;
+    return resolved;
+};
+
 HI.swatchByName = function (doc, name) {
     if (!name) return null;
+    var cache = (HI._styleCache && HI._styleCacheDoc === doc) ? HI._styleCache.swatches : null;
+    if (cache && cache.hasOwnProperty(name)) return cache[name];
     try {
         var swatch = doc.swatches.itemByName(name);
-        try { if (swatch && swatch.isValid) return swatch; } catch (_) {}
-        try { swatch.name; return swatch; } catch (_) {}
+        try { if (swatch && swatch.isValid) { if (cache) cache[name] = swatch; return swatch; } } catch (_) {}
+        try { swatch.name; if (cache) cache[name] = swatch; return swatch; } catch (_) {}
     } catch (_) {}
     return null;
 };
 
 HI.noneSwatch = function (doc) {
+    var styleCache = (HI._styleCache && HI._styleCacheDoc === doc) ? HI._styleCache : null;
+    if (styleCache && styleCache.hasNoneSwatch) return styleCache.noneSwatch;
+    if (typeof HI._translatedNoneKey === "undefined") {
+        HI._translatedNoneKey = "";
+        try { HI._translatedNoneKey = String(app.translateKeyString("$ID/None") || ""); } catch (_) {}
+    }
     var names = ["[None]", "$ID/None", "None"];
-    try { names.unshift(app.translateKeyString("$ID/None")); } catch (_) {}
+    if (HI._translatedNoneKey) names.unshift(HI._translatedNoneKey);
     for (var i = 0; i < names.length; i++) {
         var swatch = HI.swatchByName(doc, names[i]);
-        if (swatch) return swatch;
+        if (swatch) {
+            if (styleCache) { styleCache.noneSwatch = swatch; styleCache.hasNoneSwatch = true; }
+            return swatch;
+        }
     }
+    if (styleCache) { styleCache.noneSwatch = null; styleCache.hasNoneSwatch = true; }
     return null;
 };
 

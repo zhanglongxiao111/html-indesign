@@ -95,6 +95,9 @@ HI.arrayContains = function (list, value) {
 };
 
 HI.fontFacesByFamily = function () {
+    if (HI.installedFontIndex && HI.installedFontIndex.facesByFamily) {
+        return HI.installedFontIndex.facesByFamily;
+    }
     var out = {};
     try {
         var names = app.fonts.everyItem().name;

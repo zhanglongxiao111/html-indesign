@@ -100,12 +100,23 @@ HI.reverseTableCellTextStyle = function (cell) {
 };
 
 HI.reverseTableCellRuns = function (cell) {
-    var out = [], current = null, characters = [];
-    try { characters = HI.collectionElements(cell.characters); } catch (_) { characters = []; }
-    for (var i = 0; i < characters.length; i++) {
-        var text = HI.cleanReverseTableCellText(HI.reverseCharacterContents(characters[i]));
+    var out = [], current = null, segments = [], usingRanges = false;
+    try { segments = HI.collectionElements(cell.textStyleRanges) || []; } catch (_) { segments = []; }
+    if (segments.length < 1) {
+        try { segments = HI.collectionElements(cell.texts[0].textStyleRanges) || []; } catch (_) { segments = []; }
+    }
+    if (segments.length > 0) {
+        usingRanges = true;
+    } else {
+        try { segments = HI.collectionElements(cell.characters) || []; } catch (_) { segments = []; }
+    }
+    for (var i = 0; i < segments.length; i++) {
+        var rawText = (usingRanges && HI.reverseRangeContents)
+            ? HI.reverseRangeContents(segments[i])
+            : HI.reverseCharacterContents(segments[i]);
+        var text = HI.cleanReverseTableCellText(rawText, usingRanges);
         if (text === "") continue;
-        var run = HI.reverseCharacterRun(characters[i]);
+        var run = HI.reverseCharacterRun(segments[i]);
         run.text = text;
         var signature = HI.reverseCharacterRunSignature(run);
         if (current && current._signature === signature) current.text += text;
@@ -168,6 +179,7 @@ HI.isLikelyTableHeaderCell = function (paragraphStyle, rowIndex) {
 };
 HI.tableSpanNumber = function (value) { var n = Number(value || 1); return n > 1 ? n : 1; };
 HI.collectionLength = function (collection) { try { return Number(collection.length || 0); } catch (_) {} return 0; };
-HI.cleanReverseTableCellText = function (value) {
-    return HI.reverseTextValue(value).replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
+HI.cleanReverseTableCellText = function (value, skipDecode) {
+    var text = skipDecode ? String(value || "") : HI.reverseTextValue(value);
+    return text.replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
 };

@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const { launchEdgeBrowser } = require('../../../shared/edge-browser');
 const { HTML_DATA_ID_ATTRIBUTES } = require('../../../protocol');
@@ -21,7 +22,7 @@ async function renderSnapshot(options) {
   });
   try {
     const page = await browser.newPage({ viewport: { width: 2200, height: 1400 }, deviceScaleFactor: 1 });
-    await page.goto('file:///' + htmlPath.replace(/\\/g, '/'), { waitUntil: 'networkidle' });
+    await page.goto('file:///' + htmlPath.replace(/\\/g, '/'), { waitUntil: 'load' });
     await waitForPageAssets(page);
     await installBrowserSnapshotScripts(page);
 
@@ -92,13 +93,22 @@ async function waitForPageAssets(page) {
   });
 }
 
-async function installBrowserSnapshotScripts(page) {
-  await page.evaluate((attributes) => {
-    window.htmlIndesignDataIdAttributes = attributes;
-  }, HTML_DATA_ID_ATTRIBUTES);
-  for (const scriptPath of browserSnapshotScriptPaths) {
-    await page.addScriptTag({ path: scriptPath });
+let cachedBrowserSnapshotBundle = null;
+
+function buildBrowserSnapshotBundle() {
+  if (cachedBrowserSnapshotBundle !== null) {
+    return cachedBrowserSnapshotBundle;
   }
+  const preamble = `window.htmlIndesignDataIdAttributes = ${JSON.stringify(HTML_DATA_ID_ATTRIBUTES)};`;
+  const scripts = browserSnapshotScriptPaths.map(
+    (scriptPath) => `// ${path.basename(scriptPath)}\n${fs.readFileSync(scriptPath, 'utf8')}`,
+  );
+  cachedBrowserSnapshotBundle = [preamble, ...scripts].join('\n;\n');
+  return cachedBrowserSnapshotBundle;
+}
+
+async function installBrowserSnapshotScripts(page) {
+  await page.addScriptTag({ content: buildBrowserSnapshotBundle() });
 }
 
 function pageSnapshotToModel(pageInfo) {

@@ -75,10 +75,10 @@ HI.reverseFirstLineFont = function (item) {
     } catch (_) {}
     return null;
 };
-HI.reverseInlineStyle = function (item) {
+HI.reverseInlineStyle = function (item, textStyle, textFrameStyle) {
     var styles = [];
-    var text = HI.reverseTextStyle(item);
-    var frame = HI.reverseTextFrameStyle(item);
+    var text = arguments.length >= 2 ? textStyle : HI.reverseTextStyle(item);
+    var frame = arguments.length >= 3 ? textFrameStyle : HI.reverseTextFrameStyle(item);
     if (text && text.css) styles.push(text.css);
     if (frame && frame.css) styles.push(frame.css);
     return styles.length ? styles.join("; ") : null;

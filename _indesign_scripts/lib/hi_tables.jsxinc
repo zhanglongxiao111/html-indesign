@@ -118,7 +118,7 @@ HI.applyTableHeaderRows = function (table, rows, report) {
 HI.applyTableStyle = function (doc, table, styleName, report) {
     if (!styleName) return;
     try {
-        table.appliedTableStyle = doc.tableStyles.itemByName(styleName);
+        table.appliedTableStyle = HI.cachedStyleByName ? HI.cachedStyleByName(doc, "tableStyles", "tableStyles", styleName) : doc.tableStyles.itemByName(styleName);
     } catch (error) {
         HI.addMessage(report, "warning", "TABLE_STYLE_APPLY_FAILED", String(error), { styleName: styleName });
     }
@@ -181,12 +181,12 @@ HI.applyTableCell = function (doc, cell, cellDef, report) {
     if (!cell || !cellDef) return;
     try {
         if (cellDef.paragraphStyle) {
-            cell.texts[0].appliedParagraphStyle = doc.paragraphStyles.itemByName(cellDef.paragraphStyle);
+            cell.texts[0].appliedParagraphStyle = HI.cachedStyleByName ? HI.cachedStyleByName(doc, "paragraphStyles", "paragraphStyles", cellDef.paragraphStyle) : doc.paragraphStyles.itemByName(cellDef.paragraphStyle);
         }
     } catch (_) {}
-    try { if (cellDef.fillColor) cell.fillColor = doc.swatches.itemByName(cellDef.fillColor); } catch (_) {}
+    HI.applyTableCellBatchProps(doc, cell, cellDef);
     HI.applyTableCellFillOpacity(cell, cellDef.fillOpacity, report);
-    try { if (cellDef.textColor) cell.texts[0].fillColor = doc.swatches.itemByName(cellDef.textColor); } catch (_) {}
+    try { if (cellDef.textColor) cell.texts[0].fillColor = HI.swatchByName ? (HI.swatchByName(doc, cellDef.textColor) || doc.swatches.itemByName(cellDef.textColor)) : doc.swatches.itemByName(cellDef.textColor); } catch (_) {}
     try {
         if (cellDef.appliedFont) {
             var font = HI.resolveFont(cellDef, report);
@@ -203,8 +203,47 @@ HI.applyTableCell = function (doc, cell, cellDef, report) {
     try { if (cellDef.textAlign) cell.texts[0].justification = HI.justificationFor(cellDef.textAlign); } catch (_) {}
     HI.assignCharacterStyleExtras(cell.texts[0], cellDef);
     HI.applyTableCellRuns(doc, cell, cellDef.runs || [], report);
+};
+
+HI.applyTableCellBatchProps = function (doc, cell, cellDef) {
+    var props = {}, hasProps = false;
+    var resolveSwatch = function (name) {
+        if (!name) return null;
+        try { return HI.swatchByName ? (HI.swatchByName(doc, name) || doc.swatches.itemByName(name)) : doc.swatches.itemByName(name); } catch (_) {}
+        return null;
+    };
+    if (cellDef.fillColor) {
+        var fillSwatch = resolveSwatch(cellDef.fillColor);
+        if (fillSwatch) { props.fillColor = fillSwatch; hasProps = true; }
+    }
+    if (cellDef.borders) {
+        var sides = ["top", "right", "bottom", "left"];
+        for (var i = 0; i < sides.length; i++) {
+            var side = sides[i], edge = cellDef.borders[side];
+            if (!edge) continue;
+            if (edge.color) {
+                var edgeSwatch = resolveSwatch(edge.color);
+                if (edgeSwatch) { props[side + "EdgeStrokeColor"] = edgeSwatch; hasProps = true; }
+            }
+            if (edge.borderWeight !== null && typeof edge.borderWeight !== "undefined") {
+                props[side + "EdgeStrokeWeight"] = Number(edge.borderWeight);
+                hasProps = true;
+            }
+        }
+    }
+    var padding = cellDef.padding || {}, unit = cellDef.paddingUnit || "mm";
+    if (padding.top !== null && typeof padding.top !== "undefined") { props.topInset = HI.measurementString(padding.top, unit); hasProps = true; }
+    if (padding.right !== null && typeof padding.right !== "undefined") { props.rightInset = HI.measurementString(padding.right, unit); hasProps = true; }
+    if (padding.bottom !== null && typeof padding.bottom !== "undefined") { props.bottomInset = HI.measurementString(padding.bottom, unit); hasProps = true; }
+    if (padding.left !== null && typeof padding.left !== "undefined") { props.leftInset = HI.measurementString(padding.left, unit); hasProps = true; }
+    if (!hasProps) return;
+    try {
+        cell.properties = props;
+        return;
+    } catch (_) {}
+    try { if (props.fillColor) cell.fillColor = props.fillColor; } catch (_) {}
     HI.applyCellStroke(doc, cell, cellDef);
-    HI.applyCellPadding(cell, cellDef.padding || {}, cellDef.paddingUnit || "mm");
+    HI.applyCellPadding(cell, padding, unit);
 };
 
 HI.applyTableCellFillOpacity = function (cell, opacity, report) {
@@ -220,7 +259,7 @@ HI.applyTableCellRuns = function (doc, cell, runs, report) {
         var text = runs[i].text || "";
         if (runs[i].characterStyle && text.length > 0) {
             try {
-                cell.texts[0].characters.itemByRange(index, index + text.length - 1).appliedCharacterStyle = doc.characterStyles.itemByName(runs[i].characterStyle);
+                cell.texts[0].characters.itemByRange(index, index + text.length - 1).appliedCharacterStyle = HI.cachedStyleByName ? HI.cachedStyleByName(doc, "characterStyles", "characterStyles", runs[i].characterStyle) : doc.characterStyles.itemByName(runs[i].characterStyle);
             } catch (error) {
                 HI.addMessage(report, "warning", "CHARACTER_STYLE_APPLY_FAILED", String(error), { styleName: runs[i].characterStyle });
             }

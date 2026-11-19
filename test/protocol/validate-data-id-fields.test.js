@@ -61,6 +61,10 @@ test('scanDataIdFields requires raw text close tag name boundaries', () => {
     scanDataIdFields('<section data-id-asset-path="x"><script></scripted><div data-id-page></script><div data-id-pdf-page="2"></div></section>'),
     ['data-id-asset-path', 'data-id-pdf-page'],
   );
+  assert.deepEqual(
+    scanDataIdFields('<TITLE><div data-id-page></TITLE><STYLE>.a{content:"<div data-id-page>"}</STYLE><SCRIPT>var x="<div data-id-page>";</SCRIPT><div data-id-object data-id-pdf-page="1"></div>'),
+    ['data-id-object', 'data-id-pdf-page'],
+  );
 });
 
 test('validateDataIdFields accepts active fields and reports unknown and retired fields as warnings by default', () => {

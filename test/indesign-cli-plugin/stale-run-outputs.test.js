@@ -221,16 +221,12 @@ test('保真阶段失败：本轮重写的中间产物是失败现场、原位�
 
   const started = callPlugin('tools/call', { id: 'html.build_indesign', args: { package: packagePath, outDir } });
   assert.equal(started.status, 'requires_host_actions', JSON.stringify(started.error || null));
-  const afterBuild = callPlugin('tools/resume', {
-    state: started.state,
-    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
-  });
-  assert.equal(afterBuild.state.stage, 'snapshot');
-  // 读回快照由本轮宿主脚本写出：一页空白页，对不上源 HTML 的 7 页，保真门禁必然失败。
+  assert.equal(started.state.combinedBuildSnapshot, true);
+  // 读回快照由本轮合并的 build+snapshot 宿主脚本写出：一页空白页，对不上源 HTML 的 7 页，保真门禁必然失败。
   fs.writeFileSync(started.state.snapshotPath, JSON.stringify(ONE_BLANK_PAGE_SNAPSHOT), 'utf8');
   const afterSnapshot = callPlugin('tools/resume', {
-    state: afterBuild.state,
-    host_results: [{ id: 'html-fidelity-snapshot', status: 'complete', data: { ok: true } }],
+    state: started.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
   });
   assert.equal(afterSnapshot.state.stage, 'cleanup');
   const response = callPlugin('tools/resume', {
@@ -375,16 +371,13 @@ test('构建成功后删掉上一次失败留下的 BUILD_FAILED.json', () => {
     args: { package: packagePath, outDir, mode: 'draft', exportPdf: false, exportIdml: false },
   });
   assert.equal(started.status, 'requires_host_actions', JSON.stringify(started.error || null));
+  assert.equal(started.state.combinedBuildExport, true);
   // 构建还没结束：旧标记仍在，它描述的那次失败在本次成功之前依然成立。
   assert.equal(fs.existsSync(path.join(outDir, 'BUILD_FAILED.json')), true);
-  const afterBuild = callPlugin('tools/resume', {
-    state: started.state,
-    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
-  });
   fs.writeFileSync(path.join(outDir, 'html-indesign-output.indd'), 'this run', 'utf8');
   const complete = callPlugin('tools/resume', {
-    state: afterBuild.state,
-    host_results: [{ id: 'html-export-script', status: 'complete', data: { ok: true } }],
+    state: started.state,
+    host_results: [{ id: 'html-build-script', status: 'complete', data: { ok: true } }],
   });
 
   assert.equal(complete.status, 'complete', JSON.stringify(complete.error || null));

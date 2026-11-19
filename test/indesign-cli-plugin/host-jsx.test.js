@@ -77,10 +77,119 @@ test('build template checks whether the target INDD is already open before creat
   assert.match(source, /function findOpenDocumentAt\(fsPath\)/);
   assert.match(source, /OUTPUT_TARGET_OPEN/);
   assert.match(source, /PREVIOUS_OUTPUT_CLOSED/);
-  assert.ok(source.indexOf('findOpenDocumentAt(targetIndd)') < source.indexOf('app.documents.add()'), 'pre-check must run before the document is created');
+  assert.ok(source.indexOf('findOpenDocumentAt(targetIndd)') < source.indexOf('app.documents.add(false)'), 'pre-check must run before the document is created');
   // the pre-check warning (e.g. PREVIOUS_OUTPUT_CLOSED) must be concatenated, not overwritten, by the build report's own warnings
   assert.match(source, /result\.warnings = result\.warnings\.concat\(report\.warnings \|\| \[\]\);/);
 
   const withoutTarget = buildBuildJsx({ repoRoot: 'D:/plugin', instructionsPath: 'D:/run/instructions.json', marker: 'run-1' });
   assert.match(withoutTarget, /var targetIndd = null;/);
+});
+
+test('build template creates a windowless document and passes it to HI.runBuildFromInstructions', () => {
+  const source = buildBuildJsx({
+    repoRoot: 'D:/plugin',
+    instructionsPath: 'D:/run/instructions.json',
+    marker: 'run-1',
+  });
+  assert.match(source, /app\.documents\.add\(false\)/);
+  assert.doesNotMatch(source, /app\.documents\.add\(\)/);
+  assert.match(source, /HI\.runBuildFromInstructions\(app,\s*"D:\/run\/instructions\.json",\s*doc\)/);
+});
+
+test('export, snapshot and close templates locate windowless build documents by html_indesign_e2e_marker', () => {
+  const exportSource = buildExportJsx({ runDir: 'D:/run', outputBaseName: 'deck', expectedMarker: 'run-1' });
+  const snapshotSource = buildReverseSnapshotJsx({
+    repoRoot: 'D:/plugin',
+    outputPath: 'D:/run/snapshot.json',
+    expectedMarker: 'run-1',
+    closeDocument: false,
+    closeOnFailure: true,
+  });
+  const closeSource = buildCloseJsx({ expectedMarker: 'run-1' });
+
+  for (const [name, src] of [['export', exportSource], ['snapshot', snapshotSource], ['close', closeSource]]) {
+    assert.match(src, /function findMarkedDocument\(marker\)/, `${name} must define findMarkedDocument`);
+    assert.match(src, /findMarkedDocument\(expectedMarker\)/, `${name} must locate the build doc via findMarkedDocument(expectedMarker)`);
+  }
+  assert.match(snapshotSource, /app\.insertLabel\("html_indesign_reverse_marker",\s*expectedMarker\)/);
+
+  // Run buildCloseJsx in a VM where activeDocument is the user's doc and documents[1] is our windowless build doc.
+  const closed = [];
+  const userDoc = {
+    name: 'user.indd',
+    extractLabel: () => '',
+    close: () => closed.push('user'),
+  };
+  const buildDoc = {
+    name: 'windowless-build',
+    isValid: true,
+    extractLabel: (key) => (key === 'html_indesign_e2e_marker' ? 'run-1' : ''),
+    close: () => closed.push('build'),
+  };
+  const raw = vm.runInNewContext(closeSource, {
+    SaveOptions: { NO: 'NO' },
+    app: {
+      activeDocument: userDoc,
+      documents: [userDoc, buildDoc],
+    },
+  });
+  const parsed = JSON.parse(raw);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.closed, true);
+  assert.deepEqual(closed, ['build']);
+});
+
+test('buildReverseSnapshotJsx passes skipPreviews label when requested and defaults to false', () => {
+  const withSkip = buildReverseSnapshotJsx({
+    repoRoot: 'D:/plugin',
+    outputPath: 'D:/run/snapshot.json',
+    expectedMarker: 'run-1',
+    skipPreviews: true,
+  });
+  const defaultReverse = buildReverseSnapshotJsx({
+    repoRoot: 'D:/plugin',
+    outputPath: 'D:/run/snapshot.json',
+  });
+
+  assert.match(withSkip, /app\.insertLabel\("html_indesign_reverse_skip_previews",\s*"1"\)/);
+  assert.match(withSkip, /app\.insertLabel\("html_indesign_reverse_skip_previews",\s*""\)/);
+  assert.doesNotMatch(defaultReverse, /html_indesign_reverse_skip_previews",\s*"1"/);
+});
+
+test('buildBuildJsx supports bundled inline libs and merged build+snapshot or build+export in one script', () => {
+  const path = require('node:path');
+  const realRoot = path.resolve(__dirname, '../..');
+
+  const finalMerged = buildBuildJsx({
+    repoRoot: realRoot,
+    instructionsPath: 'D:/run/instructions.json',
+    marker: 'run-final',
+    inlineLibs: true,
+    snapshotPath: 'D:/run/fidelity-snapshot.json',
+  });
+  assert.equal(finalMerged.charCodeAt(0), 0xfeff, 'bundled script must start with UTF-8 BOM');
+  assert.equal((finalMerged.match(/\$\.evalFile\(/g) || []).length, 0, 'bundled script must eliminate $.evalFile calls');
+  assert.match(finalMerged, /HI\.runBuildFromInstructions\(app,\s*"D:\/run\/instructions\.json",\s*doc\)/);
+  assert.match(finalMerged, /HI\.exportReverseSnapshot\(app,\s*"D:\/run\/fidelity-snapshot\.json",\s*\{\s*targetDoc:\s*doc,\s*skipPreviews:\s*true\s*\}\)/);
+  assert.match(finalMerged, /var base = /);
+
+  const draftMerged = buildBuildJsx({
+    repoRoot: realRoot,
+    instructionsPath: 'D:/run/instructions.json',
+    marker: 'run-draft',
+    inlineLibs: true,
+    exportOptions: {
+      runDir: 'D:/run',
+      outputBaseName: 'deck',
+      exportPdf: true,
+      exportIdml: false,
+      closeDocument: true,
+    },
+  });
+  assert.equal((draftMerged.match(/\$\.evalFile\(/g) || []).length, 0, 'bundled draft script must eliminate $.evalFile calls');
+  assert.match(draftMerged, /HI\.runBuildFromInstructions/);
+  assert.match(draftMerged, /doc\.save\(indd\)/);
+  assert.match(draftMerged, /ExportFormat\.PDF_TYPE/);
+  assert.doesNotMatch(draftMerged, /ExportFormat\.INDESIGN_MARKUP/);
+  assert.match(draftMerged, /auditPanelNames\(\)/);
 });

@@ -1,7 +1,12 @@
 if (typeof HI === "undefined") { HI = {}; }
 
-HI.prepareDocument = function (appRef, instructions, report) {
-    var doc = appRef.documents.length > 0 ? appRef.activeDocument : appRef.documents.add();
+HI.resolveTargetDocument = function (appRef, targetDoc) {
+    if (targetDoc) return targetDoc;
+    return appRef.documents.length > 0 ? appRef.activeDocument : appRef.documents.add(false);
+};
+
+HI.prepareDocument = function (appRef, instructions, report, targetDoc) {
+    var doc = HI.resolveTargetDocument(appRef, targetDoc);
     var oldH = doc.viewPreferences.horizontalMeasurementUnits;
     var oldV = doc.viewPreferences.verticalMeasurementUnits;
     var oldOrigin = doc.viewPreferences.rulerOrigin;
