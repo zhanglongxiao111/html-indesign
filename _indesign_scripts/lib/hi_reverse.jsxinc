@@ -22,7 +22,11 @@ HI.exportReverseSnapshot = function (appRef, outputPath, options) {
     if (!doc) throw new Error(marker ? "ACTIVE_DOCUMENT_MISMATCH" : "NO_ACTIVE_DOCUMENT");
     var coordinateUnit = HI.reverseCoordinateUnit(doc);
     var oldUnits = HI.applyReverseMeasurementUnits(appRef, doc, coordinateUnit);
-    var previewContext = HI.reversePreviewContext(outputPath, report);
+    var skipPreviews = opts.skipPreviews === true;
+    if (!skipPreviews && opts.skipPreviews !== false) {
+        try { skipPreviews = String(appRef.extractLabel("html_indesign_reverse_skip_previews") || "") === "1"; } catch (_) {}
+    }
+    var previewContext = HI.reversePreviewContext(outputPath, report, skipPreviews);
     var snapshot = null;
     HI.reverseBeginGradientTracking(report);
     HI.reverseBeginColorConversion(doc);
@@ -132,7 +136,41 @@ HI.reversePages = function (doc, context) {
     return out;
 };
 
+HI.shallowCopyRecord = function (record) {
+    var out = {};
+    for (var key in record) {
+        if (record.hasOwnProperty(key)) out[key] = record[key];
+    }
+    return out;
+};
+
+HI.buildPageItemCache = function (page, layerOrder, context) {
+    var raw = [];
+    try { raw = HI.collectionElements(page.allPageItems); } catch (_) { raw = []; }
+    if (!raw.length) {
+        try { raw = HI.collectionElements(page.pageItems); } catch (_) { raw = []; }
+    }
+    var byId = {}, seen = {}, auditItems = [], topEntries = [];
+    for (var i = 0; i < raw.length; i++) {
+        var item = raw[i];
+        var id = "";
+        try { id = String(item.id || ""); } catch (_) { id = ""; }
+        if (id && seen[id]) continue;
+        if (id) seen[id] = true;
+        var isTop = HI.isTopLevelReverseItem(item);
+        var serialized = null;
+        if (HI.shouldReversePageItem(item)) {
+            serialized = HI.reversePageItem(item, i, raw.length, layerOrder, context);
+            auditItems.push(serialized);
+            if (id) byId[id] = serialized;
+        }
+        if (isTop) topEntries.push({ item: item, id: id, serialized: serialized });
+    }
+    return { byId: byId, auditItems: auditItems, topEntries: topEntries };
+};
+
 HI.reversePage = function (page, index, layerOrder, context) {
+    var pageCache = HI.buildPageItemCache(page, layerOrder, context);
     return {
         id: String(page.name || ("page-" + (index + 1))),
         index: index,
@@ -141,8 +179,8 @@ HI.reversePage = function (page, index, layerOrder, context) {
         bounds: HI.pageBounds(page),
         margins: HI.reversePageMargins(page),
         guides: HI.reverseGuides(page),
-        items: HI.reversePageItems(page, layerOrder, context),
-        auditItems: HI.reversePageAuditItems(page, layerOrder, context)
+        items: HI.reversePageItems(page, layerOrder, context, pageCache),
+        auditItems: HI.reversePageAuditItems(page, layerOrder, context, pageCache)
     };
 };
 
@@ -161,7 +199,21 @@ HI.reversePageMargins = function (page) {
     return { top: Number(prefs.top || 0), right: Number(prefs.right || 0), bottom: Number(prefs.bottom || 0), left: Number(prefs.left || 0) };
 };
 
-HI.reversePageItems = function (page, layerOrder, context) {
+HI.reversePageItems = function (page, layerOrder, context, pageCache) {
+    if (pageCache) {
+        var cachedOut = [], entries = pageCache.topEntries;
+        for (var k = 0; k < entries.length; k++) {
+            var record = entries[k].serialized;
+            if (!record) continue;
+            var topZ = HI.reverseItemZIndex(entries[k].item, k, entries.length, layerOrder);
+            if (record.zIndex !== topZ) {
+                record = HI.shallowCopyRecord(record);
+                record.zIndex = topZ;
+            }
+            cachedOut.push(record);
+        }
+        return cachedOut;
+    }
     var out = [], items = HI.reverseTopLevelPageItems(page);
     for (var i = 0; i < items.length; i++) {
         if (HI.shouldReversePageItem(items[i])) out.push(HI.reversePageItem(items[i], i, items.length, layerOrder, context));
@@ -169,7 +221,8 @@ HI.reversePageItems = function (page, layerOrder, context) {
     return out;
 };
 
-HI.reversePageAuditItems = function (page, layerOrder, context) {
+HI.reversePageAuditItems = function (page, layerOrder, context, pageCache) {
+    if (pageCache) return pageCache.auditItems;
     return HI.reverseAuditPageItems(page, layerOrder, context);
 };
 
@@ -222,6 +275,8 @@ HI.reversePageItem = function (item, index, total, layerOrder, context) {
     var vectorGeometry = HI.reverseVectorGeometry(item);
     var visualStyle = HI.reverseVisualStyle(item);
     if (vectorGeometry) visualStyle.strokeWeight = HI.positiveNumberOrNull(HI.reverseSafeProperty(item, "strokeWeight"));
+    var textStyle = HI.reverseTextStyle(item);
+    var textFrameStyle = HI.reverseTextFrameStyle(item);
     return {
         id: String(item.id || ("item-" + (index + 1))),
         type: HI.reverseItemType(item),
@@ -235,9 +290,9 @@ HI.reversePageItem = function (item, index, total, layerOrder, context) {
         objectStyleName: HI.appliedObjectStyleName(item),
         visualStyle: visualStyle,
         effects: HI.reverseEffects(item),
-        textStyle: HI.reverseTextStyle(item),
-        textFrameStyle: HI.reverseTextFrameStyle(item),
-        inlineStyle: HI.reverseInlineStyle(item),
+        textStyle: textStyle,
+        textFrameStyle: textFrameStyle,
+        inlineStyle: HI.reverseInlineStyle(item, textStyle, textFrameStyle),
         textRuns: HI.reverseTextRuns(item),
         firstLineFont: HI.reverseFirstLineFont(item),
         table: HI.reverseTableData(item),
@@ -548,14 +603,17 @@ HI.reversePlacedAsset = function (item, context) {
     return null;
 };
 
-HI.reversePreviewContext = function (outputPath, report) {
+HI.reversePreviewContext = function (outputPath, report, skipPreviews) {
     var file = File(outputPath);
     var folder = Folder(file.parent.fsName + "/previews");
     try { file.parent.create(); } catch (_) {}
+    if (skipPreviews === true) {
+        return { folder: folder, relativeRoot: "previews", report: report, skipPreviews: true };
+    }
     try { folder.create(); } catch (error) {
         HI.addMessage(report, "warning", "REVERSE_PREVIEW_DIR_CREATE_FAILED", String(error), { path: folder.fsName });
     }
-    return { folder: folder, relativeRoot: "previews", report: report };
+    return { folder: folder, relativeRoot: "previews", report: report, skipPreviews: false };
 };
 
 HI.reverseImageTypeName = function (graphic) {
@@ -683,7 +741,7 @@ HI.reverseGraphicLayerOptions = function (graphic) {
 };
 
 HI.exportPlacedAssetPreview = function (item, graphic, assetPath, context) {
-    if (!context || !context.folder || !HI.needsPlacedPreview(assetPath, graphic)) return null;
+    if (!context || context.skipPreviews === true || !context.folder || !HI.needsPlacedPreview(assetPath, graphic)) return null;
     var fileName = HI.previewFileName(item, assetPath);
     var target = File(context.folder.fsName + "/" + fileName);
     var oldPrefs = HI.applyPreviewPngPreferences();

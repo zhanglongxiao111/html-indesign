@@ -2,12 +2,15 @@
 
 HI.reverseTextRuns = function (item) {
     if (!HI.isTextFrame(item)) return [];
-    var out = [], current = null, characters = [];
-    try { characters = HI.collectionElements(item.characters); } catch (_) { characters = []; }
-    for (var i = 0; i < characters.length; i++) {
-        var ch = characters[i], text = HI.reverseCharacterContents(ch);
+    var out = [], current = null, segments = [];
+    try { segments = HI.collectionElements(item.textStyleRanges) || []; } catch (_) { segments = []; }
+    if (segments.length < 1) {
+        try { segments = HI.collectionElements(item.characters) || []; } catch (_) { segments = []; }
+    }
+    for (var i = 0; i < segments.length; i++) {
+        var seg = segments[i], text = HI.reverseCharacterContents(seg);
         if (text === "") continue;
-        var run = HI.reverseCharacterRun(ch);
+        var run = HI.reverseCharacterRun(seg);
         run.text = text;
         var signature = HI.reverseCharacterRunSignature(run);
         if (current && current._signature === signature) {

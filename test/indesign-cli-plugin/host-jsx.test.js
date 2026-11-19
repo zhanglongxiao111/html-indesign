@@ -138,3 +138,20 @@ test('export, snapshot and close templates locate windowless build documents by 
   assert.equal(parsed.closed, true);
   assert.deepEqual(closed, ['build']);
 });
+
+test('buildReverseSnapshotJsx passes skipPreviews label when requested and defaults to false', () => {
+  const withSkip = buildReverseSnapshotJsx({
+    repoRoot: 'D:/plugin',
+    outputPath: 'D:/run/snapshot.json',
+    expectedMarker: 'run-1',
+    skipPreviews: true,
+  });
+  const defaultReverse = buildReverseSnapshotJsx({
+    repoRoot: 'D:/plugin',
+    outputPath: 'D:/run/snapshot.json',
+  });
+
+  assert.match(withSkip, /app\.insertLabel\("html_indesign_reverse_skip_previews",\s*"1"\)/);
+  assert.match(withSkip, /app\.insertLabel\("html_indesign_reverse_skip_previews",\s*""\)/);
+  assert.doesNotMatch(defaultReverse, /html_indesign_reverse_skip_previews",\s*"1"/);
+});

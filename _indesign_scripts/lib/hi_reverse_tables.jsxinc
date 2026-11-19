@@ -100,12 +100,18 @@ HI.reverseTableCellTextStyle = function (cell) {
 };
 
 HI.reverseTableCellRuns = function (cell) {
-    var out = [], current = null, characters = [];
-    try { characters = HI.collectionElements(cell.characters); } catch (_) { characters = []; }
-    for (var i = 0; i < characters.length; i++) {
-        var text = HI.cleanReverseTableCellText(HI.reverseCharacterContents(characters[i]));
+    var out = [], current = null, segments = [];
+    try { segments = HI.collectionElements(cell.textStyleRanges) || []; } catch (_) { segments = []; }
+    if (segments.length < 1) {
+        try { segments = HI.collectionElements(cell.texts[0].textStyleRanges) || []; } catch (_) { segments = []; }
+    }
+    if (segments.length < 1) {
+        try { segments = HI.collectionElements(cell.characters) || []; } catch (_) { segments = []; }
+    }
+    for (var i = 0; i < segments.length; i++) {
+        var text = HI.cleanReverseTableCellText(HI.reverseCharacterContents(segments[i]));
         if (text === "") continue;
-        var run = HI.reverseCharacterRun(characters[i]);
+        var run = HI.reverseCharacterRun(segments[i]);
         run.text = text;
         var signature = HI.reverseCharacterRunSignature(run);
         if (current && current._signature === signature) current.text += text;

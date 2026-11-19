@@ -386,3 +386,207 @@ test('a failing color-managed conversion is reported and falls back to the devic
   ]);
   context.HI.reverseEndColorConversion();
 });
+
+function loadFullReverseContext() {
+  const libs = [
+    'hi_reverse_styles.jsxinc',
+    'hi_reverse_colors.jsxinc',
+    'hi_reverse_effects.jsxinc',
+    'hi_reverse_text.jsxinc',
+    'hi_reverse_tables.jsxinc',
+    'hi_reverse.jsxinc',
+  ];
+  const context = {
+    HI: {
+      readProtocolLabel: () => null,
+      addMessage: () => {},
+    },
+    ColorSpace: { RGB: 'RGB', CMYK: 'CMYK' },
+    Justification: { LEFT_ALIGN: 1, CENTER_ALIGN: 2, RIGHT_ALIGN: 3, LEFT_JUSTIFIED: 4, FULLY_JUSTIFIED: 5, CENTER_JUSTIFIED: 6, RIGHT_JUSTIFIED: 7 },
+    VerticalJustification: { TOP_ALIGN: 1, CENTER_ALIGN: 2, BOTTOM_ALIGN: 3 },
+    Capitalization: { NORMAL: 1, ALL_CAPS: 2, SMALL_CAPS: 3 },
+    ExportFormat: { PNG_FORMAT: 'PNG' },
+    File: (p) => ({ fsName: String(p), exists: true }),
+    Folder: (p) => ({ fsName: String(p), create: () => true }),
+    app: { pngExportPreferences: { exportResolution: 72, transparentBackground: false } },
+  };
+  vm.createContext(context);
+  for (const lib of libs) {
+    vm.runInContext(fs.readFileSync(path.resolve('_indesign_scripts/lib', lib), 'utf8'), context);
+  }
+  return context;
+}
+
+function makeStyledSegment(contents, { font = 'Inter\tRegular', pointSize = 12, leading = 16, color = [0, 0, 0], tracking = 0, charStyle = '[None]' } = {}) {
+  return {
+    contents,
+    appliedFont: { isValid: true, name: font },
+    pointSize,
+    leading,
+    fillColor: new Color('C', 'RGB', color),
+    fillTint: 100,
+    tracking,
+    capitalization: 1,
+    appliedCharacterStyle: { isValid: true, name: charStyle },
+  };
+}
+
+test('reverseTextRuns and reverseTableCellRuns via textStyleRanges match character-by-character output and merge adjacent identical runs', () => {
+  const context = loadFullReverseContext();
+  const { HI } = context;
+
+  const styleA = { font: 'Inter\tBold', pointSize: 18, leading: 22, color: [20, 20, 20], tracking: 10 };
+  const styleB = { font: 'Inter\tRegular', pointSize: 12, leading: 16, color: [60, 60, 60], tracking: 0 };
+  const styleC = { font: 'Inter\tItalic', pointSize: 12, leading: 16, color: [200, 16, 46], tracking: 0, charStyle: 'Accent' };
+
+  const ranges = [
+    makeStyledSegment('Title ', styleA),
+    makeStyledSegment('Body ', styleB),
+    // Adjacent range with identical tracked attributes must merge with previous run.
+    makeStyledSegment('copy ', styleB),
+    makeStyledSegment('Note', styleC),
+  ];
+  const characters = ranges.flatMap((range) => [...range.contents].map((ch) => ({ ...range, contents: ch })));
+
+  let charReadCount = 0;
+  const textFrameWithRanges = {
+    paragraphs: [{}],
+    contents: ranges.map((r) => r.contents).join(''),
+    textStyleRanges: ranges,
+    get characters() {
+      charReadCount += 1;
+      return characters;
+    },
+  };
+  const textFrameCharsOnly = {
+    paragraphs: [{}],
+    contents: ranges.map((r) => r.contents).join(''),
+    characters,
+  };
+
+  const runsFromRanges = JSON.parse(JSON.stringify(HI.reverseTextRuns(textFrameWithRanges)));
+  const runsFromChars = JSON.parse(JSON.stringify(HI.reverseTextRuns(textFrameCharsOnly)));
+  assert.equal(charReadCount, 0, 'reverseTextRuns must read textStyleRanges instead of iterating characters');
+  assert.equal(runsFromRanges.length, 3, 'adjacent identical style ranges must merge into 3 runs');
+  assert.deepEqual(runsFromRanges, runsFromChars);
+
+  let cellCharReadCount = 0;
+  const cellWithRanges = {
+    textStyleRanges: ranges,
+    get characters() {
+      cellCharReadCount += 1;
+      return characters;
+    },
+  };
+  const cellCharsOnly = { characters };
+  const cellRunsFromRanges = JSON.parse(JSON.stringify(HI.reverseTableCellRuns(cellWithRanges)));
+  const cellRunsFromChars = JSON.parse(JSON.stringify(HI.reverseTableCellRuns(cellCharsOnly)));
+  assert.equal(cellCharReadCount, 0, 'reverseTableCellRuns must read textStyleRanges instead of iterating characters');
+  assert.equal(cellRunsFromRanges.length, 3);
+  assert.deepEqual(cellRunsFromRanges, cellRunsFromChars);
+});
+
+test('reversePage serializes each item.id once, reuses styles in reverseInlineStyle, and preserves items/auditItems zIndex', () => {
+  const context = loadFullReverseContext();
+  const { HI } = context;
+
+  class Page {}
+  class Group {}
+  const pageObj = new Page();
+  const groupObj = new Group();
+  groupObj.id = 200;
+
+  const makeMockTextFrame = (id, parent) => ({
+    id,
+    parent,
+    visible: true,
+    nonprinting: false,
+    geometricBounds: [10, 20, 50, 120],
+    itemLayer: { name: 'content', visible: true, printable: true },
+    contents: `Text ${id}`,
+    paragraphs: [{
+      appliedFont: { isValid: true, name: 'Inter\tRegular' },
+      pointSize: 12,
+      leading: 16,
+      fillColor: new Color('Ink', 'RGB', [0, 0, 0]),
+      fillTint: 100,
+      tracking: 0,
+      justification: 1,
+      composer: 'Adobe Paragraph Composer',
+    }],
+    textFramePreferences: { insetSpacing: [0, 0, 0, 0], textColumnCount: 1, textColumnGutter: 0, verticalJustification: 1 },
+    textStyleRanges: [makeStyledSegment(`Text ${id}`)],
+    label: '',
+  });
+
+  const itemA = makeMockTextFrame(101, pageObj);
+  const itemB = makeMockTextFrame(102, pageObj);
+  const itemNested = makeMockTextFrame(103, groupObj);
+
+  const page = {
+    name: '1',
+    bounds: [0, 0, 600, 1000],
+    marginPreferences: { top: 10, right: 10, bottom: 10, left: 10 },
+    guides: [],
+    allPageItems: [itemA, itemB, itemNested],
+  };
+  const layerOrder = { content: { index: 0, count: 1 } };
+
+  const serializedIds = [];
+  const origReversePageItem = HI.reversePageItem;
+  HI.reversePageItem = function (item, index, total, lo, ctx) {
+    serializedIds.push(item.id);
+    return origReversePageItem.call(HI, item, index, total, lo, ctx);
+  };
+
+  let textStyleCalls = 0;
+  const origReverseTextStyle = HI.reverseTextStyle;
+  HI.reverseTextStyle = function (item) {
+    textStyleCalls += 1;
+    return origReverseTextStyle.call(HI, item);
+  };
+
+  let textFrameStyleCalls = 0;
+  const origReverseTextFrameStyle = HI.reverseTextFrameStyle;
+  HI.reverseTextFrameStyle = function (item) {
+    textFrameStyleCalls += 1;
+    return origReverseTextFrameStyle.call(HI, item);
+  };
+
+  const result = HI.reversePage(page, 0, layerOrder, { skipPreviews: true });
+
+  assert.deepEqual(serializedIds, [101, 102, 103], 'each unique item.id must be serialized exactly once per page');
+  assert.equal(textStyleCalls, 3, 'reverseInlineStyle must reuse already-read textStyle instead of calling reverseTextStyle twice');
+  assert.equal(textFrameStyleCalls, 3, 'reverseInlineStyle must reuse already-read textFrameStyle instead of calling reverseTextFrameStyle twice');
+  assert.deepEqual(JSON.parse(JSON.stringify(result.items.map((it) => [it.id, it.zIndex]))), [['101', 1], ['102', 0]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.auditItems.map((it) => [it.id, it.zIndex]))), [['101', 2], ['102', 1], ['103', 0]]);
+  assert.ok(result.items[0].inlineStyle && result.items[0].inlineStyle.includes('font-size:12px'));
+});
+
+test('exportPlacedAssetPreview skips exportFile when skipPreviews is true and keeps exporting when false', () => {
+  const context = loadFullReverseContext();
+  const { HI } = context;
+
+  let exportCalls = 0;
+  const item = { id: 55, exportFile: () => { exportCalls += 1; } };
+  const graphic = { imageTypeName: 'Adobe PDF', exportFile: () => { exportCalls += 1; } };
+  const report = { counts: {} };
+
+  const skipped = HI.exportPlacedAssetPreview(item, graphic, 'D:/assets/plan.pdf', {
+    folder: { fsName: 'D:/run/previews' },
+    relativeRoot: 'previews',
+    report,
+    skipPreviews: true,
+  });
+  assert.equal(skipped, null);
+  assert.equal(exportCalls, 0);
+
+  const exported = HI.exportPlacedAssetPreview(item, graphic, 'D:/assets/plan.pdf', {
+    folder: { fsName: 'D:/run/previews' },
+    relativeRoot: 'previews',
+    report,
+    skipPreviews: false,
+  });
+  assert.ok(exported && exported.format === 'png');
+  assert.equal(exportCalls, 1);
+});

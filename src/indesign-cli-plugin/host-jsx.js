@@ -280,6 +280,7 @@ function buildReverseSnapshotJsx({
   closeDocument = true,
   expectedMarker = null,
   closeOnFailure = false,
+  skipPreviews = false,
 }) {
   const base = toJsxPath(repoRoot);
   const output = toJsxPath(outputPath);
@@ -310,6 +311,7 @@ function buildReverseSnapshotJsx({
         }
         app.insertLabel("html_indesign_reverse_output", ${JSON.stringify(output)});
         app.insertLabel("html_indesign_reverse_marker", expectedMarker);
+        app.insertLabel("html_indesign_reverse_skip_previews", ${skipPreviews ? '"1"' : '""'});
         var raw = $.evalFile(File(${JSON.stringify(base + "/_indesign_scripts/export_to_html_snapshot.jsx")}));
         if (!raw) throw new Error("Reverse snapshot script returned an empty result.");
         result = JSON.parse(String(raw));
@@ -324,6 +326,7 @@ function buildReverseSnapshotJsx({
     } finally {
         app.insertLabel("html_indesign_reverse_output", "");
         app.insertLabel("html_indesign_reverse_marker", "");
+        app.insertLabel("html_indesign_reverse_skip_previews", "");
         if (result.ok === false && ${closeOnFailure ? 'true' : 'false'} && ownedDocument && expectedMarker) {
             try {
                 if (ownedDocument.isValid !== false && ownedDocument.extractLabel("html_indesign_e2e_marker") === expectedMarker) {

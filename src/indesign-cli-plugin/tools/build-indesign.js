@@ -249,6 +249,7 @@ async function startBuild(args, context, mode, run) {
     closeDocument: false,
     expectedMarker: runMarker,
     closeOnFailure: true,
+    skipPreviews: true,
   }), 'utf8');
   fs.writeFileSync(exportScriptPath, buildExportJsx({
     runDir: compile.outDir,
