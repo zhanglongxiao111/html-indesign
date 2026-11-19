@@ -114,7 +114,7 @@ HI.reverseTableCellRuns = function (cell) {
         var rawText = (usingRanges && HI.reverseRangeContents)
             ? HI.reverseRangeContents(segments[i])
             : HI.reverseCharacterContents(segments[i]);
-        var text = HI.cleanReverseTableCellText(rawText);
+        var text = HI.cleanReverseTableCellText(rawText, usingRanges);
         if (text === "") continue;
         var run = HI.reverseCharacterRun(segments[i]);
         run.text = text;
@@ -179,6 +179,7 @@ HI.isLikelyTableHeaderCell = function (paragraphStyle, rowIndex) {
 };
 HI.tableSpanNumber = function (value) { var n = Number(value || 1); return n > 1 ? n : 1; };
 HI.collectionLength = function (collection) { try { return Number(collection.length || 0); } catch (_) {} return 0; };
-HI.cleanReverseTableCellText = function (value) {
-    return HI.reverseTextValue(value).replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
+HI.cleanReverseTableCellText = function (value, skipDecode) {
+    var text = skipDecode ? String(value || "") : HI.reverseTextValue(value);
+    return text.replace(/\u0016/g, "").replace(/[\u0003-\u0007]/g, "").replace(/\r\n|\r/g, "\n").replace(/\n+$/g, "");
 };

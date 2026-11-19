@@ -4,25 +4,16 @@ HI.reverseTextRuns = function (item) {
     if (!HI.isTextFrame(item)) return [];
     var out = [], current = null, segments = [], usingRanges = false;
     try { segments = HI.collectionElements(item.textStyleRanges) || []; } catch (_) { segments = []; }
-    if (segments.length > 0) {
-        usingRanges = true;
-    } else {
-        try { segments = HI.collectionElements(item.characters) || []; } catch (_) { segments = []; }
-    }
+    if (segments.length > 0) usingRanges = true;
+    else { try { segments = HI.collectionElements(item.characters) || []; } catch (_) { segments = []; } }
     for (var i = 0; i < segments.length; i++) {
-        var seg = segments[i];
-        var text = usingRanges ? HI.reverseRangeContents(seg) : HI.reverseCharacterContents(seg);
+        var seg = segments[i], text = usingRanges ? HI.reverseRangeContents(seg) : HI.reverseCharacterContents(seg);
         if (text === "") continue;
         var run = HI.reverseCharacterRun(seg);
         run.text = text;
         var signature = HI.reverseCharacterRunSignature(run);
-        if (current && current._signature === signature) {
-            current.text += text;
-        } else {
-            run._signature = signature;
-            out.push(run);
-            current = run;
-        }
+        if (current && current._signature === signature) current.text += text;
+        else { run._signature = signature; out.push(run); current = run; }
     }
     for (var j = 0; j < out.length; j++) delete out[j]._signature;
     return out;
@@ -33,34 +24,21 @@ HI.reverseRangeContents = function (range) {
         var raw = range.contents;
         if (raw === null || typeof raw === "undefined") return "";
         if (typeof raw === "string") {
-            // Whole-range string contents already contain literal Unicode characters;
-            // never run global enum-name replacement over multi-character literal text
-            // such as "Use EM_DASH here". Only decode an exact enum name when the range
-            // itself is a single character.
-            var exact = HI.specialCharacterFor(raw);
+            var exact = HI.specialCharacterFor(raw), count = null;
             if (exact !== null) {
-                var charCount = null;
-                try {
-                    if (range.characters && typeof range.characters.length === "number") {
-                        charCount = range.characters.length;
-                    }
-                } catch (_) {}
-                if (charCount === 1) return exact;
+                try { if (range.characters && typeof range.characters.length === "number") count = range.characters.length; } catch (_) {}
+                if (count === 1) return exact;
             }
             return raw;
         }
-        // Non-string SpecialCharacters enumerator returned for a single-special-char range.
-        var str = String(raw);
-        var single = HI.specialCharacterFor(str);
+        var str = String(raw), single = HI.specialCharacterFor(str);
         return single !== null ? single : str;
     } catch (_) {}
     return "";
 };
 
 HI.reverseCharacterContents = function (character) {
-    try {
-        return HI.reverseTextValue(character.contents);
-    } catch (_) {}
+    try { return HI.reverseTextValue(character.contents); } catch (_) {}
     return "";
 };
 
@@ -195,17 +173,5 @@ HI.reverseCharacterStyleName = function (character) {
 
 HI.reverseCharacterRunSignature = function (run) {
     var s = run.textStyle || {};
-    return [
-        run.characterStyle || "",
-        s.fontFamily || "",
-        s.fontWeight || "",
-        s.fontStyle || "",
-        s.pointSize || "",
-        s.leading || "",
-        s.fillColor || "",
-        s.tracking || "",
-        s.capitalization || "",
-        s.strokeColor || "",
-        s.strokeWeight || ""
-    ].join("|");
+    return [run.characterStyle || "", s.fontFamily || "", s.fontWeight || "", s.fontStyle || "", s.pointSize || "", s.leading || "", s.fillColor || "", s.tracking || "", s.capitalization || "", s.strokeColor || "", s.strokeWeight || ""].join("|");
 };
